@@ -5,17 +5,17 @@ A standalone bash script that bounces a document between two AI agents using str
 ## Quick Start
 
 ```bash
-# Default: Claude reviews (odd passes), Codex composes (even passes), up to 2 passes
-./agent-bouncer.sh plan.md
+# Pass any markdown document you want refined
+./agent-bouncer.sh your-document.md
 
-# 4 passes
-./agent-bouncer.sh plan.md 4 claude codex
+# 4 passes instead of the default 2
+./agent-bouncer.sh your-document.md 4 claude codex
 
-# Reverse the roles
-./agent-bouncer.sh plan.md 2 codex claude
+# Reverse the roles: Codex reviews, Claude composes
+./agent-bouncer.sh your-document.md 2 codex claude
 ```
 
-Arguments: `<plan-file> [max-bounces] [odd-agent] [even-agent]`
+Arguments: `<document> [max-bounces] [odd-agent] [even-agent]`
 
 - Odd passes = reviewer role (flags problems)
 - Even passes = composer role (resolves problems)

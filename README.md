@@ -6,10 +6,11 @@ Tools for structured iterative refinement between AI agents. Documents bounce ba
 
 ### [Agent Bouncer](agent-bouncer/)
 
-A standalone bash script that bounces a document between two agents. Agent-agnostic — ships with Claude and Codex adapters, add new agents by writing one function. Runs from any terminal.
+A standalone bash script that bounces any markdown document between two agents. Agent-agnostic — ships with Claude and Codex adapters, add new agents by writing one function. Runs from any terminal.
 
 ```bash
-./agent-bouncer/agent-bouncer.sh plan.md
+# Pass any document you want refined
+./agent-bouncer/agent-bouncer.sh your-document.md
 ```
 
 ### [Claude Code Skill](skill/)
