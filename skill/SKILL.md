@@ -71,7 +71,7 @@ Store parsed values:
 ### Common Patterns (display these in help)
 
 ```text
-# Alan's usual workflow: Opus composes, auto-converge bouncing, Opus executes
+# Opus-heavy workflow: Opus composes, auto-converge bouncing, Opus executes
 /dev-review --composer opus --executor opus Build a dashboard for API metrics
 
 # Reverse: Codex composes, Opus reviews, Codex executes
@@ -319,8 +319,15 @@ launch_codex_live "Codex - Compose" "exec" \
 If `$LIVE_ACTIVE=false`, keep the existing headless behavior:
 
 ```bash
-echo "$COMPOSE_PROMPT" | codex exec --full-auto -C "$(pwd)" > /tmp/dev-review-plan-{timestamp}.md 2>&1
+printf '%s' "$COMPOSE_PROMPT" | codex exec --full-auto -C "$(pwd)" -o /tmp/dev-review-plan-{timestamp}.md
 ```
+
+**Important:** Always pipe plan content through stdin or embed it in the prompt file.
+Never reference the plan file path in a way that Codex could discover and edit it
+directly. Codex runs with `--full-auto` (full filesystem write access), so any file
+path it can see is a file it can modify. The orchestrator is the sole owner of the
+canonical plan file; Codex only ever receives plan content as inline text and writes
+output to a separate `-o` path.
 
 Display: "Plan composed by $COMPOSER. Starting bounce phase."
 
@@ -374,30 +381,39 @@ the plan document directly using the Write tool. Claude should:
 **If current agent = codex:**
 
 ```bash
-# Read current plan
+# Read current plan content into the prompt — never pass the plan file path to Codex
 PLAN_CONTENT=$(cat /tmp/dev-review-plan-{timestamp}.md)
 
-# Build the bounce prompt
+# Build the bounce prompt with plan content embedded inline
 cat > /tmp/dev-review-bounce-prompt.md << 'BOUNCE_EOF'
 {filled bounce-protocol template with PLAN_CONTENT embedded}
 BOUNCE_EOF
 ```
+
+The bounce prompt file contains the full plan text inline. Codex receives it via
+stdin or as a prompt file, and writes its revised plan to a **separate output file**
+via `-o`. The orchestrator then reads from that output and overwrites the canonical
+plan. Codex never sees the canonical plan file path.
 
 If `$LIVE_ACTIVE=true`, launch the pass visibly:
 
 ```bash
 launch_codex_live "Codex - Bounce {N}/{TOTAL}" "exec" \
   /tmp/dev-review-bounce-prompt.md \
-  /tmp/dev-review-plan-{timestamp}.md \
+  /tmp/dev-review-bounce-output-{timestamp}-{N}.md \
   "" \
   "bounce" \
   "{N}"
+# Orchestrator overwrites canonical plan with Codex's output
+cp /tmp/dev-review-bounce-output-{timestamp}-{N}.md /tmp/dev-review-plan-{timestamp}.md
 ```
 
 If `$LIVE_ACTIVE=false`, keep the existing headless behavior:
 
 ```bash
-codex exec --full-auto -C "$(pwd)" < /tmp/dev-review-bounce-prompt.md > /tmp/dev-review-plan-{timestamp}.md 2>&1
+printf '%s' "$(cat /tmp/dev-review-bounce-prompt.md)" | codex exec --full-auto -C "$(pwd)" -o /tmp/dev-review-bounce-output-{timestamp}-{N}.md
+# Orchestrator overwrites canonical plan with Codex's output
+cp /tmp/dev-review-bounce-output-{timestamp}-{N}.md /tmp/dev-review-plan-{timestamp}.md
 ```
 
 ### After each pass, display:
@@ -664,6 +680,7 @@ Options:
 rm -f /tmp/dev-review-plan-*.md
 rm -f /tmp/dev-review-compose-prompt.md
 rm -f /tmp/dev-review-bounce-prompt.md
+rm -f /tmp/dev-review-bounce-output-*.md
 rm -f /tmp/dev-review-exec-prompt.md
 rm -f /tmp/dev-review-exec-output.md
 rm -f /tmp/dev-review-diff.txt
@@ -716,3 +733,9 @@ Leave the git branch. If worktree, prompt to keep/remove.
 - **Live windows auto-close after a short read delay**: The wrapper waits 5 seconds
   before writing `.done`, which gives the user time to read the terminal and keeps
   the workflow serialized to one visible Codex window at a time.
+- **Codex never sees the canonical plan file path**: All plan content is embedded
+  inline in the prompt (via stdin or prompt file). Codex writes its output to a
+  separate `-o` file, and the orchestrator copies that back to the canonical plan.
+  This prevents Codex from modifying the plan file directly via `--full-auto`
+  filesystem access. Found during smoke testing: without this isolation, Codex
+  edits the source plan on disk in addition to writing `-o` output.

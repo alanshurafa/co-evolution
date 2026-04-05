@@ -36,6 +36,15 @@ Convergence:
 - Do not edit or delete earlier HUMAN SUMMARY entries.
 - Do not restate the instructions before the updated plan.
 - Do not add preamble or explanation outside the plan. Output ONLY the updated plan document.
+- You MUST output the COMPLETE document, not a summary of changes. The output replaces the input file entirely. If you output a change description instead of the full document, the plan will be lost.
+
+## SCOPE CONTROL:
+
+- Do NOT add new sections, features, or requirements beyond what the original task describes.
+- Do NOT expand bullet points into paragraphs unless the expansion resolves a specific ambiguity.
+- Do NOT add implementation details that the plan did not already discuss.
+- If the plan is growing beyond what the task requires, actively tighten it: merge redundant points, remove speculative content, and cut anything that is not directly needed.
+- Your job is to REFINE the plan, not to GROW it. A shorter, clearer plan is better than a longer, more detailed one.
 
 [PLAN STARTS HERE]
 
