@@ -1,6 +1,6 @@
 # Co-Evolution
 
-Tools for structured iterative refinement between AI agents. Documents bounce back and forth between agents using disagreement markers until they converge — producing tighter, more precise output than any single agent would alone.
+Tools for structured iterative refinement between AI agents and Humans. Documents bounce back and forth between agents using disagreement markers until they converge — producing tighter, more precise output than any single agent would alone. Humans can opt in to be a part of the co-evolution if they choose.
 
 ## What's in this repo
 
