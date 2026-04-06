@@ -30,14 +30,29 @@ invoke_codex() {
   local output_file="$2"
   local stderr_file="$3"
   local workdir="${WORKDIR:-$PWD}"
-  local -a cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+  local -a cmd
+  local windows_workdir
+  local windows_output
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    windows_workdir=$(wslpath -w "$workdir")
+    windows_output=$(wslpath -w "$output_file")
+    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+  else
+    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+  fi
 
   if [[ -n "${CODEX_MODEL:-}" ]]; then
     cmd+=(-c "model=${CODEX_MODEL}")
   fi
 
-  cmd+=(-o "$output_file")
-  "${cmd[@]}" < "$prompt_file" 2>"$stderr_file" || true
+  if [[ -n "${windows_output:-}" ]]; then
+    cmd+=(-o "$windows_output")
+  else
+    cmd+=(-o "$output_file")
+  fi
+
+  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
 }
 
 count_markers() {

@@ -12,8 +12,8 @@
 
 ### Agent Bouncer
 
-- [ ] **BNCR-01**: Agent Bouncer sources the shared library instead of duplicating helper implementations
-- [ ] **BNCR-02**: Agent Bouncer preserves its current run artifact names, clean-output behavior, marker counting behavior, and retry logic after the refactor
+- [x] **BNCR-01**: Agent Bouncer sources the shared library instead of duplicating helper implementations
+- [x] **BNCR-02**: Agent Bouncer preserves its current run artifact names, clean-output behavior, marker counting behavior, and retry logic after the refactor
 
 ### Codex Runtime
 
@@ -49,8 +49,8 @@
 |-------------|-------|--------|
 | CORE-01 | Phase 1 | Complete |
 | CORE-02 | Phase 1 | Complete |
-| BNCR-01 | Phase 2 | Pending |
-| BNCR-02 | Phase 2 | Pending |
+| BNCR-01 | Phase 2 | Complete |
+| BNCR-02 | Phase 2 | Complete |
 | CDRT-01 | Phase 3 | Pending |
 | CDRT-02 | Phase 3 | Pending |
 | CDRT-03 | Phase 3 | Pending |
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after completing Phase 1 shared shell core work*
+*Last updated: 2026-04-06 after completing Phase 2 bouncer refactor work*

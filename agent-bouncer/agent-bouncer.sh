@@ -49,7 +49,13 @@ NAME_PROMPT="Read this document title and first paragraph. Output ONLY a 2-4 wor
 
 $(head -20 "$PLAN_FILE")"
 
-CANDIDATE=$(printf '%s' "$NAME_PROMPT" | codex exec --full-auto --skip-git-repo-check -C "$WORKDIR" 2>/dev/null | tr -d '\r\n ' | head -c 60 || true)
+NAME_PROMPT_FILE=$(mktemp)
+NAME_OUTPUT_FILE=$(mktemp)
+NAME_STDERR_FILE=$(mktemp)
+printf '%s' "$NAME_PROMPT" > "$NAME_PROMPT_FILE"
+invoke_codex "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
+CANDIDATE=$(tr -d '\r\n ' < "$NAME_OUTPUT_FILE" | head -c 60 || true)
+rm -f "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
 
 if [[ "$CANDIDATE" =~ ^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$ ]]; then
   RUN_LABEL="$CANDIDATE"
