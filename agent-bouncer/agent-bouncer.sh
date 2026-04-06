@@ -33,15 +33,16 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 invoke_claude() {
   local prompt_file="$1" output_file="$2" stderr_file="$3"
-  # claude -p may exit non-zero even on success; check output file instead
-  # --max-turns 5 allows Claude to use tools if needed but prevents runaway loops
-  claude -p --output-format text --model claude-opus-4-6 --max-turns 5 \
+  # Pure text task — disable tools so Claude outputs the document directly
+  # instead of burning turns on tool calls and hitting the max-turns limit.
+  claude -p --output-format text --model claude-opus-4-6 --tools "" \
     < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
 }
 
 invoke_codex() {
   local prompt_file="$1" output_file="$2" stderr_file="$3"
-  codex exec --full-auto -C "$WORKDIR" -o "$output_file" \
+  # --skip-git-repo-check: documents may live outside git repos (e.g., Google Drive)
+  codex exec --full-auto --skip-git-repo-check -C "$WORKDIR" -o "$output_file" \
     < "$prompt_file" 2>"$stderr_file" || true
 }
 
@@ -65,7 +66,7 @@ NAME_PROMPT="Read this document title and first paragraph. Output ONLY a 2-4 wor
 
 $(head -20 "$PLAN_FILE")"
 
-CANDIDATE=$(printf '%s' "$NAME_PROMPT" | codex exec --full-auto -C "$WORKDIR" 2>/dev/null | tr -d '\r\n ' | head -c 60 || true)
+CANDIDATE=$(printf '%s' "$NAME_PROMPT" | codex exec --full-auto --skip-git-repo-check -C "$WORKDIR" 2>/dev/null | tr -d '\r\n ' | head -c 60 || true)
 
 # Validate: must be kebab-case (lowercase letters, digits, hyphens), 2-60 chars
 if [[ "$CANDIDATE" =~ ^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$ ]]; then
