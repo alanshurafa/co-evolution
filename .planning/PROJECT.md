@@ -12,8 +12,8 @@ Cross-AI workflows can be executed from local CLIs with clear artifact trails, r
 
 ### Validated
 
-- ✓ Agent Bouncer can bounce markdown documents between Claude and Codex using `[CONTESTED]` and `[CLARIFY]` markers — existing repo
-- ✓ Claude Code `/dev-review` workflow, prompt templates, and review schema already exist in `skill/` — existing repo
+- [x] Agent Bouncer can bounce markdown documents between Claude and Codex using `[CONTESTED]` and `[CLARIFY]` markers - existing repo
+- [x] Claude Code `/dev-review` workflow, prompt templates, and review schema already exist in `skill/` - existing repo
 
 ### Active
 
@@ -25,20 +25,21 @@ Cross-AI workflows can be executed from local CLIs with clear artifact trails, r
 
 ### Out of Scope
 
-- Live visible Windows Codex windows — deferred to a later runtime pass
-- Automatic branch or worktree management — deferred until the core Codex runtime is stable
-- Moving `skill/` into `dev-review/claude/` — separate restructure, not part of this implementation pass
+- Live visible Windows Codex windows - deferred to a later runtime pass
+- Automatic branch or worktree management - deferred until the core Codex runtime is stable
+- Moving `skill/` into `dev-review/claude/` - separate restructure, not part of this implementation pass
 
 ## Context
 
 - The repo is intentionally lightweight: Bash plus Markdown templates, with no package manifest or automated test suite yet.
 - `.planning/codebase/` already documents the current stack, architecture, conventions, testing gaps, and concerns.
 - The immediate implementation driver is `C:/Users/alan/.claude/plans/fluffy-herding-mccarthy.md`, which lays out the shared-library extraction, bouncer refactor, Codex runtime script, and follow-on docs.
-- The working tree already contains unrelated changes in `skill/SKILL.md` and an untracked `CLAUDE.md`; execution for this initiative must avoid pulling those into commits.
+- The working tree already contains unrelated changes in `skill/SKILL.md`; execution for this initiative must keep that file out of scope.
+- `CLAUDE.md` started as an untracked local file, but the current implementation plan now explicitly brings it into scope for the docs-and-routing phase. Keep edits narrow to the new Codex runtime context.
 
 ## Constraints
 
-- **Tech stack**: Bash-first runtime plus Markdown templates — existing product surface should stay shell-native
+- **Tech stack**: Bash-first runtime plus Markdown templates - existing product surface should stay shell-native
 - **Compatibility**: Preserve current Agent Bouncer behavior and artifact naming while extracting helpers
 - **Shared assets**: Keep prompt templates and schema under `skill/` for v1 so the new runtime reuses existing contracts
 - **Execution style**: Implement and commit in visible steps aligned with the external plan so progress is easy to inspect
@@ -47,9 +48,12 @@ Cross-AI workflows can be executed from local CLIs with clear artifact trails, r
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Keep `skill/templates/` and `skill/schemas/` as the shared prompt contract in v1 | Reuse current, working assets before any repo restructure | — Pending |
-| Introduce `lib/co-evolution.sh` as the shared shell core | Avoid duplicating helper functions across Agent Bouncer and Codex runtime | — Pending |
-| Split the work into stepwise commits that mirror the external plan | Maintains visibility and makes course-correction easier after each boundary | — Pending |
+| Keep `skill/templates/` and `skill/schemas/` as the shared prompt contract in v1 | Reuse current, working assets before any repo restructure | Pending |
+| Introduce `lib/co-evolution.sh` as the shared shell core | Avoid duplicating helper functions across Agent Bouncer and Codex runtime | Pending |
+| Split the work into stepwise commits that mirror the external plan | Maintains visibility and makes course-correction easier after each boundary | Pending |
+| Use a shared-core, platform-specific-shell architecture | Claude Code and Codex have different orchestration models even while sharing prompts and shell helpers | Pending |
+| Leave the Claude runtime implementation untouched in v1 | Limits risk while the standalone Codex runtime proves the pipeline outside Claude Code | Pending |
+| Keep `Co-Evolution` as the umbrella name, `dev-review` as the workflow product, and `agent-bouncer` as the generic bounce engine | Preserves naming clarity across docs, scripts, and future restructuring | Pending |
 
 ## Evolution
 
@@ -69,4 +73,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after GSD initialization*
+*Last updated: 2026-04-06 after aligning GSD artifacts to the detailed Codex runtime rollout plan*

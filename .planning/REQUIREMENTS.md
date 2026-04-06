@@ -7,8 +7,8 @@
 
 ### Shared Shell Core
 
-- [ ] **CORE-01**: Maintainer can source `lib/co-evolution.sh` without triggering side effects at source time
-- [ ] **CORE-02**: Shared library exposes reusable shell helpers for agent invocation, marker counting, HUMAN SUMMARY stripping, output validation, template filling, conditional block handling, logging, and verdict parsing
+- [x] **CORE-01**: Maintainer can source `lib/co-evolution.sh` without triggering side effects at source time
+- [x] **CORE-02**: Shared library exposes reusable shell helpers for agent invocation, marker counting, HUMAN SUMMARY stripping, output validation, template filling, conditional block handling, logging, and verdict parsing
 
 ### Agent Bouncer
 
@@ -47,8 +47,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Complete |
+| CORE-02 | Phase 1 | Complete |
 | BNCR-01 | Phase 2 | Pending |
 | BNCR-02 | Phase 2 | Pending |
 | CDRT-01 | Phase 3 | Pending |
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after initial definition*
+*Last updated: 2026-04-06 after completing Phase 1 shared shell core work*

@@ -12,7 +12,7 @@ This roadmap adds a standalone Codex runtime to the existing Co-Evolution toolki
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Shared Shell Core** - Extract reusable shell helpers into a common library
+- [x] **Phase 1: Shared Shell Core** - Extract reusable shell helpers into a common library
 - [ ] **Phase 2: Bouncer Refactor** - Move Agent Bouncer onto the shared shell core without behavior drift
 - [ ] **Phase 3: Codex Runtime** - Add the standalone Codex `dev-review` runtime script
 - [ ] **Phase 4: Docs And Routing** - Add Codex instructions and repo docs for the new runtime
@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: Create shared shell core library
+- [x] 01-01: Create shared shell core library
 
 ### Phase 2: Bouncer Refactor
 **Goal**: Refactor Agent Bouncer to use the shared library while preserving current behavior.
@@ -78,7 +78,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Shared Shell Core | 0/1 | Not started | - |
+| 1. Shared Shell Core | 1/1 | Complete | 2026-04-06 |
 | 2. Bouncer Refactor | 0/1 | Not started | - |
 | 3. Codex Runtime | 0/1 | Not started | - |
 | 4. Docs And Routing | 0/1 | Not started | - |

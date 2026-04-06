@@ -112,6 +112,12 @@ validate_output() {
   if ! size_sanity_check "$input_file" "$output_file" "$threshold"; then
     log " WARNING: ${agent_name} returned ${output_words} words (input was ${input_words}). Likely a summary, not the full document. Retrying..."
     "$retry_function" "$prompt_file" "$output_file" "$retry_stderr_file"
+
+    if [[ ! -s "$output_file" ]]; then
+      log " ERROR: ${agent_name} returned empty output on retry after a short-output warning. Aborting."
+      return 1
+    fi
+
     output_words=$(wc -w < "$output_file" | tr -d '\r\n ')
 
     if ! size_sanity_check "$input_file" "$output_file" "$threshold"; then
@@ -155,13 +161,28 @@ strip_conditional() {
 
 fill_conditional() {
   local block_name="$1"
+  shift
   local start_tag="{IF_${block_name}}"
   local end_tag="{END_IF_${block_name}}"
+  local rendered
+  local pair
+  local key
+  local value
 
-  awk -v start_tag="$start_tag" -v end_tag="$end_tag" '
+  rendered=$(
+    awk -v start_tag="$start_tag" -v end_tag="$end_tag" '
     index($0, start_tag) || index($0, end_tag) { next }
     { print }
   '
+  )
+
+  for pair in "$@"; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    rendered="${rendered//\{$key\}/$value}"
+  done
+
+  printf '%s' "$rendered"
 }
 
 parse_verdict() {
