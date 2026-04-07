@@ -578,7 +578,15 @@ run_verify_phase() {
   if [[ "$INITIAL_GIT_DIRTY" == "true" ]]; then
     log "WARNING: verification skipped - workdir had pre-existing uncommitted changes, so this run's diff cannot be isolated."
     return 2
-  elif [[ -n "$PRE_EXECUTE_SHA" ]]; then
+  fi
+
+  untracked_files=$(git -C "$WORKDIR" ls-files --others --exclude-standard)
+  if [[ -n "$untracked_files" ]]; then
+    log "WARNING: verification skipped - run left untracked files that cannot be diffed automatically."
+    return 2
+  fi
+
+  if [[ -n "$PRE_EXECUTE_SHA" ]]; then
     git -C "$WORKDIR" diff "$PRE_EXECUTE_SHA" > "$diff_file"
     git -C "$WORKDIR" diff --stat "$PRE_EXECUTE_SHA" > "$diff_stat_file"
   elif [[ -n "$(git -C "$WORKDIR" status --short)" ]]; then
@@ -589,14 +597,7 @@ run_verify_phase() {
     return 0
   fi
 
-  untracked_files=$(git -C "$WORKDIR" ls-files --others --exclude-standard)
-
   if [[ ! -s "$diff_file" ]]; then
-    if [[ -n "$untracked_files" ]]; then
-      log "WARNING: verification skipped - run left untracked files that cannot be diffed automatically."
-      return 2
-    fi
-
     log "WARNING: diff is empty, skipping diff-based verification."
     return 0
   fi

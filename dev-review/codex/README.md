@@ -71,7 +71,7 @@ This is the clean handoff path once a plan has already been reviewed or bounced 
 bash dev-review/codex/dev-review.sh --verify "Tighten the runtime docs"
 ```
 
-`--verify` compares the executed work to the plan through the verifier prompt. When execution starts from a clean repo state, the runtime diffs from the pre-execute baseline to the current worktree so the verifier sees committed and uncommitted tracked changes from the same run together. If the repo was already dirty before execution started, or the run only leaves untracked files behind, verification exits `2` instead of guessing which changes belong to this run.
+`--verify` compares the executed work to the plan through the verifier prompt. When execution starts from a clean repo state, the runtime diffs from the pre-execute baseline to the current worktree so the verifier sees committed and uncommitted tracked changes from the same run together. If the repo was already dirty before execution started, or the run leaves untracked files behind, verification exits `2` instead of guessing which changes belong to this run.
 
 Verifier auth failures, malformed JSON, fenced-plus-prose responses, and contradictory verdicts are surfaced as review-needed `exit 2` paths instead of being treated as successful verification.
 
@@ -96,7 +96,7 @@ Get-Content -Raw dev-review/codex/instructions.md | codex exec -C C:/Users/alan/
 
 - `0`: success
 - `1`: fatal runtime failure
-- `2`: review-needed path, including compose/bounce auth or error payloads, invalid plan artifacts after retry, auto-bounce non-convergence, no-op execute runs, dirty-start or untracked-only verification, revise verdicts, or unusable verifier output
+- `2`: review-needed path, including compose/bounce auth or error payloads, invalid plan artifacts after retry, auto-bounce non-convergence, no-op execute runs, dirty-start or untracked-file verification, revise verdicts, or unusable verifier output
 
 ## How This Fits The Repo
 
