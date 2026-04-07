@@ -20,9 +20,16 @@ invoke_claude() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
+  local -a cmd
 
-  claude -p --output-format text --model claude-opus-4-6 --tools "" \
-    < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
+    # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
+    cmd=(cmd.exe /c claude -p --output-format text --model claude-opus-4-6)
+  else
+    cmd=(claude -p --output-format text --model claude-opus-4-6 --tools "")
+  fi
+
+  "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
 }
 
 invoke_codex() {

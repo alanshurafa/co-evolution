@@ -710,6 +710,13 @@ Leave the git branch. If worktree, prompt to keep/remove.
 | Markers stuck 2+ passes | grep count unchanged | Force resolution on current pass |
 | Not git + worktree | git rev-parse fails | Drop worktree, warn, continue |
 
+## GSD Integration
+
+Dev-review is integrated into GSD workflows:
+- `/gsd:execute-phase N --cross-ai` — delegates plan execution to dev-review via `--skip-plan --executor codex --verify`
+- `/gsd:ship --review` — uses Codex + review-verdict schema as a code review gate before PR creation
+- Enable globally: `gsd config-set workflow.cross_ai_execution true` or `gsd config-set workflow.code_review true`
+
 ## Notes
 
 - **Cost**: Each Codex pass costs OpenAI tokens. A 4-bounce + execute + verify loop
