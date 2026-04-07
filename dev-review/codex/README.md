@@ -36,7 +36,7 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 |------|---------|
 | `--composer opus|codex` | Choose who writes the initial plan |
 | `--executor opus|codex` | Choose who executes the approved plan |
-| `--bounces N|auto` | Use a fixed pass count or auto-converge up to 6 passes |
+| `--bounces N|auto` | Use a fixed pass count or auto-converge up to 6 passes; `auto` exits `2` if markers still remain after the budget |
 | `--verify` | Run a verifier pass after execution |
 | `--plan-only` | Stop after compose + bounce and keep the plan artifact |
 | `--skip-plan` | Skip compose + bounce and execute an existing plan |
@@ -71,7 +71,9 @@ This is the clean handoff path once a plan has already been reviewed or bounced 
 bash dev-review/codex/dev-review.sh --verify "Tighten the runtime docs"
 ```
 
-`--verify` compares the executed work to the plan through the verifier prompt. A verifier auth failure is surfaced clearly and the runtime exits `2` so callers can treat it as review-needed instead of success.
+`--verify` compares the executed work to the plan through the verifier prompt. When execution starts from a clean repo state, the runtime diffs from the pre-execute baseline to the current worktree so the verifier sees committed and uncommitted changes from the same run together. If the repo was already dirty before execution started, verification exits `2` instead of guessing which changes belong to this run.
+
+Verifier auth failures, malformed JSON, fenced-plus-prose responses, and contradictory verdicts are surfaced as review-needed `exit 2` paths instead of being treated as successful verification.
 
 ## Using It With Codex Startup Instructions
 
@@ -94,7 +96,7 @@ Get-Content -Raw dev-review/codex/instructions.md | codex exec -C C:/Users/alan/
 
 - `0`: success
 - `1`: fatal runtime failure
-- `2`: review-needed path, including revise verdicts or verifier/auth conditions that need manual follow-up
+- `2`: review-needed path, including compose/bounce auth or error payloads, invalid plan artifacts after retry, auto-bounce non-convergence, no-op execute runs, dirty-start verification, revise verdicts, or unusable verifier output
 
 ## How This Fits The Repo
 

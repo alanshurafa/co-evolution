@@ -93,20 +93,6 @@ invoke_agent() {
   esac
 }
 
-invoke_agent_function() {
-  case "$1" in
-    codex)
-      echo "invoke_codex"
-      ;;
-    opus)
-      echo "invoke_claude"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
 require_agent_cli() {
   case "$1" in
     codex)
@@ -233,24 +219,6 @@ agent_auth_failed() {
   return 1
 }
 
-ensure_nonempty_output() {
-  local output_file="$1"
-  local agent="$2"
-  local prompt_file="$3"
-  local stderr_file="$4"
-
-  if [[ -s "$output_file" ]]; then
-    return 0
-  fi
-
-  log " WARNING: ${agent} returned empty output. Retrying once..."
-  invoke_agent "$agent" "$prompt_file" "$output_file" "$stderr_file"
-
-  if [[ ! -s "$output_file" ]]; then
-    die "${agent} returned empty output on retry"
-  fi
-}
-
 build_bounce_prompt() {
   local pass_number="$1"
   local total_passes="$2"
@@ -304,9 +272,116 @@ build_review_prompt() {
   printf '%s' "$rendered"
 }
 
+inspect_plan_output() {
+  local agent="$1"
+  local output_file="$2"
+  local stderr_file="$3"
+  local input_file="${4:-}"
+  local cli_name=""
+  local input_words=0
+  local output_words=0
+  local plan_reason=""
+
+  PLAN_OUTPUT_STATUS="ok"
+  PLAN_OUTPUT_REASON=""
+  cli_name=$(agent_cli_name "$agent")
+
+  if file_contains_auth_failure "$output_file" || file_contains_auth_failure "$stderr_file"; then
+    PLAN_OUTPUT_STATUS="review"
+    PLAN_OUTPUT_REASON="${cli_name} authentication failed"
+    return 1
+  fi
+
+  if [[ ! -s "$output_file" ]]; then
+    if file_contains_error_payload "$stderr_file"; then
+      PLAN_OUTPUT_STATUS="review"
+      PLAN_OUTPUT_REASON="${cli_name} returned an error payload"
+      return 1
+    fi
+
+    PLAN_OUTPUT_STATUS="empty"
+    PLAN_OUTPUT_REASON="${cli_name} returned empty output"
+    return 1
+  fi
+
+  if [[ -n "$input_file" ]] && ! size_sanity_check "$input_file" "$output_file"; then
+    input_words=$(wc -w < "$input_file" | tr -d '\r\n ')
+    output_words=$(wc -w < "$output_file" | tr -d '\r\n ')
+
+    if file_contains_error_payload "$output_file" || file_contains_error_payload "$stderr_file"; then
+      PLAN_OUTPUT_STATUS="review"
+      PLAN_OUTPUT_REASON="${cli_name} returned an error payload instead of a full plan"
+      return 1
+    fi
+
+    PLAN_OUTPUT_STATUS="thin"
+    PLAN_OUTPUT_REASON="${cli_name} returned ${output_words} words for a ${input_words}-word plan"
+    return 1
+  fi
+
+  if ! plan_reason=$(validate_plan_artifact "$output_file"); then
+    if file_contains_error_payload "$output_file" || file_contains_error_payload "$stderr_file"; then
+      PLAN_OUTPUT_STATUS="review"
+      PLAN_OUTPUT_REASON="${cli_name} returned an error payload instead of a structured plan"
+      return 1
+    fi
+
+    PLAN_OUTPUT_STATUS="thin"
+    PLAN_OUTPUT_REASON="$plan_reason"
+    return 1
+  fi
+
+  return 0
+}
+
+ensure_valid_plan_output() {
+  local phase_name="$1"
+  local agent="$2"
+  local prompt_file="$3"
+  local output_file="$4"
+  local stderr_file="$5"
+  local retry_stderr_file="$6"
+  local input_file="${7:-}"
+
+  inspect_plan_output "$agent" "$output_file" "$stderr_file" "$input_file" && return 0
+
+  case "$PLAN_OUTPUT_STATUS" in
+    review)
+      log "WARNING: ${phase_name} requires manual follow-up: ${PLAN_OUTPUT_REASON}."
+      return 2
+      ;;
+    empty|thin)
+      log "WARNING: ${phase_name} produced an unusable plan artifact (${PLAN_OUTPUT_REASON}). Retrying once..."
+      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file"
+      inspect_plan_output "$agent" "$output_file" "$retry_stderr_file" "$input_file" && return 0
+
+      case "$PLAN_OUTPUT_STATUS" in
+        empty)
+          log "ERROR: ${phase_name} failed after retry: ${PLAN_OUTPUT_REASON}."
+          return 1
+          ;;
+        review|thin)
+          log "WARNING: ${phase_name} requires manual follow-up: ${PLAN_OUTPUT_REASON}."
+          return 2
+          ;;
+        *)
+          log "ERROR: ${phase_name} failed for an unknown reason."
+          return 1
+          ;;
+      esac
+      ;;
+    *)
+      log "ERROR: ${phase_name} failed for an unknown reason."
+      return 1
+      ;;
+  esac
+}
+
 run_compose_phase() {
   local compose_prompt_file="$RUN_DIR/.compose-prompt.md"
+  local compose_output_file="$RUN_DIR/.compose-output.md"
   local compose_stderr_file="$RUN_DIR/compose-stderr.log"
+  local compose_retry_stderr_file="$RUN_DIR/compose-stderr-retry.log"
   local compose_prompt
 
   compose_prompt="You are creating an implementation plan for the following task.
@@ -325,8 +400,9 @@ Create a detailed plan that includes:
 Output ONLY the plan document. No preamble."
 
   write_text_file "$compose_prompt_file" "$compose_prompt"
-  invoke_agent "$COMPOSER" "$compose_prompt_file" "$PLAN_PATH" "$compose_stderr_file"
-  ensure_nonempty_output "$PLAN_PATH" "$COMPOSER" "$compose_prompt_file" "$compose_stderr_file"
+  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
+  ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" || return $?
+  cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
 }
 
@@ -334,6 +410,8 @@ run_bounce_phase() {
   local max_bounces="$1"
   local auto_converge="$2"
   local final_markers=0
+  local final_contested=0
+  local final_clarify=0
   local pass
   local role
   local current_agent
@@ -377,7 +455,7 @@ run_bounce_phase() {
     log "--------------------------------------------"
 
     invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
-    validate_output "$PLAN_PATH" "$output_file" "$current_agent" "$(invoke_agent_function "$current_agent")" "$prompt_file" "$retry_stderr_file" || die "Bounce phase failed on pass ${pass}"
+    ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" || return $?
 
     cp "$output_file" "$RUN_DIR/pass-${pass}-${role}-${current_agent}-raw.md"
     strip_human_summary "$output_file" "$clean_file"
@@ -396,6 +474,8 @@ run_bounce_phase() {
     log ""
 
     final_markers="$total_markers"
+    final_contested="$contested"
+    final_clarify="$clarify"
     if [[ "$auto_converge" == "true" && "$total_markers" -eq 0 ]]; then
       log "Plan converged after $pass passes (no open markers)."
       log ""
@@ -404,9 +484,17 @@ run_bounce_phase() {
   done
 
   if (( final_markers > 0 )); then
+    if [[ "$auto_converge" == "true" ]]; then
+      log "WARNING: bounce limit reached with ${final_contested} [CONTESTED] and ${final_clarify} [CLARIFY] markers still open. Manual arbitration is required before execution."
+      log ""
+      return 2
+    fi
+
     log "WARNING: $final_markers unresolved markers remain after the bounce phase."
     log ""
   fi
+
+  return 0
 }
 
 run_execute_phase() {
@@ -454,7 +542,9 @@ run_execute_phase() {
       return 2
     fi
 
-    if [[ "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
+    if [[ "$INITIAL_GIT_DIRTY" != "true" && -n "$PRE_EXECUTE_SHA" ]]; then
+      git -C "$WORKDIR" diff --stat "$PRE_EXECUTE_SHA" > "$RUN_DIR/execute-diffstat.txt" || true
+    elif [[ "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
       git -C "$WORKDIR" diff --stat "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$RUN_DIR/execute-diffstat.txt" || true
     else
       git -C "$WORKDIR" diff --stat HEAD > "$RUN_DIR/execute-diffstat.txt" || true
@@ -471,23 +561,25 @@ run_verify_phase() {
   local review_prompt_file="$RUN_DIR/.review-prompt.md"
   local review_stderr_file="$RUN_DIR/review-stderr.log"
   local verdict_file="$RUN_DIR/verdict.json"
+  local normalized_verdict_file="$RUN_DIR/.verdict-normalized.json"
   local plan_content
   local diff_content
   local diff_stat
   local review_prompt
   local review_status=""
+  local verdict_data=""
 
   if [[ "$IN_GIT" != "true" ]]; then
     log "WARNING: verification skipped - workdir is not a git repo."
     return 0
   fi
 
-  if [[ -n "$PRE_EXECUTE_SHA" && -n "$POST_EXECUTE_SHA" && "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
-    git -C "$WORKDIR" diff "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$diff_file"
-    git -C "$WORKDIR" diff --stat "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$diff_stat_file"
-  elif [[ "$INITIAL_GIT_DIRTY" == "true" ]]; then
+  if [[ "$INITIAL_GIT_DIRTY" == "true" ]]; then
     log "WARNING: verification skipped - workdir had pre-existing uncommitted changes, so this run's diff cannot be isolated."
     return 2
+  elif [[ -n "$PRE_EXECUTE_SHA" ]]; then
+    git -C "$WORKDIR" diff "$PRE_EXECUTE_SHA" > "$diff_file"
+    git -C "$WORKDIR" diff --stat "$PRE_EXECUTE_SHA" > "$diff_stat_file"
   elif [[ -n "$(git -C "$WORKDIR" status --short)" ]]; then
     git -C "$WORKDIR" diff HEAD > "$diff_file"
     git -C "$WORKDIR" diff --stat HEAD > "$diff_stat_file"
@@ -519,17 +611,27 @@ run_verify_phase() {
     return 2
   fi
 
+  if file_contains_error_payload "$review_stderr_file"; then
+    log "WARNING: verifier returned an error payload. Review manually."
+    return 2
+  fi
+
   if [[ ! -s "$verdict_file" ]]; then
     log "WARNING: verifier did not return a verdict. Review manually."
     return 2
   fi
 
-  eval "$(parse_verdict "$verdict_file")"
-
-  if [[ -z "${VERDICT:-}" ]]; then
-    log "WARNING: verdict could not be parsed. Review manually."
+  verdict_data=$(normalize_json_artifact "$verdict_file" "$normalized_verdict_file") || {
+    log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
     return 2
-  fi
+  }
+
+  verdict_data=$(validate_review_verdict "$normalized_verdict_file") || {
+    log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
+    return 2
+  }
+
+  eval "$verdict_data"
 
   review_status="$VERDICT"
   log "Verification verdict: ${review_status}"
@@ -698,18 +800,37 @@ log ""
 if [[ "$SKIP_PLAN" == "true" ]]; then
   cp "$PLAN_SOURCE" "$PLAN_PATH"
 else
-  run_compose_phase
-  run_bounce_phase "$MAX_BOUNCES" "$AUTO_CONVERGE"
+  PLAN_EXIT=0
+  run_compose_phase || PLAN_EXIT=$?
+  if [[ "$PLAN_EXIT" -eq 0 ]]; then
+    run_bounce_phase "$MAX_BOUNCES" "$AUTO_CONVERGE" || PLAN_EXIT=$?
+  fi
 fi
 
 if [[ "$PLAN_ONLY" == "true" ]]; then
-  log "Plan saved to: $PLAN_PATH"
+  if [[ -s "$PLAN_PATH" ]]; then
+    if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
+      log "Plan saved to: $PLAN_PATH"
+    else
+      log "Latest valid plan saved to: $PLAN_PATH"
+    fi
+  fi
   cleanup_runtime_artifacts
+  if [[ "${PLAN_EXIT:-0}" -eq 2 ]]; then
+    exit 2
+  fi
+  if [[ "${PLAN_EXIT:-0}" -ne 0 ]]; then
+    exit 1
+  fi
   exit 0
 fi
 
 EXECUTE_EXIT=0
-run_execute_phase || EXECUTE_EXIT=$?
+if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
+  run_execute_phase || EXECUTE_EXIT=$?
+else
+  EXECUTE_EXIT="${PLAN_EXIT:-0}"
+fi
 
 VERIFY_EXIT=0
 if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
