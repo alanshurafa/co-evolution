@@ -62,6 +62,14 @@ invoke_codex() {
   "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
 }
 
+file_contains_auth_failure() {
+  local file_path="$1"
+
+  [[ -s "$file_path" ]] || return 1
+
+  grep -qiE 'Failed to authenticate|authentication_error|Not authenticated|Unauthorized|login required|Please run .* login' "$file_path"
+}
+
 count_markers() {
   local file_path="$1"
   local marker="$2"

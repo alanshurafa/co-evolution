@@ -22,6 +22,8 @@ RUN_DIR=""
 PLAN_PATH=""
 LOG_FILE=""
 IN_GIT=false
+INITIAL_GIT_DIRTY=false
+INITIAL_GIT_STATUS=""
 PRE_EXECUTE_SHA=""
 POST_EXECUTE_SHA=""
 
@@ -116,6 +118,44 @@ require_agent_cli() {
   esac
 }
 
+select_verifier() {
+  if [[ "$EXECUTOR" == "codex" ]]; then
+    echo "opus"
+  else
+    echo "codex"
+  fi
+}
+
+agent_cli_name() {
+  case "$1" in
+    opus)
+      echo "claude"
+      ;;
+    *)
+      echo "$1"
+      ;;
+  esac
+}
+
+require_selected_agent_clis() {
+  local verifier=""
+
+  if [[ "$SKIP_PLAN" == "false" ]]; then
+    require_agent_cli "$COMPOSER"
+    if (( MAX_BOUNCES > 0 )); then
+      require_agent_cli "$REVIEWER"
+    fi
+  fi
+
+  if [[ "$PLAN_ONLY" != "true" ]]; then
+    require_agent_cli "$EXECUTOR"
+    if [[ "$VERIFY" == "true" ]]; then
+      verifier=$(select_verifier)
+      require_agent_cli "$verifier"
+    fi
+  fi
+}
+
 ensure_codex_compatible_workdir() {
   local needs_codex="false"
   local windows_workdir=""
@@ -173,6 +213,24 @@ write_text_file() {
   local output_path="$1"
   local content="$2"
   printf '%s' "$content" > "$output_path"
+}
+
+agent_auth_failed() {
+  local agent="$1"
+  shift
+  local file_path
+  local cli_name
+
+  cli_name=$(agent_cli_name "$agent")
+
+  for file_path in "$@"; do
+    if file_contains_auth_failure "$file_path"; then
+      log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 ensure_nonempty_output() {
@@ -369,16 +427,41 @@ run_execute_phase() {
 
   invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file"
 
+  if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
+    return 2
+  fi
+
+  if [[ ! -s "$execute_output_file" ]]; then
+    log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
+    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file"
+  fi
+
+  if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
+    return 2
+  fi
+
+  if [[ ! -s "$execute_output_file" ]]; then
+    log "ERROR: ${EXECUTOR} returned empty output on retry."
+    return 1
+  fi
+
   if [[ "$IN_GIT" == "true" ]]; then
     POST_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
     status_output=$(git -C "$WORKDIR" status --short)
 
-    if [[ -z "$status_output" && "$PRE_EXECUTE_SHA" == "$POST_EXECUTE_SHA" ]]; then
-      log "WARNING: no changes detected after execute phase."
+    if [[ "$PRE_EXECUTE_SHA" == "$POST_EXECUTE_SHA" && "$status_output" == "$INITIAL_GIT_STATUS" ]]; then
+      log "WARNING: no changes detected after execute phase. Review the executor output manually."
+      return 2
+    fi
+
+    if [[ "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
+      git -C "$WORKDIR" diff --stat "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$RUN_DIR/execute-diffstat.txt" || true
     else
-      git -C "$WORKDIR" diff --stat > "$RUN_DIR/execute-diffstat.txt" || true
+      git -C "$WORKDIR" diff --stat HEAD > "$RUN_DIR/execute-diffstat.txt" || true
     fi
   fi
+
+  return 0
 }
 
 run_verify_phase() {
@@ -399,12 +482,15 @@ run_verify_phase() {
     return 0
   fi
 
-  if [[ -n "$(git -C "$WORKDIR" status --short)" ]]; then
-    git -C "$WORKDIR" diff HEAD > "$diff_file"
-    git -C "$WORKDIR" diff --stat HEAD > "$diff_stat_file"
-  elif [[ -n "$PRE_EXECUTE_SHA" && -n "$POST_EXECUTE_SHA" && "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
+  if [[ -n "$PRE_EXECUTE_SHA" && -n "$POST_EXECUTE_SHA" && "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then
     git -C "$WORKDIR" diff "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$diff_file"
     git -C "$WORKDIR" diff --stat "${PRE_EXECUTE_SHA}..${POST_EXECUTE_SHA}" > "$diff_stat_file"
+  elif [[ "$INITIAL_GIT_DIRTY" == "true" ]]; then
+    log "WARNING: verification skipped - workdir had pre-existing uncommitted changes, so this run's diff cannot be isolated."
+    return 2
+  elif [[ -n "$(git -C "$WORKDIR" status --short)" ]]; then
+    git -C "$WORKDIR" diff HEAD > "$diff_file"
+    git -C "$WORKDIR" diff --stat HEAD > "$diff_stat_file"
   else
     log "WARNING: no changes detected, skipping diff-based verification."
     return 0
@@ -415,10 +501,7 @@ run_verify_phase() {
     return 0
   fi
 
-  verifier="codex"
-  if [[ "$EXECUTOR" == "codex" ]]; then
-    verifier="opus"
-  fi
+  verifier=$(select_verifier)
 
   plan_content=$(cat "$PLAN_PATH")
   diff_content=$(cat "$diff_file")
@@ -432,13 +515,12 @@ run_verify_phase() {
     invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file"
   fi
 
-  if [[ ! -s "$verdict_file" ]]; then
-    log "WARNING: verifier did not return a verdict. Review manually."
+  if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
     return 2
   fi
 
-  if grep -qiE "Failed to authenticate|authentication_error" "$verdict_file"; then
-    log "WARNING: verifier authentication failed. Refresh the verifier CLI session and rerun verification."
+  if [[ ! -s "$verdict_file" ]]; then
+    log "WARNING: verifier did not return a verdict. Review manually."
     return 2
   fi
 
@@ -585,9 +667,7 @@ fi
 
 ensure_codex_compatible_workdir
 
-require_agent_cli "$COMPOSER"
-require_agent_cli "$EXECUTOR"
-require_agent_cli "$REVIEWER"
+require_selected_agent_clis
 
 RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
 mkdir -p "$RUN_DIR"
@@ -596,6 +676,10 @@ LOG_FILE="${RUN_DIR}/run.log"
 
 if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   IN_GIT=true
+  INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
+  if [[ -n "$INITIAL_GIT_STATUS" ]]; then
+    INITIAL_GIT_DIRTY=true
+  fi
 fi
 
 log "============================================"
@@ -624,10 +708,11 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   exit 0
 fi
 
-run_execute_phase
+EXECUTE_EXIT=0
+run_execute_phase || EXECUTE_EXIT=$?
 
 VERIFY_EXIT=0
-if [[ "$VERIFY" == "true" ]]; then
+if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
   run_verify_phase || VERIFY_EXIT=$?
 fi
 
@@ -644,11 +729,11 @@ log " Verify:    $VERIFY"
 log " Run dir:   $RUN_DIR"
 log "============================================"
 
-if [[ "$VERIFY_EXIT" -eq 2 ]]; then
+if [[ "$EXECUTE_EXIT" -eq 2 || "$VERIFY_EXIT" -eq 2 ]]; then
   exit 2
 fi
 
-if [[ "$VERIFY_EXIT" -ne 0 ]]; then
+if [[ "$EXECUTE_EXIT" -ne 0 || "$VERIFY_EXIT" -ne 0 ]]; then
   exit 1
 fi
 
