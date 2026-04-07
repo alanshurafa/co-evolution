@@ -230,7 +230,7 @@ build_bounce_prompt() {
   {
     cat "${REPO_ROOT}/agent-bouncer/templates/role-${role}.md"
     echo
-    cat "${REPO_ROOT}/skill/templates/bounce-protocol.md"
+    cat "${REPO_ROOT}/skills/dev-review/templates/bounce-protocol.md"
   } > "$prompt_template_file"
 
   rendered=$(fill_template "$prompt_template_file" \
@@ -247,7 +247,7 @@ build_bounce_prompt() {
 build_execution_prompt() {
   local executor="$1"
   local plan_content="$2"
-  local template_path="${REPO_ROOT}/skill/templates/dev-prompt-${executor}.md"
+  local template_path="${REPO_ROOT}/skills/dev-review/templates/dev-prompt-${executor}.md"
   local stripped_template_file="$RUN_DIR/.execute-template-${executor}.md"
   local rendered
 
@@ -262,7 +262,7 @@ build_review_prompt() {
   local plan_content="$2"
   local diff_content="$3"
   local diff_stat="$4"
-  local template_path="${REPO_ROOT}/skill/templates/review-prompt-${verifier}.md"
+  local template_path="${REPO_ROOT}/skills/dev-review/templates/review-prompt-${verifier}.md"
   local rendered
 
   rendered=$(fill_template "$template_path" "TASK=$TASK")
@@ -615,7 +615,7 @@ run_verify_phase() {
   write_text_file "$review_prompt_file" "$review_prompt"
 
   if [[ "$verifier" == "codex" ]]; then
-    invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skill/schemas/review-verdict.json"
+    invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
   else
     invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file"
   fi

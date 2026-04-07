@@ -11,7 +11,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 - **Tech stack**: Bash-first runtime plus Markdown templates — existing product surface should stay shell-native
 - **Compatibility**: Preserve current Agent Bouncer behavior and artifact naming while extracting helpers
-- **Shared assets**: Keep prompt templates and schema under `skill/` for v1 so the new runtime reuses existing contracts
+- **Shared assets**: Prompt templates and schema live under `skills/dev-review/` so all runtimes share one contract
 - **Execution style**: Implement and commit in visible steps aligned with the external plan so progress is easy to inspect
 <!-- GSD:project-end -->
 
@@ -21,25 +21,25 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 ## Snapshot
 - Project type: tooling repo for cross-AI document refinement, not a deployable app or service.
 - Primary executable: `agent-bouncer/agent-bouncer.sh`.
-- Primary orchestrator spec: `skill/SKILL.md`.
-- Supporting assets: markdown templates in `agent-bouncer/templates/` and `skill/templates/`, plus JSON schema in `skill/schemas/review-verdict.json`.
+- Primary orchestrator spec: `skills/dev-review/SKILL.md`.
+- Supporting assets: markdown templates in `agent-bouncer/templates/` and `skills/dev-review/templates/`, plus JSON schema in `skills/dev-review/schemas/review-verdict.json`.
 - Tracked source is small: one shell entrypoint, one large skill spec, supporting docs, prompts, and schema files.
 ## Languages And Formats
 - Bash is the only tracked programming language, used in `agent-bouncer/agent-bouncer.sh`.
-- Markdown is the dominant artifact format in `README.md`, `agent-bouncer/README.md`, `skill/README.md`, `notesforhumans.md`, and all prompt/template files.
-- JSON Schema is used in `skill/schemas/review-verdict.json` to constrain verification output.
+- Markdown is the dominant artifact format in `README.md`, `agent-bouncer/README.md`, `skills/dev-review/README.md`, `notesforhumans.md`, and all prompt/template files.
+- JSON Schema is used in `skills/dev-review/schemas/review-verdict.json` to constrain verification output.
 - Ignore metadata lives in `.gitignore` and `.agentignore`.
 ## Runtime Dependencies
 - `agent-bouncer/agent-bouncer.sh` assumes a POSIX shell plus standard utilities such as `date`, `head`, `tr`, `cp`, `mv`, `rm`, `wc`, `awk`, `tee`, `mkdir`, and `cat`.
 - The bouncer depends on authenticated AI CLIs: `claude` and `codex`.
 - The Claude adapter is hard-coded to `claude -p --output-format text --model claude-opus-4-6 --tools ""`.
 - The Codex adapter is hard-coded to `codex exec --full-auto --skip-git-repo-check`.
-- `skill/SKILL.md` assumes Claude Code tooling, `git`, and optionally `gh` for PR creation.
+- `skills/dev-review/SKILL.md` assumes Claude Code tooling, `git`, and optionally `gh` for PR creation.
 ## Build And Packaging
 - There is no `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, or compiled build system.
 - There is no dependency lockfile.
 - There is no CI configuration in the tracked repository.
-- Distribution today is file-copy based: users run `agent-bouncer/agent-bouncer.sh` directly or copy `skill/` into a Claude Code skills directory.
+- Distribution today is file-copy based: users run `agent-bouncer/agent-bouncer.sh` directly or copy `skills/dev-review/` into a Claude Code skills directory.
 ## Storage And Generated State
 - Generated bounce artifacts are written under `runs/`.
 - `.gitignore` marks `runs/` as generated output, so run logs and bounced documents stay local by default.
@@ -70,13 +70,13 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - stderr is captured per pass in `runs/bouncer-*/pass-N-stderr.log`.
 - Generated run artifacts are kept local and ignored through `.gitignore`.
 ## Documentation Conventions
-- Behavior is documented close to the implementation: `agent-bouncer/README.md` for the script and `skill/README.md` for the skill.
+- Behavior is documented close to the implementation: `agent-bouncer/README.md` for the script and `skills/dev-review/README.md` for the skill.
 - The repo uses markdown tables, command examples, and file trees heavily instead of typed interfaces or generated docs.
 - `notesforhumans.md` carries concept and origin context that is intentionally hidden from agent ingestion via `.agentignore`.
 ## Workflow Conventions
 - The bounce alternates reviewer on odd passes and composer on even passes.
 - Most workflows assume two passes are the high-value default.
-- The skill's verification phase expects JSON-only output matching `skill/schemas/review-verdict.json`.
+- The skill's verification phase expects JSON-only output matching `skills/dev-review/schemas/review-verdict.json`.
 - Recent git history uses imperative commit subjects such as `Fix Claude max-turns and Codex non-git-repo failures`.
 ## Error-Handling Conventions
 - Empty agent output triggers a retry.
@@ -85,7 +85,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - Adapter functions tolerate non-zero subprocess exits and rely on downstream file checks to decide whether a pass truly failed.
 ## What Is Not Standardized
 - There is no formatter, linter, or automated style enforcement.
-- There is no shared library enforcing consistency between `agent-bouncer/templates/` and `skill/templates/`.
+- There is no shared library enforcing consistency between `agent-bouncer/templates/` and `skills/dev-review/templates/`.
 - Process discipline is encoded mostly in docs, prompts, and human review rather than in tests or static analysis.
 <!-- GSD:conventions-end -->
 
@@ -95,14 +95,14 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 ## System Shape
 - The repository contains two related but separate delivery surfaces:
 - `agent-bouncer/agent-bouncer.sh` is the executable runtime for bouncing a document between agents.
-- `skill/SKILL.md` is a declarative Claude Code workflow for compose -> bounce -> execute -> verify.
+- `skills/dev-review/SKILL.md` is a declarative Claude Code workflow for compose -> bounce -> execute -> verify.
 - Shared behavior is expressed through prompt templates rather than through a shared library module.
 ## Core Bouncer Flow
 ## Skill Runtime Flow
 ## Architectural Boundaries
 - Adapter boundary: `invoke_claude()` and `invoke_codex()` isolate CLI differences inside `agent-bouncer/agent-bouncer.sh`.
-- Prompt boundary: protocol and role instructions live in `agent-bouncer/templates/` and `skill/templates/`.
-- Schema boundary: `skill/schemas/review-verdict.json` separates review data shape from prompt wording.
+- Prompt boundary: protocol and role instructions live in `agent-bouncer/templates/` and `skills/dev-review/templates/`.
+- Schema boundary: `skills/dev-review/schemas/review-verdict.json` separates review data shape from prompt wording.
 - Artifact boundary: raw pass output is preserved, while the working document stays clean and canonical.
 ## State Model
 - Short-lived state lives in temp prompt/output files created by `agent-bouncer/agent-bouncer.sh`.

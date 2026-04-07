@@ -27,7 +27,7 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 
 Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage details and [dev-review/codex/instructions.md](dev-review/codex/instructions.md) when you want Codex to route between the repo entrypoints automatically.
 
-### [Claude Code Skill](skill/)
+### [Claude Code Skill](skills/dev-review/)
 
 `/dev-review` - a Claude Code skill that wraps the bounce protocol in a full compose-bounce-execute-verify workflow. Use it inside Claude Code for end-to-end plan refinement and code generation.
 
@@ -38,7 +38,7 @@ Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage de
 | Small, low-risk repo edit in 1-2 files | Direct execution |
 | Prompt, plan, spec, or other markdown refinement | `agent-bouncer/agent-bouncer.sh` |
 | Multi-file code change, medium/high risk, or plan/verify workflow | `dev-review/codex/dev-review.sh` |
-| Same pipeline inside Claude Code | `skill/` |
+| Same pipeline inside Claude Code | `skills/dev-review/` |
 
 ### The Bounce Protocol
 

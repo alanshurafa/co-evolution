@@ -59,10 +59,10 @@ Inside Claude Code:
 
 ## Installation
 
-Copy the `skill/` directory to your Claude Code skills location:
+Copy the `skills/dev-review/` directory to your Claude Code skills location:
 
 ```bash
-cp -r skill/ ~/.claude/skills/dev-review/
+cp -r skills/dev-review/ ~/.claude/skills/dev-review/
 ```
 
 The skill will be available as `/dev-review` in Claude Code.
@@ -70,7 +70,7 @@ The skill will be available as `/dev-review` in Claude Code.
 ## Files
 
 ```
-skill/
+skills/dev-review/
   SKILL.md                          — orchestration logic (Claude reads this)
   schemas/
     review-verdict.json             — JSON schema for verification output

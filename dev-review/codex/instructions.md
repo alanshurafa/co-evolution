@@ -93,4 +93,4 @@ When recommending a path, emit a short routing trace:
 - Codex runtime: `dev-review/codex/dev-review.sh`
 - Codex router doc: `dev-review/codex/instructions.md`
 - Document-only bounce tool: `agent-bouncer/agent-bouncer.sh`
-- Claude Code skill surface: `skill/`
+- Claude Code skill surface: `skills/dev-review/`

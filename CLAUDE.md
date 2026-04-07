@@ -15,7 +15,7 @@ bash agent-bouncer/agent-bouncer.sh <document.md> [max-bounces] [reviewer-agent]
 - Output: `runs/bouncer-{name}-{timestamp}/` with per-pass artifacts and clean final output
 - Most value comes in the first 2 passes
 
-### Dev-Review Skill (`skill/`)
+### Dev-Review Skill (`skills/dev-review/`)
 Full compose-bounce-execute-verify pipeline integrated with Claude Code.
 
 ```
@@ -29,15 +29,15 @@ Standalone Bash runtime for the same compose-bounce-execute-verify flow outside 
 
 - Entry script: `dev-review/codex/dev-review.sh`
 - Codex routing doc: `dev-review/codex/instructions.md`
-- Shares `skill/templates/` and `skill/schemas/` in v1 instead of introducing a separate prompt contract
+- Shares `skills/dev-review/templates/` and `skills/dev-review/schemas/` as the prompt contract
 - Leaves the Claude-side `/dev-review` skill implementation untouched; this is an additional runtime surface, not a replacement
 
-### Templates (`skill/templates/`)
+### Templates (`skills/dev-review/templates/`)
 - `bounce-protocol.md` - core marker protocol
 - `dev-prompt-opus.md` / `dev-prompt-codex.md` - execution prompts
 - `review-prompt-opus.md` / `review-prompt-codex.md` - verification prompts
 
-### Schemas (`skill/schemas/`)
+### Schemas (`skills/dev-review/schemas/`)
 - `review-verdict.json` — structured JSON schema for verification verdicts (APPROVED/REVISE)
 
 ## GSD Integration

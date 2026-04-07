@@ -101,5 +101,5 @@ Get-Content -Raw dev-review/codex/instructions.md | codex exec -C C:/Users/alan/
 ## How This Fits The Repo
 
 - `agent-bouncer/` is the generic markdown bounce engine.
-- `skill/` is the Claude Code `/dev-review` skill and remains the Claude-side runtime in v1.
-- `dev-review/codex/` is the standalone Codex runtime surface built on the same prompt and schema assets under `skill/`.
+- `skills/dev-review/` is the Claude Code `/dev-review` skill and remains the Claude-side runtime.
+- `dev-review/codex/` is the standalone Codex runtime surface built on the same prompt and schema assets under `skills/dev-review/`.
