@@ -542,6 +542,10 @@ run_execute_phase() {
       return 2
     fi
 
+    # Diffstat scope depends on how the executor committed:
+    #   clean start  → diff vs baseline SHA (captures committed + uncommitted)
+    #   new commits  → range diff (committed changes only)
+    #   fallback     → diff vs HEAD (uncommitted only)
     if [[ "$INITIAL_GIT_DIRTY" != "true" && -n "$PRE_EXECUTE_SHA" ]]; then
       git -C "$WORKDIR" diff --stat "$PRE_EXECUTE_SHA" > "$RUN_DIR/execute-diffstat.txt" || true
     elif [[ "$PRE_EXECUTE_SHA" != "$POST_EXECUTE_SHA" ]]; then

@@ -36,7 +36,7 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 |------|---------|
 | `--composer opus|codex` | Choose who writes the initial plan |
 | `--executor opus|codex` | Choose who executes the approved plan |
-| `--bounces N|auto` | Use a fixed pass count or auto-converge up to 6 passes; `auto` exits `2` if markers still remain after the budget |
+| `--bounces N|auto` | Use a fixed pass count or auto-converge up to 6 passes; `auto` exits `2` and skips execution if markers remain after the budget (changed from prior behavior which warned and continued) |
 | `--verify` | Run a verifier pass after execution |
 | `--plan-only` | Stop after compose + bounce and keep the plan artifact |
 | `--skip-plan` | Skip compose + bounce and execute an existing plan |
