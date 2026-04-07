@@ -44,6 +44,22 @@ Options:
 EOF
 }
 
+normalize_path_for_bash() {
+  local candidate="$1"
+
+  if [[ -z "$candidate" ]]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v wslpath >/dev/null 2>&1 && [[ "$candidate" =~ ^[A-Za-z]:[\\/].* ]]; then
+    wslpath "$candidate"
+    return 0
+  fi
+
+  printf '%s' "$candidate"
+}
+
 normalize_agent() {
   case "$1" in
     codex)
@@ -98,6 +114,59 @@ require_agent_cli() {
       command -v claude >/dev/null 2>&1 || die "claude CLI is required but not installed"
       ;;
   esac
+}
+
+ensure_codex_compatible_workdir() {
+  local needs_codex="false"
+  local windows_workdir=""
+
+  if [[ "$COMPOSER" == "codex" || "$EXECUTOR" == "codex" || "$REVIEWER" == "codex" ]]; then
+    needs_codex="true"
+  fi
+
+  if [[ "$needs_codex" != "true" ]]; then
+    return 0
+  fi
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v wslpath >/dev/null 2>&1; then
+    windows_workdir=$(wslpath -w "$WORKDIR")
+    if [[ "$windows_workdir" == \\\\wsl.localhost\\* ]]; then
+      die "Codex under WSL requires --workdir on a Windows-mounted path (for example /mnt/c/... or C:\\...)"
+    fi
+  fi
+}
+
+invoke_codex_schema() {
+  local prompt_file="$1"
+  local output_file="$2"
+  local stderr_file="$3"
+  local schema_file="$4"
+  local workdir="${WORKDIR:-$PWD}"
+  local -a cmd
+  local windows_workdir=""
+  local windows_output=""
+  local windows_schema=""
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    windows_workdir=$(wslpath -w "$workdir")
+    windows_output=$(wslpath -w "$output_file")
+    windows_schema=$(wslpath -w "$schema_file")
+    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+  else
+    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+  fi
+
+  if [[ -n "${CODEX_MODEL:-}" ]]; then
+    cmd+=(-c "model=${CODEX_MODEL}")
+  fi
+
+  if [[ -n "$windows_schema" ]]; then
+    cmd+=(--output-schema "$windows_schema" -o "$windows_output")
+  else
+    cmd+=(--output-schema "$schema_file" -o "$output_file")
+  fi
+
+  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
 }
 
 write_text_file() {
@@ -358,18 +427,18 @@ run_verify_phase() {
   write_text_file "$review_prompt_file" "$review_prompt"
 
   if [[ "$verifier" == "codex" ]]; then
-    local -a cmd=(codex exec --full-auto --skip-git-repo-check -C "$WORKDIR")
-    if [[ -n "${CODEX_MODEL:-}" ]]; then
-      cmd+=(-c "model=${CODEX_MODEL}")
-    fi
-    cmd+=(--output-schema "${REPO_ROOT}/skill/schemas/review-verdict.json" -o "$verdict_file")
-    "${cmd[@]}" < "$review_prompt_file" 2>"$review_stderr_file" || true
+    invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skill/schemas/review-verdict.json"
   else
-    claude -p --output-format json < "$review_prompt_file" > "$verdict_file" 2>"$review_stderr_file" || true
+    invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file"
   fi
 
   if [[ ! -s "$verdict_file" ]]; then
     log "WARNING: verifier did not return a verdict. Review manually."
+    return 2
+  fi
+
+  if grep -qiE "Failed to authenticate|authentication_error" "$verdict_file"; then
+    log "WARNING: verifier authentication failed. Refresh the verifier CLI session and rerun verification."
     return 2
   fi
 
@@ -467,10 +536,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+WORKDIR=$(normalize_path_for_bash "$WORKDIR")
+if [[ -n "$PLAN_SOURCE" ]]; then
+  PLAN_SOURCE=$(normalize_path_for_bash "$PLAN_SOURCE")
+fi
+
 WORKDIR="$(cd "$WORKDIR" && pwd)"
 
 if [[ "$SKIP_PLAN" == "true" && -z "$PLAN_SOURCE" ]]; then
   die "--skip-plan requires --plan FILE"
+fi
+
+if [[ "$SKIP_PLAN" == "false" && -n "$PLAN_SOURCE" ]]; then
+  die "--plan FILE requires --skip-plan"
 fi
 
 if [[ "$SKIP_PLAN" == "false" && -z "$TASK" ]]; then
@@ -504,6 +582,8 @@ if [[ "$COMPOSER" == "codex" ]]; then
 else
   REVIEWER="codex"
 fi
+
+ensure_codex_compatible_workdir
 
 require_agent_cli "$COMPOSER"
 require_agent_cli "$EXECUTOR"

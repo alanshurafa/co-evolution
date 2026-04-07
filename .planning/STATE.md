@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
-**Current focus:** Phase 3 - Codex Runtime
+**Current focus:** Phase 4 - Docs And Routing
 
 ## Current Position
 
-Phase: 3 of 4 (Codex Runtime)
+Phase: 4 of 4 (Docs And Routing)
 Plan: 1 of 1 in current phase
 Status: Ready to execute
-Last activity: 2026-04-06 - Completed 02-01 bouncer refactor regression and WSL Codex portability fix
+Last activity: 2026-04-06 - Completed 03-01 Codex runtime implementation and smoke tests
 
-Progress: [#####.....] 50%
+Progress: [########..] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 15 min
-- Total execution time: 0.5 hours
+- Total plans completed: 3
+- Average duration: 21 min
+- Total execution time: 1.0 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [#####.....] 50%
 |-------|-------|-------|----------|
 | 1. Shared Shell Core | 1 | 0.3h | 0.3h |
 | 2. Bouncer Refactor | 1 | 0.2h | 0.2h |
+| 3. Codex Runtime | 1 | 0.5h | 0.5h |
 
 **Recent Trend:**
-- Last 5 plans: 02-01, 01-01
+- Last 5 plans: 03-01, 02-01, 01-01
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -50,6 +51,8 @@ Recent decisions affecting current work:
 - [Phase 1]: Allow `fill_conditional()` to replace scalar placeholders after removing tag lines
 - [Phase 2]: Route WSL Bash Codex calls through `cmd.exe /c codex` with `wslpath` conversion
 - [Phase 2]: Use the shared Codex adapter for run-name generation to preserve named bouncer runs
+- [Phase 3]: Normalize Windows path arguments inside the Bash runtime before directory resolution
+- [Phase 3]: Treat verifier auth failures as explicit review-needed exits rather than generic parse failures
 
 ### Pending Todos
 
@@ -63,5 +66,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-06 18:00
-Stopped at: Phase 2 complete; Phase 3 is next
+Stopped at: Phase 3 complete; Phase 4 is next
 Resume file: None

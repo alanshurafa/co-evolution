@@ -17,10 +17,10 @@
 
 ### Codex Runtime
 
-- [ ] **CDRT-01**: Maintainer can run `dev-review/codex/dev-review.sh` to execute compose, bounce, execute, and optional verify phases from the shell
-- [ ] **CDRT-02**: Codex runtime supports `--composer`, `--executor`, `--bounces`, `--verify`, `--plan-only`, `--skip-plan`, `--plan FILE`, `--model`, and `--workdir`
-- [ ] **CDRT-03**: Codex runtime always embeds plan content inline in prompts so the canonical plan path is not exposed to the agent executor
-- [ ] **CDRT-04**: Codex runtime writes durable run artifacts and returns exit codes for success, fatal failure, and revise verdicts
+- [x] **CDRT-01**: Maintainer can run `dev-review/codex/dev-review.sh` to execute compose, bounce, execute, and optional verify phases from the shell
+- [x] **CDRT-02**: Codex runtime supports `--composer`, `--executor`, `--bounces`, `--verify`, `--plan-only`, `--skip-plan`, `--plan FILE`, `--model`, and `--workdir`
+- [x] **CDRT-03**: Codex runtime always embeds plan content inline in prompts so the canonical plan path is not exposed to the agent executor
+- [x] **CDRT-04**: Codex runtime writes durable run artifacts and returns exit codes for success, fatal failure, and revise verdicts
 
 ### Docs And Routing
 
@@ -51,10 +51,10 @@
 | CORE-02 | Phase 1 | Complete |
 | BNCR-01 | Phase 2 | Complete |
 | BNCR-02 | Phase 2 | Complete |
-| CDRT-01 | Phase 3 | Pending |
-| CDRT-02 | Phase 3 | Pending |
-| CDRT-03 | Phase 3 | Pending |
-| CDRT-04 | Phase 3 | Pending |
+| CDRT-01 | Phase 3 | Complete |
+| CDRT-02 | Phase 3 | Complete |
+| CDRT-03 | Phase 3 | Complete |
+| CDRT-04 | Phase 3 | Complete |
 | DOCS-01 | Phase 4 | Pending |
 | DOCS-02 | Phase 4 | Pending |
 
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after completing Phase 2 bouncer refactor work*
+*Last updated: 2026-04-06 after completing Phase 3 Codex runtime work*
