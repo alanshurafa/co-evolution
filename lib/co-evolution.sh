@@ -122,6 +122,8 @@ normalize_json_artifact() {
   local last_nonempty=-1
   local current_line=""
   local index=0
+  local opening_fence_pattern='^```[[:space:]]*([A-Za-z0-9_-]+)?[[:space:]]*$'
+  local closing_fence_pattern='^```[[:space:]]*$'
 
   [[ -s "$input_file" ]] || {
     printf '%s' "verifier output was empty"
@@ -151,8 +153,8 @@ normalize_json_artifact() {
     fi
   done
 
-  if [[ "${lines[$first_nonempty]%$'\r'}" =~ ^```[[:space:]]*([A-Za-z0-9_-]+)?[[:space:]]*$ ]]; then
-    if [[ ! "${lines[$last_nonempty]%$'\r'}" =~ ^```[[:space:]]*$ ]]; then
+  if [[ "${lines[$first_nonempty]%$'\r'}" =~ $opening_fence_pattern ]]; then
+    if [[ ! "${lines[$last_nonempty]%$'\r'}" =~ $closing_fence_pattern ]]; then
       printf '%s' "verifier output mixed a fenced JSON block with extra prose"
       return 1
     fi
@@ -166,7 +168,7 @@ normalize_json_artifact() {
 
   for current_line in "${lines[@]}"; do
     current_line="${current_line%$'\r'}"
-    if [[ "$current_line" =~ ^``` ]]; then
+    if [[ "$current_line" =~ $closing_fence_pattern ]]; then
       printf '%s' "verifier output mixed code fences with extra prose"
       return 1
     fi

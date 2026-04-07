@@ -568,6 +568,7 @@ run_verify_phase() {
   local review_prompt
   local review_status=""
   local verdict_data=""
+  local untracked_files=""
 
   if [[ "$IN_GIT" != "true" ]]; then
     log "WARNING: verification skipped - workdir is not a git repo."
@@ -588,7 +589,14 @@ run_verify_phase() {
     return 0
   fi
 
+  untracked_files=$(git -C "$WORKDIR" ls-files --others --exclude-standard)
+
   if [[ ! -s "$diff_file" ]]; then
+    if [[ -n "$untracked_files" ]]; then
+      log "WARNING: verification skipped - run left untracked files that cannot be diffed automatically."
+      return 2
+    fi
+
     log "WARNING: diff is empty, skipping diff-based verification."
     return 0
   fi
