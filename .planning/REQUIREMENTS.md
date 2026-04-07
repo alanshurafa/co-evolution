@@ -24,8 +24,8 @@
 
 ### Docs And Routing
 
-- [ ] **DOCS-01**: Maintainer can use a Codex instruction file to route between `dev-review.sh`, `agent-bouncer.sh`, and direct execution
-- [ ] **DOCS-02**: Repo docs explain the Codex runtime and its supported usage patterns
+- [x] **DOCS-01**: Maintainer can use a Codex instruction file to route between `dev-review.sh`, `agent-bouncer.sh`, and direct execution
+- [x] **DOCS-02**: Repo docs explain the Codex runtime and its supported usage patterns
 
 ## v2 Requirements
 
@@ -55,8 +55,8 @@
 | CDRT-02 | Phase 3 | Complete |
 | CDRT-03 | Phase 3 | Complete |
 | CDRT-04 | Phase 3 | Complete |
-| DOCS-01 | Phase 4 | Pending |
-| DOCS-02 | Phase 4 | Pending |
+| DOCS-01 | Phase 4 | Complete |
+| DOCS-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 10 total
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after completing Phase 3 Codex runtime work*
+*Last updated: 2026-04-06 after completing Phase 4 docs and routing work*

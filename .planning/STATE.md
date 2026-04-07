@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
-**Current focus:** Phase 4 - Docs And Routing
+**Current focus:** Roadmap complete - Codex runtime and docs shipped
 
 ## Current Position
 
 Phase: 4 of 4 (Docs And Routing)
 Plan: 1 of 1 in current phase
-Status: Ready to execute
-Last activity: 2026-04-06 - Completed 03-01 Codex runtime implementation and smoke tests
+Status: Complete
+Last activity: 2026-04-06 - Completed 04-01 Codex runtime docs, routing, and repo context updates
 
-Progress: [########..] 75%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 21 min
-- Total execution time: 1.0 hours
+- Total plans completed: 4
+- Average duration: 17 min
+- Total execution time: 1.1 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [########..] 75%
 | 1. Shared Shell Core | 1 | 0.3h | 0.3h |
 | 2. Bouncer Refactor | 1 | 0.2h | 0.2h |
 | 3. Codex Runtime | 1 | 0.5h | 0.5h |
+| 4. Docs And Routing | 1 | 0.1h | 0.1h |
 
 **Recent Trend:**
-- Last 5 plans: 03-01, 02-01, 01-01
+- Last 5 plans: 04-01, 03-01, 02-01, 01-01
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -53,6 +54,8 @@ Recent decisions affecting current work:
 - [Phase 2]: Use the shared Codex adapter for run-name generation to preserve named bouncer runs
 - [Phase 3]: Normalize Windows path arguments inside the Bash runtime before directory resolution
 - [Phase 3]: Treat verifier auth failures as explicit review-needed exits rather than generic parse failures
+- [Phase 4]: Route Codex by task shape between direct execution, Agent Bouncer, and the standalone runtime
+- [Phase 4]: Use `dev-review/codex/instructions.md` as the reusable Codex startup router for this repo
 
 ### Pending Todos
 
@@ -60,11 +63,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- `skill/SKILL.md` is already modified outside this initiative and must stay out of execution commits
-- `CLAUDE.md` is now explicitly in scope for Phase 4, but it is still an untracked local file and should only receive narrow runtime-context edits
+- Local Claude CLI auth is still expired, so live Opus-backed verification remains blocked until the session is refreshed
+- `skill/SKILL.md` is still modified outside this initiative and should remain out of future execution commits unless explicitly scoped
 
 ## Session Continuity
 
-Last session: 2026-04-06 18:00
-Stopped at: Phase 3 complete; Phase 4 is next
+Last session: 2026-04-06 22:56
+Stopped at: Phase 4 complete; roadmap work is ready for milestone wrap-up or follow-on planning
 Resume file: None
