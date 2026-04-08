@@ -1,2 +1,12 @@
 # Run artifacts — generated output, not source code
 runs/
+
+# Experiment results and inputs — may contain personal data
+experiments/*/results/
+experiments/*/inputs/
+
+# Prompt refinement working files
+experiments/prompt-refinement/
+
+# Temp working directories
+tmp-*/
