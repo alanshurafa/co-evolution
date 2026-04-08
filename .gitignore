@@ -10,3 +10,6 @@ experiments/prompt-refinement/
 
 # Temp working directories
 tmp-*/
+
+# Local project notes (decisions, plans, handoffs)
+.notes/
