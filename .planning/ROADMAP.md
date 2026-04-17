@@ -39,6 +39,7 @@ Address the non-blocking code review warnings from v1.0, then deliver the three 
   3. Loop terminates on APPROVED, on max iterations reached, or on fatal error
   4. Each loop pass is recorded in `state.json` as a new phase entry (`execute-2`, `verify-2`, etc.) with its own start/complete timestamps
 **Plans**: 1 plan
+  - [ ] 02-01-PLAN.md — Add `--revise-loop N` flag, retry loop around execute+verify with numbered state.json phases, reviewer-feedback prompt injection, and simulation smoke test
 
 ### Phase 3: Visible Live Mode
 **Goal**: Give the runner an option to launch a visible Windows Terminal window for each phase so the user can observe the bouncer/executor in real time (pass-by-pass).
