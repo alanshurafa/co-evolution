@@ -1,0 +1,39 @@
+[
+  {
+    "case_id": "01-trivial-task",
+    "status": "ok",
+    "run_id": "20260417-090000",
+    "composite": 0.85,
+    "scores": {
+      "robustness": "PASS",
+      "convergence": "PASS",
+      "plan_quality": "PASS",
+      "execution_fidelity": "PARTIAL",
+      "verify_accuracy": "PASS",
+      "cost": "PASS",
+      "cross_ai_diversity": "N/A"
+    }
+  },
+  {
+    "case_id": "04-hallucination-trap",
+    "status": "ok",
+    "run_id": "20260417-091500",
+    "composite": 0.62,
+    "scores": {
+      "robustness": "PASS",
+      "convergence": "PARTIAL",
+      "plan_quality": "PASS",
+      "execution_fidelity": "FAIL",
+      "verify_accuracy": "PASS",
+      "cost": "PARTIAL",
+      "cross_ai_diversity": "PASS"
+    }
+  },
+  {
+    "case_id": "06-multi-file-refactor",
+    "status": "fail",
+    "error": "runner exited non-zero during execute phase",
+    "scores": null,
+    "composite": null
+  }
+]

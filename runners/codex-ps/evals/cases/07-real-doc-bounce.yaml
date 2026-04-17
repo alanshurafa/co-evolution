@@ -1,0 +1,42 @@
+id: 07-real-doc-bounce
+title: Refine the sibling repo's AGENTS.md (bounce-only, no code changes)
+description: >
+  Real document from the sibling `co-evolution` repo, copied into a temp
+  fixture so the runner cannot mutate the original. Claude composes a refined
+  version of the AGENTS.md; Codex bounces it. Pure text work — no executor
+  changes expected, so execution_fidelity has a low bar and verify is off.
+  This case surfaces whether bounce produces meaningful refinement vs
+  rubber-stamp on real human-authored content.
+runner:
+  task: |
+    The file `AGENTS.md` is the onboarding doc for the sibling co-evolution
+    repo. Produce a plan to improve its clarity and brevity while preserving
+    every concrete instruction. Then execute the plan (edit AGENTS.md in place).
+    The Files to Change section must list only `AGENTS.md`.
+  composer: claude
+  reviewer: codex
+  executor: claude
+  bounces: 2
+  verify: false
+  autonomous: true
+setup:
+  mode: temp_repo
+  copy_from:
+    - source: "C:/Users/alan/Project/co-evolution/AGENTS.md"
+      dest: "AGENTS.md"
+  seed_files:
+    - path: README.md
+      content: |
+        # Fixture 07: Real Doc Bounce
+        AGENTS.md copied from the sibling co-evolution repo.
+expectations:
+  plan_quality:
+    min_word_count: 120
+  execution_fidelity:
+    min_jaccard: 0.8
+  cross_ai_diversity:
+    min_edit_distance: 0.20
+  cost:
+    max_wall_clock_seconds: 900
+teardown:
+  cleanup_temp_repo: true
