@@ -352,6 +352,10 @@ ensure_valid_plan_output() {
   local stderr_file="$5"
   local retry_stderr_file="$6"
   local input_file="${7:-}"
+  # RNPT-02: 8th positional is the calling phase name (compose|bounce) so the
+  # retry inherits its parent's writable posture via phase_is_writable.
+  # Default to "bounce" — the common call site — which resolves to text-phase.
+  local calling_phase="${8:-bounce}"
 
   inspect_plan_output "$agent" "$output_file" "$stderr_file" "$input_file" && return 0
 
@@ -362,8 +366,8 @@ ensure_valid_plan_output() {
       ;;
     empty|thin)
       log "WARNING: ${phase_name} produced an unusable plan artifact (${PLAN_OUTPUT_REASON}). Retrying once..."
-      # Retry is only reachable from compose/bounce (text phases), so pass "false" explicitly.
-      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file" "false"
+      # RNPT-02: derive writable from the calling phase name (compose/bounce → text).
+      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file" "$(phase_is_writable "$calling_phase")"
       inspect_plan_output "$agent" "$output_file" "$retry_stderr_file" "$input_file" && return 0
 
       case "$PLAN_OUTPUT_STATUS" in
@@ -432,8 +436,8 @@ Every plan must also include a section titled exactly \`## Risks\`, \`## Assumpt
 Output ONLY the plan document. No preamble."
 
   write_text_file "$compose_prompt_file" "$compose_prompt"
-  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "false"
-  ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" || return $?
+  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
+  ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
 }
@@ -508,8 +512,8 @@ run_bounce_phase() {
     log " BOUNCE $pass/$max_bounces - ${role} (${current_agent})"
     log "--------------------------------------------"
 
-    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "false"
-    ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" || return $?
+    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
+    ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
 
     cp "$output_file" "$RUN_DIR/pass-${pass}-${role}-${current_agent}-raw.md"
     strip_human_summary "$output_file" "$clean_file"
@@ -580,7 +584,7 @@ run_execute_phase() {
   execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
-  invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "true"
+  invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
     return 2
@@ -588,7 +592,7 @@ run_execute_phase() {
 
   if [[ ! -s "$execute_output_file" ]]; then
     log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
-    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "true"
+    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute-retry)"
   fi
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
@@ -682,9 +686,12 @@ run_verify_phase() {
   write_text_file "$review_prompt_file" "$review_prompt"
 
   if [[ "$verifier" == "codex" ]]; then
+    # Codex verify uses --output-schema (JSON verdict). This path intentionally
+    # bypasses invoke_agent because invoke_codex_schema has distinct semantics
+    # (schema-bound output file). RNPT-01 scopes the dispatcher to free-text phases.
     invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
   else
-    invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file" "false"
+    invoke_agent "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
