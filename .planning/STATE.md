@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Ergonomics
 status: in-progress
-stopped_at: Phase 2 execution complete — REVISE Auto-Loop (RTUX-03) landed across 1 plan / 4 tasks / 4 commits (549850c, be0af3b, e15332a, fc08304, all pushed to feat/v1.1-polish); simulation passes all four scenarios in <4s; default REVISE_LOOP_MAX=0 preserves v1.0 byte-for-byte; 1 of 3 RTUX requirements closed in v1.1
-last_updated: "2026-04-17T23:00:00.000Z"
-last_activity: 2026-04-17 -- Phase 02 execution complete; RTUX-03 auto-loop shipped on feat/v1.1-polish
+stopped_at: Phase 3 execution complete — Visible Live Mode (RTUX-01) landed across 1 plan / 3 tasks / 3 commits (5c09fc1, cd84c13, 7c15e33, all pushed to feat/v1.1-polish); smoke test passes three scenarios (absent / non-Windows / simulated-Windows) in <1s; default LIVE_MODE=false preserves Phase 2 byte-parity; 2 of 3 RTUX requirements closed in v1.1 (RTUX-01+RTUX-03); only RTUX-02 (Phase 4 worktree management) remains
+last_updated: "2026-04-17T23:30:00.000Z"
+last_activity: 2026-04-17 -- Phase 03 execution complete; RTUX-01 live mode shipped on feat/v1.1-polish
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 3
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 2 of 4 — REVISE Auto-Loop COMPLETE; Phase 3 (Visible Live Mode, RTUX-01) and Phase 4 (Worktree Management, RTUX-02) remain
-Plan: 02-01 complete (4 tasks, 4 commits)
-Status: v1.1 in progress — 2 of 4 phases complete (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop both landed on feat/v1.1-polish)
-Last activity: 2026-04-17 -- Phase 02 complete; RTUX-03 auto-loop shipped
+Phase: 3 of 4 — Visible Live Mode COMPLETE; only Phase 4 (Worktree Management, RTUX-02) remains
+Plan: 03-01 complete (3 tasks, 3 commits)
+Status: v1.1 in progress — 3 of 4 phases complete (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop + Phase 3 RTUX-01 live mode all landed on feat/v1.1-polish)
+Last activity: 2026-04-17 -- Phase 03 complete; RTUX-01 live mode shipped
 Working directory: `C:/Users/alan/Project/co-evolution-v11/` (feat/v1.1-polish branch)
 
-Progress: [##........] 2/4 phases complete — v1.1 Polish & Ergonomics in progress
+Progress: [###.......] 3/4 phases complete — v1.1 Polish & Ergonomics in progress
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 16 min
-- Total execution time: 3.5 hours
+- Total execution time: 3.9 hours
 
 **By Phase:**
 
@@ -114,6 +114,12 @@ Recent decisions affecting current work:
 - [v1.1 Phase 2]: `phase_is_writable` anchored regex `^execute-[0-9]+$` accepts numbered retry passes without enumerating every possible pass number; fails safe on injection-style names (T-02-01)
 - [v1.1 Phase 2]: Loop body extracted into `_run_revise_loop` so simulation test and main flow share one implementation — divergence impossible without test breakage (planner's recommendation)
 - [v1.1 Phase 2]: Reviewer-authored fields rendered via `jq -r` before reaching the execute prompt — T-02-02 defense-in-depth beyond the existing "Do NOT deviate" prompt rule
+- [v1.1 Phase 3]: `LIVE_MODE` default "false" preserves Phase 2 byte-parity; banner gains one "Live mode: false" log line (analogous to Phase 2's "Timeout:" addition) — opt-in only via `--live` CLI flag or `LIVE_MODE=true` env var
+- [v1.1 Phase 3]: `maybe_launch_live_window` always returns 0 — wt.exe/cmd.exe launcher failures log a WARNING but never block the main phase (must-not-block invariant); backgrounded + disowned so main shell never waits
+- [v1.1 Phase 3]: Platform detection priority `$OSTYPE msys*/cygwin* → wt.exe → cmd.exe` — first match wins; `is_windows_host` function can be overridden in tests to simulate any platform
+- [v1.1 Phase 3]: Single `maybe_launch_live_window "verify"` call before the codex/opus verifier branch covers both paths (shared `$review_stderr_file`) — avoids duplicating the call in each branch
+- [v1.1 Phase 3]: Retry branches (execute-retry, bounce-retry-via-ensure_valid_plan_output) NOT wrapped per CONTEXT.md — keeps window count reasonable during recovery scenarios
+- [v1.1 Phase 3]: Smoke test stubs `wt.exe` via PATH-shadowing + overrides `is_windows_host` function per scenario — runs on any OS without a real Windows host, so CI can exercise the full launcher path
 
 ### Pending Todos
 
@@ -134,7 +140,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 2 execution complete — REVISE Auto-Loop (RTUX-03) landed across 1 plan / 4 tasks / 4 commits (549850c, be0af3b, e15332a, fc08304, all pushed to feat/v1.1-polish); simulation test covers retry-and-converge, v1.0 parity, cap-at-max, and prompt byte-identity; 1 of 3 RTUX requirements closed in v1.1
-Resume file: `.planning/phases/02-revise-auto-loop/02-SUMMARY.md` — phase-level summary; `02-01-SUMMARY.md` for plan-level detail
+Stopped at: Phase 3 execution complete — Visible Live Mode (RTUX-01) landed across 1 plan / 3 tasks / 3 commits (5c09fc1, cd84c13, 7c15e33, all pushed to feat/v1.1-polish); smoke test covers absent / non-Windows / simulated-Windows scenarios in <1s; default LIVE_MODE=false preserves Phase 2 byte-parity; 2 of 3 RTUX requirements closed in v1.1 (RTUX-01+RTUX-03); only Phase 4 (RTUX-02 worktree management) remains
+Resume file: `.planning/phases/03-visible-live-mode/03-SUMMARY.md` — phase-level summary; `03-01-SUMMARY.md` for plan-level detail
 Active PR: None yet on v1.1; branch `feat/v1.1-polish` accumulating commits
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/02-revise-auto-loop/02-01-PLAN.md` for the canonical implementation contract of this phase
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/03-visible-live-mode/03-01-PLAN.md` for the canonical implementation contract of this phase

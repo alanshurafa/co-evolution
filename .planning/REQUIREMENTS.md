@@ -13,13 +13,13 @@
 
 ### Code Review Fixes
 
-- [ ] **FIX-WR-01**: Reset `LAST_INVOKE_EXIT_CODE=0` before the codex verify conditional at `dev-review/codex/dev-review.sh:768-776` (latent; not firing today because execute always leaves 0 on the path to verify, but covers future callers that might not)
-- [ ] **FIX-WR-02**: `write_state_phase` and `write_state_field` in `lib/co-evolution.sh` must clean up `mktemp` temp files when `jq` fails (no stale files left in `$TMPDIR`)
-- [ ] **FIX-WR-03**: Pass phase-start timestamps as explicit function arguments instead of relying on enclosing-scope globals with `${var:-fallback}` fallback (removes hidden coupling in `abort_on_timeout` / phase runners)
+- [x] **FIX-WR-01**: Reset `LAST_INVOKE_EXIT_CODE=0` before the codex verify conditional at `dev-review/codex/dev-review.sh:768-776` (latent; not firing today because execute always leaves 0 on the path to verify, but covers future callers that might not). (Complete 2026-04-17 — Phase 1, commit 5734b84)
+- [x] **FIX-WR-02**: `write_state_phase` and `write_state_field` in `lib/co-evolution.sh` must clean up `mktemp` temp files when `jq` fails (no stale files left in `$TMPDIR`). (Complete 2026-04-17 — Phase 1, commit 5734b84)
+- [x] **FIX-WR-03**: Pass phase-start timestamps as explicit function arguments instead of relying on enclosing-scope globals with `${var:-fallback}` fallback (removes hidden coupling in `abort_on_timeout` / phase runners). (Complete 2026-04-17 — Phase 1, commit 5734b84)
 
 ### Runtime Ergonomics (from deferred v2 bucket)
 
-- [ ] **RTUX-01**: Codex runtime can launch visible Windows terminals (`wt.exe` / `cmd.exe`) for live pass-by-pass observation via `--live` CLI flag. Windows-only feature; on non-Windows, `--live` logs a warning and falls back to inline execution.
+- [x] **RTUX-01**: Codex runtime can launch visible Windows terminals (`wt.exe` / `cmd.exe`) for live pass-by-pass observation via `--live` CLI flag. Windows-only feature; on non-Windows, `--live` logs a warning and falls back to inline execution. (Complete 2026-04-17 — Phase 3)
 - [ ] **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically via `--branch auto|NAME` and `--worktree auto|PATH` flags. No-ops when workdir is not a git repo.
 - [x] **RTUX-03**: Codex runtime can loop automatically on REVISE verdicts until approval or max-iterations via `--revise-loop N` flag. Each loop pass recorded in `state.json` as a new phase entry. (Complete 2026-04-17 — Phase 2)
 
@@ -32,11 +32,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-WR-01 | Phase 1 | Planned |
-| FIX-WR-02 | Phase 1 | Planned |
-| FIX-WR-03 | Phase 1 | Planned |
+| FIX-WR-01 | Phase 1 | Complete |
+| FIX-WR-02 | Phase 1 | Complete |
+| FIX-WR-03 | Phase 1 | Complete |
 | RTUX-03 | Phase 2 | Complete |
-| RTUX-01 | Phase 3 | Planned |
+| RTUX-01 | Phase 3 | Complete |
 | RTUX-02 | Phase 4 | Planned |
 
 **Coverage:**
