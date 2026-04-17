@@ -438,6 +438,27 @@ Output ONLY the plan document. No preamble."
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
 }
 
+verify_bounce_ran() {
+  local run_dir="$1"
+  local outputs_dir="${run_dir}/outputs"
+  local count=0
+
+  # PRTP-04 / UPSTREAM-MESSAGE.md item 6: structural signal.
+  # "No bounce-NN.txt files == loop never actually ran a pass."
+  # Zero-padded NN matches the write pattern in run_bounce_phase.
+  if [[ -d "$outputs_dir" ]]; then
+    count=$(find "$outputs_dir" -maxdepth 1 -type f -name 'bounce-*.txt' 2>/dev/null | wc -l | tr -d '\r\n ')
+  fi
+
+  BOUNCE_ARTIFACT_COUNT="$count"
+
+  if (( count > 0 )); then
+    return 0
+  fi
+
+  return 1
+}
+
 run_bounce_phase() {
   local max_bounces="$1"
   local auto_converge="$2"
@@ -532,6 +553,13 @@ run_bounce_phase() {
     log "WARNING: $final_markers unresolved markers remain after the bounce phase."
     log ""
   fi
+
+  if verify_bounce_ran "$RUN_DIR"; then
+    log " Bounce artifacts: ${BOUNCE_ARTIFACT_COUNT} pass file(s) in outputs/"
+  else
+    log " Bounce artifacts: none written (structural signal: bounce loop did not execute a pass)"
+  fi
+  log ""
 
   return 0
 }
