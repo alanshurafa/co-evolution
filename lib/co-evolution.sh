@@ -16,6 +16,12 @@ die() {
   exit 1
 }
 
+# RNPT-05: Default per-phase timeout in seconds. Override via --timeout flag
+# or by exporting PHASE_TIMEOUT before running. Upstream hit a 1h 39min hang;
+# 1800s (30min) is generous enough for legitimate long phases, tight enough
+# to surface hangs within a coffee-break window.
+: "${PHASE_TIMEOUT:=1800}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -689,4 +695,65 @@ write_state_field() {
       die "Unsupported value_type: $value_type"
       ;;
   esac && mv "$tmp" "$state_path"
+}
+
+# RNPT-05: invoke_agent_with_timeout — same signature as invoke_agent but wrapped
+# in `timeout(1)`. Sets the global $LAST_INVOKE_EXIT_CODE for the caller to
+# inspect (124 = timeout fired, 0 = ok, other = underlying agent exit code).
+#
+# Design notes:
+#   - `--foreground` leaves signal handling with the invoking shell so kills
+#     reach the claude/codex child (normal timeout puts child in its own pgroup
+#     where SIGTERM to a network-blocked read is easy to miss).
+#   - Re-sourcing lib/co-evolution.sh inside `bash -c` is safer than `export -f`
+#     (MINGW64 has been known to mishandle exported functions).
+#   - Wrapper returns 0 always (unless die fires); exit status flows through
+#     the global LAST_INVOKE_EXIT_CODE. Matches the || true pattern used by
+#     invoke_claude/invoke_codex (agent errors are data, not runner crashes).
+invoke_agent_with_timeout() {
+  local agent="${1:?agent required}"
+  local prompt_file="${2:?prompt file required}"
+  local output_file="${3:?output file required}"
+  local stderr_file="${4:?stderr file required}"
+  local writable="${5:-false}"
+
+  local effective_timeout="${PHASE_TIMEOUT:-1800}"
+
+  if ! [[ "$effective_timeout" =~ ^[0-9]+$ ]] || (( effective_timeout < 1 )); then
+    die "PHASE_TIMEOUT must be a positive integer (got: $effective_timeout)"
+  fi
+
+  if ! command -v timeout >/dev/null 2>&1; then
+    log "WARNING: timeout(1) not found - invoke_agent_with_timeout degrading to direct dispatch"
+    invoke_agent "$agent" "$prompt_file" "$output_file" "$stderr_file" "$writable"
+    LAST_INVOKE_EXIT_CODE=0
+    return 0
+  fi
+
+  local exit_code=0
+  case "$agent" in
+    codex)
+      timeout --foreground "${effective_timeout}s" \
+        bash -c 'source "$1"; invoke_codex "$2" "$3" "$4"' _ \
+        "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" \
+        || exit_code=$?
+      ;;
+    opus)
+      timeout --foreground "${effective_timeout}s" \
+        bash -c 'source "$1"; invoke_claude "$2" "$3" "$4" "$5"' _ \
+        "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" "$writable" \
+        || exit_code=$?
+      ;;
+    *)
+      die "Unsupported agent: $agent"
+      ;;
+  esac
+
+  LAST_INVOKE_EXIT_CODE="$exit_code"
+
+  if (( exit_code == 124 )); then
+    log "WARNING: agent ${agent} timed out after ${effective_timeout}s (exit 124)"
+  fi
+
+  return 0
 }
