@@ -152,6 +152,9 @@ Plans:
   4. Obsolete lab directories (mirror clone of public repo, empty subdirs) are noted for archival
 **Plans**: 1 plan
 
+Plans:
+- [ ] 09-01: Fold mempalace.yaml into integrations/ and document lab-absorb exclusions
+
 ## Progress
 
 **Execution Order:**
