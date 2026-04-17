@@ -121,7 +121,12 @@ Plans:
   3. Pre-execute baseline snapshot hashes every repo file; post-execute produces a `{modified, added, deleted}` delta consumed by verify and the `execution_fidelity` scorer
   4. One structured `state.json` per run captures phase history, marker counts, changed files, and verify verdict as ground truth
   5. Per-phase timeout prevents runaway phases (the single most painful gap flagged by upstream — one PS case hung 1h 39min)
-**Plans**: 1 plan
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01: Agent dispatcher hardening + writable-phase abstraction (RNPT-01, RNPT-02)
+- [ ] 07-02: state.json + delta tracking helpers and wiring (RNPT-03, RNPT-04)
+- [ ] 07-03: Per-phase timeout wrapper + --timeout CLI flag (RNPT-05)
 
 ### Phase 8: Evals Absorbed
 **Goal**: Make evals cross-runner by elevating portable assets (cases, fixtures, plan) to the top level, while leaving the runner-specific PS harness under `runners/codex-ps/`.
@@ -157,6 +162,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 4. Docs And Routing | 1/1 | Complete | 2026-04-06 |
 | 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
 | 6. Protocol Parity | 3/3 | Complete | 2026-04-17 |
-| 7. Runner Parity | 0/1 | Planned | - |
+| 7. Runner Parity | 0/3 | Planned | - |
 | 8. Evals Absorbed | 0/1 | Planned | - |
 | 9. Lab Folded | 0/1 | Planned | - |
