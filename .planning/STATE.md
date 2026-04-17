@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-stopped_at: Phase 9 execution complete — Lab Folded (LABF-01, LABF-02) landed across 1 plan / 2 tasks / 2 commits (9a838d5, 0a7f708, both pushed); Unification Absorb milestone CLOSED (17/17 v3 requirements Complete across phases 5-9); co-evolution-lab/ and codex-co-evolution/ peer workspaces now both archivable at user's discretion
-last_updated: "2026-04-17T21:12:58.099Z"
-last_activity: 2026-04-17 -- Phase 09 execution complete; Unification Absorb milestone closed
+milestone: v1.1
+milestone_name: Polish & Ergonomics
+status: in-progress
+stopped_at: Phase 2 execution complete — REVISE Auto-Loop (RTUX-03) landed across 1 plan / 4 tasks / 4 commits (549850c, be0af3b, e15332a, fc08304, all pushed to feat/v1.1-polish); simulation passes all four scenarios in <4s; default REVISE_LOOP_MAX=0 preserves v1.0 byte-for-byte; 1 of 3 RTUX requirements closed in v1.1
+last_updated: "2026-04-17T23:00:00.000Z"
+last_activity: 2026-04-17 -- Phase 02 execution complete; RTUX-03 auto-loop shipped on feat/v1.1-polish
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 13
-  completed_plans: 17
-  percent: 100
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
-**Current focus:** Unification Absorb milestone - fold `codex-co-evolution/` + `co-evolution-lab/` into this public repo (phases 5-9)
+**Current focus:** v1.1 Polish & Ergonomics — address v1.0 code-review warnings, then deliver the three deferred runtime-ergonomics requirements (RTUX-01/02/03)
 
 ## Current Position
 
-Phase: 9 of 9 (Lab Folded — COMPLETE; final milestone phase landed)
-Plan: 1 of 1 in Phase 9 complete (09-01 landed)
-Status: Unification Absorb milestone CLOSED (17/17 v3 requirements Complete)
-Last activity: 2026-04-17 -- Phase 09 execution complete; Unification Absorb milestone closed
-Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
+Phase: 2 of 4 — REVISE Auto-Loop COMPLETE; Phase 3 (Visible Live Mode, RTUX-01) and Phase 4 (Worktree Management, RTUX-02) remain
+Plan: 02-01 complete (4 tasks, 4 commits)
+Status: v1.1 in progress — 2 of 4 phases complete (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop both landed on feat/v1.1-polish)
+Last activity: 2026-04-17 -- Phase 02 complete; RTUX-03 auto-loop shipped
+Working directory: `C:/Users/alan/Project/co-evolution-v11/` (feat/v1.1-polish branch)
 
-Progress: [##########] 9/9 phases complete — Unification Absorb milestone done
+Progress: [##........] 2/4 phases complete — v1.1 Polish & Ergonomics in progress
 
 ## Performance Metrics
 
@@ -109,6 +109,11 @@ Recent decisions affecting current work:
 - [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
 - [Milestone: Unification Absorb]: Evals are the iteration mechanism (not Karpathy-style auto-research); Protocol Evolution Loop deferred as future post-absorb work
 - [P0]: Required-Section blocks copied verbatim from upstream compose template to eliminate ~66% missing-section variance
+- [v1.1 Phase 2]: REVISE auto-loop default (`REVISE_LOOP_MAX=0`) preserves v1.0 behavior byte-for-byte — opt-in only via `--revise-loop N` CLI flag or exported env var
+- [v1.1 Phase 2]: Retry-pass state.json names chosen as `execute-N`/`verify-N` (bare names kept for pass 1) so existing consumers see extra attempts rather than breaking schema
+- [v1.1 Phase 2]: `phase_is_writable` anchored regex `^execute-[0-9]+$` accepts numbered retry passes without enumerating every possible pass number; fails safe on injection-style names (T-02-01)
+- [v1.1 Phase 2]: Loop body extracted into `_run_revise_loop` so simulation test and main flow share one implementation — divergence impossible without test breakage (planner's recommendation)
+- [v1.1 Phase 2]: Reviewer-authored fields rendered via `jq -r` before reaching the execute prompt — T-02-02 defense-in-depth beyond the existing "Do NOT deviate" prompt rule
 
 ### Pending Todos
 
@@ -129,7 +134,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 9 execution complete — Lab Folded (LABF-01, LABF-02) landed across 1 plan / 2 tasks / 2 commits (9a838d5, 0a7f708, both pushed); Unification Absorb milestone CLOSED (17/17 v3 requirements Complete across phases 5-9); co-evolution-lab/ and codex-co-evolution/ peer workspaces now both archivable at user's discretion
-Resume file: None — use `git log feat/unification-absorb` for full context
-Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft — ready to promote and merge now that milestone is done)
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 landed in Phase 6; parity items 1-5 all landed in Phase 7; portable artifacts table landed in Phase 8; lab fold landed in Phase 9)
+Stopped at: Phase 2 execution complete — REVISE Auto-Loop (RTUX-03) landed across 1 plan / 4 tasks / 4 commits (549850c, be0af3b, e15332a, fc08304, all pushed to feat/v1.1-polish); simulation test covers retry-and-converge, v1.0 parity, cap-at-max, and prompt byte-identity; 1 of 3 RTUX requirements closed in v1.1
+Resume file: `.planning/phases/02-revise-auto-loop/02-SUMMARY.md` — phase-level summary; `02-01-SUMMARY.md` for plan-level detail
+Active PR: None yet on v1.1; branch `feat/v1.1-polish` accumulating commits
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/02-revise-auto-loop/02-01-PLAN.md` for the canonical implementation contract of this phase
