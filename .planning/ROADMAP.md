@@ -138,6 +138,9 @@ Plans:
   3. `pwsh` dependency is documented as optional — required only to run the PS harness, not the Bash runner itself
 **Plans**: 1 plan
 
+Plans:
+- [ ] 08-01-PLAN.md — Elevate portable eval assets (cases, fixtures, VERIFICATION-PLAN, review-verdict schema) to top-level and add README documenting pwsh-optional split
+
 ### Phase 9: Lab Folded
 **Goal**: Fold the unique contributions of `co-evolution-lab/` (integrations + memory config) into the unified repo; explicitly exclude Karpathy's `autoresearch` clone as unrelated ML training work.
 **Depends on**: Phase 5
