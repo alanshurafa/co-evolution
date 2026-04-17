@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 complete — Protocol Parity landed (3 plans, 7 tasks, 5 commits); ready for Phase 7 (Runner Parity)
-last_updated: "2026-04-17T19:30:00.000Z"
-last_activity: 2026-04-17 -- Phase 06 execution complete
+stopped_at: Phase 7 complete — Runner Parity landed (3 plans, 9 tasks, 6 commits, RNPT-01..05); ready for Phase 8 (Evals Absorbed)
+last_updated: "2026-04-17T21:00:00.000Z"
+last_activity: 2026-04-17 -- Phase 07 execution complete
 progress:
   total_phases: 9
-  completed_phases: 6
-  total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_phases: 7
+  total_plans: 12
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 7 of 9 (Runner Parity — ready to plan)
-Plan: 3 of 3 in previous phase complete (06-01, 06-02, 06-03 landed)
-Status: Ready to plan Phase 7
-Last activity: 2026-04-17 -- Phase 06 execution complete
+Phase: 8 of 9 (Evals Absorbed — ready to plan)
+Plan: 3 of 3 in previous phase complete (07-01, 07-02, 07-03 landed)
+Status: Ready to plan Phase 8
+Last activity: 2026-04-17 -- Phase 07 execution complete
 Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
 
-Progress: [#######---] 6/9 phases complete (Phase 6 of Unification Absorb done)
+Progress: [########--] 7/9 phases complete (Phase 7 of Unification Absorb done)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 11
 - Average duration: 17 min
-- Total execution time: 2.4 hours
+- Total execution time: 3.2 hours
 
 **By Phase:**
 
@@ -51,11 +51,12 @@ Progress: [#######---] 6/9 phases complete (Phase 6 of Unification Absorb done)
 | 4. Docs And Routing | 1 | 0.1h | 0.1h |
 | 5. Codex PS Preservation | 1 | 0.25h | 0.25h |
 | 6. Protocol Parity | 3 | 1.0h | 0.33h |
+| 7. Runner Parity | 3 | 0.83h | 0.28h |
 
 **Recent Trend:**
 
-- Last 5 plans: 06-02, 06-03, 06-01, 05-01, 04-01
-- Trend: Stable (Phase 6 plans averaged 20min — infrastructure refactor efficiency)
+- Last 5 plans: 07-03, 07-02, 07-01, 06-02, 06-03
+- Trend: Stable (Phase 7 plans averaged 17min — infrastructure refactor efficiency holds)
 
 *Updated after each plan completion*
 
@@ -84,6 +85,14 @@ Recent decisions affecting current work:
 - [Phase 6]: outputs/bounce-NN.txt written AFTER cp to PLAN_PATH so the structural artifact matches the canonical plan content (post-strip_human_summary)
 - [Phase 6]: verify_bounce_ran is informational, not gating — distinct signal for future Phase 8 evals to consume
 - [Phase 6]: Bounce protocol reconciliation is the one-and-only exception to CXPS-02 read-only, explicitly authorized by UPSTREAM-MESSAGE.md item 3
+- [Phase 7]: phase_is_writable fails safe to "false" on unknown phase names — refuses elevation, downgrades to text-phase posture
+- [Phase 7]: state.json has no leading dot → survives cleanup_runtime_artifacts sweep; intermediate hash manifests ARE dot-prefixed so they get swept
+- [Phase 7]: Delta tracking deliberately excludes nothing beyond .git/ and runs/ — the scorer wants truth ground
+- [Phase 7]: Runner exits 1 on timeout (fatal), NOT 124; 124 lives only in state.json.phases[].exit_code for observability
+- [Phase 7]: Default PHASE_TIMEOUT=1800s (30min) — generous but catches the 1h 39min hang category; --timeout flag for per-run override
+- [Phase 7]: timeout --foreground required (keeps signal handling with invoking shell so SIGTERM reaches network-blocked CLI children)
+- [Phase 7]: invoke_agent_with_timeout re-sources lib in bash -c subshell (safer than export -f on MINGW64)
+- [Phase 7]: abort_on_timeout centralizes timeout-abort — one code path records state, logs, cleans up, exits 1
 - [Milestone: Unification Absorb]: Full merge of codex-co-evolution into this public repo (pseudonymity concern moot — no commits ever landed separately)
 - [Milestone: Unification Absorb]: Feature branch + draft PR discipline; new worktree at `co-evolution-absorb/` isolated from `co-evolution/` (archive) and `co-evolution-clean/` (master tip)
 - [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
@@ -92,21 +101,23 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 7 (Runner Parity) — port the 5 features Bash runner lacks relative to Codex PS reference: agent dispatcher, writable-phase flag as top-level abstraction (builds on 06-01's threading), delta tracking, structured state.json, per-phase timeout
-- Archive `C:/Users/alan/Project/codex-co-evolution/` workspace — verbatim copy is now safely preserved at runners/codex-ps/ (decision unblocked by Phase 5 completion)
+- Plan Phase 8 (Evals Absorbed) — elevate portable eval assets (cases/, fixtures/, VERIFICATION-PLAN.md, schemas/review-verdict.json) to top-level evals/; keep PS-specific harness under runners/codex-ps/; document pwsh as optional dependency
+- Plan Phase 9 (Lab Folded) — fold co-evolution-lab/integrations/ + mempalace.yaml; exclude Karpathy's autoresearch
+- Archive `C:/Users/alan/Project/codex-co-evolution/` workspace — verbatim copy safely preserved at runners/codex-ps/
 - Future: Bash port of PS eval harness (~2 days, deferred post-milestone)
 - Future: Protocol Evolution Loop (meta-bounce for self-improving prompts, post-milestone)
 
 ### Blockers/Concerns
 
-- Per-phase timeout (RNPT-05) is flagged by upstream as "single most painful gap" — one PS case hung 1h 39min. Prioritize during Phase 7 implementation.
+- RNPT-05 (per-phase timeout) LANDED — upstream's 1h 39min hang category now bounded; smoke test Test A proves a 5s hang is killed in 2.07s wall-clock with exit 124.
 - `pwsh` dependency introduced by Phase 8 — optional but required to run PS eval harness. Document clearly.
 - Claude `--json-schema` broken on Windows in `-p` mode — must NOT be used; prompt-side JSON + parse-side validation only (PRTP-03)
+- Phase 8 eval scorer now has a machine-readable ground-truth input: `$RUN_DIR/state.json` with full schema (run_id/task/agents/phases[]/marker_counts/baseline_hashes/execute_delta/verify_verdict/started_at/completed_at)
 
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 6 execution complete — Protocol Parity (PRTP-01 through PRTP-05) landed across 3 plans / 7 tasks / 5 commits (dab8f76, e78bf24, 7b76b3a, b7abb1e, ff0c951, all pushed); ready for Phase 7 planning (Runner Parity)
+Stopped at: Phase 7 execution complete — Runner Parity (RNPT-01 through RNPT-05) landed across 3 plans / 9 tasks / 6 commits (cf59338, fb2e142, 69d0350, f3bb0f5, 987f484, d31819e, all pushed); ready for Phase 8 planning (Evals Absorbed)
 Resume file: None — use `git log feat/unification-absorb` for full context
 Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft)
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 now all landed)
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 landed in Phase 6; parity items 1-5 all landed in Phase 7)

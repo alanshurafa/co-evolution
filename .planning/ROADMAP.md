@@ -23,7 +23,7 @@ Absorb the private `codex-co-evolution/` reference implementation + eval harness
 
 - [x] **Phase 5: Codex PS Preservation** - Copy `codex-co-evolution/` contents verbatim into `runners/codex-ps/` as read-only reference impl + audit trail
 - [x] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
-- [ ] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
+- [x] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
 - [ ] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
 - [ ] **Phase 9: Lab Folded** - Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo; exclude Karpathy's auto-research (unrelated ML training)
 
@@ -124,9 +124,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: Agent dispatcher hardening + writable-phase abstraction (RNPT-01, RNPT-02)
-- [ ] 07-02: state.json + delta tracking helpers and wiring (RNPT-03, RNPT-04)
-- [ ] 07-03: Per-phase timeout wrapper + --timeout CLI flag (RNPT-05)
+- [x] 07-01: Agent dispatcher hardening + writable-phase abstraction (RNPT-01, RNPT-02)
+- [x] 07-02: state.json + delta tracking helpers and wiring (RNPT-03, RNPT-04)
+- [x] 07-03: Per-phase timeout wrapper + --timeout CLI flag (RNPT-05)
 
 ### Phase 8: Evals Absorbed
 **Goal**: Make evals cross-runner by elevating portable assets (cases, fixtures, plan) to the top level, while leaving the runner-specific PS harness under `runners/codex-ps/`.
@@ -162,6 +162,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 4. Docs And Routing | 1/1 | Complete | 2026-04-06 |
 | 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
 | 6. Protocol Parity | 3/3 | Complete | 2026-04-17 |
-| 7. Runner Parity | 0/3 | Planned | - |
+| 7. Runner Parity | 3/3 | Complete | 2026-04-17 |
 | 8. Evals Absorbed | 0/1 | Planned | - |
 | 9. Lab Folded | 0/1 | Planned | - |

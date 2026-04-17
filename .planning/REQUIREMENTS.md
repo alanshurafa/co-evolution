@@ -54,11 +54,11 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 ### Runner Parity
 
-- **RNPT-01**: One agent dispatcher function routes by provider; phase code calls it instead of hard-coding provider names
-- **RNPT-02**: Write-phase vs text-phase is a flag; drives Claude permission mode + allowed-tools selection
-- **RNPT-03**: Pre-execute baseline snapshot hashes every repo file; post-execute produces a `{modified, added, deleted}` delta consumed by verify and the `execution_fidelity` scorer
-- **RNPT-04**: One structured `state.json` per run captures phase history, marker counts, changed files, and verify verdict as ground truth
-- **RNPT-05**: Per-phase timeout aborts runaway phases and records the timeout in `state.json`
+- [x] **RNPT-01**: One agent dispatcher function routes by provider; phase code calls it instead of hard-coding provider names
+- [x] **RNPT-02**: Write-phase vs text-phase is a flag; drives Claude permission mode + allowed-tools selection
+- [x] **RNPT-03**: Pre-execute baseline snapshot hashes every repo file; post-execute produces a `{modified, added, deleted}` delta consumed by verify and the `execution_fidelity` scorer
+- [x] **RNPT-04**: One structured `state.json` per run captures phase history, marker counts, changed files, and verify verdict as ground truth
+- [x] **RNPT-05**: Per-phase timeout aborts runaway phases and records the timeout in `state.json`
 
 ### Evals Absorbed
 
@@ -100,11 +100,11 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 | PRTP-03 | Phase 6 | Complete |
 | PRTP-04 | Phase 6 | Complete |
 | PRTP-05 | Phase 6 | Complete |
-| RNPT-01 | Phase 7 | Planned |
-| RNPT-02 | Phase 7 | Planned |
-| RNPT-03 | Phase 7 | Planned |
-| RNPT-04 | Phase 7 | Planned |
-| RNPT-05 | Phase 7 | Planned |
+| RNPT-01 | Phase 7 | Complete |
+| RNPT-02 | Phase 7 | Complete |
+| RNPT-03 | Phase 7 | Complete |
+| RNPT-04 | Phase 7 | Complete |
+| RNPT-05 | Phase 7 | Complete |
 | EVAL-01 | Phase 8 | Planned |
 | EVAL-02 | Phase 8 | Planned |
 | EVAL-03 | Phase 8 | Planned |
@@ -113,10 +113,10 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 **Coverage:**
 - v1 requirements: 10 total (all Complete)
-- v3 requirements: 17 total (all Planned)
+- v3 requirements: 17 total — 12 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05), 5 Planned (EVAL-01..03 + LABF-01/02)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-17 adding v3 Unification Absorb requirements (phases 5-9)*
+*Last updated: 2026-04-17 — RNPT-01..05 marked Complete after Phase 7 execution*
