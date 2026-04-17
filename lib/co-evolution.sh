@@ -20,13 +20,33 @@ invoke_claude() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
+  local writable="${4:-false}"
+  local workdir="${WORKDIR:-$PWD}"
   local -a cmd
+  local -a tool_flags
+
+  # Upstream MUST (UPSTREAM-MESSAGE.md item 4): Claude in -p mode must either
+  # have tools disabled (text phases) or have an explicit allow-list + bypass
+  # permission mode + dir-scope flag (write phases). The empty-string variant of
+  # the older tools flag does NOT work (commander.js variadic eats the next arg)
+  # and the plan-mode value for permission-mode silently emits empty stdout.
+  # Do NOT pass any schema flag to Claude (PRTP-03; hangs on Windows in -p mode
+  # as of 2026-04-17).
+  if [[ "$writable" == "true" ]]; then
+    tool_flags=(
+      --permission-mode bypassPermissions
+      --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git status),Bash(git diff)"
+      --add-dir "$workdir"
+    )
+  else
+    tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
+  fi
 
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
-    cmd=(cmd.exe /c claude -p --output-format text --model claude-opus-4-6)
+    cmd=(cmd.exe /c claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model claude-opus-4-6 --tools "")
+    cmd=(claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
