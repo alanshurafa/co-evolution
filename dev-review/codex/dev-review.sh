@@ -80,12 +80,22 @@ invoke_agent() {
   local agent="$1"
   shift
 
+  # Last positional arg (4th after agent) is the writable flag for Claude.
+  # Codex invocations ignore it. Default: text-phase ("false") if unset.
+  local prompt_file="$1"
+  local output_file="$2"
+  local stderr_file="$3"
+  local writable="${4:-false}"
+
   case "$agent" in
     codex)
-      invoke_codex "$@"
+      # Narrowed from "$@" to explicit positionals because codex has no
+      # writable-flag analogue (its permission model is --full-auto, set
+      # inside invoke_codex). Phase 7 may revisit if codex grows a parity flag.
+      invoke_codex "$prompt_file" "$output_file" "$stderr_file"
       ;;
     opus)
-      invoke_claude "$@"
+      invoke_claude "$prompt_file" "$output_file" "$stderr_file" "$writable"
       ;;
     *)
       die "Unsupported agent: $agent"
@@ -352,7 +362,8 @@ ensure_valid_plan_output() {
       ;;
     empty|thin)
       log "WARNING: ${phase_name} produced an unusable plan artifact (${PLAN_OUTPUT_REASON}). Retrying once..."
-      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file"
+      # Retry is only reachable from compose/bounce (text phases), so pass "false" explicitly.
+      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file" "false"
       inspect_plan_output "$agent" "$output_file" "$retry_stderr_file" "$input_file" && return 0
 
       case "$PLAN_OUTPUT_STATUS" in
@@ -421,7 +432,7 @@ Every plan must also include a section titled exactly \`## Risks\`, \`## Assumpt
 Output ONLY the plan document. No preamble."
 
   write_text_file "$compose_prompt_file" "$compose_prompt"
-  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
+  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "false"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
@@ -475,7 +486,7 @@ run_bounce_phase() {
     log " BOUNCE $pass/$max_bounces - ${role} (${current_agent})"
     log "--------------------------------------------"
 
-    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "false"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" || return $?
 
     cp "$output_file" "$RUN_DIR/pass-${pass}-${role}-${current_agent}-raw.md"
@@ -534,7 +545,7 @@ run_execute_phase() {
   execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
-  invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file"
+  invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "true"
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
     return 2
@@ -542,7 +553,7 @@ run_execute_phase() {
 
   if [[ ! -s "$execute_output_file" ]]; then
     log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
-    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file"
+    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "true"
   fi
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
@@ -638,7 +649,7 @@ run_verify_phase() {
   if [[ "$verifier" == "codex" ]]; then
     invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
   else
-    invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file"
+    invoke_claude "$review_prompt_file" "$verdict_file" "$review_stderr_file" "false"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
