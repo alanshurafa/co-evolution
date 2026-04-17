@@ -22,6 +22,12 @@ die() {
 # to surface hangs within a coffee-break window.
 : "${PHASE_TIMEOUT:=1800}"
 
+# RTUX-01: LIVE_MODE default. Set by --live CLI flag or LIVE_MODE env var.
+# Default "false" preserves byte-parity with Phase 2 behavior (invariant).
+: "${LIVE_MODE:=false}"
+# Guard so we only log the non-Windows fallback warning once per run.
+LIVE_MODE_WARNING_LOGGED=false
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -52,6 +58,73 @@ phase_is_writable() {
     return 0
   fi
   printf '%s' "false"
+  return 0
+}
+
+# RTUX-01: Detect whether we are running on a Windows host (or a shell that can
+# reach Windows binaries). Returns "true"/"false" on stdout. First match wins.
+# No side effects — safe to call repeatedly.
+is_windows_host() {
+  # 1. MSYS/Cygwin shell indicator (Git Bash, MSYS2, Cygwin)
+  if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
+    printf '%s' "true"
+    return 0
+  fi
+  # 2. Windows Terminal binary present (covers most modern Windows setups)
+  if command -v wt.exe >/dev/null 2>&1; then
+    printf '%s' "true"
+    return 0
+  fi
+  # 3. cmd.exe present (covers WSL and bare Windows shells without wt.exe)
+  if command -v cmd.exe >/dev/null 2>&1; then
+    printf '%s' "true"
+    return 0
+  fi
+  printf '%s' "false"
+  return 0
+}
+
+# RTUX-01: Launch a visible tail window for the given phase's stderr file.
+# No-op when LIVE_MODE is not "true". Always returns 0 — failures log a
+# warning but never block the main phase (must-not-break invariant).
+maybe_launch_live_window() {
+  local phase_name="${1:?maybe_launch_live_window requires a phase name}"
+  local stderr_file="${2:?maybe_launch_live_window requires a stderr file path}"
+
+  [[ "${LIVE_MODE:-false}" == "true" ]] || return 0
+
+  if [[ "$(is_windows_host)" != "true" ]]; then
+    if [[ "${LIVE_MODE_WARNING_LOGGED}" != "true" ]]; then
+      log "WARNING: --live is Windows-only (OSTYPE=${OSTYPE:-unknown}); falling back to inline execution."
+      LIVE_MODE_WARNING_LOGGED=true
+    fi
+    return 0
+  fi
+
+  # Pre-touch the stderr file so tail -f has something to follow.
+  # The phase's own 2>"$stderr_file" redirection will truncate on first write.
+  : > "$stderr_file" 2>/dev/null || true
+
+  local title="phase:${phase_name}"
+  local tail_cmd
+  printf -v tail_cmd 'tail -f %q' "$stderr_file"
+
+  # Preferred: Windows Terminal new-tab. Fall back to cmd.exe /c start.
+  # Both are backgrounded + disowned so we do not wait on them.
+  if command -v wt.exe >/dev/null 2>&1; then
+    ( wt.exe new-tab --title "$title" bash -c "$tail_cmd" >/dev/null 2>&1 & disown ) 2>/dev/null \
+      && return 0
+    log "WARNING: wt.exe launch failed for phase '${phase_name}'; trying cmd.exe fallback."
+  fi
+
+  if command -v cmd.exe >/dev/null 2>&1; then
+    ( cmd.exe /c start "$title" bash -c "$tail_cmd" >/dev/null 2>&1 & disown ) 2>/dev/null \
+      && return 0
+    log "WARNING: cmd.exe live-window launch failed for phase '${phase_name}'; continuing inline."
+  else
+    log "WARNING: no live-window launcher available for phase '${phase_name}'; continuing inline."
+  fi
+
   return 0
 }
 
