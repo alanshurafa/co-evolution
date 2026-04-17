@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Milestone kickoff — phases 5-9 planned, ready to enter Phase 5 planning
-last_updated: "2026-04-17T17:37:59.033Z"
-last_activity: 2026-04-17 -- Phase 05 planning complete
+stopped_at: Phase 5 complete — runners/codex-ps/ verbatim copy + REFERENCE-STATUS.md landed; ready for Phase 6 (Protocol Parity)
+last_updated: "2026-04-17T18:00:00.000Z"
+last_activity: 2026-04-17 -- Phase 05 execution complete
 progress:
   total_phases: 9
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_phases: 5
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 5 of 9 (Codex PS Preservation — first phase of Unification Absorb milestone)
-Plan: 0 of 1 in current phase (not yet planned)
-Status: Ready to execute
-Last activity: 2026-04-17 -- Phase 05 planning complete
+Phase: 6 of 9 (Protocol Parity — ready to plan)
+Plan: 1 of 1 in previous phase complete (05-01 landed)
+Status: Ready to plan Phase 6
+Last activity: 2026-04-17 -- Phase 05 execution complete
 Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
 
-Progress: [#####-----] 4/9 phases complete (milestone 1 of 2 done)
+Progress: [######----] 5/9 phases complete (Phase 5 of Unification Absorb done)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: 17 min
-- Total execution time: 1.1 hours
+- Total plans completed: 5
+- Average duration: 16 min
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
@@ -49,10 +49,11 @@ Progress: [#####-----] 4/9 phases complete (milestone 1 of 2 done)
 | 2. Bouncer Refactor | 1 | 0.2h | 0.2h |
 | 3. Codex Runtime | 1 | 0.5h | 0.5h |
 | 4. Docs And Routing | 1 | 0.1h | 0.1h |
+| 5. Codex PS Preservation | 1 | 0.25h | 0.25h |
 
 **Recent Trend:**
 
-- Last 5 plans: 04-01, 03-01, 02-01, 01-01
+- Last 5 plans: 05-01, 04-01, 03-01, 02-01, 01-01
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 3]: Treat verifier auth failures as explicit review-needed exits rather than generic parse failures
 - [Phase 4]: Route Codex by task shape between direct execution, Agent Bouncer, and the standalone runtime
 - [Phase 4]: Use `dev-review/codex/instructions.md` as the reusable Codex startup router for this repo
+- [Phase 5]: Verbatim file copy (not subtree merge) chosen because codex-co-evolution had zero commits — no history to preserve
+- [Phase 5]: Read-only declaration goes in a dedicated REFERENCE-STATUS.md file, never injected into upstream content, to preserve byte-level verbatim guarantee
 - [Milestone: Unification Absorb]: Full merge of codex-co-evolution into this public repo (pseudonymity concern moot — no commits ever landed separately)
 - [Milestone: Unification Absorb]: Feature branch + draft PR discipline; new worktree at `co-evolution-absorb/` isolated from `co-evolution/` (archive) and `co-evolution-clean/` (master tip)
 - [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
@@ -83,8 +86,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 5 (Codex PS Preservation) via `/gsd-plan-phase 5 --bounce` (dogfoods co-evolution on its own migration)
-- Decide whether `runners/codex-ps/` absorbs a verbatim copy or git-filter-copy (codex-co-evolution has zero commits, so verbatim = simplest)
+- Plan Phase 6 (Protocol Parity) — implement MUST-items 3-6 from runners/codex-ps/evals/UPSTREAM-MESSAGE.md (Claude adapter tool-gating, skip --json-schema, structural bounce check, bounce-protocol reconciliation)
+- Archive `C:/Users/alan/Project/codex-co-evolution/` workspace — verbatim copy is now safely preserved at runners/codex-ps/ (decision unblocked by Phase 5 completion)
 - Future: Bash port of PS eval harness (~2 days, deferred post-milestone)
 - Future: Protocol Evolution Loop (meta-bounce for self-improving prompts, post-milestone)
 
@@ -97,7 +100,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Milestone kickoff — phases 5-9 planned, ready to enter Phase 5 planning
+Stopped at: Phase 5 execution complete — runners/codex-ps/ verbatim copy + REFERENCE-STATUS.md landed (commits 438e435, ccc3418, pushed); ready for Phase 6 planning
 Resume file: None — use `git log feat/unification-absorb` for full context
 Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft)
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (available after Phase 5) — the MUST/SHOULD/parity list
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (NOW AVAILABLE at runners/codex-ps/evals/UPSTREAM-MESSAGE.md)

@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Absorb the private `codex-co-evolution/` reference implementation + eval harness and selected `co-evolution-lab/` contents into this public repo. Parity the Bash runner with the Codex PS reference. P0 quick win (Required-Section blocks) landed in `8b741ba` before milestone planning.
 
-- [ ] **Phase 5: Codex PS Preservation** - Copy `codex-co-evolution/` contents verbatim into `runners/codex-ps/` as read-only reference impl + audit trail
+- [x] **Phase 5: Codex PS Preservation** - Copy `codex-co-evolution/` contents verbatim into `runners/codex-ps/` as read-only reference impl + audit trail
 - [ ] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
 - [ ] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
 - [ ] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
@@ -92,7 +92,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 05-01-PLAN.md — Copy codex-co-evolution tree verbatim to runners/codex-ps/ and declare it read-only
+- [x] 05-01: Copy codex-co-evolution tree verbatim to runners/codex-ps/ and declare it read-only
 
 ### Phase 6: Protocol Parity
 **Goal**: Bring the Bash runner's Claude adapter and verification layer in line with the MUST-items from `evals/UPSTREAM-MESSAGE.md` (items 3-6; items 1-2 landed in P0).
@@ -150,7 +150,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 2. Bouncer Refactor | 1/1 | Complete | 2026-04-06 |
 | 3. Codex Runtime | 1/1 | Complete | 2026-04-06 |
 | 4. Docs And Routing | 1/1 | Complete | 2026-04-06 |
-| 5. Codex PS Preservation | 0/1 | Planned | - |
+| 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
 | 6. Protocol Parity | 0/1 | Planned | - |
 | 7. Runner Parity | 0/1 | Planned | - |
 | 8. Evals Absorbed | 0/1 | Planned | - |

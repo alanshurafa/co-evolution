@@ -41,8 +41,8 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 ### Codex PS Preservation
 
-- **CXPS-01**: `runners/codex-ps/` contains the full `codex-co-evolution/` tree verbatim (scripts, templates, schemas, docs, evals)
-- **CXPS-02**: `runners/codex-ps/` is documented as a read-only reference impl; subsequent phases do not extend it
+- [x] **CXPS-01**: `runners/codex-ps/` contains the full `codex-co-evolution/` tree verbatim (scripts, templates, schemas, docs, evals)
+- [x] **CXPS-02**: `runners/codex-ps/` is documented as a read-only reference impl; subsequent phases do not extend it
 
 ### Protocol Parity
 
@@ -93,8 +93,8 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 | CDRT-04 | Phase 3 | Complete |
 | DOCS-01 | Phase 4 | Complete |
 | DOCS-02 | Phase 4 | Complete |
-| CXPS-01 | Phase 5 | Planned |
-| CXPS-02 | Phase 5 | Planned |
+| CXPS-01 | Phase 5 | Complete |
+| CXPS-02 | Phase 5 | Complete |
 | PRTP-01 | Phase 6 | Planned |
 | PRTP-02 | Phase 6 | Planned |
 | PRTP-03 | Phase 6 | Planned |
