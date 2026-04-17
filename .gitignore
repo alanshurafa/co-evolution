@@ -10,6 +10,10 @@ experiments/prompt-refinement/
 
 # Temp working directories
 tmp-*/
+tmp/
 
 # Local project notes (decisions, plans, handoffs)
 .notes/
+
+# Claude Code user-local settings
+.claude/
