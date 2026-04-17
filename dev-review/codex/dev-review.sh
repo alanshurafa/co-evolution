@@ -19,6 +19,9 @@ PLAN_SOURCE=""
 # Exported REVISE_LOOP_MAX env var is honored via parameter expansion below;
 # CLI flag --revise-loop N overrides the env value. See option parser below.
 REVISE_LOOP_MAX="${REVISE_LOOP_MAX:-0}"
+# RTUX-01: Live-window mode. Honors LIVE_MODE env var (string "true"/"false");
+# --live CLI flag sets it to "true". Default off = Phase 2 byte-parity.
+LIVE_MODE="${LIVE_MODE:-false}"
 WORKDIR="$(pwd)"
 TASK=""
 REVIEWER=""
@@ -54,6 +57,7 @@ Options:
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
+  --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --help                   Show this help text
 EOF
 }
@@ -541,6 +545,8 @@ Output ONLY the plan document. No preamble."
   write_text_file "$compose_prompt_file" "$compose_prompt"
   # RNPT-05: timeout-wrapped. _compose_phase_start set by main flow wrapper;
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
+  # RTUX-01: Launch a live-tail window before the agent call (no-op unless --live).
+  maybe_launch_live_window "compose" "$compose_stderr_file"
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
   abort_on_timeout "compose" "$phase_start"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
@@ -624,6 +630,8 @@ run_bounce_phase() {
     printf -v pass_padded '%02d' "$pass"
     # RNPT-05: timeout-wrapped. abort_on_timeout uses per-pass bounce-NN name
     # so state.json records which pass hit the timeout.
+    # RTUX-01: Per-pass live-tail window (bounce-01, bounce-02, ...) when --live.
+    maybe_launch_live_window "bounce-${pass_padded}" "$stderr_file"
     invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
     abort_on_timeout "bounce-${pass_padded}" "$bounce_pass_start"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
@@ -718,6 +726,8 @@ run_execute_phase() {
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
+  # RTUX-01: Live-tail window for execute phase (no-op unless --live).
+  maybe_launch_live_window "execute" "$execute_stderr_file"
   invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
   abort_on_timeout "execute" "$phase_start"
 
@@ -830,6 +840,9 @@ run_verify_phase() {
   diff_stat=$(cat "$diff_stat_file")
   review_prompt=$(build_review_prompt "$verifier" "$plan_content" "$diff_content" "$diff_stat")
   write_text_file "$review_prompt_file" "$review_prompt"
+
+  # RTUX-01: Single live-tail window covers both codex and opus verifier branches.
+  maybe_launch_live_window "verify" "$review_stderr_file"
 
   if [[ "$verifier" == "codex" ]]; then
     # Codex verify uses --output-schema (JSON verdict). This path intentionally
@@ -964,6 +977,12 @@ while [[ $# -gt 0 ]]; do
       REVISE_LOOP_MAX="$2"
       shift 2
       ;;
+    --live)
+      # RTUX-01: Enable live mode — visible Windows terminal per wrapped phase.
+      # Boolean flag; CLI presence wins over env. Default off = v1.1 byte-parity.
+      LIVE_MODE=true
+      shift
+      ;;
     --help)
       usage
       exit 0
@@ -1074,6 +1093,7 @@ log " Verify:    $VERIFY"
 log " Workdir:   $WORKDIR"
 log " Run dir:   $RUN_DIR"
 log " Timeout:   ${PHASE_TIMEOUT}s per phase"
+log " Live mode: $LIVE_MODE"
 log "============================================"
 log ""
 
