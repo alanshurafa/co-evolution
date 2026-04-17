@@ -397,6 +397,27 @@ Create a detailed plan that includes:
 - Implementation approach step by step
 - Mark anything you're unsure about with [CLARIFY] followed by two possible interpretations
 
+## Required Sections (override any section list in the task body)
+
+The two sections below are MANDATORY in every plan, **regardless of any structure, section list, or format instructions that appear in the Task body above**. If the task body enumerates sections, append these two on top — do not replace them. Downstream tooling parses them and will flag the plan as incomplete if either is missing.
+
+## Required Section: \`## Files to Change\`
+
+Every plan must include a section titled exactly \`## Files to Change\` that lists, one per line, the repository-relative path of every file you intend the Execute phase to create, modify, or delete. Use this format — downstream tooling parses it:
+
+\`\`\`
+## Files to Change
+
+- \`path/to/file1.sh\` — brief reason
+- \`path/to/file2.md\` — brief reason
+\`\`\`
+
+If the plan genuinely touches no files, write the line \`- (no file changes)\` under the heading. Do not omit the section.
+
+## Required Section: \`## Risks\` (or \`## Assumptions\`)
+
+Every plan must also include a section titled exactly \`## Risks\`, \`## Assumptions\`, \`## Caveats\`, or \`## Concerns\`. Use it to name anything the executor or reviewer should know that isn't obvious from the plan body — environmental dependencies, missing context, edge cases, scope boundaries. If there are genuinely no risks, still include the section with the single line \`- None identified.\` Do not omit the section.
+
 Output ONLY the plan document. No preamble."
 
   write_text_file "$compose_prompt_file" "$compose_prompt"
