@@ -1,0 +1,58 @@
+id: 06-multi-file-refactor
+title: Multi-file rename — stress test delta tracking and execution fidelity
+description: >
+  Rename a function across three files. Exercises the delta tracker, checks
+  execution fidelity when the plan's Files to Change list must match reality
+  for more than one file, and gives a cross-AI pair a real problem to
+  disagree about (should the rename be done by grep-replace or by a refactor
+  script?).
+runner:
+  task: |
+    Rename the function `Compute-Total` to `Get-Total` consistently across the
+    repository. Update every caller. Do not introduce compatibility shims or
+    re-exports. The plan's Files to Change section must list every file you
+    intend to modify.
+  composer: claude
+  reviewer: codex
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: src/Compute-Total.ps1
+      content: |
+        function Compute-Total {
+            param([int[]]$Values)
+            ($Values | Measure-Object -Sum).Sum
+        }
+    - path: src/Process-Orders.ps1
+      content: |
+        . "$PSScriptRoot/Compute-Total.ps1"
+        function Process-Orders {
+            param([int[]]$Orders)
+            "Total: $(Compute-Total -Values $Orders)"
+        }
+    - path: tests/Test-ComputeTotal.ps1
+      content: |
+        . "$PSScriptRoot/../src/Compute-Total.ps1"
+        if ((Compute-Total -Values @(1,2,3)) -ne 6) { throw "Compute-Total broken" }
+        "ok"
+    - path: README.md
+      content: |
+        # Fixture 06: Multi-File Refactor
+        The function `Compute-Total` is used in three places.
+expectations:
+  plan_quality:
+    min_word_count: 140
+  execution_fidelity:
+    min_jaccard: 0.7
+  cross_ai_diversity:
+    min_edit_distance: 0.15
+  verify_accuracy:
+    allow_verdict: ["APPROVED", "REVISE"]
+  cost:
+    max_wall_clock_seconds: 900
+teardown:
+  cleanup_temp_repo: true
