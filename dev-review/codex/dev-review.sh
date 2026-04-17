@@ -31,6 +31,7 @@ BASELINE_HASHES_JSON=""
 CURRENT_HASHES_JSON=""
 EXECUTE_DELTA_JSON=""
 RUN_ID=""
+LAST_INVOKE_EXIT_CODE=0
 
 usage() {
   cat <<'EOF'
@@ -47,6 +48,7 @@ Options:
   --plan FILE              Existing plan file to use with --skip-plan
   --model MODEL            Override Codex model
   --workdir DIR            Working directory (default: current directory)
+  --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --help                   Show this help text
 EOF
 }
@@ -106,6 +108,26 @@ invoke_agent() {
       die "Unsupported agent: $agent"
       ;;
   esac
+}
+
+# RNPT-05: Centralized timeout-abort. When LAST_INVOKE_EXIT_CODE==124, record
+# the timeout event in state.json, log a clear error, clean up transient
+# artifacts, and exit with the script's own fatal code 1 (124 lives only in
+# state.json.phases[].exit_code for observability).
+abort_on_timeout() {
+  local phase_name="$1"
+  local phase_start="$2"
+  if (( LAST_INVOKE_EXIT_CODE == 124 )); then
+    local phase_end
+    phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    if [[ -n "${STATE_JSON:-}" ]]; then
+      write_state_phase "$STATE_JSON" "$phase_name" "timeout" 124 "$phase_start" "$phase_end"
+      write_state_field "$STATE_JSON" ".completed_at" "string" "$phase_end"
+    fi
+    log "ERROR: ${phase_name} phase timed out after ${PHASE_TIMEOUT}s - aborting run"
+    cleanup_runtime_artifacts
+    exit 1
+  fi
 }
 
 require_agent_cli() {
@@ -372,7 +394,18 @@ ensure_valid_plan_output() {
     empty|thin)
       log "WARNING: ${phase_name} produced an unusable plan artifact (${PLAN_OUTPUT_REASON}). Retrying once..."
       # RNPT-02: derive writable from the calling phase name (compose/bounce → text).
-      invoke_agent "$agent" "$prompt_file" "$output_file" "$retry_stderr_file" "$(phase_is_writable "$calling_phase")"
+      # RNPT-05: wrap in timeout. If the retry itself times out, propagate upward
+      # (return 1) so the outer phase wrapper can call abort_on_timeout.
+      local _retry_start
+      _retry_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      invoke_agent_with_timeout "$agent" "$prompt_file" "$output_file" "$retry_stderr_file" "$(phase_is_writable "$calling_phase")"
+      if (( LAST_INVOKE_EXIT_CODE == 124 )); then
+        if [[ -n "${STATE_JSON:-}" ]]; then
+          write_state_phase "$STATE_JSON" "${phase_name}-retry" "timeout" 124 "$_retry_start" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        fi
+        log "ERROR: ${phase_name} retry timed out after ${PHASE_TIMEOUT}s"
+        return 1
+      fi
       inspect_plan_output "$agent" "$output_file" "$retry_stderr_file" "$input_file" && return 0
 
       case "$PLAN_OUTPUT_STATUS" in
@@ -441,7 +474,10 @@ Every plan must also include a section titled exactly \`## Risks\`, \`## Assumpt
 Output ONLY the plan document. No preamble."
 
   write_text_file "$compose_prompt_file" "$compose_prompt"
-  invoke_agent "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
+  # RNPT-05: timeout-wrapped. _compose_phase_start set by main flow wrapper;
+  # abort_on_timeout will fire from main flow if the dispatcher reports 124.
+  invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
+  abort_on_timeout "compose" "${_compose_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
@@ -520,7 +556,11 @@ run_bounce_phase() {
     log "--------------------------------------------"
 
     bounce_pass_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
+    printf -v pass_padded '%02d' "$pass"
+    # RNPT-05: timeout-wrapped. abort_on_timeout uses per-pass bounce-NN name
+    # so state.json records which pass hit the timeout.
+    invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
+    abort_on_timeout "bounce-${pass_padded}" "$bounce_pass_start"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
 
     cp "$output_file" "$RUN_DIR/pass-${pass}-${role}-${current_agent}-raw.md"
@@ -531,7 +571,7 @@ run_bounce_phase() {
     # Structural signal for downstream verification (PRTP-04, UPSTREAM-MESSAGE.md item 6).
     # Distinguishes "bounce converged in 0 passes" from "bounce step was skipped entirely."
     # File is persisted under outputs/ so `cleanup_runtime_artifacts` (maxdepth 1) does not delete it.
-    printf -v pass_padded '%02d' "$pass"
+    # (pass_padded already set earlier in loop for abort_on_timeout.)
     cp "$output_file" "$RUN_DIR/outputs/bounce-${pass_padded}.txt"
 
     contested=$(count_markers "$PLAN_PATH" "[CONTESTED]")
@@ -606,7 +646,9 @@ run_execute_phase() {
   execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
-  invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
+  # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
+  invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
+  abort_on_timeout "execute" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
     return 2
@@ -614,7 +656,8 @@ run_execute_phase() {
 
   if [[ ! -s "$execute_output_file" ]]; then
     log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
-    invoke_agent "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute-retry)"
+    invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute-retry)"
+    abort_on_timeout "execute-retry" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   fi
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
@@ -719,9 +762,22 @@ run_verify_phase() {
     # Codex verify uses --output-schema (JSON verdict). This path intentionally
     # bypasses invoke_agent because invoke_codex_schema has distinct semantics
     # (schema-bound output file). RNPT-01 scopes the dispatcher to free-text phases.
-    invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
+    # RNPT-05: wrap invoke_codex_schema in timeout too — hang protection applies.
+    local _verify_cmd_start
+    _verify_cmd_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    if command -v timeout >/dev/null 2>&1; then
+      timeout --foreground "${PHASE_TIMEOUT:-1800}s" \
+        bash -c 'cd "$1" && source "$2/lib/co-evolution.sh"; invoke_codex_schema "$3" "$4" "$5" "$6"' _ \
+        "$PWD" "$REPO_ROOT" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json" \
+        || LAST_INVOKE_EXIT_CODE=$?
+    else
+      invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
+      LAST_INVOKE_EXIT_CODE=0
+    fi
+    abort_on_timeout "verify" "${_verify_phase_start:-$_verify_cmd_start}"
   else
-    invoke_agent "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
+    invoke_agent_with_timeout "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
+    abort_on_timeout "verify" "${_verify_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
@@ -812,6 +868,15 @@ while [[ $# -gt 0 ]]; do
     --workdir)
       [[ $# -gt 1 ]] || die "--workdir requires a value"
       WORKDIR="$2"
+      shift 2
+      ;;
+    --timeout)
+      [[ $# -gt 1 ]] || die "--timeout requires a value"
+      if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" == "0" ]]; then
+        die "--timeout value must be a positive integer (got: $2)"
+      fi
+      # export so bash -c subshell inside invoke_agent_with_timeout inherits it
+      export PHASE_TIMEOUT="$2"
       shift 2
       ;;
     --help)
@@ -923,6 +988,7 @@ log " Bounces:   $BOUNCES"
 log " Verify:    $VERIFY"
 log " Workdir:   $WORKDIR"
 log " Run dir:   $RUN_DIR"
+log " Timeout:   ${PHASE_TIMEOUT}s per phase"
 log "============================================"
 log ""
 
@@ -932,11 +998,12 @@ else
   PLAN_EXIT=0
 
   # RNPT-04: wrap compose with phase timing + state.json record.
-  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  # RNPT-05: _compose_phase_start is visible to abort_on_timeout inside run_compose_phase.
+  _compose_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_compose_phase || PLAN_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "${PLAN_EXIT:-0}" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "compose" "$_phase_status" "${PLAN_EXIT:-0}" "$_phase_start" "$_phase_end"
+  write_state_phase "$STATE_JSON" "compose" "$_phase_status" "${PLAN_EXIT:-0}" "$_compose_phase_start" "$_phase_end"
 
   if [[ "$PLAN_EXIT" -eq 0 ]]; then
     # RNPT-04: bounce — per-pass entries written from inside run_bounce_phase.
@@ -978,11 +1045,12 @@ fi
 EXECUTE_EXIT=0
 if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
   # RNPT-04: wrap execute with phase timing + state.json record.
-  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  # RNPT-05: _execute_phase_start is visible to abort_on_timeout inside run_execute_phase.
+  _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_execute_phase || EXECUTE_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_phase_start" "$_phase_end"
+  write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
 else
   EXECUTE_EXIT="${PLAN_EXIT:-0}"
 fi
@@ -990,11 +1058,12 @@ fi
 VERIFY_EXIT=0
 if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
   # RNPT-04: wrap verify with phase timing + verdict capture.
-  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  # RNPT-05: _verify_phase_start visible to abort_on_timeout inside run_verify_phase.
+  _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_verify_phase || VERIFY_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_phase_start" "$_phase_end"
+  write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
 
   # Capture verdict (set by run_verify_phase via eval of VERDICT=...).
   if [[ -n "${VERDICT:-}" ]]; then
