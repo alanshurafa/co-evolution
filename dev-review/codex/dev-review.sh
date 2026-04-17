@@ -26,6 +26,11 @@ INITIAL_GIT_DIRTY=false
 INITIAL_GIT_STATUS=""
 PRE_EXECUTE_SHA=""
 POST_EXECUTE_SHA=""
+STATE_JSON=""
+BASELINE_HASHES_JSON=""
+CURRENT_HASHES_JSON=""
+EXECUTE_DELTA_JSON=""
+RUN_ID=""
 
 usage() {
   cat <<'EOF'
@@ -489,6 +494,8 @@ run_bounce_phase() {
     return 0
   fi
 
+  local bounce_pass_start=""
+  local bounce_pass_end=""
   for (( pass=1; pass<=max_bounces; pass++ )); do
     if (( pass % 2 == 1 )); then
       role="reviewer"
@@ -512,6 +519,7 @@ run_bounce_phase() {
     log " BOUNCE $pass/$max_bounces - ${role} (${current_agent})"
     log "--------------------------------------------"
 
+    bounce_pass_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
 
@@ -540,6 +548,13 @@ run_bounce_phase() {
     final_markers="$total_markers"
     final_contested="$contested"
     final_clarify="$clarify"
+
+    # RNPT-04: Per-pass bounce-NN entry in state.json.
+    bounce_pass_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    if [[ -n "${STATE_JSON:-}" ]]; then
+      write_state_phase "$STATE_JSON" "bounce-${pass_padded}" "ok" 0 "$bounce_pass_start" "$bounce_pass_end"
+    fi
+
     if [[ "$auto_converge" == "true" && "$total_markers" -eq 0 ]]; then
       log "Plan converged after $pass passes (no open markers)."
       log ""
@@ -580,6 +595,13 @@ run_execute_phase() {
     PRE_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
   fi
 
+  # RNPT-03: Capture pre-execute baseline hash of every workdir file.
+  # Delta computed post-execute and written into state.json.
+  if [[ -n "${STATE_JSON:-}" && -n "${BASELINE_HASHES_JSON:-}" ]]; then
+    snapshot_workdir_hashes "$WORKDIR" "$BASELINE_HASHES_JSON"
+    write_state_field "$STATE_JSON" ".baseline_hashes" "rawfile" "$BASELINE_HASHES_JSON"
+  fi
+
   plan_content=$(cat "$PLAN_PATH")
   execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
   write_text_file "$execute_prompt_file" "$execute_prompt"
@@ -607,6 +629,14 @@ run_execute_phase() {
   if [[ "$IN_GIT" == "true" ]]; then
     POST_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
     status_output=$(git -C "$WORKDIR" status --short)
+
+    # RNPT-03: Post-execute delta (runs regardless of "no changes" branch below
+    # so Phase 8 scorer sees an empty delta rather than a missing field).
+    if [[ -n "${STATE_JSON:-}" && -n "${CURRENT_HASHES_JSON:-}" && -n "${EXECUTE_DELTA_JSON:-}" ]]; then
+      snapshot_workdir_hashes "$WORKDIR" "$CURRENT_HASHES_JSON"
+      compute_execute_delta   "$BASELINE_HASHES_JSON" "$CURRENT_HASHES_JSON" "$EXECUTE_DELTA_JSON"
+      write_state_field "$STATE_JSON" ".execute_delta" "rawfile" "$EXECUTE_DELTA_JSON"
+    fi
 
     if [[ "$PRE_EXECUTE_SHA" == "$POST_EXECUTE_SHA" && "$status_output" == "$INITIAL_GIT_STATUS" ]]; then
       log "WARNING: no changes detected after execute phase. Review the executor output manually."
@@ -864,6 +894,17 @@ mkdir -p "$RUN_DIR/outputs"
 PLAN_PATH="${RUN_DIR}/plan.md"
 LOG_FILE="${RUN_DIR}/run.log"
 
+# RNPT-03/04: state.json lifecycle — permanent per-run record + intermediate
+# hash manifests used for delta tracking. Dot-prefixed intermediates are swept
+# by cleanup_runtime_artifacts; state.json itself has no leading dot and
+# survives cleanup as the permanent ground-truth record.
+STATE_JSON="${RUN_DIR}/state.json"
+BASELINE_HASHES_JSON="${RUN_DIR}/.baseline-hashes.json"
+CURRENT_HASHES_JSON="${RUN_DIR}/.current-hashes.json"
+EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
+RUN_ID="dev-review-${TIMESTAMP}"
+init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
+
 if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   IN_GIT=true
   INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
@@ -889,9 +930,27 @@ if [[ "$SKIP_PLAN" == "true" ]]; then
   cp "$PLAN_SOURCE" "$PLAN_PATH"
 else
   PLAN_EXIT=0
+
+  # RNPT-04: wrap compose with phase timing + state.json record.
+  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_compose_phase || PLAN_EXIT=$?
+  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  _phase_status=$([[ "${PLAN_EXIT:-0}" -eq 0 ]] && echo "ok" || echo "error")
+  write_state_phase "$STATE_JSON" "compose" "$_phase_status" "${PLAN_EXIT:-0}" "$_phase_start" "$_phase_end"
+
   if [[ "$PLAN_EXIT" -eq 0 ]]; then
+    # RNPT-04: bounce — per-pass entries written from inside run_bounce_phase.
+    _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     run_bounce_phase "$MAX_BOUNCES" "$AUTO_CONVERGE" || PLAN_EXIT=$?
+    _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Update marker counts in state.json (from the final plan).
+    if [[ -s "$PLAN_PATH" ]]; then
+      _contested=$(count_markers "$PLAN_PATH" "[CONTESTED]")
+      _clarify=$(count_markers "$PLAN_PATH" "[CLARIFY]")
+      write_state_field "$STATE_JSON" ".marker_counts.contested" "number" "${_contested:-0}"
+      write_state_field "$STATE_JSON" ".marker_counts.clarify"   "number" "${_clarify:-0}"
+    fi
   fi
 fi
 
@@ -903,6 +962,9 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
       log "Latest valid plan saved to: $PLAN_PATH"
     fi
   fi
+  # RNPT-04: record completion even on plan-only exit so Phase 8 eval sees a
+  # terminated run rather than one that looks crashed mid-phase.
+  write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   cleanup_runtime_artifacts
   if [[ "${PLAN_EXIT:-0}" -eq 2 ]]; then
     exit 2
@@ -915,15 +977,33 @@ fi
 
 EXECUTE_EXIT=0
 if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
+  # RNPT-04: wrap execute with phase timing + state.json record.
+  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_execute_phase || EXECUTE_EXIT=$?
+  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+  write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_phase_start" "$_phase_end"
 else
   EXECUTE_EXIT="${PLAN_EXIT:-0}"
 fi
 
 VERIFY_EXIT=0
 if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
+  # RNPT-04: wrap verify with phase timing + verdict capture.
+  _phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   run_verify_phase || VERIFY_EXIT=$?
+  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+  write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_phase_start" "$_phase_end"
+
+  # Capture verdict (set by run_verify_phase via eval of VERDICT=...).
+  if [[ -n "${VERDICT:-}" ]]; then
+    write_state_field "$STATE_JSON" ".verify_verdict" "string" "$VERDICT"
+  fi
 fi
+
+# RNPT-04: run completion timestamp (before cleanup sweeps transient dotfiles).
+write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 cleanup_runtime_artifacts
 
