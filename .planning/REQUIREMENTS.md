@@ -1,122 +1,35 @@
 # Requirements: Co-Evolution
 
-**Defined:** 2026-04-06
 **Core Value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
 
-## v1 Requirements
+> Completed requirements are archived per milestone under `.planning/milestones/`.
+> This file tracks only requirements for the **active / next milestone**.
 
-### Shared Shell Core
+## Completed Milestones
 
-- [x] **CORE-01**: Maintainer can source `lib/co-evolution.sh` without triggering side effects at source time
-- [x] **CORE-02**: Shared library exposes reusable shell helpers for agent invocation, marker counting, HUMAN SUMMARY stripping, output validation, template filling, conditional block handling, logging, and verdict parsing
+- **v1.0 Unification Absorb** — 27/27 requirements Complete (10 v1 CORE/BNCR/CDRT/DOCS + 17 v3 CXPS/PRTP/RNPT/EVAL/LABF). See [`milestones/v1.0-REQUIREMENTS.md`](milestones/v1.0-REQUIREMENTS.md) for full traceability.
 
-### Agent Bouncer
+## Carried Forward (deferred — candidates for next milestone)
 
-- [x] **BNCR-01**: Agent Bouncer sources the shared library instead of duplicating helper implementations
-- [x] **BNCR-02**: Agent Bouncer preserves its current run artifact names, clean-output behavior, marker counting behavior, and retry logic after the refactor
+These were scoped but not shipped in v1.0. Scope via `/gsd-new-milestone` when ready.
 
-### Codex Runtime
-
-- [x] **CDRT-01**: Maintainer can run `dev-review/codex/dev-review.sh` to execute compose, bounce, execute, and optional verify phases from the shell
-- [x] **CDRT-02**: Codex runtime supports `--composer`, `--executor`, `--bounces`, `--verify`, `--plan-only`, `--skip-plan`, `--plan FILE`, `--model`, and `--workdir`
-- [x] **CDRT-03**: Codex runtime always embeds plan content inline in prompts so the canonical plan path is not exposed to the agent executor
-- [x] **CDRT-04**: Codex runtime writes durable run artifacts and returns exit codes for success, fatal failure, and revise verdicts
-
-### Docs And Routing
-
-- [x] **DOCS-01**: Maintainer can use a Codex instruction file to route between `dev-review.sh`, `agent-bouncer.sh`, and direct execution
-- [x] **DOCS-02**: Repo docs explain the Codex runtime and its supported usage patterns
-
-## v2 Requirements
-
-### Runtime Ergonomics
+### Runtime Ergonomics (from v2 bucket)
 
 - **RTUX-01**: Codex runtime can launch visible Windows terminals for live pass-by-pass observation
 - **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically
 - **RTUX-03**: Codex runtime can loop automatically on REVISE verdicts until approval or user stop
 
-## v3 Requirements — Unification Absorb (2026-04-17)
+### Post-v1.0 Follow-ups (from code review + deferred-ideas)
 
-Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Adopts MUST-items from the private Codex reference implementation, ports runner parity features, and absorbs the eval harness.
+- **BASH-EVAL-01**: Bash port of the PowerShell eval harness (`run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) — removes `pwsh` dependency from eval runs (~2 days estimated)
+- **META-01**: Protocol Evolution Loop — automated bounce-to-improve-the-bouncer using evals as fitness function. Reads eval failures, proposes protocol/prompt/adapter deltas, bounces them, scores against the same cases, keeps improvements.
+- **FIX-WR-01**: Reset `LAST_INVOKE_EXIT_CODE=0` before the codex verify conditional at `dev-review/codex/dev-review.sh:768-776` (latent, not firing today)
+- **FIX-WR-02**: Clean up `mktemp` temp files on jq failure in `write_state_phase` / `write_state_field` (cosmetic leak in `$TMPDIR`)
+- **FIX-WR-03**: Pass phase-start timestamps as explicit function args rather than relying on enclosing-scope globals with `${var:-fallback}` fallback pattern
 
-### Codex PS Preservation
+## Active Requirements
 
-- [x] **CXPS-01**: `runners/codex-ps/` contains the full `codex-co-evolution/` tree verbatim (scripts, templates, schemas, docs, evals)
-- [x] **CXPS-02**: `runners/codex-ps/` is documented as a read-only reference impl; subsequent phases do not extend it
-
-### Protocol Parity
-
-- [x] **PRTP-01**: Claude adapter uses `--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch"` on text-producing phases (compose, bounce, review, arbitrate)
-- [x] **PRTP-02**: Claude adapter uses `--permission-mode bypassPermissions --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git status),Bash(git diff)" --add-dir <workdir>` on write-producing phases (execute, fix)
-- [x] **PRTP-03**: No code path passes `--json-schema` to Claude (confirmed broken on Windows in `-p` mode as of 2026-04-17)
-- [x] **PRTP-04**: Verification layer checks for `outputs/bounce-NN.txt` files alongside semantic marker counts to distinguish "converged in 0 passes" from "bounce skipped entirely"
-- [x] **PRTP-05**: `runners/codex-ps/templates/bounce-protocol.md` is reconciled to match the main repo's stronger version ("complete document" + SCOPE CONTROL clauses preserved)
-
-### Runner Parity
-
-- [x] **RNPT-01**: One agent dispatcher function routes by provider; phase code calls it instead of hard-coding provider names
-- [x] **RNPT-02**: Write-phase vs text-phase is a flag; drives Claude permission mode + allowed-tools selection
-- [x] **RNPT-03**: Pre-execute baseline snapshot hashes every repo file; post-execute produces a `{modified, added, deleted}` delta consumed by verify and the `execution_fidelity` scorer
-- [x] **RNPT-04**: One structured `state.json` per run captures phase history, marker counts, changed files, and verify verdict as ground truth
-- [x] **RNPT-05**: Per-phase timeout aborts runaway phases and records the timeout in `state.json`
-
-### Evals Absorbed
-
-- [x] **EVAL-01**: `evals/cases/*.yaml` (with `defaults.yaml`) live at the top level, available to any runner
-- [x] **EVAL-02**: `evals/fixtures/`, `evals/VERIFICATION-PLAN.md`, and `schemas/review-verdict.json` live at the top level
-- [x] **EVAL-03**: PS-specific harness (`run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) stays under `runners/codex-ps/`; `pwsh` documented as optional dependency for running evals
-
-### Lab Folded
-
-- [x] **LABF-01**: `co-evolution-lab/integrations/` contents folded under the unified repo's `integrations/` (or deleted if empty/stale)
-- [x] **LABF-02**: `mempalace.yaml` preserved as a reference integration config; Karpathy's `autoresearch` explicitly excluded with rationale documented in PROJECT.md
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Visible live mode in this pass | Adds platform-specific complexity before the core runtime is proven |
-| Automatic worktree or branch management | Useful later, but not required to prove the runtime orchestration |
-| Repo-wide `skill/` restructure | Separate concern from the Codex runtime delivery |
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| CORE-01 | Phase 1 | Complete |
-| CORE-02 | Phase 1 | Complete |
-| BNCR-01 | Phase 2 | Complete |
-| BNCR-02 | Phase 2 | Complete |
-| CDRT-01 | Phase 3 | Complete |
-| CDRT-02 | Phase 3 | Complete |
-| CDRT-03 | Phase 3 | Complete |
-| CDRT-04 | Phase 3 | Complete |
-| DOCS-01 | Phase 4 | Complete |
-| DOCS-02 | Phase 4 | Complete |
-| CXPS-01 | Phase 5 | Complete |
-| CXPS-02 | Phase 5 | Complete |
-| PRTP-01 | Phase 6 | Complete |
-| PRTP-02 | Phase 6 | Complete |
-| PRTP-03 | Phase 6 | Complete |
-| PRTP-04 | Phase 6 | Complete |
-| PRTP-05 | Phase 6 | Complete |
-| RNPT-01 | Phase 7 | Complete |
-| RNPT-02 | Phase 7 | Complete |
-| RNPT-03 | Phase 7 | Complete |
-| RNPT-04 | Phase 7 | Complete |
-| RNPT-05 | Phase 7 | Complete |
-| EVAL-01 | Phase 8 | Complete |
-| EVAL-02 | Phase 8 | Complete |
-| EVAL-03 | Phase 8 | Complete |
-| LABF-01 | Phase 9 | Complete |
-| LABF-02 | Phase 9 | Complete |
-
-**Coverage:**
-- v1 requirements: 10 total (all Complete)
-- v3 requirements: 17 total — 17 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05 + EVAL-01..03 + LABF-01/02)
-- Mapped to phases: 27
-- Unmapped: 0 ✓
+None. Start the next milestone via `/gsd-new-milestone` to populate this section.
 
 ---
-*Requirements defined: 2026-04-06*
-*Last updated: 2026-04-17 — LABF-01/02 marked Complete after Phase 9 execution; Unification Absorb milestone closed (17/17 v3 requirements Complete)*
+*Active requirements reset at each milestone boundary. Historical requirements live in `milestones/vN.N-REQUIREMENTS.md`.*
