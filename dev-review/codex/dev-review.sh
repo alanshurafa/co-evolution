@@ -1067,34 +1067,97 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   exit 0
 fi
 
+# RTUX-03: REVISE auto-loop. Default REVISE_LOOP_MAX=0 runs exactly one pass
+# with bare "execute"/"verify" phase names — byte-identical to v1.0 behavior.
+# N>=1 allows up to N additional passes on a REVISE verdict, each recorded as
+# "execute-2"/"verify-2" etc. The loop body is extracted into _run_revise_loop
+# so tests/revise-loop-simulation.sh can exercise the same implementation.
+if [[ "$REVISE_LOOP_MAX" -gt 0 ]]; then
+  log "REVISE auto-loop enabled: up to $REVISE_LOOP_MAX extra pass(es) on REVISE verdict"
+fi
+
 EXECUTE_EXIT=0
-if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
-  # RNPT-04: wrap execute with phase timing + state.json record.
-  # FIX-WR-03: pass phase start timestamp explicitly.
-  _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
-  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
-else
-  EXECUTE_EXIT="${PLAN_EXIT:-0}"
-fi
-
 VERIFY_EXIT=0
-if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
-  # RNPT-04: wrap verify with phase timing + verdict capture.
-  # FIX-WR-03: pass phase start timestamp explicitly.
-  _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
-  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
 
-  # Capture verdict (set by run_verify_phase via eval of VERDICT=...).
-  if [[ -n "${VERDICT:-}" ]]; then
-    write_state_field "$STATE_JSON" ".verify_verdict" "string" "$VERDICT"
-  fi
-fi
+_run_revise_loop() {
+  local current_pass=1
+  local max_pass=$((REVISE_LOOP_MAX + 1))
+  local exec_name verify_name
+  local _execute_phase_start _verify_phase_start _phase_end _phase_status
+
+  while [[ "$current_pass" -le "$max_pass" ]]; do
+    # Phase names: pass 1 uses bare "execute"/"verify" for backwards compat;
+    # pass 2+ uses "execute-N"/"verify-N" (N = current_pass). Matches the
+    # ^execute-[0-9]+$ gate in phase_is_writable so retry passes remain writable.
+    if [[ "$current_pass" -eq 1 ]]; then
+      exec_name="execute"
+      verify_name="verify"
+    else
+      exec_name="execute-${current_pass}"
+      verify_name="verify-${current_pass}"
+    fi
+
+    # ---- execute ----
+    if [[ "${PLAN_EXIT:-0}" -ne 0 ]]; then
+      EXECUTE_EXIT="${PLAN_EXIT:-0}"
+      return 0
+    fi
+
+    # RTUX-03: Feedback handshake with Task 3's build_execution_prompt. On pass 1
+    # REVISE_FEEDBACK_JSON must be unset so the conditional block is stripped and
+    # the prompt is byte-identical to v1.0. On pass 2+ it carries the prior verdict.
+    if [[ "$current_pass" -gt 1 ]]; then
+      export REVISE_FEEDBACK_JSON="${REVISE_FEEDBACK_JSON:-}"
+    else
+      unset REVISE_FEEDBACK_JSON
+    fi
+
+    _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    EXECUTE_EXIT=0
+    run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
+    _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+    write_state_phase "$STATE_JSON" "$exec_name" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
+    [[ "$EXECUTE_EXIT" -ne 0 ]] && return 0
+
+    # ---- verify (only when requested) ----
+    if [[ "$VERIFY" != "true" ]]; then
+      return 0
+    fi
+    _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    VERIFY_EXIT=0
+    # Clear prior verdict globals so a hung/empty verify pass can't leak them.
+    unset VERDICT CONFIDENCE SUMMARY
+    run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
+    _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+    write_state_phase "$STATE_JSON" "$verify_name" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
+    if [[ -n "${VERDICT:-}" ]]; then
+      write_state_field "$STATE_JSON" ".verify_verdict" "string" "$VERDICT"
+    fi
+
+    # ---- loop decision ----
+    # APPROVED (VERIFY_EXIT=0) → done.
+    # REVISE (VERIFY_EXIT=2, VERDICT=REVISE, budget remaining) → retry.
+    # Anything else (auth/timeout/empty/not-a-git-repo) → non-retryable, exit.
+    if [[ "$VERIFY_EXIT" -eq 0 ]]; then
+      return 0
+    fi
+    if [[ "$VERIFY_EXIT" -eq 2 && "${VERDICT:-}" == "REVISE" && "$current_pass" -lt "$max_pass" ]]; then
+      # T-02-06 mitigation: capture verdict JSON into memory BEFORE the retry
+      # loop advances. cleanup_runtime_artifacts only runs after _run_revise_loop
+      # returns, but being explicit here removes any TOCTOU ambiguity.
+      REVISE_FEEDBACK_JSON=$(cat "$RUN_DIR/.verdict-normalized.json" 2>/dev/null || printf '%s' '{}')
+      export REVISE_FEEDBACK_JSON
+      current_pass=$((current_pass + 1))
+      continue
+    fi
+    return 0
+  done
+}
+
+_run_revise_loop
+unset REVISE_FEEDBACK_JSON
 
 # RNPT-04: run completion timestamp (before cleanup sweeps transient dotfiles).
 write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

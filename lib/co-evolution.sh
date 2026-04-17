@@ -26,6 +26,11 @@ die() {
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
 # (e.g. a future `fix` phase), append its name to this array.
+#
+# RTUX-03: execute-2..execute-N are the REVISE auto-loop retry passes. Rather
+# than enumerate every possible pass number here, `phase_is_writable` carries
+# a second regex gate that accepts ^execute-[0-9]+$ specifically. The anchor
+# is tight so names like `execute-;rm-rf` or `verify-99` cannot slip through.
 WRITABLE_PHASES=(execute execute-retry fix)
 
 # phase_is_writable <phase-name> → prints "true" or "false" on stdout.
@@ -40,6 +45,12 @@ phase_is_writable() {
       return 0
     fi
   done
+  # RTUX-03: REVISE-loop numbered retry passes (execute-2, execute-3, ...).
+  # Anchored regex prevents command-injection-style phase names from matching.
+  if [[ "$phase_name" =~ ^execute-[0-9]+$ ]]; then
+    printf '%s' "true"
+    return 0
+  fi
   printf '%s' "false"
   return 0
 }
