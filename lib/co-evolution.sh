@@ -16,6 +16,28 @@ die() {
   exit 1
 }
 
+# RNPT-02: Authoritative list of phases that require write access to the workdir.
+# Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
+# call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
+# (e.g. a future `fix` phase), append its name to this array.
+WRITABLE_PHASES=(execute execute-retry fix)
+
+# phase_is_writable <phase-name> → prints "true" or "false" on stdout.
+# Fail-safe: unknown phase names return "false" (downgrade to text-phase posture)
+# so an attacker-controlled phase name cannot escalate to write permissions.
+phase_is_writable() {
+  local phase_name="${1:?phase_is_writable requires a phase name}"
+  local candidate
+  for candidate in "${WRITABLE_PHASES[@]}"; do
+    if [[ "$phase_name" == "$candidate" ]]; then
+      printf '%s' "true"
+      return 0
+    fi
+  done
+  printf '%s' "false"
+  return 0
+}
+
 invoke_claude() {
   local prompt_file="$1"
   local output_file="$2"
