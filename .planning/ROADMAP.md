@@ -25,7 +25,7 @@ Absorb the private `codex-co-evolution/` reference implementation + eval harness
 - [x] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
 - [x] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
 - [x] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
-- [ ] **Phase 9: Lab Folded** - Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo; exclude Karpathy's auto-research (unrelated ML training)
+- [x] **Phase 9: Lab Folded** - Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo; exclude Karpathy's auto-research (unrelated ML training)
 
 ## Phase Details
 
@@ -153,7 +153,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 09-01: Fold mempalace.yaml into integrations/ and document lab-absorb exclusions
+- [x] 09-01: Fold mempalace.yaml into integrations/ and document lab-absorb exclusions
 
 ## Progress
 
@@ -170,4 +170,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 6. Protocol Parity | 3/3 | Complete | 2026-04-17 |
 | 7. Runner Parity | 3/3 | Complete | 2026-04-17 |
 | 8. Evals Absorbed | 1/1 | Complete | 2026-04-17 |
-| 9. Lab Folded | 0/1 | Planned | - |
+| 9. Lab Folded | 1/1 | Complete | 2026-04-17 |

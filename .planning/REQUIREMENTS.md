@@ -68,8 +68,8 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 ### Lab Folded
 
-- **LABF-01**: `co-evolution-lab/integrations/` contents folded under the unified repo's `integrations/` (or deleted if empty/stale)
-- **LABF-02**: `mempalace.yaml` preserved as a reference integration config; Karpathy's `autoresearch` explicitly excluded with rationale documented in PROJECT.md
+- [x] **LABF-01**: `co-evolution-lab/integrations/` contents folded under the unified repo's `integrations/` (or deleted if empty/stale)
+- [x] **LABF-02**: `mempalace.yaml` preserved as a reference integration config; Karpathy's `autoresearch` explicitly excluded with rationale documented in PROJECT.md
 
 ## Out of Scope
 
@@ -108,15 +108,15 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 | EVAL-01 | Phase 8 | Complete |
 | EVAL-02 | Phase 8 | Complete |
 | EVAL-03 | Phase 8 | Complete |
-| LABF-01 | Phase 9 | Planned |
-| LABF-02 | Phase 9 | Planned |
+| LABF-01 | Phase 9 | Complete |
+| LABF-02 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 10 total (all Complete)
-- v3 requirements: 17 total — 15 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05 + EVAL-01..03), 2 Planned (LABF-01/02)
+- v3 requirements: 17 total — 17 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05 + EVAL-01..03 + LABF-01/02)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-17 — EVAL-01..03 marked Complete after Phase 8 execution*
+*Last updated: 2026-04-17 — LABF-01/02 marked Complete after Phase 9 execution; Unification Absorb milestone closed (17/17 v3 requirements Complete)*
