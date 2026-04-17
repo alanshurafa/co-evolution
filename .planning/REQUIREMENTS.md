@@ -62,9 +62,9 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 ### Evals Absorbed
 
-- **EVAL-01**: `evals/cases/*.yaml` (with `defaults.yaml`) live at the top level, available to any runner
-- **EVAL-02**: `evals/fixtures/`, `evals/VERIFICATION-PLAN.md`, and `schemas/review-verdict.json` live at the top level
-- **EVAL-03**: PS-specific harness (`run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) stays under `runners/codex-ps/`; `pwsh` documented as optional dependency for running evals
+- [x] **EVAL-01**: `evals/cases/*.yaml` (with `defaults.yaml`) live at the top level, available to any runner
+- [x] **EVAL-02**: `evals/fixtures/`, `evals/VERIFICATION-PLAN.md`, and `schemas/review-verdict.json` live at the top level
+- [x] **EVAL-03**: PS-specific harness (`run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) stays under `runners/codex-ps/`; `pwsh` documented as optional dependency for running evals
 
 ### Lab Folded
 
@@ -105,18 +105,18 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 | RNPT-03 | Phase 7 | Complete |
 | RNPT-04 | Phase 7 | Complete |
 | RNPT-05 | Phase 7 | Complete |
-| EVAL-01 | Phase 8 | Planned |
-| EVAL-02 | Phase 8 | Planned |
-| EVAL-03 | Phase 8 | Planned |
+| EVAL-01 | Phase 8 | Complete |
+| EVAL-02 | Phase 8 | Complete |
+| EVAL-03 | Phase 8 | Complete |
 | LABF-01 | Phase 9 | Planned |
 | LABF-02 | Phase 9 | Planned |
 
 **Coverage:**
 - v1 requirements: 10 total (all Complete)
-- v3 requirements: 17 total — 12 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05), 5 Planned (EVAL-01..03 + LABF-01/02)
+- v3 requirements: 17 total — 15 Complete (CXPS-01/02 + PRTP-01..05 + RNPT-01..05 + EVAL-01..03), 2 Planned (LABF-01/02)
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-17 — RNPT-01..05 marked Complete after Phase 7 execution*
+*Last updated: 2026-04-17 — EVAL-01..03 marked Complete after Phase 8 execution*

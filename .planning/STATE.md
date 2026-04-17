@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 complete — Runner Parity landed (3 plans, 9 tasks, 6 commits, RNPT-01..05); ready for Phase 8 (Evals Absorbed)
-last_updated: "2026-04-17T21:00:00.000Z"
-last_activity: 2026-04-17 -- Phase 07 execution complete
+stopped_at: Phase 8 complete — Evals Absorbed landed (1 plan, 4 tasks, 4 commits, EVAL-01..03); ready for Phase 9 (Lab Folded, final milestone phase)
+last_updated: "2026-04-17T22:00:00.000Z"
+last_activity: 2026-04-17 -- Phase 08 execution complete
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 12
-  completed_plans: 11
+  completed_phases: 8
+  total_plans: 13
+  completed_plans: 12
   percent: 92
 ---
 
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 8 of 9 (Evals Absorbed — ready to plan)
-Plan: 3 of 3 in previous phase complete (07-01, 07-02, 07-03 landed)
-Status: Ready to plan Phase 8
-Last activity: 2026-04-17 -- Phase 07 execution complete
+Phase: 9 of 9 (Lab Folded — ready to plan; final milestone phase)
+Plan: 1 of 1 in previous phase complete (08-01 landed)
+Status: Ready to plan Phase 9
+Last activity: 2026-04-17 -- Phase 08 execution complete
 Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
 
-Progress: [########--] 7/9 phases complete (Phase 7 of Unification Absorb done)
+Progress: [########.-] 8/9 phases complete (Phase 8 of Unification Absorb done)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 17 min
-- Total execution time: 3.2 hours
+- Total execution time: 3.5 hours
 
 **By Phase:**
 
@@ -52,11 +52,12 @@ Progress: [########--] 7/9 phases complete (Phase 7 of Unification Absorb done)
 | 5. Codex PS Preservation | 1 | 0.25h | 0.25h |
 | 6. Protocol Parity | 3 | 1.0h | 0.33h |
 | 7. Runner Parity | 3 | 0.83h | 0.28h |
+| 8. Evals Absorbed | 1 | 0.25h | 0.25h |
 
 **Recent Trend:**
 
-- Last 5 plans: 07-03, 07-02, 07-01, 06-02, 06-03
-- Trend: Stable (Phase 7 plans averaged 17min — infrastructure refactor efficiency holds)
+- Last 5 plans: 08-01, 07-03, 07-02, 07-01, 06-02
+- Trend: Fast (Phase 8 was a pure asset-elevation phase — 15min for 4 tasks, 14 byte-identical copies plus one new README; no code changes, zero deviations beyond a README backtick fix)
 
 *Updated after each plan completion*
 
@@ -93,6 +94,11 @@ Recent decisions affecting current work:
 - [Phase 7]: timeout --foreground required (keeps signal handling with invoking shell so SIGTERM reaches network-blocked CLI children)
 - [Phase 7]: invoke_agent_with_timeout re-sources lib in bash -c subshell (safer than export -f on MINGW64)
 - [Phase 7]: abort_on_timeout centralizes timeout-abort — one code path records state, logs, cleans up, exits 1
+- [Phase 8]: Copy, don't move — runners/codex-ps/ remains the Phase-5 byte-identical audit trail (CXPS-02); top-level copies are a parallel portable slice, not a replacement
+- [Phase 8]: Schema lands at repo-root schemas/ (not evals/schemas/) because the dev-review verdict parser consumes it too, not just the eval harness
+- [Phase 8]: Empty fixtures/seed-repos/ and seeded-bugs/ NOT copied — no portable content; gitignore extension covers the tmp/ and reports/ runtime paths a future Bash harness would populate
+- [Phase 8]: Single sentence in evals/README.md drops backticks around `pwsh` so the literal phrase "pwsh is optional" is grep-matchable per the EVAL-03 acceptance gate; rest of README keeps inline-code formatting
+- [Phase 8]: .gitignore entries placed in a named block below the runners/codex-ps/ block so the parallel structure (PS runtime vs future Bash harness runtime) is visible to future readers
 - [Milestone: Unification Absorb]: Full merge of codex-co-evolution into this public repo (pseudonymity concern moot — no commits ever landed separately)
 - [Milestone: Unification Absorb]: Feature branch + draft PR discipline; new worktree at `co-evolution-absorb/` isolated from `co-evolution/` (archive) and `co-evolution-clean/` (master tip)
 - [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
@@ -101,23 +107,22 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 8 (Evals Absorbed) — elevate portable eval assets (cases/, fixtures/, VERIFICATION-PLAN.md, schemas/review-verdict.json) to top-level evals/; keep PS-specific harness under runners/codex-ps/; document pwsh as optional dependency
-- Plan Phase 9 (Lab Folded) — fold co-evolution-lab/integrations/ + mempalace.yaml; exclude Karpathy's autoresearch
+- Plan Phase 9 (Lab Folded, final milestone phase) — fold co-evolution-lab/integrations/ + mempalace.yaml; exclude Karpathy's autoresearch
 - Archive `C:/Users/alan/Project/codex-co-evolution/` workspace — verbatim copy safely preserved at runners/codex-ps/
-- Future: Bash port of PS eval harness (~2 days, deferred post-milestone)
+- Future: Bash port of PS eval harness (~2 days, deferred post-milestone; portable assets now reachable at repo root so no blockers on asset location)
 - Future: Protocol Evolution Loop (meta-bounce for self-improving prompts, post-milestone)
 
 ### Blockers/Concerns
 
 - RNPT-05 (per-phase timeout) LANDED — upstream's 1h 39min hang category now bounded; smoke test Test A proves a 5s hang is killed in 2.07s wall-clock with exit 124.
-- `pwsh` dependency introduced by Phase 8 — optional but required to run PS eval harness. Document clearly.
+- `pwsh` dependency documented as OPTIONAL in evals/README.md — Phase 8 completed EVAL-03; Bash runner (agent-bouncer, dev-review) remains pwsh-free end-to-end.
 - Claude `--json-schema` broken on Windows in `-p` mode — must NOT be used; prompt-side JSON + parse-side validation only (PRTP-03)
-- Phase 8 eval scorer now has a machine-readable ground-truth input: `$RUN_DIR/state.json` with full schema (run_id/task/agents/phases[]/marker_counts/baseline_hashes/execute_delta/verify_verdict/started_at/completed_at)
+- Phase 8 eval scorer now has a machine-readable ground-truth input: `$RUN_DIR/state.json` with full schema (run_id/task/agents/phases[]/marker_counts/baseline_hashes/execute_delta/verify_verdict/started_at/completed_at); portable cases + fixtures + schema all reachable from repo root.
 
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 7 execution complete — Runner Parity (RNPT-01 through RNPT-05) landed across 3 plans / 9 tasks / 6 commits (cf59338, fb2e142, 69d0350, f3bb0f5, 987f484, d31819e, all pushed); ready for Phase 8 planning (Evals Absorbed)
+Stopped at: Phase 8 execution complete — Evals Absorbed (EVAL-01, EVAL-02, EVAL-03) landed across 1 plan / 4 tasks / 4 commits (6f337da, 011c443, 5558d07, c6679ac, all pushed); ready for Phase 9 planning (Lab Folded — final milestone phase)
 Resume file: None — use `git log feat/unification-absorb` for full context
 Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft)
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 landed in Phase 6; parity items 1-5 all landed in Phase 7)
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 landed in Phase 6; parity items 1-5 all landed in Phase 7; portable artifacts table landed in Phase 8)

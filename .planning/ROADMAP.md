@@ -24,7 +24,7 @@ Absorb the private `codex-co-evolution/` reference implementation + eval harness
 - [x] **Phase 5: Codex PS Preservation** - Copy `codex-co-evolution/` contents verbatim into `runners/codex-ps/` as read-only reference impl + audit trail
 - [x] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
 - [x] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
-- [ ] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
+- [x] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
 - [ ] **Phase 9: Lab Folded** - Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo; exclude Karpathy's auto-research (unrelated ML training)
 
 ## Phase Details
@@ -139,7 +139,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Elevate portable eval assets (cases, fixtures, VERIFICATION-PLAN, review-verdict schema) to top-level and add README documenting pwsh-optional split
+- [x] 08-01: Elevate portable eval assets (cases, fixtures, VERIFICATION-PLAN, review-verdict schema) to top-level and add README documenting pwsh-optional split
 
 ### Phase 9: Lab Folded
 **Goal**: Fold the unique contributions of `co-evolution-lab/` (integrations + memory config) into the unified repo; explicitly exclude Karpathy's `autoresearch` clone as unrelated ML training work.
@@ -166,5 +166,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
 | 6. Protocol Parity | 3/3 | Complete | 2026-04-17 |
 | 7. Runner Parity | 3/3 | Complete | 2026-04-17 |
-| 8. Evals Absorbed | 0/1 | Planned | - |
+| 8. Evals Absorbed | 1/1 | Complete | 2026-04-17 |
 | 9. Lab Folded | 0/1 | Planned | - |
