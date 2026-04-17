@@ -431,6 +431,9 @@ ensure_valid_plan_output() {
 }
 
 run_compose_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly. Fallback preserves
+  # standalone-invocation safety (tests/replays) but main flow always passes it.
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local compose_prompt_file="$RUN_DIR/.compose-prompt.md"
   local compose_output_file="$RUN_DIR/.compose-output.md"
   local compose_stderr_file="$RUN_DIR/compose-stderr.log"
@@ -477,7 +480,7 @@ Output ONLY the plan document. No preamble."
   # RNPT-05: timeout-wrapped. _compose_phase_start set by main flow wrapper;
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
-  abort_on_timeout "compose" "${_compose_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  abort_on_timeout "compose" "$phase_start"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
@@ -624,6 +627,8 @@ run_bounce_phase() {
 }
 
 run_execute_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly (see run_compose_phase comment).
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local plan_content
   local execute_prompt
   local execute_prompt_file="$RUN_DIR/.execute-prompt.md"
@@ -648,7 +653,7 @@ run_execute_phase() {
 
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
   invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
-  abort_on_timeout "execute" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  abort_on_timeout "execute" "$phase_start"
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
     return 2
@@ -657,7 +662,7 @@ run_execute_phase() {
   if [[ ! -s "$execute_output_file" ]]; then
     log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
     invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute-retry)"
-    abort_on_timeout "execute-retry" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    abort_on_timeout "execute-retry" "$phase_start"
   fi
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
@@ -703,6 +708,8 @@ run_execute_phase() {
 }
 
 run_verify_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly (see run_compose_phase comment).
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local verifier
   local diff_file="$RUN_DIR/verify-diff.txt"
   local diff_stat_file="$RUN_DIR/verify-diffstat.txt"
@@ -765,6 +772,9 @@ run_verify_phase() {
     # RNPT-05: wrap invoke_codex_schema in timeout too — hang protection applies.
     local _verify_cmd_start
     _verify_cmd_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    # FIX-WR-01: reset before the conditional so that a successful run leaves 0
+    # (the `|| LAST_INVOKE_EXIT_CODE=$?` branch only fires on non-zero exit).
+    LAST_INVOKE_EXIT_CODE=0
     if command -v timeout >/dev/null 2>&1; then
       timeout --foreground "${PHASE_TIMEOUT:-1800}s" \
         bash -c 'cd "$1" && source "$2/lib/co-evolution.sh"; invoke_codex_schema "$3" "$4" "$5" "$6"' _ \
@@ -772,12 +782,11 @@ run_verify_phase() {
         || LAST_INVOKE_EXIT_CODE=$?
     else
       invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
-      LAST_INVOKE_EXIT_CODE=0
     fi
-    abort_on_timeout "verify" "${_verify_phase_start:-$_verify_cmd_start}"
+    abort_on_timeout "verify" "$phase_start"
   else
     invoke_agent_with_timeout "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
-    abort_on_timeout "verify" "${_verify_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    abort_on_timeout "verify" "$phase_start"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
@@ -998,9 +1007,10 @@ else
   PLAN_EXIT=0
 
   # RNPT-04: wrap compose with phase timing + state.json record.
-  # RNPT-05: _compose_phase_start is visible to abort_on_timeout inside run_compose_phase.
+  # FIX-WR-03: pass phase start timestamp explicitly (was previously read via
+  # enclosing-scope global _compose_phase_start — hidden coupling removed).
   _compose_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_compose_phase || PLAN_EXIT=$?
+  run_compose_phase "$_compose_phase_start" || PLAN_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "${PLAN_EXIT:-0}" -eq 0 ]] && echo "ok" || echo "error")
   write_state_phase "$STATE_JSON" "compose" "$_phase_status" "${PLAN_EXIT:-0}" "$_compose_phase_start" "$_phase_end"
@@ -1045,9 +1055,9 @@ fi
 EXECUTE_EXIT=0
 if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
   # RNPT-04: wrap execute with phase timing + state.json record.
-  # RNPT-05: _execute_phase_start is visible to abort_on_timeout inside run_execute_phase.
+  # FIX-WR-03: pass phase start timestamp explicitly.
   _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_execute_phase || EXECUTE_EXIT=$?
+  run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
   write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
@@ -1058,9 +1068,9 @@ fi
 VERIFY_EXIT=0
 if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
   # RNPT-04: wrap verify with phase timing + verdict capture.
-  # RNPT-05: _verify_phase_start visible to abort_on_timeout inside run_verify_phase.
+  # FIX-WR-03: pass phase start timestamp explicitly.
   _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_verify_phase || VERIFY_EXIT=$?
+  run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
   write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
