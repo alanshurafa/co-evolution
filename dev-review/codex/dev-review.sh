@@ -15,6 +15,10 @@ VERIFY=false
 PLAN_ONLY=false
 SKIP_PLAN=false
 PLAN_SOURCE=""
+# RTUX-03: REVISE auto-loop budget. 0 = disabled (v1.0 parity: single execute+verify pass).
+# Exported REVISE_LOOP_MAX env var is honored via parameter expansion below;
+# CLI flag --revise-loop N overrides the env value. See option parser below.
+REVISE_LOOP_MAX="${REVISE_LOOP_MAX:-0}"
 WORKDIR="$(pwd)"
 TASK=""
 REVIEWER=""
@@ -49,6 +53,7 @@ Options:
   --model MODEL            Override Codex model
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
+  --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
   --help                   Show this help text
 EOF
 }
@@ -886,6 +891,16 @@ while [[ $# -gt 0 ]]; do
       fi
       # export so bash -c subshell inside invoke_agent_with_timeout inherits it
       export PHASE_TIMEOUT="$2"
+      shift 2
+      ;;
+    --revise-loop)
+      # RTUX-03: Extra REVISE retry passes. 0 allowed (disabled). Mirror --timeout's
+      # integer validation but permit zero, since zero is the documented "off" value.
+      [[ $# -gt 1 ]] || die "--revise-loop requires a value"
+      if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+        die "--revise-loop value must be a non-negative integer (got: $2)"
+      fi
+      REVISE_LOOP_MAX="$2"
       shift 2
       ;;
     --help)
