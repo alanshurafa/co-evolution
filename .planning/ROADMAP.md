@@ -91,6 +91,9 @@ Plans:
   3. Original `C:/Users/alan/Project/codex-co-evolution/` can be archived without losing content
 **Plans**: 1 plan
 
+Plans:
+- [ ] 05-01-PLAN.md — Copy codex-co-evolution tree verbatim to runners/codex-ps/ and declare it read-only
+
 ### Phase 6: Protocol Parity
 **Goal**: Bring the Bash runner's Claude adapter and verification layer in line with the MUST-items from `evals/UPSTREAM-MESSAGE.md` (items 3-6; items 1-2 landed in P0).
 **Depends on**: Phase 5
