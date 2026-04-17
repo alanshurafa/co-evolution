@@ -1,0 +1,77 @@
+﻿{
+    "case_id":  "07-verify-misses-hallucination",
+    "title":  "Tier 1 fixture",
+    "run_id":  "fixture-run",
+    "scores":  {
+                   "robustness":  "PASS",
+                   "convergence":  "PASS",
+                   "plan_quality":  "PASS",
+                   "execution_fidelity":  "PASS",
+                   "verify_accuracy":  "FAIL",
+                   "cost":  "PASS",
+                   "cross_ai_diversity":  "N/A"
+               },
+    "composite":  0.857,
+    "details":  {
+                    "robustness":  {
+                                       "status":  "completed",
+                                       "had_exception":  false
+                                   },
+                    "convergence":  {
+                                        "bounce_phases_ran":  true,
+                                        "structural_ok":  true,
+                                        "expects_bounces":  true,
+                                        "marker_counts":  {
+                                                              "clarify":  0,
+                                                              "contested":  0,
+                                                              "total":  0
+                                                          }
+                                    },
+                    "plan_quality":  {
+                                         "headings_ok":  true,
+                                         "has_todo_stub":  false,
+                                         "min":  40,
+                                         "words":  77
+                                     },
+                    "execution_fidelity":  {
+                                               "changed_files":  [
+                                                                     "README.md"
+                                                                 ],
+                                               "plan_files":  [
+                                                                  [
+                                                                      "README.md"
+                                                                  ]
+                                                              ],
+                                               "jaccard":  1
+                                           },
+                    "verify_accuracy":  {
+                                            "expected":  {
+                                                             "must_catch_issue":  true,
+                                                             "issue_keywords":  [
+                                                                                    "RetryAsync",
+                                                                                    "does not exist"
+                                                                                ]
+                                                         },
+                                            "verdict":  "APPROVED",
+                                            "keyword_hit":  false
+                                        },
+                    "cost":  {
+                                 "provider_bytes":  {
+                                                        "claude":  0,
+                                                        "codex":  0
+                                                    },
+                                 "wall_clock_seconds":  150,
+                                 "invocations":  {
+                                                     "claude":  0,
+                                                     "ollama":  0,
+                                                     "codex":  5
+                                                 },
+                                 "max":  900
+                             },
+                    "cross_ai_diversity":  {
+                                               "reviewer":  "codex",
+                                               "composer":  "codex"
+                                           }
+                },
+    "scored_at":  "2026-04-17T11:51:14.9266977-04:00"
+}

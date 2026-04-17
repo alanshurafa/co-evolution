@@ -1,0 +1,28 @@
+wing: co_evolution
+rooms:
+- name: co_evolution
+  description: Core co-evolution framework and logic
+  keywords:
+  - co-evolution
+  - framework
+  - convergence
+- name: integrations
+  description: LLM integrations, API bridges
+  keywords:
+  - integrations
+  - api
+  - bridges
+- name: research
+  description: Auto-research, experiments, findings
+  keywords:
+  - research
+  - auto-research
+  - experiments
+- name: archive
+  description: Archived iterations and past runs
+  keywords:
+  - archive
+  - iterations
+- name: general
+  description: Files that don't fit other rooms
+  keywords: []

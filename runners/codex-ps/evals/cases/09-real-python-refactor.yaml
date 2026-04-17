@@ -1,0 +1,48 @@
+id: 09-real-python-refactor
+title: Add get_version() helper to a real Python MCP project (substack-mcp)
+description: >
+  Real-world Python task from a small MCP server project. Currently
+  `substack_mcp/__init__.py` exposes `__version__ = "0.1.0"` but no accessor.
+  Add a `get_version()` function that returns the string and include it in
+  `__all__`. Single file, ~4 lines, but exercises the runner on Python
+  (cross-language coverage — all synthetic cases are PowerShell) and on real
+  repository context (the file lives in a package with a 489-line server.py
+  sibling). Mixed agents so we can observe whether Claude and Codex agree on
+  idiomatic Python here.
+runner:
+  task: |
+    In the file `substack_mcp/__init__.py`, add a `get_version()` function
+    that returns the value of the module-level `__version__` constant. Add
+    `get_version` to the `__all__` list so it is exported. Do NOT modify any
+    other file. The plan's `## Files to Change` section must list only
+    `substack_mcp/__init__.py`.
+  composer: claude
+  reviewer: codex
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+setup:
+  mode: temp_repo
+  copy_from:
+    - source: "C:/Users/alan/Project/substack-mcp/substack_mcp/__init__.py"
+      dest:   "substack_mcp/__init__.py"
+    - source: "C:/Users/alan/Project/substack-mcp/substack_mcp/server.py"
+      dest:   "substack_mcp/server.py"
+    - source: "C:/Users/alan/Project/substack-mcp/README.md"
+      dest:   "README.md"
+    - source: "C:/Users/alan/Project/substack-mcp/pyproject.toml"
+      dest:   "pyproject.toml"
+expectations:
+  plan_quality:
+    min_word_count: 120
+  execution_fidelity:
+    min_jaccard: 0.9
+  cross_ai_diversity:
+    min_edit_distance: 0.15
+  verify_accuracy:
+    allow_verdict: ["APPROVED", "REVISE"]
+  cost:
+    max_wall_clock_seconds: 600
+teardown:
+  cleanup_temp_repo: true

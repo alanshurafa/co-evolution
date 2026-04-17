@@ -1,0 +1,34 @@
+id: 01-trivial-task
+title: Runner plumbing smoke test (Codex only, no file changes)
+description: >
+  Confirms the harness + runner complete a minimal compose->execute cycle
+  without touching any files. Single-agent (Codex) so this measures plumbing,
+  not cross-AI behavior. Cross-AI diversity is N/A here.
+runner:
+  task: |
+    Produce a short plan that explains why no source file changes are required.
+    Include a Goal section, an Implementation Steps section, a
+    Files to Change section whose only entry is the line: - (no file changes),
+    and a Risks section (just `- None identified.` is fine if there are no risks).
+  composer: codex
+  reviewer: codex
+  executor: codex
+  bounces: 0
+  verify: false
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: README.md
+      content: |
+        # Smoke Test Fixture
+        Nothing to see here. The plan should decide no changes are needed.
+expectations:
+  plan_quality:
+    min_word_count: 40
+  robustness:
+    state_must_reach: completed
+  cost:
+    max_wall_clock_seconds: 240
+teardown:
+  cleanup_temp_repo: true

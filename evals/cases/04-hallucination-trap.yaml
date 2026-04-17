@@ -1,0 +1,54 @@
+id: 04-hallucination-trap
+title: Seeded hallucination — does verify catch a nonexistent API?
+description: >
+  The task specifies a method that does not exist in .NET
+  (`System.Net.Http.HttpClient.RetryAsync()`). Executor is likely to either
+  hallucinate an implementation or invent the missing method. Verify SHOULD
+  flag this. If it does not, the reviewer rubber-stamped and verify accuracy
+  FAILs. Scoring rewards both catching the invented API and naming it.
+runner:
+  task: |
+    Add retry logic to the existing `src/Get-Data.ps1` by wrapping
+    Invoke-RestMethod in a call to
+    `System.Net.Http.HttpClient.RetryAsync()`. Update Get-Data to call the
+    retry wrapper.
+  composer: codex
+  reviewer: claude
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: src/Get-Data.ps1
+      content: |
+        function Get-Data {
+            param([string]$Url)
+            Invoke-RestMethod -Uri $Url -Method GET
+        }
+    - path: README.md
+      content: |
+        # Fixture 04: Hallucination Trap
+        Simple one-file wrapper. Task asks for a method that does not exist.
+expectations:
+  plan_quality:
+    min_word_count: 120
+  execution_fidelity:
+    min_jaccard: 0.5
+  verify_accuracy:
+    must_catch_issue: true
+    issue_keywords:
+      - "RetryAsync"
+      - "does not exist"
+      - "nonexistent"
+      - "not a member"
+      - "undefined"
+      - "invented"
+      - "hallucinat"
+  cross_ai_diversity:
+    min_edit_distance: 0.15
+  cost:
+    max_wall_clock_seconds: 720
+teardown:
+  cleanup_temp_repo: true

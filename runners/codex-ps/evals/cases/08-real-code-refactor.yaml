@@ -1,0 +1,59 @@
+id: 08-real-code-refactor
+title: Small real refactor in a seeded code repo
+description: >
+  Replace repeated string concatenation with a single interpolation across
+  a small PowerShell module. Real refactor pattern, small enough to finish
+  inside the cost budget, big enough to exercise multi-file execute. Uses
+  mixed agents to measure cross-AI diversity on code tasks.
+runner:
+  task: |
+    In each function that builds a message via string concatenation with `+`,
+    replace the concatenation with a single double-quoted interpolated string.
+    Do not change the return values. Do not add new functions or remove files.
+    List every file you intend to modify in the Files to Change section.
+  composer: codex
+  reviewer: claude
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: src/Log-Event.ps1
+      content: |
+        function Log-Event {
+            param([string]$Level, [string]$Message)
+            $prefix = "[" + $Level + "]"
+            return $prefix + " " + $Message
+        }
+    - path: src/Format-User.ps1
+      content: |
+        function Format-User {
+            param([string]$First, [string]$Last)
+            return "Name: " + $First + " " + $Last
+        }
+    - path: src/Greet.ps1
+      content: |
+        . "$PSScriptRoot/Format-User.ps1"
+        function Greet {
+            param([string]$First, [string]$Last)
+            return "Hello, " + (Format-User -First $First -Last $Last) + "!"
+        }
+    - path: README.md
+      content: |
+        # Fixture 08: Real Refactor
+        Replace + concatenation with interpolation across three files.
+expectations:
+  plan_quality:
+    min_word_count: 140
+  execution_fidelity:
+    min_jaccard: 0.7
+  cross_ai_diversity:
+    min_edit_distance: 0.15
+  verify_accuracy:
+    allow_verdict: ["APPROVED", "REVISE"]
+  cost:
+    max_wall_clock_seconds: 900
+teardown:
+  cleanup_temp_repo: true

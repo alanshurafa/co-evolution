@@ -1,0 +1,19 @@
+﻿id: 02-robustness-fail
+title: Tier 1 fixture
+runner:
+  task: 'fixture task'
+  composer: codex
+  reviewer: codex
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+expectations:
+  plan_quality:
+    min_word_count: 40
+  execution_fidelity:
+    min_jaccard: 0.9
+  verify_accuracy:
+    allow_verdict: ['APPROVED','REVISE']
+  cost:
+    max_wall_clock_seconds: 600

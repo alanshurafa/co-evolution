@@ -1,0 +1,20 @@
+﻿id: 07-verify-misses-hallucination
+title: Tier 1 fixture
+runner:
+  task: 'fixture task'
+  composer: codex
+  reviewer: codex
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+expectations:
+  plan_quality:
+    min_word_count: 40
+  execution_fidelity:
+    min_jaccard: 0.9
+
+  verify_accuracy:
+    must_catch_issue: true
+    issue_keywords: ['RetryAsync','does not exist']
+

@@ -1,0 +1,39 @@
+id: 03-contested-decision
+title: Genuine design tradeoff — does bounce surface it?
+description: >
+  Task has a real architectural split (sync vs async API client; two valid paths).
+  If bounce works, the first-pass reviewer should raise [CONTESTED] about the
+  choice. If both models agree immediately (edit-distance near zero between
+  compose and first bounce), we are producing convergence theatre.
+runner:
+  task: |
+    Design a plan to add a single-endpoint HTTP client module `src/Get-Weather.ps1`
+    that fetches current conditions for a city. Choose between a synchronous
+    (Invoke-RestMethod) and an asynchronous (Start-ThreadJob/Start-Job) implementation,
+    and justify the choice. Include both options and a decision in the plan.
+  composer: claude
+  reviewer: codex
+  executor: codex
+  bounces: 2
+  verify: false
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: src/.keep
+      content: ""
+    - path: README.md
+      content: |
+        # Fixture 03: Contested Decision
+        This repo is empty apart from src/.keep.
+expectations:
+  plan_quality:
+    min_word_count: 150
+  cross_ai_diversity:
+    min_edit_distance: 0.20
+  execution_fidelity:
+    min_jaccard: 0.6
+  cost:
+    max_wall_clock_seconds: 600
+teardown:
+  cleanup_temp_repo: true

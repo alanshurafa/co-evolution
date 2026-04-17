@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReviewVerdict",
+  "description": "Structured code review verdict for the dev-review loop",
+  "type": "object",
+  "required": ["verdict", "confidence", "summary", "issues", "scope_creep_detected", "iteration_notes"],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["APPROVED", "REVISE"],
+      "description": "APPROVED if code is ready to merge. REVISE if changes are needed."
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "0-100 confidence score. 0=not confident, 50=moderate, 75=high, 100=certain."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph assessment of the code changes."
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "file", "line_range", "description", "suggestion"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+            "description": "CRITICAL=blocks merge, HIGH=should fix, MEDIUM=worth fixing, LOW=nitpick"
+          },
+          "file": {
+            "type": "string",
+            "description": "File path relative to project root"
+          },
+          "line_range": {
+            "type": "string",
+            "description": "Line range, e.g. '42-55'"
+          },
+          "description": {
+            "type": "string",
+            "description": "What the issue is"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "How to fix it"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "List of issues found. Empty array if none."
+    },
+    "scope_creep_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if changes go beyond the original task scope"
+    },
+    "iteration_notes": {
+      "type": "string",
+      "description": "Guidance for the developer's next iteration if verdict is REVISE"
+    }
+  },
+  "additionalProperties": false
+}

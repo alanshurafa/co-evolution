@@ -1,0 +1,76 @@
+﻿{
+    "case_id":  "01-all-pass",
+    "title":  "All-PASS baseline fixture",
+    "run_id":  "fixture-01-all-pass",
+    "scores":  {
+                   "robustness":  "PASS",
+                   "convergence":  "PASS",
+                   "plan_quality":  "PASS",
+                   "execution_fidelity":  "PASS",
+                   "verify_accuracy":  "PASS",
+                   "cost":  "PASS",
+                   "cross_ai_diversity":  "N/A"
+               },
+    "composite":  1,
+    "details":  {
+                    "robustness":  {
+                                       "status":  "completed",
+                                       "had_exception":  false
+                                   },
+                    "convergence":  {
+                                        "bounce_phases_ran":  true,
+                                        "structural_ok":  true,
+                                        "expects_bounces":  true,
+                                        "marker_counts":  {
+                                                              "contested":  0,
+                                                              "clarify":  0,
+                                                              "total":  0
+                                                          }
+                                    },
+                    "plan_quality":  {
+                                         "headings_ok":  true,
+                                         "has_todo_stub":  false,
+                                         "min":  40,
+                                         "words":  96
+                                     },
+                    "execution_fidelity":  {
+                                               "changed_files":  [
+                                                                     "README.md"
+                                                                 ],
+                                               "plan_files":  [
+                                                                  [
+                                                                      "README.md"
+                                                                  ]
+                                                              ],
+                                               "jaccard":  1
+                                           },
+                    "verify_accuracy":  {
+                                            "expected":  {
+                                                             "allow_verdict":  [
+                                                                                   "APPROVED",
+                                                                                   "REVISE"
+                                                                               ]
+                                                         },
+                                            "verdict":  "APPROVED",
+                                            "keyword_hit":  true
+                                        },
+                    "cost":  {
+                                 "provider_bytes":  {
+                                                        "claude":  0,
+                                                        "codex":  0
+                                                    },
+                                 "wall_clock_seconds":  150,
+                                 "invocations":  {
+                                                     "claude":  0,
+                                                     "ollama":  0,
+                                                     "codex":  5
+                                                 },
+                                 "max":  600
+                             },
+                    "cross_ai_diversity":  {
+                                               "reviewer":  "codex",
+                                               "composer":  "codex"
+                                           }
+                },
+    "scored_at":  "2026-04-17T11:51:14.6401087-04:00"
+}
