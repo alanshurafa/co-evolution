@@ -1,0 +1,1 @@
+﻿The plan proposes one edit to README.md with a validation step and notes on scope.

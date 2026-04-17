@@ -1,0 +1,42 @@
+id: 05-ambiguous-task
+title: Deliberately vague task — does compose emit [CLARIFY] markers?
+description: >
+  Task is under-specified on purpose. A good compose should either ask for
+  clarification (via [CLARIFY] markers) or explicitly document assumptions.
+  A bad compose will silently pick one interpretation and produce a crisp plan
+  with zero markers — a failure mode. For v1 we score this via convergence
+  (did markers appear and then resolve?) and plan_quality (are assumptions
+  spelled out?). Codex-only to isolate compose behavior.
+runner:
+  task: "Make it faster."
+  composer: codex
+  reviewer: codex
+  executor: codex
+  bounces: 2
+  verify: false
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: README.md
+      content: |
+        # Fixture 05: Ambiguous Task
+        The prompt is intentionally vague.
+    - path: src/main.ps1
+      content: |
+        # A tiny program; "faster" could mean anything.
+        1..10 | ForEach-Object { Start-Sleep -Milliseconds 10; $_ }
+expectations:
+  plan_quality:
+    min_word_count: 100
+    must_contain_any:
+      - ["Assumption", "Clarif", "Goal", "Interpretation"]
+      - ["Risk", "Caveat", "Concern"]
+  execution_fidelity:
+    # A genuinely ambiguous task shouldn't be expected to hit a high jaccard —
+    # the plan might touch nothing if it decides clarification is needed.
+    min_jaccard: 0.3
+  cost:
+    max_wall_clock_seconds: 480
+teardown:
+  cleanup_temp_repo: true

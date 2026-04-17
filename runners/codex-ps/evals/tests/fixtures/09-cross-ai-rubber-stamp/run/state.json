@@ -1,0 +1,55 @@
+﻿{
+    "run_id":  "fixture-run",
+    "updated_at":  "2026-04-17T09:02:30.0000000-04:00",
+    "executor":  "codex",
+    "marker_counts":  {
+                          "clarify":  0,
+                          "contested":  0,
+                          "total":  0
+                      },
+    "started_at":  "2026-04-17T09:00:00.0000000-04:00",
+    "composer":  "claude",
+    "autonomous":  true,
+    "current_phase":  "verify",
+    "completed_at":  "2026-04-17T09:02:30.0000000-04:00",
+    "task":  "fixture task",
+    "max_bounces":  1,
+    "history":  [
+                    {
+                        "phase":  "compose",
+                        "status":  "running",
+                        "detail":  "",
+                        "timestamp":  "2026-04-17T09:00:00.0000000-04:00"
+                    },
+                    {
+                        "phase":  "bounce",
+                        "status":  "running",
+                        "detail":  "",
+                        "timestamp":  "2026-04-17T09:00:30.0000000-04:00"
+                    },
+                    {
+                        "phase":  "bounce-01",
+                        "status":  "running",
+                        "detail":  "",
+                        "timestamp":  "2026-04-17T09:00:45.0000000-04:00"
+                    },
+                    {
+                        "phase":  "execute",
+                        "status":  "running",
+                        "detail":  "",
+                        "timestamp":  "2026-04-17T09:01:30.0000000-04:00"
+                    },
+                    {
+                        "phase":  "verify",
+                        "status":  "running",
+                        "detail":  "",
+                        "timestamp":  "2026-04-17T09:02:00.0000000-04:00"
+                    }
+                ],
+    "changed_files":  "README.md",
+    "status":  "completed",
+    "verify_verdict":  "APPROVED",
+    "status_detail":  "Runner completed successfully.",
+    "reviewer":  "codex",
+    "verify":  true
+}

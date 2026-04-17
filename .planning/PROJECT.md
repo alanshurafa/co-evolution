@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Co-Evolution is a tooling repo for structured iterative refinement between AI agents and humans. It already ships a standalone Agent Bouncer and a Claude Code `/dev-review` skill, and the current initiative is to add a standalone Codex runtime for the same compose-bounce-execute-verify workflow.
+Co-Evolution is a tooling repo for structured iterative refinement between AI agents and humans. It ships a standalone Agent Bouncer, a Claude Code `/dev-review` skill, and a standalone Codex Bash runtime. The current initiative — **Unification Absorb** — folds the private `codex-co-evolution/` reference implementation (with its eval harness) and selected contents from `co-evolution-lab/` into this public repo, parities the Bash runner with the Codex PS reference, and adopts evals as the iteration mechanism.
 
 ## Core Value
 
@@ -13,21 +13,28 @@ Cross-AI workflows can be executed from local CLIs with clear artifact trails, r
 ### Validated
 
 - [x] Agent Bouncer can bounce markdown documents between Claude and Codex using `[CONTESTED]` and `[CLARIFY]` markers - existing repo
-- [x] Claude Code `/dev-review` workflow, prompt templates, and review schema already exist in `skill/` - existing repo
+- [x] Claude Code `/dev-review` workflow, prompt templates, and review schema already exist in `skills/dev-review/` - existing repo
+- [x] Shared shell helpers extracted into `lib/co-evolution.sh` consumed by both Agent Bouncer and Codex runtime - Phase 1-2
+- [x] Standalone Codex `dev-review` Bash runtime with compose-bounce-execute-verify and runtime flag support - Phase 3
+- [x] Codex runtime documented and routable via `dev-review/codex/instructions.md` - Phase 4
 
-### Active
+### Active (Unification Absorb milestone, 2026-04-17)
 
-- [ ] Extract shared shell helpers into a reusable library for Co-Evolution runtimes
-- [ ] Refactor Agent Bouncer to consume the shared library without changing its artifact contract
-- [ ] Add a standalone Codex runtime for `dev-review` that can compose, bounce, execute, and optionally verify
-- [ ] Support shell-friendly runtime options for plan-only, skip-plan, model override, and working directory control
-- [ ] Document the Codex runtime and route Codex toward the right Co-Evolution entrypoint
+- [ ] Absorb `codex-co-evolution/` verbatim into `runners/codex-ps/` as read-only reference implementation - Phase 5
+- [ ] Parity Claude adapter with upstream tool-gating patterns and skip broken `--json-schema` flag - Phase 6
+- [ ] Add structural bounce-check signal to complement semantic marker counting - Phase 6
+- [ ] Port five runner-parity features to the Bash runner: agent dispatcher, writable-phase flag, delta tracking, structured state.json, per-phase timeout - Phase 7
+- [ ] Elevate portable eval assets (cases, fixtures, plan, schema) to top-level `evals/` and `schemas/` - Phase 8
+- [ ] Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo - Phase 9
 
 ### Out of Scope
 
-- Live visible Windows Codex windows - deferred to a later runtime pass
-- Automatic branch or worktree management - deferred until the core Codex runtime is stable
-- Moving `skill/` into `dev-review/claude/` - separate restructure, not part of this implementation pass
+- Live visible Windows Codex windows - deferred to a later runtime pass (RTUX-01)
+- Automatic branch or worktree management - deferred until the core Codex runtime is stable (RTUX-02)
+- Moving `skill/` into `dev-review/claude/` - separate restructure, not part of this absorb
+- Karpathy's `autoresearch` ML training repo (cloned under `co-evolution-lab/auto-research/`) - unrelated domain, kept as a peer project outside the unified repo
+- Bash port of PS eval harness - deferred post-milestone (~2 days estimate from upstream)
+- Protocol Evolution Loop (meta-bounce for self-improving prompts/adapters using evals as fitness function) - future work, requires eval case library to mature first
 
 ## Context
 
@@ -54,6 +61,10 @@ Cross-AI workflows can be executed from local CLIs with clear artifact trails, r
 | Use a shared-core, platform-specific-shell architecture | Claude Code and Codex have different orchestration models even while sharing prompts and shell helpers | Pending |
 | Leave the Claude runtime implementation untouched in v1 | Limits risk while the standalone Codex runtime proves the pipeline outside Claude Code | Pending |
 | Keep `Co-Evolution` as the umbrella name, `dev-review` as the workflow product, and `agent-bouncer` as the generic bounce engine | Preserves naming clarity across docs, scripts, and future restructuring | Pending |
+| Full merge of `codex-co-evolution/` into this public repo under `runners/codex-ps/` | No commits ever landed in the private repo so pseudonymity concern is moot; verbatim file copy preserves reference audit trail | Pending |
+| Exclude Karpathy's `autoresearch` from unified repo | Unrelated ML training domain; keep focused on bounce protocol; peer project at workspace root | Pending |
+| Evals are the iteration mechanism, not a Karpathy-style auto-research | Measurement layer already surfaced 8 bugs + 1 scorer blindness missed by 11 pilot bounces; add Protocol Evolution Loop only after case library matures | Pending |
+| Feature branch + draft PR discipline via dedicated worktree at `co-evolution-absorb/` | Disposable escape hatch; holistic diff view vs master; reviewable as single unit at end | Pending |
 
 ## Evolution
 
@@ -73,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after aligning GSD artifacts to the detailed Codex runtime rollout plan*
+*Last updated: 2026-04-17 kicking off Unification Absorb milestone (phases 5-9); v1 requirements moved to Validated, v3 requirements added to Active*

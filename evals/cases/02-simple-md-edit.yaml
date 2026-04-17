@@ -1,0 +1,37 @@
+id: 02-simple-md-edit
+title: Single-file markdown edit (Codex only)
+description: >
+  Minimal real edit: fix an obvious typo in README.md. Exercises compose ->
+  execute -> verify end to end with a trivial diff. Useful for catching
+  regressions in artifact capture, delta tracking, and verdict parsing.
+runner:
+  task: |
+    The repository's README.md contains a typo: "Codexx" should be "Codex".
+    Produce a plan that fixes that single typo in README.md and then execute it.
+    The plan's Files to Change section must list only: - `README.md`
+  composer: codex
+  reviewer: codex
+  executor: codex
+  bounces: 1
+  verify: true
+  autonomous: true
+setup:
+  mode: temp_repo
+  seed_files:
+    - path: README.md
+      content: |
+        # Codexx Co-Evolution Smoke
+
+        This fixture has exactly one typo to fix.
+        After the fix, this file should read "Codex Co-Evolution Smoke".
+expectations:
+  plan_quality:
+    min_word_count: 60
+  execution_fidelity:
+    min_jaccard: 0.9
+  verify_accuracy:
+    allow_verdict: ["APPROVED", "REVISE"]
+  cost:
+    max_wall_clock_seconds: 480
+teardown:
+  cleanup_temp_repo: true

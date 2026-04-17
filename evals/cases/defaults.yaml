@@ -1,0 +1,18 @@
+# Shared thresholds merged into every case.
+# Case files override these by re-declaring the same keys.
+
+expectations:
+  plan_quality:
+    min_word_count: 120
+    must_contain_any:
+      - ["Plan", "Approach", "Strategy", "Implementation", "Goal"]
+      - ["Risks", "Concerns", "Caveats", "Assumptions"]
+  execution_fidelity:
+    min_jaccard: 0.5
+  cross_ai_diversity:
+    # Minimum fraction of text change between compose and first bounce.
+    # Below this we call it "convergence theatre" — the reviewer rubber-stamped.
+    min_edit_distance: 0.15
+  cost:
+    max_wall_clock_seconds: 900
+    # max_total_output_bytes is case-specific; smaller cases should tighten it

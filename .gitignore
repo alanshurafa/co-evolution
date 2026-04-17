@@ -1,6 +1,15 @@
 # Run artifacts — generated output, not source code
 runs/
 
+# Codex PS reference runner runtime artifacts (runners/codex-ps/ is a read-only reference)
+runners/codex-ps/.co-evolution/
+runners/codex-ps/evals/reports/
+runners/codex-ps/evals/fixtures/tmp/
+
+# Top-level evals/ runtime artifacts (mirrors runners/codex-ps/ gitignore discipline)
+evals/reports/
+evals/fixtures/tmp/
+
 # Experiment results and inputs — may contain personal data
 experiments/*/results/
 experiments/*/inputs/
@@ -10,6 +19,10 @@ experiments/prompt-refinement/
 
 # Temp working directories
 tmp-*/
+tmp/
 
 # Local project notes (decisions, plans, handoffs)
 .notes/
+
+# Claude Code user-local settings
+.claude/
