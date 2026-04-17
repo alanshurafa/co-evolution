@@ -458,6 +458,7 @@ run_bounce_phase() {
   local clarify
   local total_markers
   local word_count
+  local pass_padded
 
   if (( max_bounces == 0 )); then
     return 0
@@ -493,6 +494,12 @@ run_bounce_phase() {
     strip_human_summary "$output_file" "$clean_file"
     mv "$clean_file" "$output_file"
     cp "$output_file" "$PLAN_PATH"
+
+    # Structural signal for downstream verification (PRTP-04, UPSTREAM-MESSAGE.md item 6).
+    # Distinguishes "bounce converged in 0 passes" from "bounce step was skipped entirely."
+    # File is persisted under outputs/ so `cleanup_runtime_artifacts` (maxdepth 1) does not delete it.
+    printf -v pass_padded '%02d' "$pass"
+    cp "$output_file" "$RUN_DIR/outputs/bounce-${pass_padded}.txt"
 
     contested=$(count_markers "$PLAN_PATH" "[CONTESTED]")
     clarify=$(count_markers "$PLAN_PATH" "[CLARIFY]")
@@ -818,6 +825,7 @@ require_selected_agent_clis
 
 RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
 mkdir -p "$RUN_DIR"
+mkdir -p "$RUN_DIR/outputs"
 PLAN_PATH="${RUN_DIR}/plan.md"
 LOG_FILE="${RUN_DIR}/run.log"
 
