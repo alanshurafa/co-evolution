@@ -12,8 +12,8 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 Address the non-blocking code review warnings from v1.0, then deliver the three deferred runtime ergonomics requirements (RTUX-01/02/03).
 
-- [ ] **Phase 1: Code Review Fixes** - Address WR-01/02/03 from v1.0 code review (stale exit code, temp-file leak, global coupling)
-- [ ] **Phase 2: REVISE Auto-Loop** - Codex runtime auto-loops on REVISE verdicts until APPROVED or max-iterations (RTUX-03)
+- [x] **Phase 1: Code Review Fixes** - Address WR-01/02/03 from v1.0 code review (stale exit code, temp-file leak, global coupling) — shipped 5734b84
+- [x] **Phase 2: REVISE Auto-Loop** - Codex runtime auto-loops on REVISE verdicts until APPROVED or max-iterations (RTUX-03) — shipped 2026-04-17
 - [ ] **Phase 3: Visible Live Mode** - Launch visible Windows terminals for live pass-by-pass observation (RTUX-01)
 - [ ] **Phase 4: Worktree Management** - Codex runtime creates/manages dedicated branches or worktrees (RTUX-02)
 
