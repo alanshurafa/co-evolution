@@ -286,16 +286,73 @@ build_bounce_prompt() {
   printf '%s' "$rendered"
 }
 
+# RTUX-03: Summarize the normalized verdict JSON into a one-paragraph feedback
+# block for the execute prompt. Output is plain text (no markdown preamble),
+# because the surrounding template already labels the section.
+build_reviewer_feedback_summary() {
+  local verdict_json="$1"
+  local summary
+  summary=$(printf '%s' "$verdict_json" | jq -r '.summary // "(no summary)"' 2>/dev/null)
+  # Collapse to one line — jq already returns a single string field, but defensively
+  # guard against embedded newlines in adversarial verdicts.
+  summary=${summary//$'\n'/ }
+  printf 'The verifier marked the prior pass as REVISE. Summary: %s' "$summary"
+}
+
+# RTUX-03: Render the verdict JSON's issues[] as a markdown bullet list for the
+# execute prompt. Rendering goes through `jq -r`, which safely escapes any
+# adversarial content in reviewer-authored fields (T-02-02 mitigation).
+build_issues_list_markdown() {
+  local verdict_json="$1"
+  local rendered
+  rendered=$(printf '%s' "$verdict_json" | jq -r '
+    (.issues // []) | if length == 0 then "(no issues listed)"
+    else
+      map(
+        "- **[" + (.severity // "?") + "]** " +
+        (if .file then "`" + .file + "`" + (if .line_range then ":" + .line_range else "" end) + " — " else "" end) +
+        (.description // "") +
+        (if .suggestion then " _Suggestion: " + .suggestion + "_" else "" end)
+      ) | join("\n")
+    end
+  ' 2>/dev/null)
+  if [[ -z "$rendered" ]]; then
+    rendered="(issue parser failed)"
+  fi
+  printf '%s' "$rendered"
+}
+
 build_execution_prompt() {
   local executor="$1"
   local plan_content="$2"
+  local feedback_json="${3:-}"   # RTUX-03: empty = first pass, v1.0-identical output
   local template_path="${REPO_ROOT}/skills/dev-review/templates/dev-prompt-${executor}.md"
   local stripped_template_file="$RUN_DIR/.execute-template-${executor}.md"
   local rendered
 
-  strip_conditional "SUBSEQUENT_PASS" < "$template_path" > "$stripped_template_file"
-  rendered=$(fill_template "$stripped_template_file" "TASK=$TASK")
-  rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  if [[ -z "$feedback_json" ]]; then
+    # First pass: strip the SUBSEQUENT_PASS block entirely.
+    # Byte-identical output to v1.0 (see Task 4 Scenario 4 invariant).
+    strip_conditional "SUBSEQUENT_PASS" < "$template_path" > "$stripped_template_file"
+    rendered=$(fill_template "$stripped_template_file" "TASK=$TASK")
+    rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  else
+    # Retry pass: keep the SUBSEQUENT_PASS block; replace {REVIEWER_FEEDBACK} and
+    # {ISSUES_LIST} with rendered content from the normalized verdict JSON.
+    # fill_conditional reads the template on stdin, strips the IF/END_IF tag
+    # lines, and substitutes KEY={value} placeholders in the full stripped text.
+    local reviewer_feedback issues_list
+    reviewer_feedback=$(build_reviewer_feedback_summary "$feedback_json")
+    issues_list=$(build_issues_list_markdown "$feedback_json")
+
+    rendered=$(fill_conditional "SUBSEQUENT_PASS" \
+      "REVIEWER_FEEDBACK=$reviewer_feedback" \
+      "ISSUES_LIST=$issues_list" \
+      < "$template_path")
+    rendered="${rendered//\{TASK\}/$TASK}"
+    rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  fi
+
   printf '%s' "$rendered"
 }
 
@@ -653,7 +710,11 @@ run_execute_phase() {
   fi
 
   plan_content=$(cat "$PLAN_PATH")
-  execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
+  # RTUX-03: Thread REVISE_FEEDBACK_JSON through to build_execution_prompt. On
+  # pass 1 the main-flow loop unsets this, yielding v1.0-identical prompt output.
+  # On pass 2+ the loop exports the captured verdict JSON, which triggers the
+  # SUBSEQUENT_PASS conditional block (see build_execution_prompt).
+  execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content" "${REVISE_FEEDBACK_JSON:-}")
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
