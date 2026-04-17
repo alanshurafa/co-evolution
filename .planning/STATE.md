@@ -5,16 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
-**Current focus:** Roadmap complete - Codex runtime and docs shipped
+**Current focus:** Unification Absorb milestone - fold `codex-co-evolution/` + `co-evolution-lab/` into this public repo (phases 5-9)
 
 ## Current Position
 
-Phase: 4 of 4 (Docs And Routing)
-Plan: 1 of 1 in current phase
-Status: Complete
-Last activity: 2026-04-06 - Completed 04-01 Codex runtime docs, routing, and repo context updates
+Phase: 5 of 9 (Codex PS Preservation — first phase of Unification Absorb milestone)
+Plan: 0 of 1 in current phase (not yet planned)
+Status: Ready to plan
+Last activity: 2026-04-17 - P0 Required-Section blocks committed (8b741ba); feature branch `feat/unification-absorb` open as draft PR #1
+Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
 
-Progress: [##########] 100%
+Progress: [#####-----] 4/9 phases complete (milestone 1 of 2 done)
 
 ## Performance Metrics
 
@@ -56,18 +57,29 @@ Recent decisions affecting current work:
 - [Phase 3]: Treat verifier auth failures as explicit review-needed exits rather than generic parse failures
 - [Phase 4]: Route Codex by task shape between direct execution, Agent Bouncer, and the standalone runtime
 - [Phase 4]: Use `dev-review/codex/instructions.md` as the reusable Codex startup router for this repo
+- [Milestone: Unification Absorb]: Full merge of codex-co-evolution into this public repo (pseudonymity concern moot — no commits ever landed separately)
+- [Milestone: Unification Absorb]: Feature branch + draft PR discipline; new worktree at `co-evolution-absorb/` isolated from `co-evolution/` (archive) and `co-evolution-clean/` (master tip)
+- [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
+- [Milestone: Unification Absorb]: Evals are the iteration mechanism (not Karpathy-style auto-research); Protocol Evolution Loop deferred as future post-absorb work
+- [P0]: Required-Section blocks copied verbatim from upstream compose template to eliminate ~66% missing-section variance
 
 ### Pending Todos
 
-None yet.
+- Plan Phase 5 (Codex PS Preservation) via `/gsd-plan-phase 5 --bounce` (dogfoods co-evolution on its own migration)
+- Decide whether `runners/codex-ps/` absorbs a verbatim copy or git-filter-copy (codex-co-evolution has zero commits, so verbatim = simplest)
+- Future: Bash port of PS eval harness (~2 days, deferred post-milestone)
+- Future: Protocol Evolution Loop (meta-bounce for self-improving prompts, post-milestone)
 
 ### Blockers/Concerns
 
-- Local Claude CLI auth is still expired, so live Opus-backed verification remains blocked until the session is refreshed
-- `skill/SKILL.md` is still modified outside this initiative and should remain out of future execution commits unless explicitly scoped
+- Per-phase timeout (RNPT-05) is flagged by upstream as "single most painful gap" — one PS case hung 1h 39min. Prioritize during Phase 7 implementation.
+- `pwsh` dependency introduced by Phase 8 — optional but required to run PS eval harness. Document clearly.
+- Claude `--json-schema` broken on Windows in `-p` mode — must NOT be used; prompt-side JSON + parse-side validation only (PRTP-03)
 
 ## Session Continuity
 
-Last session: 2026-04-06 22:56
-Stopped at: Phase 4 complete; roadmap work is ready for milestone wrap-up or follow-on planning
-Resume file: None
+Last session: 2026-04-17 (active)
+Stopped at: Milestone kickoff — phases 5-9 planned, ready to enter Phase 5 planning
+Resume file: None — use `git log feat/unification-absorb` for full context
+Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft)
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (available after Phase 5) — the MUST/SHOULD/parity list
