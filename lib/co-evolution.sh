@@ -646,7 +646,9 @@ write_state_phase() {
   if command -v jq >/dev/null 2>&1; then
     local tmp
     tmp=$(mktemp)
-    jq --arg name "$phase_name" \
+    # FIX-WR-02: clean up $tmp on any exit path (jq failure, script interrupt).
+    # Without this, failed jq invocations leak mktemp files in $TMPDIR indefinitely.
+    if jq --arg name "$phase_name" \
        --arg status "$status" \
        --argjson exit_code "$exit_code" \
        --arg started "$started_at" \
@@ -657,7 +659,12 @@ write_state_phase() {
          completed_at: $completed,
          status: $status,
          exit_code: $exit_code
-       }]' "$state_path" > "$tmp" && mv "$tmp" "$state_path"
+       }]' "$state_path" > "$tmp"; then
+      mv "$tmp" "$state_path"
+    else
+      rm -f "$tmp"
+      log "WARNING: jq failed in write_state_phase ($phase_name) — state.json unchanged"
+    fi
   else
     log "WARNING: jq unavailable — write_state_phase skipping ($phase_name)"
   fi
@@ -679,22 +686,31 @@ write_state_field() {
 
   local tmp
   tmp=$(mktemp)
+  local jq_exit
   case "$value_type" in
     string)
-      jq --arg v "$value" "$jq_path = \$v"              "$state_path" > "$tmp" ;;
+      jq --arg v "$value" "$jq_path = \$v"              "$state_path" > "$tmp"; jq_exit=$? ;;
     number)
-      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp" ;;
+      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp"; jq_exit=$? ;;
     bool)
-      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp" ;;
+      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp"; jq_exit=$? ;;
     null)
-      jq "$jq_path = null"                              "$state_path" > "$tmp" ;;
+      jq "$jq_path = null"                              "$state_path" > "$tmp"; jq_exit=$? ;;
     rawfile)
-      jq --slurpfile v "$value" "$jq_path = \$v[0]"     "$state_path" > "$tmp" ;;
+      jq --slurpfile v "$value" "$jq_path = \$v[0]"     "$state_path" > "$tmp"; jq_exit=$? ;;
     *)
       rm -f "$tmp"
       die "Unsupported value_type: $value_type"
       ;;
-  esac && mv "$tmp" "$state_path"
+  esac
+  # FIX-WR-02: clean up $tmp on jq failure so we don't leak files to $TMPDIR.
+  if [[ $jq_exit -eq 0 ]]; then
+    mv "$tmp" "$state_path"
+  else
+    rm -f "$tmp"
+    log "WARNING: jq failed in write_state_field ($jq_path, $value_type) — state.json unchanged"
+    return $jq_exit
+  fi
 }
 
 # RNPT-05: invoke_agent_with_timeout — same signature as invoke_agent but wrapped
