@@ -46,11 +46,11 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 
 ### Protocol Parity
 
-- **PRTP-01**: Claude adapter uses `--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch"` on text-producing phases (compose, bounce, review, arbitrate)
-- **PRTP-02**: Claude adapter uses `--permission-mode bypassPermissions --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git status),Bash(git diff)" --add-dir <workdir>` on write-producing phases (execute, fix)
-- **PRTP-03**: No code path passes `--json-schema` to Claude (confirmed broken on Windows in `-p` mode as of 2026-04-17)
-- **PRTP-04**: Verification layer checks for `outputs/bounce-NN.txt` files alongside semantic marker counts to distinguish "converged in 0 passes" from "bounce skipped entirely"
-- **PRTP-05**: `runners/codex-ps/templates/bounce-protocol.md` is reconciled to match the main repo's stronger version ("complete document" + SCOPE CONTROL clauses preserved)
+- [x] **PRTP-01**: Claude adapter uses `--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch"` on text-producing phases (compose, bounce, review, arbitrate)
+- [x] **PRTP-02**: Claude adapter uses `--permission-mode bypassPermissions --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git status),Bash(git diff)" --add-dir <workdir>` on write-producing phases (execute, fix)
+- [x] **PRTP-03**: No code path passes `--json-schema` to Claude (confirmed broken on Windows in `-p` mode as of 2026-04-17)
+- [x] **PRTP-04**: Verification layer checks for `outputs/bounce-NN.txt` files alongside semantic marker counts to distinguish "converged in 0 passes" from "bounce skipped entirely"
+- [x] **PRTP-05**: `runners/codex-ps/templates/bounce-protocol.md` is reconciled to match the main repo's stronger version ("complete document" + SCOPE CONTROL clauses preserved)
 
 ### Runner Parity
 
@@ -95,11 +95,11 @@ Source: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (after Phase 5 absorb). Ado
 | DOCS-02 | Phase 4 | Complete |
 | CXPS-01 | Phase 5 | Complete |
 | CXPS-02 | Phase 5 | Complete |
-| PRTP-01 | Phase 6 | Planned |
-| PRTP-02 | Phase 6 | Planned |
-| PRTP-03 | Phase 6 | Planned |
-| PRTP-04 | Phase 6 | Planned |
-| PRTP-05 | Phase 6 | Planned |
+| PRTP-01 | Phase 6 | Complete |
+| PRTP-02 | Phase 6 | Complete |
+| PRTP-03 | Phase 6 | Complete |
+| PRTP-04 | Phase 6 | Complete |
+| PRTP-05 | Phase 6 | Complete |
 | RNPT-01 | Phase 7 | Planned |
 | RNPT-02 | Phase 7 | Planned |
 | RNPT-03 | Phase 7 | Planned |

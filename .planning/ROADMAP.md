@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Absorb the private `codex-co-evolution/` reference implementation + eval harness and selected `co-evolution-lab/` contents into this public repo. Parity the Bash runner with the Codex PS reference. P0 quick win (Required-Section blocks) landed in `8b741ba` before milestone planning.
 
 - [x] **Phase 5: Codex PS Preservation** - Copy `codex-co-evolution/` contents verbatim into `runners/codex-ps/` as read-only reference impl + audit trail
-- [ ] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
+- [x] **Phase 6: Protocol Parity** - Adopt MUST-items 3-6 from upstream (Claude adapter tool-gating, skip `--json-schema`, structural bounce check, bounce-protocol reconciliation)
 - [ ] **Phase 7: Runner Parity** - Port 5 features Bash lacks (agent dispatcher, writable-phase flag, delta tracking, structured `state.json`, per-phase timeout)
 - [ ] **Phase 8: Evals Absorbed** - Elevate portable eval assets to top-level `evals/`; keep runner-specific harness under `runners/codex-ps/`
 - [ ] **Phase 9: Lab Folded** - Fold `co-evolution-lab/integrations/` + `mempalace.yaml` into unified repo; exclude Karpathy's auto-research (unrelated ML training)
@@ -107,9 +107,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Claude adapter tool gating (PRTP-01, PRTP-02, PRTP-03)
-- [ ] 06-02-PLAN.md — Structural bounce-check signal (PRTP-04)
-- [ ] 06-03-PLAN.md — Bounce-protocol reconciliation (PRTP-05)
+- [x] 06-01: Claude adapter tool gating (PRTP-01, PRTP-02, PRTP-03)
+- [x] 06-02: Structural bounce-check signal (PRTP-04)
+- [x] 06-03: Bounce-protocol reconciliation (PRTP-05)
 
 ### Phase 7: Runner Parity
 **Goal**: Port the five features the Bash runner lacks relative to the Codex PS reference, so both runners pass the same eval case suite.
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 3. Codex Runtime | 1/1 | Complete | 2026-04-06 |
 | 4. Docs And Routing | 1/1 | Complete | 2026-04-06 |
 | 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
-| 6. Protocol Parity | 0/3 | Planned | - |
+| 6. Protocol Parity | 3/3 | Complete | 2026-04-17 |
 | 7. Runner Parity | 0/1 | Planned | - |
 | 8. Evals Absorbed | 0/1 | Planned | - |
 | 9. Lab Folded | 0/1 | Planned | - |
