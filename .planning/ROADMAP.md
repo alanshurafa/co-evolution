@@ -104,7 +104,12 @@ Plans:
   3. No code path passes `--json-schema` to Claude (confirmed broken on Windows in `-p` mode)
   4. Verification layer checks for `outputs/bounce-NN.txt` structural signal alongside semantic marker counts
   5. `runners/codex-ps/templates/bounce-protocol.md` matches the main repo's stronger version (SCOPE CONTROL + "complete document" clauses preserved)
-**Plans**: 1 plan
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Claude adapter tool gating (PRTP-01, PRTP-02, PRTP-03)
+- [ ] 06-02-PLAN.md — Structural bounce-check signal (PRTP-04)
+- [ ] 06-03-PLAN.md — Bounce-protocol reconciliation (PRTP-05)
 
 ### Phase 7: Runner Parity
 **Goal**: Port the five features the Bash runner lacks relative to the Codex PS reference, so both runners pass the same eval case suite.
@@ -151,7 +156,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 (Phas
 | 3. Codex Runtime | 1/1 | Complete | 2026-04-06 |
 | 4. Docs And Routing | 1/1 | Complete | 2026-04-06 |
 | 5. Codex PS Preservation | 1/1 | Complete | 2026-04-17 |
-| 6. Protocol Parity | 0/1 | Planned | - |
+| 6. Protocol Parity | 0/3 | Planned | - |
 | 7. Runner Parity | 0/1 | Planned | - |
 | 8. Evals Absorbed | 0/1 | Planned | - |
 | 9. Lab Folded | 0/1 | Planned | - |
