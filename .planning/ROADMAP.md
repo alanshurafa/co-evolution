@@ -14,7 +14,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 **Goal:** Ship PEL Option 1 — an LLM-powered proposer that generates protocol-mutation PRs for human review, using the eval harness as fitness signal. PEL machinery lives entirely in `lab/pel/`; the default runner (`co-evolve`, `dev-review`) is unchanged for users who never invoke `--lab pel-proposer`. Accepted mutations merge to master and upgrade the default runner transparently.
 
 - [x] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — shipped 2026-04-17 (commits `3a06af8`, `68b9d76`, `f265135`)
-- [ ] **Phase 2: Bash Eval Harness Port** — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+.
+- [x] **Phase 2: Bash Eval Harness Port** (shipped 2026-04-18) — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+. Tier 1 (10/10 fixtures) + Tier 2 (hermetic end-to-end) + Tier 3 (determinism) all green via `bash evals/tests/scorer-verification.sh` → `13/13 scenarios passed`.
 - [ ] **Phase 3: Lab Scaffold** — Create `lab/` directory + README documenting default/lab boundary, promotion flow, graduation criteria. First-class beta channel with clear identity.
 - [ ] **Phase 4: Mode Classifier (frozen)** — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. Classifier itself does NOT evolve in v1.2.
 - [ ] **Phase 5: Template-Tier Mutation Proposer** — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. Safest first cut.
@@ -43,10 +43,10 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. Scorer logic from `score-run.ps1` + comparison logic from `compare-reports.ps1` have Bash equivalents; outputs validated against PS references
   3. Bash harness runs end-to-end on Git Bash for Windows + Linux + macOS without `pwsh` installed (CI simulation on at least two of these)
   4. `pwsh`-dependency documentation updated — harness section of `evals/README.md` marks Bash as the default, PS as legacy reference
-**Plans**: 3 plans
+**Plans**: 3 plans (3/3 complete)
   - [x] 02-01-PLAN.md — Bash library (co-evolution-evals.sh): YAML loading, deep-merge, report rendering, atomic JSON write + report-template.md copy
   - [x] 02-02-PLAN.md — Scorer port (score-run.sh): 7-dimension fitness scoring with Jaccard + Levenshtein helpers
-  - [ ] 02-03-PLAN.md — Orchestrator + comparator + Tier 1 regression gate + README update (Bash default, PS legacy)
+  - [x] 02-03-PLAN.md — Orchestrator + comparator + hermetic Tier 2 via fake runner + combined Tier 1/2/3 gate + README reframe (Bash default, PS legacy)
 
 ### Phase 3: Lab Scaffold
 **Goal**: Establish the `lab/` subdirectory as a first-class beta channel with documented conventions, so every future opt-in feature (PEL tiers, future experiments) has a clear home.
