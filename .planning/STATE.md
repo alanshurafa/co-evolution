@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Ergonomics
-status: in-progress
-stopped_at: Phase 3 execution complete — Visible Live Mode (RTUX-01) landed across 1 plan / 3 tasks / 3 commits (5c09fc1, cd84c13, 7c15e33, all pushed to feat/v1.1-polish); smoke test passes three scenarios (absent / non-Windows / simulated-Windows) in <1s; default LIVE_MODE=false preserves Phase 2 byte-parity; 2 of 3 RTUX requirements closed in v1.1 (RTUX-01+RTUX-03); only RTUX-02 (Phase 4 worktree management) remains
-last_updated: "2026-04-17T23:30:00.000Z"
-last_activity: 2026-04-17 -- Phase 03 execution complete; RTUX-01 live mode shipped on feat/v1.1-polish
+status: complete
+stopped_at: Phase 4 execution complete — Worktree Management (RTUX-02) landed across 1 plan / 3 tasks / 3 commits (cd98af9, 1294477, 7ee77ae, all on feat/v1.1-polish); smoke test passes 5 scenarios (branch-auto, worktree-auto, non-git fallback, empty-flag fallback, mutex error) in ~3s; default empty BRANCH/WORKTREE specs preserve Phase 3 byte-parity; v1.1 milestone is feature-complete — 3 of 3 RTUX requirements + 3 of 3 FIX-WR closed
+last_updated: "2026-04-17T23:55:00.000Z"
+last_activity: 2026-04-17 -- Phase 04 execution complete; RTUX-02 worktree management shipped on feat/v1.1-polish; v1.1 milestone feature-complete
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 3 of 4 — Visible Live Mode COMPLETE; only Phase 4 (Worktree Management, RTUX-02) remains
-Plan: 03-01 complete (3 tasks, 3 commits)
-Status: v1.1 in progress — 3 of 4 phases complete (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop + Phase 3 RTUX-01 live mode all landed on feat/v1.1-polish)
-Last activity: 2026-04-17 -- Phase 03 complete; RTUX-01 live mode shipped
+Phase: 4 of 4 — Worktree Management COMPLETE; v1.1 milestone is feature-complete
+Plan: 04-01 complete (3 tasks, 3 commits)
+Status: v1.1 feature-complete — all 4 phases shipped on feat/v1.1-polish (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop + Phase 3 RTUX-01 live mode + Phase 4 RTUX-02 branch/worktree management)
+Last activity: 2026-04-17 -- Phase 04 complete; RTUX-02 worktree management shipped
 Working directory: `C:/Users/alan/Project/co-evolution-v11/` (feat/v1.1-polish branch)
 
-Progress: [###.......] 3/4 phases complete — v1.1 Polish & Ergonomics in progress
+Progress: [##########] 4/4 phases complete — v1.1 Polish & Ergonomics feature-complete
 
 ## Performance Metrics
 
@@ -120,6 +120,13 @@ Recent decisions affecting current work:
 - [v1.1 Phase 3]: Single `maybe_launch_live_window "verify"` call before the codex/opus verifier branch covers both paths (shared `$review_stderr_file`) — avoids duplicating the call in each branch
 - [v1.1 Phase 3]: Retry branches (execute-retry, bounce-retry-via-ensure_valid_plan_output) NOT wrapped per CONTEXT.md — keeps window count reasonable during recovery scenarios
 - [v1.1 Phase 3]: Smoke test stubs `wt.exe` via PATH-shadowing + overrides `is_windows_host` function per scenario — runs on any OS without a real Windows host, so CI can exercise the full launcher path
+- [v1.1 Phase 4]: Default empty `BRANCH_SPEC` / `WORKTREE_SPEC` preserves Phase 3 byte-parity; only new log lines on default run are two `Branch: <empty>` / `Worktree: <empty>` banner lines per banner block (analogous to Phase 3's single `Live mode: false` addition) — opt-in only via `--branch` / `--worktree` CLI flags or env vars
+- [v1.1 Phase 4]: `maybe_setup_*` helpers route their `log()` calls to stderr (`>&2`) so callers can capture the helper's stdout return value cleanly without WARNING/INFO leakage from `tee -a` echoing through fd 1 (Rule 1 fix discovered during Task 1 verification)
+- [v1.1 Phase 4]: Mutual-exclusion check fires immediately after parser loop closes, BEFORE `WORKDIR` normalization and `mkdir -p "$RUN_DIR"` — `--branch X --worktree Y` exits 1 with no side effects; verified by Scenario E using a distinctive `mutex-test-<RANDOM>` timestamp
+- [v1.1 Phase 4]: Branch/worktree dispatch lands AFTER the PLAN_ONLY early-exit branch and BEFORE `_run_revise_loop` — `--branch auto --plan-only` is a silent no-op on the branching side per CONTEXT.md ("plan artifacts stay reviewable on parent branch / in $REPO_ROOT/runs/")
+- [v1.1 Phase 4]: `git checkout -b` (not `git switch -c`) for branch creation — locked by `skills/dev-review/SKILL.md:136` per CONTEXT.md "Claude's Discretion" note; consistency wins over modernity
+- [v1.1 Phase 4]: No automated cleanup of branches/worktrees after run — explicit per CONTEXT.md success criterion 3 ("leaves it intact for review/merge"); cleanup utility deferred as candidate v1.2+ work
+- [v1.1 Phase 4]: Smoke test scenarios that compare paths against `git worktree list` output must use basename matching on Git Bash for Windows because git tooling outputs Windows-style paths (`C:/Users/.../`) while shell-captured paths are MSYS-style (`/c/Users/.../`)
 
 ### Pending Todos
 
@@ -140,7 +147,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 3 execution complete — Visible Live Mode (RTUX-01) landed across 1 plan / 3 tasks / 3 commits (5c09fc1, cd84c13, 7c15e33, all pushed to feat/v1.1-polish); smoke test covers absent / non-Windows / simulated-Windows scenarios in <1s; default LIVE_MODE=false preserves Phase 2 byte-parity; 2 of 3 RTUX requirements closed in v1.1 (RTUX-01+RTUX-03); only Phase 4 (RTUX-02 worktree management) remains
-Resume file: `.planning/phases/03-visible-live-mode/03-SUMMARY.md` — phase-level summary; `03-01-SUMMARY.md` for plan-level detail
-Active PR: None yet on v1.1; branch `feat/v1.1-polish` accumulating commits
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/03-visible-live-mode/03-01-PLAN.md` for the canonical implementation contract of this phase
+Stopped at: Phase 4 execution complete — Worktree Management (RTUX-02) landed across 1 plan / 3 tasks / 3 commits (cd98af9, 1294477, 7ee77ae, all on feat/v1.1-polish); smoke test covers 5 scenarios (branch-auto, worktree-auto, non-git fallback, empty-flag fallback, mutex error) in ~3s; default empty BRANCH/WORKTREE specs preserve Phase 3 byte-parity; v1.1 milestone is feature-complete — 3 of 3 RTUX + 3 of 3 FIX-WR closed; next move is final review + PR for the v1.1 milestone, or open a v1.2 cycle (deferred items: Bash port of PS eval harness, Protocol Evolution Loop, automated branch/worktree cleanup utility, workspace-agnostic ports of lab PS integration scripts)
+Resume file: `.planning/phases/04-worktree-management/04-SUMMARY.md` — phase-level summary; `04-01-SUMMARY.md` for plan-level detail
+Active PR: None yet on v1.1; branch `feat/v1.1-polish` accumulating commits — milestone now ready for PR
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/04-worktree-management/04-01-PLAN.md` for the canonical implementation contract of this phase

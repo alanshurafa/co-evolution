@@ -15,7 +15,7 @@ Address the non-blocking code review warnings from v1.0, then deliver the three 
 - [x] **Phase 1: Code Review Fixes** - Address WR-01/02/03 from v1.0 code review (stale exit code, temp-file leak, global coupling) — shipped 5734b84
 - [x] **Phase 2: REVISE Auto-Loop** - Codex runtime auto-loops on REVISE verdicts until APPROVED or max-iterations (RTUX-03) — shipped 2026-04-17
 - [x] **Phase 3: Visible Live Mode** - Launch visible Windows terminals for live pass-by-pass observation (RTUX-01) — shipped 2026-04-17 (5c09fc1, cd84c13, 7c15e33)
-- [ ] **Phase 4: Worktree Management** - Codex runtime creates/manages dedicated branches or worktrees (RTUX-02)
+- [x] **Phase 4: Worktree Management** - Codex runtime creates/manages dedicated branches or worktrees (RTUX-02) — shipped 2026-04-17 (cd98af9, 1294477, 7ee77ae)
 
 ## Phase Details
 
@@ -73,7 +73,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 (2, 3, 4 are parallelizable af
 | 1. Code Review Fixes | 1/1 | Complete | 2026-04-17 |
 | 2. REVISE Auto-Loop | 1/1 | Complete | 2026-04-17 |
 | 3. Visible Live Mode | 1/1 | Complete | 2026-04-17 |
-| 4. Worktree Management | 0/1 | Planned | - |
+| 4. Worktree Management | 1/1 | Complete | 2026-04-17 |
 
 ## Deferred (candidates for v1.2+)
 
