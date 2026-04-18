@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: executing
-stopped_at: Phase 2 context gathered — 9 decisions locked + 4-tier verification strategy
-last_updated: "2026-04-18T12:53:23.383Z"
-last_activity: 2026-04-18 -- Phase 2 execution started
+stopped_at: "Completed 02-01-PLAN.md: evals/lib/co-evolution-evals.sh + evals/report-template.md shipped; self-test ALL PASSED"
+last_updated: "2026-04-18T13:03:49.660Z"
+last_activity: 2026-04-18 -- 02-01 shipped: evals shared library + report template
 progress:
   total_phases: 14
   completed_phases: 12
   total_plans: 19
-  completed_plans: 23
+  completed_plans: 24
   percent: 100
 ---
 
@@ -26,16 +26,20 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 ## Current Position
 
 Phase: 2 (Bash Eval Harness Port) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3 (02-01 complete; 02-02 score-run port queued next)
 Status: Executing Phase 2
-Last activity: 2026-04-18 -- Phase 2 execution started
+Last activity: 2026-04-18 -- 02-01 shipped: evals/lib/co-evolution-evals.sh library + evals/report-template.md; self-test ALL PASSED
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
-Progress: [#         ] 1/8 phases complete — Phase 2 queued
+Progress: Phase 2 — 1/3 plans complete
 
 ## Performance Metrics
 
 **Velocity:**
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 02-bash-eval-harness-port | 01 | 4min 30s | 2 | 2 |
 
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 
@@ -53,6 +57,7 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [v1.2 kickoff] v1.2 ships Option 1 (Proposer Only); Options 2 + 3 (Auto-Promote, Explorer+Curator) stay seeded until trigger conditions met
 - [v1.2 kickoff] Fold WR-04/WR-05 (v1.1 review non-blockers) into v1.2 Phase 1 rather than shipping a separate v1.1.1 patch — keeps release cadence tidy
 - [v1.2 kickoff] Bash port of PS eval harness (BASH-EVAL-01) is a hard prerequisite for PEL — becomes Phase 2 of v1.2
+- [Phase 02-bash-eval-harness-port]: evals/lib/co-evolution-evals.sh ports PS Yaml+Report+Fixture helpers to a single idempotent-sourceable Bash library; render_report uses {{TOKEN}} not {TOKEN}; merge_yaml_defaults uses jq * for PS Merge-HashtablesDeep semantics
 
 ### Pending Todos
 
@@ -68,8 +73,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T02:39:00.925Z
-Stopped at: Phase 2 context gathered — 9 decisions locked + 4-tier verification strategy
-Resume file: .planning/phases/02-bash-eval-harness-port/02-CONTEXT.md
+Last session: 2026-04-18T13:03:34.949Z
+Stopped at: Completed 02-01-PLAN.md: evals/lib/co-evolution-evals.sh + evals/report-template.md shipped; self-test ALL PASSED
+Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed)
