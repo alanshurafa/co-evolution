@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: executing
-stopped_at: Completed 03-01-PLAN.md — lab/README.md (127 lines, 16 verbatim items, sandbox guarantee, argv contract) + repo-level README.md + AGENTS.md discoverability landed; Phase 3 Plan 02 (--lab parser wiring) is next
-last_updated: "2026-04-18T17:45:00.000Z"
-last_activity: 2026-04-18 -- Phase 3 Plan 01 complete (lab/ scaffold + discoverability)
+stopped_at: Completed 03-02-PLAN.md — --lab <mode> parser wired into both runners via shared lib/co-evolution.sh helpers (validate/list/dispatch); tests/lab-routing-simulation.sh green 4/4; dev-review/codex/README.md CLI row added. Phase 3 COMPLETE (2/2 plans). Phase 4 (Mode Classifier) is next.
+last_updated: "2026-04-18T17:42:02.000Z"
+last_activity: 2026-04-18 -- Phase 3 Plan 02 complete (--lab parser + simulation gate); Phase 3 COMPLETE
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 ## Current Position
 
-Phase: 3 (Lab Scaffold) — EXECUTING
-Plan: 2 of 2 (Plan 01 complete — 2026-04-18)
-Status: Executing Phase 3
-Last activity: 2026-04-18 -- Phase 3 Plan 01 complete; lab/README.md + repo discoverability shipped
+Phase: 3 (Lab Scaffold) — COMPLETE (2026-04-18)
+Next: Phase 4 (Mode Classifier, frozen)
+Status: Phase 3 shipped; ready to kick off Phase 4
+Last activity: 2026-04-18 -- Phase 3 Plan 02 complete; --lab parser + simulation gate shipped; Phase 3 complete
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
-Progress: Phase 3 — 1/2 plans complete
+Progress: Phase 3 — 2/2 plans complete; milestone v1.2 at 3/8 phases
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: Phase 3 — 1/2 plans complete
 | 02-bash-eval-harness-port | 02 | 20min 53s | 2 | 1 |
 | 02-bash-eval-harness-port | 03 | 18min 12s | 4 | 5 |
 | 03-lab-scaffold | 01 | ~8 min | 2 | 3 |
+| 03-lab-scaffold | 02 | ~9 min | 4 | 5 |
 
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 
@@ -67,6 +68,11 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 03-lab-scaffold-01]: lab/README.md is the user-facing contract (127 lines) encoding 16 verbatim items from the concept-note PRD — 6 graduation criteria (L-06), 4 anti-criteria with cause+consequence anchors (L-07), 5 lab-worthy qualifiers (L-08), 3 disambiguation items (L-01) — plus sandbox guarantee (L-05), --lab invocation + unknown-mode fail-fast (L-02/L-04), first-inhabitants table with v1.3+ placeholders NOT-created callout (L-09), and the v1.2 argv contract (W-3: entry point receives full task string as $1 — single argument) in the How-to-add section
 - [Phase 03-lab-scaffold-01]: AGENTS.md lab callout placed AFTER final <!-- GSD:profile-end --> marker (not before first -start) so it survives regeneration; README.md lab subsection placed between Claude Code Skill and Picking-the-right-entrypoint (orthogonal opt-in dimension, not a row in the default-runner routing table)
 - [Phase 03-lab-scaffold-01]: Verbatim-copy-with-grep-pinning pattern established: when a downstream artifact MUST mirror an upstream spec, pin each distinctive phrase with grep acceptance — all 48 Task 1 pins + 5 Task 2 pins passed on first run
+- [Phase 03-lab-scaffold-02]: Shared lib/co-evolution.sh helpers (validate_lab_mode / list_available_lab_modes / dispatch_lab_mode) are the single-point-of-truth for --lab routing in BOTH runners — inline duplication rejected because future changes to the unknown-mode message, validation regex, or dispatch-argv order must touch only one file
+- [Phase 03-lab-scaffold-02]: GNU-find feature detection (find --version | grep GNU) rather than OS detection in list_available_lab_modes — Git Bash for Windows and Linux take the fast -printf path; macOS falls through to -exec basename. Doesn't assume anything about $OSTYPE
+- [Phase 03-lab-scaffold-02]: Argv-position invariant pinned by line-number comparison — --lab) arm must precede --) argv-terminator arm in both runners; simulation asserts this via grep -n | cut. A future refactor that moves the arm fails the gate
+- [Phase 03-lab-scaffold-02]: W-3 argv-contract comment symmetric at BOTH dispatch sites — 'single argv slot' substring + 'lab/README.md' cross-reference. Symmetric (not just one runner) because both dispatch sites share the same constraint; future executor reading either runner or the README lands on the same contract
+- [Phase 03-lab-scaffold-02]: Bash 5.2 set -e + $() + die-via-exit quirk — when a library function that calls exit is invoked under set -e inside command substitution, wrap the inner expression in an explicit extra subshell: out=$( (dispatch_lab_mode ...) 2>&1 || true ). Relevant for future verify blocks
 
 ### Pending Todos
 
@@ -82,8 +88,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T17:45:00Z
-Stopped at: Completed 03-01-PLAN.md — lab/README.md (127 lines, 16 verbatim items, sandbox guarantee, argv contract) + repo-level README.md + AGENTS.md discoverability landed. Phase 3 is 1/2 plans done; Plan 02 (--lab parser wiring + simulation test + dev-review/codex/README.md CLI row) is next.
+Last session: 2026-04-18T17:42:02Z
+Stopped at: Completed 03-02-PLAN.md — --lab <mode> parser wired into co-evolve-bouncer.sh + dev-review/codex/dev-review.sh via shared lib/co-evolution.sh helpers (validate_lab_mode / list_available_lab_modes / dispatch_lab_mode); tests/lab-routing-simulation.sh green with 4/4 scenarios; dev-review/codex/README.md CLI row + Lab routing subsection added. Phase 3 COMPLETE (2/2 plans). Phase 4 (Mode Classifier, frozen) is next.
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
-Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 Plan 01 final: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md`
+Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`

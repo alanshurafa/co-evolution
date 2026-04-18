@@ -15,7 +15,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 - [x] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — shipped 2026-04-17 (commits `3a06af8`, `68b9d76`, `f265135`)
 - [x] **Phase 2: Bash Eval Harness Port** (shipped 2026-04-18) — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+. Tier 1 (10/10 fixtures) + Tier 2 (hermetic end-to-end) + Tier 3 (determinism) all green via `bash evals/tests/scorer-verification.sh` → `13/13 scenarios passed`.
-- [ ] **Phase 3: Lab Scaffold** (1/2 plans complete — 2026-04-18) — Create `lab/` directory + README documenting default/lab boundary, promotion flow, graduation criteria. First-class beta channel with clear identity.
+- [x] **Phase 3: Lab Scaffold** (shipped 2026-04-18) — `lab/` directory + README (127 lines, 16 verbatim items from concept-note PRD), repo-level discoverability in README.md + AGENTS.md, `--lab <mode>` parser wired into both runners via shared `lib/co-evolution.sh` helpers, hermetic 4-scenario simulation gate at `tests/lab-routing-simulation.sh` green. First-class beta channel with clear identity AND working runtime surface.
 - [ ] **Phase 4: Mode Classifier (frozen)** — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. Classifier itself does NOT evolve in v1.2.
 - [ ] **Phase 5: Template-Tier Mutation Proposer** — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. Safest first cut.
 - [ ] **Phase 6: Policy-Tier Mutation Proposer** — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations (retry caps, marker-semantics, flavor weights). Composes with Phase 5 independently.
@@ -57,9 +57,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. `lab/README.md` lists current and planned inhabitants (`lab/pel/` for v1.2; `lab/pel-auto/` and `lab/pel-explorer/` noted as v1.3+ placeholders not yet created)
   3. `co-evolve` and `dev-review` runners parse a `--lab <mode>` flag that routes into `lab/<mode>/` without any behavior change for users who don't pass the flag (byte-parity for default invocations verified via simulation)
   4. `lab/README.md` documents the sandbox guarantee: any `--lab` mode runs in isolation from the live checkout and cannot modify master directly — only via emitted PRs
-**Plans**: 2 plans (wave 1 parallel — non-overlapping file sets) (1/2 complete)
+**Plans**: 2 plans (wave 1 parallel — non-overlapping file sets) (2/2 complete)
   - [x] 03-01-PLAN.md — lab/README.md (127 lines) + repo-level README.md + AGENTS.md discoverability (shipped 2026-04-18, commits `36a4f14` + `ab8b6e1`)
-  - [ ] 03-02-PLAN.md — --lab <mode> parser in co-evolve-bouncer.sh + dev-review/codex/dev-review.sh (via lib/co-evolution.sh helpers) + tests/lab-routing-simulation.sh + dev-review/codex/README.md CLI row
+  - [x] 03-02-PLAN.md — --lab <mode> parser in co-evolve-bouncer.sh + dev-review/codex/dev-review.sh (via lib/co-evolution.sh helpers: validate_lab_mode / list_available_lab_modes / dispatch_lab_mode) + tests/lab-routing-simulation.sh (4/4 scenarios) + dev-review/codex/README.md CLI row (shipped 2026-04-18, commits `9e523f0` + `a3ccee3` + `e3fbffb` + `b5efef9`)
 
 ### Phase 4: Mode Classifier (frozen)
 **Goal**: Build the decision layer that auto-selects a fitness flavor for each PEL invocation while staying interpretable and overridable.
@@ -136,7 +136,7 @@ Waves:
 |-------|-------|--------|-----------|
 | 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
 | 2. Bash Eval Harness Port | 3/3 | Complete | 2026-04-18 |
-| 3. Lab Scaffold | 1/2 | In Progress |  |
+| 3. Lab Scaffold | 2/2 | Complete | 2026-04-18 |
 | 4. Mode Classifier (frozen) | TBD | Planned | — |
 | 5. Template-Tier Mutation Proposer | TBD | Planned | — |
 | 6. Policy-Tier Mutation Proposer | TBD | Planned | — |
