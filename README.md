@@ -31,6 +31,18 @@ Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage de
 
 `/dev-review` - a Claude Code skill that wraps the bounce protocol in a full compose-bounce-execute-verify workflow. Use it inside Claude Code for end-to-end plan refinement and code generation.
 
+### [Lab](lab/)
+
+First-class beta channel for experimental features that could break the core runner if shipped prematurely. Opt-in only — users who never pass `--lab <mode>` see zero behavior change. See [`lab/README.md`](lab/README.md) for the boundary conventions, graduation criteria, anti-criteria, and sandbox guarantee.
+
+```bash
+# Invoke a lab mode (parser wired in Phase 3 Plan 02)
+co-evolve --lab pel-proposer "task"
+bash dev-review/codex/dev-review.sh --lab pel-proposer "task"
+```
+
+Unknown modes fail fast with a list of available modes — no silent fallthrough.
+
 ### Picking the right entrypoint
 
 | Task shape | Tool |
