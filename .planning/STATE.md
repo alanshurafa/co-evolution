@@ -4,13 +4,13 @@ milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: verifying
 stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-18T19:31:36.385Z"
+last_updated: "2026-04-18T21:24:16.191Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 9
+  completed_phases: 6
+  total_plans: 12
+  completed_plans: 13
   percent: 100
 ---
 
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** Phase 4 — Mode Classifier (frozen)
+**Current focus:** Phase 6 — Policy-Tier Mutation Proposer
 
 ## Current Position
 
-Phase: 4 (Mode Classifier (frozen)) — EXECUTING
+Phase: 6 (Policy-Tier Mutation Proposer) — EXECUTING
 Plan: 2 of 2
 Next: Phase 4 (Mode Classifier, frozen)
 Status: Phase complete — ready for verification
