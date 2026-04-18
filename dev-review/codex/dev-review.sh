@@ -46,6 +46,8 @@ CURRENT_HASHES_JSON=""
 EXECUTE_DELTA_JSON=""
 RUN_ID=""
 LAST_INVOKE_EXIT_CODE=0
+# Phase 3 LAB-01: opt-in lab-mode routing. Empty = default runner (byte-parity invariant L-03).
+LAB_MODE=""
 
 usage() {
   cat <<'EOF'
@@ -67,6 +69,7 @@ Options:
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
+  --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
   --help                   Show this help text
 EOF
 }
@@ -1006,6 +1009,14 @@ while [[ $# -gt 0 ]]; do
       WORKTREE_SPEC="$2"
       shift 2
       ;;
+    --lab)
+      # Phase 3 LAB-01: opt-in routing to lab/<MODE>/entry.sh.
+      # Arm sits BEFORE the `--` argv-terminator so args after `--` remain
+      # positional (T-03-02-04 argv-position invariant).
+      [[ $# -gt 1 ]] || die "--lab requires a mode"
+      LAB_MODE="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -1033,6 +1044,22 @@ done
 # side effect (RUN_DIR creation, state.json init, git ops). Fails fast with die.
 if [[ -n "$BRANCH_SPEC" && -n "$WORKTREE_SPEC" ]]; then
   die "--branch and --worktree are mutually exclusive"
+fi
+
+# Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
+# (RUN_DIR creation, git ops, agent-CLI require checks). Byte-parity
+# invariant (L-03): LAB_MODE empty → no-op. L-04: unknown-mode fail-fast
+# is handled inside dispatch_lab_mode.
+#
+# Argv contract (v1.2, W-3): "$TASK" here is the concatenated task string
+# produced by the existing parser. Lab inhabitants receive it as a
+# single argv slot — i.e. entry.sh's $1 is the whole task string.
+# See lab/README.md §How-to-add for the v1.2 contract. If a lab inhabitant
+# needs multi-slot argv, it must split $1 itself.
+if [[ -n "$LAB_MODE" ]]; then
+  # REPO_ROOT is set at the top of this script (line 6); lab/ is at repo root.
+  dispatch_lab_mode "$LAB_MODE" "$REPO_ROOT/lab" "$TASK"
+  # dispatch_lab_mode exec's — unreachable on success.
 fi
 
 WORKDIR=$(normalize_path_for_bash "$WORKDIR")

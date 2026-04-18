@@ -20,6 +20,8 @@ OUTPUT_FILE=""
 TASK=""
 INPUT_CONTENT=""
 INPUT_TYPE=""  # "string", "file", or "pipe"
+# Phase 3 LAB-01: opt-in lab-mode routing. Empty = default runner (byte-parity invariant L-03).
+LAB_MODE=""
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 TEMPLATE_DIR="$SCRIPT_DIR/templates/co-evolve"
@@ -54,6 +56,7 @@ Options:
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
+  --lab MODE         Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
   --help             Show this help text
 USAGE
   exit 0
@@ -87,6 +90,11 @@ while [[ $# -gt 0 ]]; do
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
     --bounce-only) BOUNCE_ONLY=true; shift ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
+    --lab)
+      [[ $# -gt 1 ]] || die "--lab requires a mode"
+      LAB_MODE="$2"
+      shift 2
+      ;;
     --)
       shift
       TASK="$*"
@@ -105,6 +113,22 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
+# (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
+# when LAB_MODE is empty, this block is a no-op and the rest of the script
+# runs byte-identically to pre-Phase-3. L-04: unknown-mode fail-fast is
+# handled inside dispatch_lab_mode.
+#
+# Argv contract (v1.2, W-3): "$TASK" here is the concatenated task string
+# produced by the existing parser (TASK="${TASK} $1" loop). Lab inhabitants
+# receive it as a single argv slot — i.e. entry.sh's $1 is the whole task
+# string. See lab/README.md §How-to-add for the v1.2 contract. If a lab
+# inhabitant needs multi-slot argv, it must split $1 itself.
+if [[ -n "$LAB_MODE" ]]; then
+  dispatch_lab_mode "$LAB_MODE" "$SCRIPT_DIR/lab" "$TASK"
+  # dispatch_lab_mode exec's — unreachable on success.
+fi
 
 # --- Input Detection ---
 if [[ -n "$TASK" && -f "$TASK" ]]; then
