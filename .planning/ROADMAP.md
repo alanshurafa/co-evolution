@@ -57,7 +57,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. `lab/README.md` lists current and planned inhabitants (`lab/pel/` for v1.2; `lab/pel-auto/` and `lab/pel-explorer/` noted as v1.3+ placeholders not yet created)
   3. `co-evolve` and `dev-review` runners parse a `--lab <mode>` flag that routes into `lab/<mode>/` without any behavior change for users who don't pass the flag (byte-parity for default invocations verified via simulation)
   4. `lab/README.md` documents the sandbox guarantee: any `--lab` mode runs in isolation from the live checkout and cannot modify master directly — only via emitted PRs
-**Plans**: 1 plan
+**Plans**: 2 plans (wave 1 parallel — non-overlapping file sets)
+  - [ ] 03-01-PLAN.md — lab/README.md (120-180 line contract) + repo-level README.md + AGENTS.md discoverability
+  - [ ] 03-02-PLAN.md — --lab <mode> parser in co-evolve-bouncer.sh + dev-review/codex/dev-review.sh (via lib/co-evolution.sh helpers) + tests/lab-routing-simulation.sh + dev-review/codex/README.md CLI row
 
 ### Phase 4: Mode Classifier (frozen)
 **Goal**: Build the decision layer that auto-selects a fitness flavor for each PEL invocation while staying interpretable and overridable.
@@ -134,7 +136,7 @@ Waves:
 |-------|-------|--------|-----------|
 | 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
 | 2. Bash Eval Harness Port | 2/3 | In Progress|  |
-| 3. Lab Scaffold | TBD | Planned | — |
+| 3. Lab Scaffold | 2 | Planned | — |
 | 4. Mode Classifier (frozen) | TBD | Planned | — |
 | 5. Template-Tier Mutation Proposer | TBD | Planned | — |
 | 6. Policy-Tier Mutation Proposer | TBD | Planned | — |
