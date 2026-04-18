@@ -16,9 +16,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - [x] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — shipped 2026-04-17 (commits `3a06af8`, `68b9d76`, `f265135`)
 - [x] **Phase 2: Bash Eval Harness Port** (shipped 2026-04-18) — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+. Tier 1 (10/10 fixtures) + Tier 2 (hermetic end-to-end) + Tier 3 (determinism) all green via `bash evals/tests/scorer-verification.sh` → `13/13 scenarios passed`.
 - [x] **Phase 3: Lab Scaffold** (shipped 2026-04-18) — `lab/` directory + README (127 lines, 16 verbatim items from concept-note PRD), repo-level discoverability in README.md + AGENTS.md, `--lab <mode>` parser wired into both runners via shared `lib/co-evolution.sh` helpers, hermetic 4-scenario simulation gate at `tests/lab-routing-simulation.sh` green. First-class beta channel with clear identity AND working runtime surface.
-- [ ] **Phase 4: Mode Classifier (frozen)** — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. Classifier itself does NOT evolve in v1.2.
-- [ ] **Phase 5: Template-Tier Mutation Proposer** — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. Safest first cut.
-- [ ] **Phase 6: Policy-Tier Mutation Proposer** — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations (retry caps, marker-semantics, flavor weights). Composes with Phase 5 independently.
+- [x] **Phase 4: Mode Classifier (frozen)** (shipped 2026-04-18) — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. 2 plans complete. 6/6 simulation green.
+- [x] **Phase 5: Template-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 6) — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. 2 plans complete. 8/8 simulation green.
+- [x] **Phase 6: Policy-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 5) — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations across 6 enumerated knobs. 2 plans complete. 8/8 simulation green.
 - [ ] **Phase 7: Code-Tier Mutation Proposer** — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist.
 - [ ] **Phase 8: PR Emission + Scoring Integration** — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship.
 
@@ -143,9 +143,9 @@ Waves:
 | 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
 | 2. Bash Eval Harness Port | 3/3 | Complete | 2026-04-18 |
 | 3. Lab Scaffold | 2/2 | Complete | 2026-04-18 |
-| 4. Mode Classifier (frozen) | TBD | Planned | — |
-| 5. Template-Tier Mutation Proposer | 2 plans | Planned | — |
-| 6. Policy-Tier Mutation Proposer | TBD | Planned | — |
+| 4. Mode Classifier (frozen) | 2/2 | Complete | 2026-04-18 |
+| 5. Template-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
+| 6. Policy-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 7. Code-Tier Mutation Proposer | TBD | Planned | — |
 | 8. PR Emission + Scoring Integration | TBD | Planned | — |
 
