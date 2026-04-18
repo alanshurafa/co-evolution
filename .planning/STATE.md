@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: Phase 1 shipped on `feat/v1.2-pel-proposer`; Phase 2 (Bash eval harness port, BASH-EVAL-01) queued
+status: executing
 stopped_at: Phase 2 context gathered — 9 decisions locked + 4-tier verification strategy
-last_updated: "2026-04-18T02:39:00.935Z"
-last_activity: 2026-04-17 — Phase 1 complete; WR-04 + WR-05 closed; Scenario F static-order regression gate added
+last_updated: "2026-04-18T12:53:23.383Z"
+last_activity: 2026-04-18 -- Phase 2 execution started
 progress:
   total_phases: 14
   completed_phases: 12
-  total_plans: 16
+  total_plans: 19
   completed_plans: 23
   percent: 100
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** v1.2 Protocol Evolution Loop — Proposer Only. PEL machinery lives entirely in `lab/pel/`; default runner unchanged for users who never invoke `--lab pel-proposer`.
+**Current focus:** Phase 2 — Bash Eval Harness Port
 
 ## Current Position
 
-Phase: 1 of 8 — Post-v1.1 Fixes COMPLETE
-Plan: 01-01 complete (3 tasks, 3 fix commits + plan commit + phase-complete chore)
-Status: Phase 1 shipped on `feat/v1.2-pel-proposer`; Phase 2 (Bash eval harness port, BASH-EVAL-01) queued
-Last activity: 2026-04-17 — Phase 1 complete; WR-04 + WR-05 closed; Scenario F static-order regression gate added
+Phase: 2 (Bash Eval Harness Port) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 2
+Last activity: 2026-04-18 -- Phase 2 execution started
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
 Progress: [#         ] 1/8 phases complete — Phase 2 queued
