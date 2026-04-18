@@ -108,12 +108,15 @@ delta=$(run_adapter)
 # Validate against bounds.jq — the single source of truth.
 # jq -f bounds.jq exits 0 on success, 4 on bounds violation, 5 on unknown knob.
 # Preserve jq's exit code so the proposer exits with the right category.
-if ! echo "$delta" | jq -f "$SCRIPT_DIR/bounds.jq" >/dev/null 2>/dev/null; then
-  rc=$?
-  # Re-run to surface the diagnostic to stderr (first run was quieted).
-  echo "$delta" | jq -f "$SCRIPT_DIR/bounds.jq" >/dev/null 2>&1 || true
-  # Also dump the bounds.jq output through a second run so humans see the
-  # actual violation record (halt_error prints the value to stderr at exit).
+#
+# Capture jq's rc directly: `if ! cmd; then rc=$?` would capture `!`'s exit
+# (which is always 0 when the inner fails), masking jq's real code. Run jq
+# and assign rc immediately after.
+rc=0
+echo "$delta" | jq -f "$SCRIPT_DIR/bounds.jq" >/dev/null 2>/dev/null || rc=$?
+if (( rc != 0 )); then
+  # Re-run to surface the violation record (halt_error prints it to stderr
+  # at exit). The first run was quieted to capture the pure exit code.
   echo "$delta" | jq -f "$SCRIPT_DIR/bounds.jq" >/dev/null || true
   echo "ERROR: delta failed bounds.jq validation (jq exit $rc)" >&2
   exit "$rc"
