@@ -58,7 +58,7 @@ Tracked explicitly in seed: `.planning/seeds/pel-auto-promote-and-explorer.md`.
 | FIX-WR-05 | Phase 1 | Planned |
 | BASH-EVAL-01 | Phase 2 | Completed (2026-04-18) |
 | LAB-01 | Phase 3 | Completed (2026-04-18) |
-| PEL-01 | Phase 4 | Planned |
+| PEL-01 | Phase 4 | Completed (2026-04-18) |
 | PEL-02 | Phase 5 | Planned |
 | PEL-03 | Phase 6 | Planned |
 | PEL-04 | Phase 7 | Planned |
