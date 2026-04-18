@@ -1,0 +1,15 @@
+{
+  "case_id": "synthetic-blind-spot-01",
+  "scores": {
+    "robustness": "PASS",
+    "convergence": "PASS",
+    "plan_quality": "PASS",
+    "execution_fidelity": "PASS",
+    "verify_accuracy": "FAIL",
+    "cost": "PASS",
+    "cross_ai_diversity": "PASS"
+  },
+  "composite": 0.714,
+  "failed_dimension": "verify_accuracy",
+  "symptom": "fuzzy marker matching accepted [CONTEST] instead of the canonical [CONTESTED]; marker_semantics=lax is letting malformed markers through"
+}
