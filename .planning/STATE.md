@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: in_progress
-stopped_at: Phase 1 (Post-v1.1 Fixes) complete — WR-04 (INITIAL_GIT_DIRTY relocation) + WR-05 (dash guard + -- argv terminator) landed across 3 fix commits (3a06af8, 68b9d76, f265135) + plan (26df0c9) + phase-complete chore; simulation test extended with Scenario F static-order regression gate; all 6 scenarios pass; next phase is Bash eval harness port (BASH-EVAL-01, ~2 days)
-last_updated: "2026-04-17T23:00:00.000Z"
-last_activity: 2026-04-17 — Phase 1 complete on feat/v1.2-pel-proposer; both v1.1 carryforward warnings closed
+status: Phase 1 shipped on `feat/v1.2-pel-proposer`; Phase 2 (Bash eval harness port, BASH-EVAL-01) queued
+stopped_at: Phase 2 context gathered — 9 decisions locked + 4-tier verification strategy
+last_updated: "2026-04-18T02:39:00.935Z"
+last_activity: 2026-04-17 — Phase 1 complete; WR-04 + WR-05 closed; Scenario F static-order regression gate added
 progress:
-  total_phases: 8
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 1
-  percent: 12
+  total_phases: 14
+  completed_phases: 12
+  total_plans: 16
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -68,8 +68,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-17 (active — v1.2 kickoff in progress)
-Stopped at: PROJECT.md refresh complete; REQUIREMENTS.md + ROADMAP.md to follow in this same session; then recommend user creates co-evolution-v12 worktree for Phase 1 execution.
-Resume file: `.planning/notes/pel-design-decisions.md` — binding design decisions; `.planning/notes/co-evolution-lab-concept.md` — lab architecture conventions; `.planning/seeds/pel-auto-promote-and-explorer.md` — deferred Options 2+3 with trigger conditions; `.planning/research/questions.md` — RQ-001 Goodhart
+Last session: 2026-04-18T02:39:00.925Z
+Stopped at: Phase 2 context gathered — 9 decisions locked + 4-tier verification strategy
+Resume file: .planning/phases/02-bash-eval-harness-port/02-CONTEXT.md
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed)
