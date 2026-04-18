@@ -22,6 +22,13 @@ REVISE_LOOP_MAX="${REVISE_LOOP_MAX:-0}"
 # RTUX-01: Live-window mode. Honors LIVE_MODE env var (string "true"/"false");
 # --live CLI flag sets it to "true". Default off = Phase 2 byte-parity.
 LIVE_MODE="${LIVE_MODE:-false}"
+# RTUX-02: Branch + worktree specs. Honor DEV_REVIEW_BRANCH / DEV_REVIEW_WORKTREE
+# env vars as defaults; CLI flags (--branch / --worktree) override. Mutually
+# exclusive — both non-empty after parsing = die. Default empty = Phase 3 byte-parity.
+BRANCH_SPEC="${DEV_REVIEW_BRANCH:-}"
+WORKTREE_SPEC="${DEV_REVIEW_WORKTREE:-}"
+BRANCH_CREATED=""
+WORKTREE_PATH=""
 WORKDIR="$(pwd)"
 TASK=""
 REVIEWER=""
@@ -58,6 +65,8 @@ Options:
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
+  --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
+  --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
   --help                   Show this help text
 EOF
 }
@@ -983,6 +992,20 @@ while [[ $# -gt 0 ]]; do
       LIVE_MODE=true
       shift
       ;;
+    --branch)
+      # RTUX-02: Branch spec — `auto` derives `dev-review/auto-<ts>-<slug>`, or
+      # use NAME verbatim. Empty string allowed (no-op + WARNING from helper).
+      [[ $# -gt 1 ]] || die "--branch requires a value"
+      BRANCH_SPEC="$2"
+      shift 2
+      ;;
+    --worktree)
+      # RTUX-02: Worktree spec — `auto` derives `<parent>/<base>-dr-<ts>`, or
+      # use PATH verbatim. Empty string allowed (no-op + WARNING from helper).
+      [[ $# -gt 1 ]] || die "--worktree requires a value"
+      WORKTREE_SPEC="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -1005,6 +1028,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# RTUX-02: Branch and worktree are mutually exclusive — enforce BEFORE any
+# side effect (RUN_DIR creation, state.json init, git ops). Fails fast with die.
+if [[ -n "$BRANCH_SPEC" && -n "$WORKTREE_SPEC" ]]; then
+  die "--branch and --worktree are mutually exclusive"
+fi
 
 WORKDIR=$(normalize_path_for_bash "$WORKDIR")
 if [[ -n "$PLAN_SOURCE" ]]; then
@@ -1094,6 +1123,8 @@ log " Workdir:   $WORKDIR"
 log " Run dir:   $RUN_DIR"
 log " Timeout:   ${PHASE_TIMEOUT}s per phase"
 log " Live mode: $LIVE_MODE"
+log " Branch:    ${BRANCH_SPEC:-<empty>}"
+log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
 log "============================================"
 log ""
 
@@ -1146,6 +1177,27 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
     exit 1
   fi
   exit 0
+fi
+
+# RTUX-02: Branch / worktree setup. Runs AFTER plan+bounce land on the parent
+# branch (so plan artifacts stay reviewable pre-merge) and BEFORE execute.
+# PLAN_ONLY exits earlier (above) and never reaches this block — by design,
+# `--branch auto --plan-only` is a silent no-op on the branching side because
+# plan artifacts intentionally stay on the parent branch.
+# Mutually exclusive: parser already rejected both-set; only one path fires.
+if [[ -n "$BRANCH_SPEC" ]]; then
+  BRANCH_CREATED=$(maybe_setup_branch "$WORKDIR" "$BRANCH_SPEC" "$TASK")
+  if [[ -n "$BRANCH_CREATED" ]]; then
+    write_state_field "$STATE_JSON" ".branch_created" "string" "$BRANCH_CREATED"
+  fi
+elif [[ -n "$WORKTREE_SPEC" ]]; then
+  _new_wt=$(maybe_setup_worktree "$WORKDIR" "$WORKTREE_SPEC" "$TASK")
+  if [[ -n "$_new_wt" ]]; then
+    WORKTREE_PATH="$_new_wt"
+    WORKDIR="$_new_wt"   # execute/verify phases now operate inside the worktree
+    write_state_field "$STATE_JSON" ".worktree_path" "string" "$WORKTREE_PATH"
+  fi
+  unset _new_wt
 fi
 
 # RTUX-03: REVISE auto-loop. Default REVISE_LOOP_MAX=0 runs exactly one pass
@@ -1254,6 +1306,8 @@ log " Composer:  $COMPOSER"
 log " Executor:  $EXECUTOR"
 log " Verify:    $VERIFY"
 log " Run dir:   $RUN_DIR"
+log " Branch:    ${BRANCH_CREATED:-<none>}"
+log " Worktree:  ${WORKTREE_PATH:-<none>}"
 log "============================================"
 
 if [[ "$EXECUTE_EXIT" -eq 2 || "$VERIFY_EXIT" -eq 2 ]]; then
