@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: "Co-Evolution"
+message: "If you use this tool or the bounce protocol, please cite it."
+type: software
+authors:
+  - given-names: Alan
+    family-names: Shurafa
+repository-code: "https://github.com/alanshurafa/co-evolution"
+url: "https://github.com/alanshurafa/co-evolution"
+abstract: >-
+  Tools for structured iterative refinement between AI agents. Two
+  agents bounce a shared markdown document back and forth using
+  in-document disagreement markers ([CONTESTED] and [CLARIFY]) that
+  auto-expire after 2 passes, guaranteeing bounded convergence.
+  Agent-agnostic via CLI adapters; ships with Claude Code and Codex
+  CLI adapters.
+keywords:
+  - multi-agent
+  - multi-agent-llm
+  - llm-debate
+  - prompt-engineering
+  - agent-orchestration
+  - convergence
+  - bounce-protocol
+  - claude-code
+  - codex-cli
+license: MIT
+version: "1.1"
+date-released: "2026-04-17"

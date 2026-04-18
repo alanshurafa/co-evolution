@@ -1,0 +1,23 @@
+# Co-Evolution
+
+> Tools for structured iterative refinement between AI agents. Two agents bounce a shared markdown document back and forth using in-document disagreement markers — `[CONTESTED]` (the other agent must resolve) and `[CLARIFY]` (question for the other agent) — that auto-expire after 2 passes, guaranteeing bounded convergence. Agent-agnostic via CLI adapters: ships with Claude Code and Codex CLI adapters; add any CLI-based agent by writing one function.
+
+## Core concepts
+
+- [README](https://github.com/alanshurafa/co-evolution/blob/master/README.md): overview of the three entrypoints (Agent Bouncer, Codex runtime, Claude Code skill)
+- [Bounce protocol + marker semantics](https://github.com/alanshurafa/co-evolution/blob/master/agent-bouncer/README.md): `[CONTESTED]` / `[CLARIFY]` usage, 2-pass staleness rule, convergence guarantee
+- [dev-review SKILL.md](https://github.com/alanshurafa/co-evolution/blob/master/skills/dev-review/SKILL.md): compose → bounce → execute → verify workflow for real code changes, JSON-schema-gated verdict
+- [Codex standalone runtime](https://github.com/alanshurafa/co-evolution/blob/master/dev-review/codex/README.md): bash runtime for the same workflow outside Claude Code
+- [Eval harness](https://github.com/alanshurafa/co-evolution/blob/master/evals/README.md): YAML case files with 5-tier scoring (plan_quality, execution_fidelity, verify_accuracy, cost, cross_ai_diversity)
+
+## What makes this different
+
+- First-class *in-document* expiring disagreement markers. No competing multi-agent LLM tool uses this mechanic
+- Filesystem as coordination substrate: agents are subprocesses reading/writing a shared markdown file, not API orchestration
+- Bounded convergence by protocol construction (2-pass marker staleness), not by heuristic iteration cap
+- Zero-runtime-install bash core (~187 lines) + two adapter functions per agent
+
+## Optional
+
+- [Project contract](https://github.com/alanshurafa/co-evolution/blob/master/.planning/PROJECT.md): project-level constraints and value statement
+- [v1.2 roadmap](https://github.com/alanshurafa/co-evolution/blob/master/.planning/ROADMAP.md): Protocol Evolution Loop — self-mutating harness with human review gate on proposed mutations
