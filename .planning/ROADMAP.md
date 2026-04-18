@@ -84,7 +84,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. Proposer consumes: an eval-failure report from Phase 2's harness, the current template file, and the flavor pick from Phase 4
   3. Proposer output is a well-formed unified diff that applies cleanly to the current template via `patch` or `git apply`
   4. Simulation test: fed a synthetic eval-failure report pointing at a specific template weakness, proposer produces a diff that addresses the weakness (human-graded in the test — this test isn't fully automatable, but the diff-well-formedness and apply-cleanly checks are)
-**Plans**: 1-2 plans
+**Plans**: 2 plans (2 waves)
+  - [ ] 05-01-PLAN.md — Core proposer: lab/pel/proposer/template/{proposer.sh, adapter.sh, prompt.md} + lab/pel/README.md extension (Template-tier section)
+  - [ ] 05-02-PLAN.md — Simulation gate: tests/template-proposer-simulation.sh (8 scenarios — 4 flavors + D-09 multi-file rejection + D-09 non-template-path rejection + D-10 malformed-diff rejection + D-03 missing-env rejection) + tests/fixtures/{eval-failures/*.json, templates/*.md}
 
 ### Phase 6: Policy-Tier Mutation Proposer
 **Goal**: Second mutation proposer — tunes numeric/string knobs that shape protocol behavior without touching templates or code.
@@ -95,7 +97,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. `lab/pel/proposer/policy/` produces a proposed delta to the policy file (single knob or a small coherent set) given eval feedback + flavor pick
   3. Proposer output applies via jq/yq deterministically — simulation verifies the resulting policy is syntactically valid and semantically within documented bounds (e.g., retry cap in [0, 10])
   4. Simulation test: proposer takes a synthetic failure, emits a policy delta that would plausibly address it, applies cleanly
-**Plans**: 1 plan
+**Plans**: 2 plans (2 waves)
+  - [ ] 06-01-PLAN.md — Core proposer: lab/pel/proposer/policy/{policy.yaml (6 enumerated knobs per D-03), bounds.jq (single-source bounds validator — halt_error(4)=bounds, halt_error(5)=non-enumerated), prompt.md (cache-friendly mutation prompt with 4-flavor bias), adapter.sh (self-contained Haiku 4.5 adapter), proposer.sh (env validation + jq+yq require_tools + bounds enforcement + D-11 dry-run-by-construction)}
+  - [ ] 06-02-PLAN.md — Simulation gate: tests/policy-proposer-simulation.sh (8 scenarios — 4 flavors with yq-apply verification + D-12 bounds rejection exit 4 + D-12 non-enumerated rejection exit 5 + malformed-JSON exit 3 + env/model/path validation exit 1) + tests/fixtures/policy-feedback/{retry-failure,convergence-slow,cost-overrun,blind-spot-missed}.json + lab/pel/README.md extension (policy proposer contract documentation)
 
 ### Phase 7: Code-Tier Mutation Proposer
 **Goal**: The hardest tier — PEL can propose diffs against `lib/co-evolution.sh` and runner paths. Sandbox + canary + budget enforcement are the ship criteria, not optional.
@@ -140,7 +144,7 @@ Waves:
 | 2. Bash Eval Harness Port | 3/3 | Complete | 2026-04-18 |
 | 3. Lab Scaffold | 2/2 | Complete | 2026-04-18 |
 | 4. Mode Classifier (frozen) | TBD | Planned | — |
-| 5. Template-Tier Mutation Proposer | TBD | Planned | — |
+| 5. Template-Tier Mutation Proposer | 2 plans | Planned | — |
 | 6. Policy-Tier Mutation Proposer | TBD | Planned | — |
 | 7. Code-Tier Mutation Proposer | TBD | Planned | — |
 | 8. PR Emission + Scoring Integration | TBD | Planned | — |
