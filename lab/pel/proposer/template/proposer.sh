@@ -36,8 +36,8 @@
 #   4 single-file constraint violation (>1 file or non-template path) — D-09
 #
 # Self-contained per D-05: the ONLY source statement is the sibling
-# `source "$SCRIPT_DIR/adapter.sh"` below. No lib/co-evolution.sh, no
-# lab/pel/classifier/**, no runner internals.
+# `source "$SCRIPT_DIR/adapter.sh"` below. Zero import of the runner helpers,
+# the sibling classifier subtree, or any other directory outside this one.
 #
 # Security posture:
 #   - T-05-01 (argv/env injection): TASK_HINT captured as opaque data via
