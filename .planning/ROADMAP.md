@@ -13,7 +13,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 **Goal:** Ship PEL Option 1 — an LLM-powered proposer that generates protocol-mutation PRs for human review, using the eval harness as fitness signal. PEL machinery lives entirely in `lab/pel/`; the default runner (`co-evolve`, `dev-review`) is unchanged for users who never invoke `--lab pel-proposer`. Accepted mutations merge to master and upgrade the default runner transparently.
 
-- [ ] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — avoids a separate v1.1.1 patch cycle
+- [x] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — shipped 2026-04-17 (commits `3a06af8`, `68b9d76`, `f265135`)
 - [ ] **Phase 2: Bash Eval Harness Port** — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+.
 - [ ] **Phase 3: Lab Scaffold** — Create `lab/` directory + README documenting default/lab boundary, promotion flow, graduation criteria. First-class beta channel with clear identity.
 - [ ] **Phase 4: Mode Classifier (frozen)** — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. Classifier itself does NOT evolve in v1.2.
@@ -129,7 +129,7 @@ Waves:
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 1. Post-v1.1 Fixes | TBD | Planned | — |
+| 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
 | 2. Bash Eval Harness Port | TBD | Planned | — |
 | 3. Lab Scaffold | TBD | Planned | — |
 | 4. Mode Classifier (frozen) | TBD | Planned | — |

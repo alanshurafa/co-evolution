@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: defining_requirements
-stopped_at: v1.2 milestone kickoff — PROJECT.md updated, requirements and roadmap pending; design exploration already complete in .planning/notes/pel-design-decisions.md
-last_updated: "2026-04-17T22:00:00.000Z"
-last_activity: 2026-04-17 -- v1.2 started; PROJECT.md reflects lab/core split, requirements + roadmap to follow
+status: in_progress
+stopped_at: Phase 1 (Post-v1.1 Fixes) complete — WR-04 (INITIAL_GIT_DIRTY relocation) + WR-05 (dash guard + -- argv terminator) landed across 3 fix commits (3a06af8, 68b9d76, f265135) + plan (26df0c9) + phase-complete chore; simulation test extended with Scenario F static-order regression gate; all 6 scenarios pass; next phase is Bash eval harness port (BASH-EVAL-01, ~2 days)
+last_updated: "2026-04-17T23:00:00.000Z"
+last_activity: 2026-04-17 — Phase 1 complete on feat/v1.2-pel-proposer; both v1.1 carryforward warnings closed
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 8
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 1
+  percent: 12
 ---
 
 # Project State
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-17 — v1.2 Protocol Evolution Loop milestone started; design exploration complete
-Working directory (recommended): `C:/Users/alan/Project/co-evolution-v12/` (not yet created — user to create on `feat/v1.2-pel-proposer` branch before phase 1 execution)
+Phase: 1 of 8 — Post-v1.1 Fixes COMPLETE
+Plan: 01-01 complete (3 tasks, 3 fix commits + plan commit + phase-complete chore)
+Status: Phase 1 shipped on `feat/v1.2-pel-proposer`; Phase 2 (Bash eval harness port, BASH-EVAL-01) queued
+Last activity: 2026-04-17 — Phase 1 complete; WR-04 + WR-05 closed; Scenario F static-order regression gate added
+Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
-Progress: [          ] 0/0 phases complete — defining requirements
+Progress: [#         ] 1/8 phases complete — Phase 2 queued
 
 ## Performance Metrics
 
