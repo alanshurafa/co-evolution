@@ -20,7 +20,7 @@
 ### Runtime Ergonomics (from deferred v2 bucket)
 
 - [x] **RTUX-01**: Codex runtime can launch visible Windows terminals (`wt.exe` / `cmd.exe`) for live pass-by-pass observation via `--live` CLI flag. Windows-only feature; on non-Windows, `--live` logs a warning and falls back to inline execution. (Complete 2026-04-17 — Phase 3)
-- [ ] **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically via `--branch auto|NAME` and `--worktree auto|PATH` flags. No-ops when workdir is not a git repo.
+- [x] **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically via `--branch auto|NAME` and `--worktree auto|PATH` flags. No-ops when workdir is not a git repo. (Complete 2026-04-17 — Phase 4, commits cd98af9, 1294477, 7ee77ae)
 - [x] **RTUX-03**: Codex runtime can loop automatically on REVISE verdicts until approval or max-iterations via `--revise-loop N` flag. Each loop pass recorded in `state.json` as a new phase entry. (Complete 2026-04-17 — Phase 2)
 
 ## Deferred (candidates for v1.2+)
@@ -37,7 +37,7 @@
 | FIX-WR-03 | Phase 1 | Complete |
 | RTUX-03 | Phase 2 | Complete |
 | RTUX-01 | Phase 3 | Complete |
-| RTUX-02 | Phase 4 | Planned |
+| RTUX-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 6 total (3 FIX-WR + 3 RTUX)
