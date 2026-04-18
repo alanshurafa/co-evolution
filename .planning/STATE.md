@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: executing
-stopped_at: Completed 02-03-PLAN.md — Phase 2 fully shipped (orchestrator + comparator + hermetic fake runner + Tier 1/2/3 gate 13/13 passing + README reframe); ready to advance to Phase 3 (Lab Scaffold)
-last_updated: "2026-04-18T17:22:52.473Z"
-last_activity: 2026-04-18 -- Phase 3 execution started
+stopped_at: Completed 03-01-PLAN.md — lab/README.md (127 lines, 16 verbatim items, sandbox guarantee, argv contract) + repo-level README.md + AGENTS.md discoverability landed; Phase 3 Plan 02 (--lab parser wiring) is next
+last_updated: "2026-04-18T17:45:00.000Z"
+last_activity: 2026-04-18 -- Phase 3 Plan 01 complete (lab/ scaffold + discoverability)
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 5
-  percent: 83
+  total_plans: 7
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 ## Current Position
 
 Phase: 3 (Lab Scaffold) — EXECUTING
-Plan: 1 of 2
+Plan: 2 of 2 (Plan 01 complete — 2026-04-18)
 Status: Executing Phase 3
-Last activity: 2026-04-18 -- Phase 3 execution started
+Last activity: 2026-04-18 -- Phase 3 Plan 01 complete; lab/README.md + repo discoverability shipped
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
-Progress: Phase 2 — 3/3 plans complete
+Progress: Phase 3 — 1/2 plans complete
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Progress: Phase 2 — 3/3 plans complete
 | 02-bash-eval-harness-port | 01 | 4min 30s | 2 | 2 |
 | 02-bash-eval-harness-port | 02 | 20min 53s | 2 | 1 |
 | 02-bash-eval-harness-port | 03 | 18min 12s | 4 | 5 |
+| 03-lab-scaffold | 01 | ~8 min | 2 | 3 |
 
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 
@@ -63,6 +64,9 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 02-bash-eval-harness-port]: evals/score-run.sh ports PS 7-dimension scorer to 675-LOC Bash with jq-based ISO8601 TZ parsing, awk-based Levenshtein with 4000-char cap and BOM strip, and MINGW grep -iF workaround via awk tolower+index()
 - [Phase 02-bash-eval-harness-port]: evals/run-evals.sh (383 LOC) + evals/compare-reports.sh (154 LOC) + evals/tests/fake-runner.sh (177 LOC) + evals/tests/scorer-verification.sh (234 LOC) complete the Bash harness; --runner-path flag enables hermetic Tier 2 via fake-runner test double; scorer-verification.sh wires Tier 1 (10 fixtures) + Tier 2 (PASS + FAIL scenarios exercising robust_fails>0 branch) + Tier 3 (determinism) into a single '13/13 scenarios passed' gate on any Bash+jq+yq platform without pwsh — closes SC-3
 - [Phase 02-bash-eval-harness-port]: fake-runner banner is ASCII 'FAKE RUNNER -- DO NOT INVOKE IN PRODUCTION' (double-hyphen) not em-dash to dodge Git Bash Windows stdout quirks; state.json carries mode=fake-runner tag; lives under evals/tests/ (explicit test path per T-02-03-11)
+- [Phase 03-lab-scaffold-01]: lab/README.md is the user-facing contract (127 lines) encoding 16 verbatim items from the concept-note PRD — 6 graduation criteria (L-06), 4 anti-criteria with cause+consequence anchors (L-07), 5 lab-worthy qualifiers (L-08), 3 disambiguation items (L-01) — plus sandbox guarantee (L-05), --lab invocation + unknown-mode fail-fast (L-02/L-04), first-inhabitants table with v1.3+ placeholders NOT-created callout (L-09), and the v1.2 argv contract (W-3: entry point receives full task string as $1 — single argument) in the How-to-add section
+- [Phase 03-lab-scaffold-01]: AGENTS.md lab callout placed AFTER final <!-- GSD:profile-end --> marker (not before first -start) so it survives regeneration; README.md lab subsection placed between Claude Code Skill and Picking-the-right-entrypoint (orthogonal opt-in dimension, not a row in the default-runner routing table)
+- [Phase 03-lab-scaffold-01]: Verbatim-copy-with-grep-pinning pattern established: when a downstream artifact MUST mirror an upstream spec, pin each distinctive phrase with grep acceptance — all 48 Task 1 pins + 5 Task 2 pins passed on first run
 
 ### Pending Todos
 
@@ -78,8 +82,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T13:57:31Z
-Stopped at: Completed 02-03-PLAN.md — Phase 2 fully shipped (orchestrator + comparator + hermetic fake runner + Tier 1/2/3 gate 13/13 passing + README reframe); ready to advance to Phase 3 (Lab Scaffold)
+Last session: 2026-04-18T17:45:00Z
+Stopped at: Completed 03-01-PLAN.md — lab/README.md (127 lines, 16 verbatim items, sandbox guarantee, argv contract) + repo-level README.md + AGENTS.md discoverability landed. Phase 3 is 1/2 plans done; Plan 02 (--lab parser wiring + simulation test + dev-review/codex/README.md CLI row) is next.
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
-Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`
+Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 Plan 01 final: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md`

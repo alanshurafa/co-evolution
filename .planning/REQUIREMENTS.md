@@ -23,7 +23,7 @@
 
 ### Lab Scaffold
 
-- [ ] **LAB-01**: Create `lab/` directory at repo root. Add `lab/README.md` documenting (a) the default/lab boundary from `.planning/notes/co-evolution-lab-concept.md`, (b) the promotion flow (lab proposer → draft PR → human review → merge to master → default runner upgraded transparently), (c) graduation criteria (≥4 weeks lab runtime + test parity + documented failure modes + explicit user signal + rollback path + stable name/API), (d) anti-criteria for killing rather than promoting, (e) first inhabitants list (`lab/pel/`).
+- [x] **LAB-01**: Create `lab/` directory at repo root. Add `lab/README.md` documenting (a) the default/lab boundary from `.planning/notes/co-evolution-lab-concept.md`, (b) the promotion flow (lab proposer → draft PR → human review → merge to master → default runner upgraded transparently), (c) graduation criteria (≥4 weeks lab runtime + test parity + documented failure modes + explicit user signal + rollback path + stable name/API), (d) anti-criteria for killing rather than promoting, (e) first inhabitants list (`lab/pel/`). — Completed Phase 3 Plan 01 (2026-04-18).
 
 ### PEL Core (Option 1 Proposer — the v1.2 ship target)
 
@@ -57,7 +57,7 @@ Tracked explicitly in seed: `.planning/seeds/pel-auto-promote-and-explorer.md`.
 | FIX-WR-04 | Phase 1 | Planned |
 | FIX-WR-05 | Phase 1 | Planned |
 | BASH-EVAL-01 | Phase 2 | Completed (2026-04-18) |
-| LAB-01 | Phase 3 | Planned |
+| LAB-01 | Phase 3 | Completed (2026-04-18) |
 | PEL-01 | Phase 4 | Planned |
 | PEL-02 | Phase 5 | Planned |
 | PEL-03 | Phase 6 | Planned |
