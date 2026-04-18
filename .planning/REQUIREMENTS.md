@@ -19,7 +19,7 @@
 
 ### Evals Harness Portability (prerequisite for PEL)
 
-- [ ] **BASH-EVAL-01**: Port PowerShell eval harness (`runners/codex-ps/scripts/run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) to Bash at a new top-level `evals/scripts/` or `evals/bin/` location. Must run in Git Bash on Windows + Linux + macOS without `pwsh`. Consumes the portable cases/fixtures/schema already elevated to top-level in v1.0 Phase 8. Produces machine-readable eval reports consumable by PEL scorer.
+- [x] **BASH-EVAL-01**: Port PowerShell eval harness (`runners/codex-ps/scripts/run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) to Bash at a new top-level `evals/scripts/` or `evals/bin/` location. Must run in Git Bash on Windows + Linux + macOS without `pwsh`. Consumes the portable cases/fixtures/schema already elevated to top-level in v1.0 Phase 8. Produces machine-readable eval reports consumable by PEL scorer.
 
 ### Lab Scaffold
 
