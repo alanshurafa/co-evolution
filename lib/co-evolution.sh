@@ -66,6 +66,71 @@ phase_is_writable() {
   return 0
 }
 
+# --- Lab routing (Phase 3 LAB-01) ---
+#
+# Shared helpers used by both runners (co-evolve-bouncer.sh and
+# dev-review/codex/dev-review.sh) to parse, validate, and dispatch the
+# `--lab <mode>` flag. Contract is locked in lab/README.md; these helpers
+# are the single-point-of-truth for the runtime behavior.
+
+# validate_lab_mode <mode> → returns 0 if mode is a safe filesystem segment.
+# T-03-02-01 mitigation: rejects path-traversal (../, /) and shell-meta (;,&,|,`,$,<,>).
+# Allowed: ASCII alphanumerics plus hyphen and underscore. Empty string → 1.
+# Pure function, no side effects, no filesystem access.
+validate_lab_mode() {
+  local mode="${1:-}"
+  [[ -n "$mode" ]] || return 1
+  [[ "$mode" =~ ^[a-zA-Z0-9_-]+$ ]] || return 1
+  return 0
+}
+
+# list_available_lab_modes <lab_root> → prints comma-separated subdir names sorted.
+# Prints "(none)" when <lab_root> absent or empty. Always exits 0 (informational).
+# GNU find supports -printf; macOS find does not — we feature-detect and fall back.
+list_available_lab_modes() {
+  local lab_root="${1:?list_available_lab_modes requires a lab_root}"
+  if [[ ! -d "$lab_root" ]]; then
+    printf '(none)'
+    return 0
+  fi
+  local modes
+  if find --version 2>/dev/null | grep -q GNU; then
+    modes=$(find "$lab_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
+            | sort | paste -sd, -)
+  else
+    # macOS fallback — no -printf support on BSD find.
+    modes=$(find "$lab_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null \
+            | sort | paste -sd, -)
+  fi
+  if [[ -z "$modes" ]]; then
+    printf '(none)'
+  else
+    printf '%s' "$modes"
+  fi
+  return 0
+}
+
+# dispatch_lab_mode <mode> <lab_root> <argv...>
+#   Validates mode, resolves <lab_root>/<mode>/entry.sh, exec's it with remaining argv.
+#   Never returns on success. Dies on invalid token, unknown mode, or missing entry.sh.
+#   T-03-02-01 + T-03-02-03 mitigation: mode token is validated BEFORE any fs op.
+dispatch_lab_mode() {
+  local mode="${1:?dispatch_lab_mode requires a mode}"
+  local lab_root="${2:?dispatch_lab_mode requires a lab_root}"
+  shift 2
+  if ! validate_lab_mode "$mode"; then
+    die "invalid --lab mode: $mode (must match [A-Za-z0-9_-]+)"
+  fi
+  local entry="$lab_root/$mode/entry.sh"
+  if [[ ! -f "$entry" ]]; then
+    local available
+    available=$(list_available_lab_modes "$lab_root")
+    die "unknown --lab mode: $mode. Available: $available"
+  fi
+  # exec replaces the current process — the lab inhabitant owns stdout/stderr/exit.
+  exec bash "$entry" "$@"
+}
+
 # RTUX-01: Detect whether we are running on a Windows host (or a shell that can
 # reach Windows binaries). Returns "true"/"false" on stdout. First match wins.
 # No side effects — safe to call repeatedly.
