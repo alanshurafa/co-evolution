@@ -1103,14 +1103,6 @@ EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
 RUN_ID="dev-review-${TIMESTAMP}"
 init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
 
-if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  IN_GIT=true
-  INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
-  if [[ -n "$INITIAL_GIT_STATUS" ]]; then
-    INITIAL_GIT_DIRTY=true
-  fi
-fi
-
 log "============================================"
 log " DEV-REVIEW SESSION"
 log "============================================"
@@ -1198,6 +1190,19 @@ elif [[ -n "$WORKTREE_SPEC" ]]; then
     write_state_field "$STATE_JSON" ".worktree_path" "string" "$WORKTREE_PATH"
   fi
   unset _new_wt
+fi
+
+# FIX-WR-04: Capture WORKDIR's git state AFTER any --worktree reassignment
+# above so worktree mode sees the worktree's status, not the parent repo's.
+# Previously this block ran BEFORE the worktree reassignment — a dirty parent
+# + clean worktree would make verify silently skip even though the worktree
+# was actually fine. Moved here so execute/verify see the real workdir state.
+if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  IN_GIT=true
+  INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
+  if [[ -n "$INITIAL_GIT_STATUS" ]]; then
+    INITIAL_GIT_DIRTY=true
+  fi
 fi
 
 # RTUX-03: REVISE auto-loop. Default REVISE_LOOP_MAX=0 runs exactly one pass
