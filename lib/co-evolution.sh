@@ -206,6 +206,14 @@ maybe_setup_branch() {
     name="$branch_spec"
   fi
 
+  # FIX-WR-05: reject branch names that look like CLI flags. Git's own ref
+  # validation would usually catch this, but failing fast with a clear message
+  # beats git's "invalid ref" error for the reader.
+  if [[ "$name" == -* ]]; then
+    log "WARNING: branch setup failed: branch name '${name}' cannot start with '-'" >&2
+    return 0
+  fi
+
   local err_output
   if err_output=$(git -C "$workdir" checkout -b "$name" 2>&1); then
     # log to stderr so stdout carries only the branch name for the caller.
@@ -243,8 +251,10 @@ maybe_setup_worktree() {
     path="$worktree_spec"
   fi
 
+  # FIX-WR-05: `--` argv terminator prevents `$path` from being misinterpreted
+  # as a flag if the user supplies something like `--quiet` as the path value.
   local err_output
-  if err_output=$(git -C "$workdir" worktree add "$path" 2>&1); then
+  if err_output=$(git -C "$workdir" worktree add -- "$path" 2>&1); then
     # Resolve to absolute once the dir exists.
     local abs_path
     abs_path="$(cd "$path" && pwd)"
