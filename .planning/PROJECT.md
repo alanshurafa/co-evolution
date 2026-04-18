@@ -6,19 +6,13 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 ## Current State
 
-- **Latest milestone:** v1.0 Unification Absorb — shipped 2026-04-17 (PR #1 merged at `1f9b471`, tagged `v1.0`)
-- **Summary:** `.planning/milestones/v1.0-SUMMARY.md`
-- **Archived roadmap:** `.planning/milestones/v1.0-ROADMAP.md`
-- **Archived requirements:** `.planning/milestones/v1.0-REQUIREMENTS.md`
+- **Shipped:** v1.0 Unification Absorb — 2026-04-17 (PR #1 merged at `1f9b471`, tagged `v1.0`). See `.planning/milestones/v1.0-SUMMARY.md`.
+- **Active:** v1.1 Polish & Ergonomics — code review fixes (WR-01/02/03) + three deferred runtime ergonomics features (RTUX-01/02/03). 4 phases.
 
-## Next Milestone Goals
-
-Deferred post-milestone work (to be scoped via `/gsd-new-milestone`):
+## Next Milestone Goals (v1.2+)
 
 - Bash port of the PowerShell eval harness (~2 days estimated)
-- Protocol Evolution Loop — automated bounce-to-improve-the-bouncer using evals as fitness function
-- RTUX-01/02/03 runtime ergonomics (visible terminals, auto worktrees, REVISE-loop auto-retry) — previously marked v2
-- 3 non-blocking code review warnings from v1.0 (WR-01/02/03)
+- Protocol Evolution Loop — automated bounce-to-improve-the-bouncer using evals as fitness function (needs design discussion before planning)
 
 ## Core Value
 

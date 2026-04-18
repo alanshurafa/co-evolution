@@ -15,6 +15,20 @@ VERIFY=false
 PLAN_ONLY=false
 SKIP_PLAN=false
 PLAN_SOURCE=""
+# RTUX-03: REVISE auto-loop budget. 0 = disabled (v1.0 parity: single execute+verify pass).
+# Exported REVISE_LOOP_MAX env var is honored via parameter expansion below;
+# CLI flag --revise-loop N overrides the env value. See option parser below.
+REVISE_LOOP_MAX="${REVISE_LOOP_MAX:-0}"
+# RTUX-01: Live-window mode. Honors LIVE_MODE env var (string "true"/"false");
+# --live CLI flag sets it to "true". Default off = Phase 2 byte-parity.
+LIVE_MODE="${LIVE_MODE:-false}"
+# RTUX-02: Branch + worktree specs. Honor DEV_REVIEW_BRANCH / DEV_REVIEW_WORKTREE
+# env vars as defaults; CLI flags (--branch / --worktree) override. Mutually
+# exclusive — both non-empty after parsing = die. Default empty = Phase 3 byte-parity.
+BRANCH_SPEC="${DEV_REVIEW_BRANCH:-}"
+WORKTREE_SPEC="${DEV_REVIEW_WORKTREE:-}"
+BRANCH_CREATED=""
+WORKTREE_PATH=""
 WORKDIR="$(pwd)"
 TASK=""
 REVIEWER=""
@@ -49,6 +63,10 @@ Options:
   --model MODEL            Override Codex model
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
+  --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
+  --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
+  --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
+  --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
   --help                   Show this help text
 EOF
 }
@@ -281,16 +299,73 @@ build_bounce_prompt() {
   printf '%s' "$rendered"
 }
 
+# RTUX-03: Summarize the normalized verdict JSON into a one-paragraph feedback
+# block for the execute prompt. Output is plain text (no markdown preamble),
+# because the surrounding template already labels the section.
+build_reviewer_feedback_summary() {
+  local verdict_json="$1"
+  local summary
+  summary=$(printf '%s' "$verdict_json" | jq -r '.summary // "(no summary)"' 2>/dev/null)
+  # Collapse to one line — jq already returns a single string field, but defensively
+  # guard against embedded newlines in adversarial verdicts.
+  summary=${summary//$'\n'/ }
+  printf 'The verifier marked the prior pass as REVISE. Summary: %s' "$summary"
+}
+
+# RTUX-03: Render the verdict JSON's issues[] as a markdown bullet list for the
+# execute prompt. Rendering goes through `jq -r`, which safely escapes any
+# adversarial content in reviewer-authored fields (T-02-02 mitigation).
+build_issues_list_markdown() {
+  local verdict_json="$1"
+  local rendered
+  rendered=$(printf '%s' "$verdict_json" | jq -r '
+    (.issues // []) | if length == 0 then "(no issues listed)"
+    else
+      map(
+        "- **[" + (.severity // "?") + "]** " +
+        (if .file then "`" + .file + "`" + (if .line_range then ":" + .line_range else "" end) + " — " else "" end) +
+        (.description // "") +
+        (if .suggestion then " _Suggestion: " + .suggestion + "_" else "" end)
+      ) | join("\n")
+    end
+  ' 2>/dev/null)
+  if [[ -z "$rendered" ]]; then
+    rendered="(issue parser failed)"
+  fi
+  printf '%s' "$rendered"
+}
+
 build_execution_prompt() {
   local executor="$1"
   local plan_content="$2"
+  local feedback_json="${3:-}"   # RTUX-03: empty = first pass, v1.0-identical output
   local template_path="${REPO_ROOT}/skills/dev-review/templates/dev-prompt-${executor}.md"
   local stripped_template_file="$RUN_DIR/.execute-template-${executor}.md"
   local rendered
 
-  strip_conditional "SUBSEQUENT_PASS" < "$template_path" > "$stripped_template_file"
-  rendered=$(fill_template "$stripped_template_file" "TASK=$TASK")
-  rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  if [[ -z "$feedback_json" ]]; then
+    # First pass: strip the SUBSEQUENT_PASS block entirely.
+    # Byte-identical output to v1.0 (see Task 4 Scenario 4 invariant).
+    strip_conditional "SUBSEQUENT_PASS" < "$template_path" > "$stripped_template_file"
+    rendered=$(fill_template "$stripped_template_file" "TASK=$TASK")
+    rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  else
+    # Retry pass: keep the SUBSEQUENT_PASS block; replace {REVIEWER_FEEDBACK} and
+    # {ISSUES_LIST} with rendered content from the normalized verdict JSON.
+    # fill_conditional reads the template on stdin, strips the IF/END_IF tag
+    # lines, and substitutes KEY={value} placeholders in the full stripped text.
+    local reviewer_feedback issues_list
+    reviewer_feedback=$(build_reviewer_feedback_summary "$feedback_json")
+    issues_list=$(build_issues_list_markdown "$feedback_json")
+
+    rendered=$(fill_conditional "SUBSEQUENT_PASS" \
+      "REVIEWER_FEEDBACK=$reviewer_feedback" \
+      "ISSUES_LIST=$issues_list" \
+      < "$template_path")
+    rendered="${rendered//\{TASK\}/$TASK}"
+    rendered="${rendered//\{PLAN_CONTENT\}/$plan_content}"
+  fi
+
   printf '%s' "$rendered"
 }
 
@@ -431,6 +506,9 @@ ensure_valid_plan_output() {
 }
 
 run_compose_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly. Fallback preserves
+  # standalone-invocation safety (tests/replays) but main flow always passes it.
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local compose_prompt_file="$RUN_DIR/.compose-prompt.md"
   local compose_output_file="$RUN_DIR/.compose-output.md"
   local compose_stderr_file="$RUN_DIR/compose-stderr.log"
@@ -476,8 +554,10 @@ Output ONLY the plan document. No preamble."
   write_text_file "$compose_prompt_file" "$compose_prompt"
   # RNPT-05: timeout-wrapped. _compose_phase_start set by main flow wrapper;
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
+  # RTUX-01: Launch a live-tail window before the agent call (no-op unless --live).
+  maybe_launch_live_window "compose" "$compose_stderr_file"
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
-  abort_on_timeout "compose" "${_compose_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  abort_on_timeout "compose" "$phase_start"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
@@ -559,6 +639,8 @@ run_bounce_phase() {
     printf -v pass_padded '%02d' "$pass"
     # RNPT-05: timeout-wrapped. abort_on_timeout uses per-pass bounce-NN name
     # so state.json records which pass hit the timeout.
+    # RTUX-01: Per-pass live-tail window (bounce-01, bounce-02, ...) when --live.
+    maybe_launch_live_window "bounce-${pass_padded}" "$stderr_file"
     invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
     abort_on_timeout "bounce-${pass_padded}" "$bounce_pass_start"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
@@ -624,6 +706,8 @@ run_bounce_phase() {
 }
 
 run_execute_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly (see run_compose_phase comment).
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local plan_content
   local execute_prompt
   local execute_prompt_file="$RUN_DIR/.execute-prompt.md"
@@ -643,12 +727,18 @@ run_execute_phase() {
   fi
 
   plan_content=$(cat "$PLAN_PATH")
-  execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content")
+  # RTUX-03: Thread REVISE_FEEDBACK_JSON through to build_execution_prompt. On
+  # pass 1 the main-flow loop unsets this, yielding v1.0-identical prompt output.
+  # On pass 2+ the loop exports the captured verdict JSON, which triggers the
+  # SUBSEQUENT_PASS conditional block (see build_execution_prompt).
+  execute_prompt=$(build_execution_prompt "$EXECUTOR" "$plan_content" "${REVISE_FEEDBACK_JSON:-}")
   write_text_file "$execute_prompt_file" "$execute_prompt"
 
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
+  # RTUX-01: Live-tail window for execute phase (no-op unless --live).
+  maybe_launch_live_window "execute" "$execute_stderr_file"
   invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
-  abort_on_timeout "execute" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  abort_on_timeout "execute" "$phase_start"
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
     return 2
@@ -657,7 +747,7 @@ run_execute_phase() {
   if [[ ! -s "$execute_output_file" ]]; then
     log "WARNING: ${EXECUTOR} returned empty output. Retrying once..."
     invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute-retry)"
-    abort_on_timeout "execute-retry" "${_execute_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    abort_on_timeout "execute-retry" "$phase_start"
   fi
 
   if agent_auth_failed "$EXECUTOR" "$execute_output_file" "$execute_stderr_file"; then
@@ -703,6 +793,8 @@ run_execute_phase() {
 }
 
 run_verify_phase() {
+  # FIX-WR-03: accept phase start timestamp explicitly (see run_compose_phase comment).
+  local phase_start="${1:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
   local verifier
   local diff_file="$RUN_DIR/verify-diff.txt"
   local diff_stat_file="$RUN_DIR/verify-diffstat.txt"
@@ -758,6 +850,9 @@ run_verify_phase() {
   review_prompt=$(build_review_prompt "$verifier" "$plan_content" "$diff_content" "$diff_stat")
   write_text_file "$review_prompt_file" "$review_prompt"
 
+  # RTUX-01: Single live-tail window covers both codex and opus verifier branches.
+  maybe_launch_live_window "verify" "$review_stderr_file"
+
   if [[ "$verifier" == "codex" ]]; then
     # Codex verify uses --output-schema (JSON verdict). This path intentionally
     # bypasses invoke_agent because invoke_codex_schema has distinct semantics
@@ -765,6 +860,9 @@ run_verify_phase() {
     # RNPT-05: wrap invoke_codex_schema in timeout too — hang protection applies.
     local _verify_cmd_start
     _verify_cmd_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    # FIX-WR-01: reset before the conditional so that a successful run leaves 0
+    # (the `|| LAST_INVOKE_EXIT_CODE=$?` branch only fires on non-zero exit).
+    LAST_INVOKE_EXIT_CODE=0
     if command -v timeout >/dev/null 2>&1; then
       timeout --foreground "${PHASE_TIMEOUT:-1800}s" \
         bash -c 'cd "$1" && source "$2/lib/co-evolution.sh"; invoke_codex_schema "$3" "$4" "$5" "$6"' _ \
@@ -772,12 +870,11 @@ run_verify_phase() {
         || LAST_INVOKE_EXIT_CODE=$?
     else
       invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
-      LAST_INVOKE_EXIT_CODE=0
     fi
-    abort_on_timeout "verify" "${_verify_phase_start:-$_verify_cmd_start}"
+    abort_on_timeout "verify" "$phase_start"
   else
     invoke_agent_with_timeout "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
-    abort_on_timeout "verify" "${_verify_phase_start:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    abort_on_timeout "verify" "$phase_start"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
@@ -879,6 +976,36 @@ while [[ $# -gt 0 ]]; do
       export PHASE_TIMEOUT="$2"
       shift 2
       ;;
+    --revise-loop)
+      # RTUX-03: Extra REVISE retry passes. 0 allowed (disabled). Mirror --timeout's
+      # integer validation but permit zero, since zero is the documented "off" value.
+      [[ $# -gt 1 ]] || die "--revise-loop requires a value"
+      if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+        die "--revise-loop value must be a non-negative integer (got: $2)"
+      fi
+      REVISE_LOOP_MAX="$2"
+      shift 2
+      ;;
+    --live)
+      # RTUX-01: Enable live mode — visible Windows terminal per wrapped phase.
+      # Boolean flag; CLI presence wins over env. Default off = v1.1 byte-parity.
+      LIVE_MODE=true
+      shift
+      ;;
+    --branch)
+      # RTUX-02: Branch spec — `auto` derives `dev-review/auto-<ts>-<slug>`, or
+      # use NAME verbatim. Empty string allowed (no-op + WARNING from helper).
+      [[ $# -gt 1 ]] || die "--branch requires a value"
+      BRANCH_SPEC="$2"
+      shift 2
+      ;;
+    --worktree)
+      # RTUX-02: Worktree spec — `auto` derives `<parent>/<base>-dr-<ts>`, or
+      # use PATH verbatim. Empty string allowed (no-op + WARNING from helper).
+      [[ $# -gt 1 ]] || die "--worktree requires a value"
+      WORKTREE_SPEC="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -901,6 +1028,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# RTUX-02: Branch and worktree are mutually exclusive — enforce BEFORE any
+# side effect (RUN_DIR creation, state.json init, git ops). Fails fast with die.
+if [[ -n "$BRANCH_SPEC" && -n "$WORKTREE_SPEC" ]]; then
+  die "--branch and --worktree are mutually exclusive"
+fi
 
 WORKDIR=$(normalize_path_for_bash "$WORKDIR")
 if [[ -n "$PLAN_SOURCE" ]]; then
@@ -989,6 +1122,9 @@ log " Verify:    $VERIFY"
 log " Workdir:   $WORKDIR"
 log " Run dir:   $RUN_DIR"
 log " Timeout:   ${PHASE_TIMEOUT}s per phase"
+log " Live mode: $LIVE_MODE"
+log " Branch:    ${BRANCH_SPEC:-<empty>}"
+log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
 log "============================================"
 log ""
 
@@ -998,9 +1134,10 @@ else
   PLAN_EXIT=0
 
   # RNPT-04: wrap compose with phase timing + state.json record.
-  # RNPT-05: _compose_phase_start is visible to abort_on_timeout inside run_compose_phase.
+  # FIX-WR-03: pass phase start timestamp explicitly (was previously read via
+  # enclosing-scope global _compose_phase_start — hidden coupling removed).
   _compose_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_compose_phase || PLAN_EXIT=$?
+  run_compose_phase "$_compose_phase_start" || PLAN_EXIT=$?
   _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   _phase_status=$([[ "${PLAN_EXIT:-0}" -eq 0 ]] && echo "ok" || echo "error")
   write_state_phase "$STATE_JSON" "compose" "$_phase_status" "${PLAN_EXIT:-0}" "$_compose_phase_start" "$_phase_end"
@@ -1042,34 +1179,118 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   exit 0
 fi
 
-EXECUTE_EXIT=0
-if [[ "${PLAN_EXIT:-0}" -eq 0 ]]; then
-  # RNPT-04: wrap execute with phase timing + state.json record.
-  # RNPT-05: _execute_phase_start is visible to abort_on_timeout inside run_execute_phase.
-  _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_execute_phase || EXECUTE_EXIT=$?
-  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "execute" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
-else
-  EXECUTE_EXIT="${PLAN_EXIT:-0}"
-fi
-
-VERIFY_EXIT=0
-if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY" == "true" ]]; then
-  # RNPT-04: wrap verify with phase timing + verdict capture.
-  # RNPT-05: _verify_phase_start visible to abort_on_timeout inside run_verify_phase.
-  _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  run_verify_phase || VERIFY_EXIT=$?
-  _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
-  write_state_phase "$STATE_JSON" "verify" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
-
-  # Capture verdict (set by run_verify_phase via eval of VERDICT=...).
-  if [[ -n "${VERDICT:-}" ]]; then
-    write_state_field "$STATE_JSON" ".verify_verdict" "string" "$VERDICT"
+# RTUX-02: Branch / worktree setup. Runs AFTER plan+bounce land on the parent
+# branch (so plan artifacts stay reviewable pre-merge) and BEFORE execute.
+# PLAN_ONLY exits earlier (above) and never reaches this block — by design,
+# `--branch auto --plan-only` is a silent no-op on the branching side because
+# plan artifacts intentionally stay on the parent branch.
+# Mutually exclusive: parser already rejected both-set; only one path fires.
+if [[ -n "$BRANCH_SPEC" ]]; then
+  BRANCH_CREATED=$(maybe_setup_branch "$WORKDIR" "$BRANCH_SPEC" "$TASK")
+  if [[ -n "$BRANCH_CREATED" ]]; then
+    write_state_field "$STATE_JSON" ".branch_created" "string" "$BRANCH_CREATED"
   fi
+elif [[ -n "$WORKTREE_SPEC" ]]; then
+  _new_wt=$(maybe_setup_worktree "$WORKDIR" "$WORKTREE_SPEC" "$TASK")
+  if [[ -n "$_new_wt" ]]; then
+    WORKTREE_PATH="$_new_wt"
+    WORKDIR="$_new_wt"   # execute/verify phases now operate inside the worktree
+    write_state_field "$STATE_JSON" ".worktree_path" "string" "$WORKTREE_PATH"
+  fi
+  unset _new_wt
 fi
+
+# RTUX-03: REVISE auto-loop. Default REVISE_LOOP_MAX=0 runs exactly one pass
+# with bare "execute"/"verify" phase names — byte-identical to v1.0 behavior.
+# N>=1 allows up to N additional passes on a REVISE verdict, each recorded as
+# "execute-2"/"verify-2" etc. The loop body is extracted into _run_revise_loop
+# so tests/revise-loop-simulation.sh can exercise the same implementation.
+if [[ "$REVISE_LOOP_MAX" -gt 0 ]]; then
+  log "REVISE auto-loop enabled: up to $REVISE_LOOP_MAX extra pass(es) on REVISE verdict"
+fi
+
+EXECUTE_EXIT=0
+VERIFY_EXIT=0
+
+_run_revise_loop() {
+  local current_pass=1
+  local max_pass=$((REVISE_LOOP_MAX + 1))
+  local exec_name verify_name
+  local _execute_phase_start _verify_phase_start _phase_end _phase_status
+
+  while [[ "$current_pass" -le "$max_pass" ]]; do
+    # Phase names: pass 1 uses bare "execute"/"verify" for backwards compat;
+    # pass 2+ uses "execute-N"/"verify-N" (N = current_pass). Matches the
+    # ^execute-[0-9]+$ gate in phase_is_writable so retry passes remain writable.
+    if [[ "$current_pass" -eq 1 ]]; then
+      exec_name="execute"
+      verify_name="verify"
+    else
+      exec_name="execute-${current_pass}"
+      verify_name="verify-${current_pass}"
+    fi
+
+    # ---- execute ----
+    if [[ "${PLAN_EXIT:-0}" -ne 0 ]]; then
+      EXECUTE_EXIT="${PLAN_EXIT:-0}"
+      return 0
+    fi
+
+    # RTUX-03: Feedback handshake with Task 3's build_execution_prompt. On pass 1
+    # REVISE_FEEDBACK_JSON must be unset so the conditional block is stripped and
+    # the prompt is byte-identical to v1.0. On pass 2+ it carries the prior verdict.
+    if [[ "$current_pass" -gt 1 ]]; then
+      export REVISE_FEEDBACK_JSON="${REVISE_FEEDBACK_JSON:-}"
+    else
+      unset REVISE_FEEDBACK_JSON
+    fi
+
+    _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    EXECUTE_EXIT=0
+    run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
+    _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+    write_state_phase "$STATE_JSON" "$exec_name" "$_phase_status" "$EXECUTE_EXIT" "$_execute_phase_start" "$_phase_end"
+    [[ "$EXECUTE_EXIT" -ne 0 ]] && return 0
+
+    # ---- verify (only when requested) ----
+    if [[ "$VERIFY" != "true" ]]; then
+      return 0
+    fi
+    _verify_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    VERIFY_EXIT=0
+    # Clear prior verdict globals so a hung/empty verify pass can't leak them.
+    unset VERDICT CONFIDENCE SUMMARY
+    run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
+    _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
+    write_state_phase "$STATE_JSON" "$verify_name" "$_phase_status" "$VERIFY_EXIT" "$_verify_phase_start" "$_phase_end"
+    if [[ -n "${VERDICT:-}" ]]; then
+      write_state_field "$STATE_JSON" ".verify_verdict" "string" "$VERDICT"
+    fi
+
+    # ---- loop decision ----
+    # APPROVED (VERIFY_EXIT=0) → done.
+    # REVISE (VERIFY_EXIT=2, VERDICT=REVISE, budget remaining) → retry.
+    # Anything else (auth/timeout/empty/not-a-git-repo) → non-retryable, exit.
+    if [[ "$VERIFY_EXIT" -eq 0 ]]; then
+      return 0
+    fi
+    if [[ "$VERIFY_EXIT" -eq 2 && "${VERDICT:-}" == "REVISE" && "$current_pass" -lt "$max_pass" ]]; then
+      # T-02-06 mitigation: capture verdict JSON into memory BEFORE the retry
+      # loop advances. cleanup_runtime_artifacts only runs after _run_revise_loop
+      # returns, but being explicit here removes any TOCTOU ambiguity.
+      REVISE_FEEDBACK_JSON=$(cat "$RUN_DIR/.verdict-normalized.json" 2>/dev/null || printf '%s' '{}')
+      export REVISE_FEEDBACK_JSON
+      current_pass=$((current_pass + 1))
+      continue
+    fi
+    return 0
+  done
+}
+
+_run_revise_loop
+unset REVISE_FEEDBACK_JSON
 
 # RNPT-04: run completion timestamp (before cleanup sweeps transient dotfiles).
 write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -1085,6 +1306,8 @@ log " Composer:  $COMPOSER"
 log " Executor:  $EXECUTOR"
 log " Verify:    $VERIFY"
 log " Run dir:   $RUN_DIR"
+log " Branch:    ${BRANCH_CREATED:-<none>}"
+log " Worktree:  ${WORKTREE_PATH:-<none>}"
 log "============================================"
 
 if [[ "$EXECUTE_EXIT" -eq 2 || "$VERIFY_EXIT" -eq 2 ]]; then
