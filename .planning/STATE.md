@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: verifying
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-18T21:24:16.191Z"
+stopped_at: Phases 4/5/6 shipped (5+6 in parallel worktrees, merged 642d704). Milestone v1.2 at 6/8 phases. Ready to plan Phase 7.
+last_updated: "2026-04-18T22:32:07.577Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 8
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** Phase 6 — Policy-Tier Mutation Proposer
+**Current focus:** Phase 7 — Code-Tier Mutation Proposer (not yet planned)
 
 ## Current Position
 
-Phase: 6 (Policy-Tier Mutation Proposer) — EXECUTING
-Plan: 2 of 2
-Next: Phase 4 (Mode Classifier, frozen)
-Status: Phase complete — ready for verification
+Phase: 6 shipped (Phases 4+5+6 complete; 5+6 merged in parallel at 642d704)
+Plan: — (Phase 7 not yet planned)
+Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
+Status: Ready to plan Phase 7
 Last activity: 2026-04-18
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
-Progress: Phase 3 — 2/2 plans complete; milestone v1.2 at 3/8 phases
+Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
 
 ## Performance Metrics
 
@@ -93,8 +93,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T19:31:36.380Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-04-18T22:32:07.572Z
+Stopped at: Phases 4/5/6 shipped (5+6 in parallel worktrees, merged 642d704). Milestone v1.2 at 6/8 phases. Ready to plan Phase 7.
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
