@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-04-18T18:57:01.613Z"
-last_activity: 2026-04-18 -- Phase 4 planning complete
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-18T19:15:08.001Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** Phase 3 — Lab Scaffold
+**Current focus:** Phase 4 — Mode Classifier (frozen)
 
 ## Current Position
 
-Phase: 3 (Lab Scaffold) — COMPLETE (2026-04-18)
+Phase: 4 (Mode Classifier (frozen)) — EXECUTING
+Plan: 2 of 2
 Next: Phase 4 (Mode Classifier, frozen)
 Status: Ready to execute
-Last activity: 2026-04-18 -- Phase 4 planning complete
+Last activity: 2026-04-18
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
 Progress: Phase 3 — 2/2 plans complete; milestone v1.2 at 3/8 phases
@@ -44,6 +45,7 @@ Progress: Phase 3 — 2/2 plans complete; milestone v1.2 at 3/8 phases
 | 02-bash-eval-harness-port | 03 | 18min 12s | 4 | 5 |
 | 03-lab-scaffold | 01 | ~8 min | 2 | 3 |
 | 03-lab-scaffold | 02 | ~9 min | 4 | 5 |
+| 04-mode-classifier-frozen | 01 | ~11 min | 4 | 4 |
 
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 
@@ -73,6 +75,7 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 03-lab-scaffold-02]: Argv-position invariant pinned by line-number comparison — --lab) arm must precede --) argv-terminator arm in both runners; simulation asserts this via grep -n | cut. A future refactor that moves the arm fails the gate
 - [Phase 03-lab-scaffold-02]: W-3 argv-contract comment symmetric at BOTH dispatch sites — 'single argv slot' substring + 'lab/README.md' cross-reference. Symmetric (not just one runner) because both dispatch sites share the same constraint; future executor reading either runner or the README lands on the same contract
 - [Phase 03-lab-scaffold-02]: Bash 5.2 set -e + $() + die-via-exit quirk — when a library function that calls exit is invoked under set -e inside command substitution, wrap the inner expression in an explicit extra subshell: out=$( (dispatch_lab_mode ...) 2>&1 || true ). Relevant for future verify blocks
+- [Phase 04-mode-classifier-frozen]: Phase 4 Plan 01: Self-contained PEL classifier shipped as lab/pel/classifier/** (4 files, zero lib/co-evolution.sh imports). classifier.sh public entry + adapter.sh inline-helpers Haiku adapter + frozen prompt.md + lab/pel/README.md env-var contract. D-05 self-containment + D-11 path-based freeze both hold under grep audit. Override fast-path emits canonical D-08 JSON without invoking Haiku; all 6 high-severity STRIDE threats have grep-checkable mitigations. Deviations: 1 Rule-3 comment rewording (grep false positive), 1 plan-verifier regex escape bug noted not patched (functional tests prove correctness).
 
 ### Pending Todos
 
@@ -88,8 +91,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T18:24:12.424Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-mode-classifier-frozen/04-CONTEXT.md
+Last session: 2026-04-18T19:15:07.995Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
