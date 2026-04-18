@@ -228,7 +228,12 @@ apply_err=$(mktemp -t proposer-apply-err-XXXXXX)
 # shellcheck disable=SC2064
 trap "rm -f \"$apply_err\"" EXIT
 
-if ! printf "%s" "$diff_text" | (cd "$REPO_ROOT" && git apply --check - 2>"$apply_err"); then
+# Use `-c core.autocrlf=false` so Windows Git Bash (which typically has
+# autocrlf=true) doesn't reject LF-only proposer diffs against CRLF on-disk
+# templates. The proposer's job is to verify structural applicability, not
+# line-ending normalization. `--whitespace=nowarn` suppresses the secondary
+# trailing-whitespace warning path that would otherwise also trip CRLF diffs.
+if ! printf "%s\n" "$diff_text" | (cd "$REPO_ROOT" && git apply --check --whitespace=nowarn - 2>"$apply_err"); then
   printf "ERROR: D-10 violation: diff is malformed or does not apply cleanly\n" >&2
   printf "git apply --check stderr (first 500 bytes):\n" >&2
   head -c 500 "$apply_err" >&2

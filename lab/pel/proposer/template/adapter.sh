@@ -139,23 +139,27 @@ invoke_opus() {
 #   the trusted gate.
 capture_diff() {
   local output_file="$1"
-  # Emit raw content with leading/trailing blank lines trimmed via awk.
-  # Awk streams the file and emits a trailing newline-free, leading-blank-free
-  # version while preserving embedded blank lines inside the diff (hunks may
-  # contain context blank lines).
+  # Emit raw content with leading/trailing TRULY-EMPTY lines trimmed via awk.
+  # CRITICAL: the regex must be ^$ (empty only), NOT ^[[:space:]]*$ — in a
+  # unified diff a context line representing an originally-empty line in the
+  # file appears as a single space + newline. That line IS whitespace-only but
+  # it's meaningful hunk content; trimming it breaks the hunk line count and
+  # `git apply` rejects with "corrupt patch at line N". A truly empty line
+  # (no leading space at all) never legitimately appears in a unified diff
+  # hunk body, so only trimming those is safe.
   awk '
     BEGIN { started = 0 }
     {
       if (!started) {
-        if ($0 ~ /^[[:space:]]*$/) next
+        if ($0 ~ /^$/) next
         started = 1
       }
       buf[NR] = $0
       last = NR
     }
     END {
-      # Trim trailing blank lines.
-      while (last > 0 && buf[last] ~ /^[[:space:]]*$/) last--
+      # Trim trailing truly-empty lines (see CRITICAL note above).
+      while (last > 0 && buf[last] ~ /^$/) last--
       for (i = 1; i <= last; i++) {
         if (i in buf) print buf[i]
       }
