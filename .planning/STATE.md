@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-stopped_at: Phase 9 execution complete — Lab Folded (LABF-01, LABF-02) landed across 1 plan / 2 tasks / 2 commits (9a838d5, 0a7f708, both pushed); Unification Absorb milestone CLOSED (17/17 v3 requirements Complete across phases 5-9); co-evolution-lab/ and codex-co-evolution/ peer workspaces now both archivable at user's discretion
-last_updated: "2026-04-17T21:12:58.099Z"
-last_activity: 2026-04-17 -- Phase 09 execution complete; Unification Absorb milestone closed
+milestone: v1.1
+milestone_name: Polish & Ergonomics
+status: complete
+stopped_at: Phase 4 execution complete — Worktree Management (RTUX-02) landed across 1 plan / 3 tasks / 3 commits (cd98af9, 1294477, 7ee77ae, all on feat/v1.1-polish); smoke test passes 5 scenarios (branch-auto, worktree-auto, non-git fallback, empty-flag fallback, mutex error) in ~3s; default empty BRANCH/WORKTREE specs preserve Phase 3 byte-parity; v1.1 milestone is feature-complete — 3 of 3 RTUX requirements + 3 of 3 FIX-WR closed
+last_updated: "2026-04-17T23:55:00.000Z"
+last_activity: 2026-04-17 -- Phase 04 execution complete; RTUX-02 worktree management shipped on feat/v1.1-polish; v1.1 milestone feature-complete
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 13
-  completed_plans: 17
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps
-**Current focus:** Unification Absorb milestone - fold `codex-co-evolution/` + `co-evolution-lab/` into this public repo (phases 5-9)
+**Current focus:** v1.1 Polish & Ergonomics — address v1.0 code-review warnings, then deliver the three deferred runtime-ergonomics requirements (RTUX-01/02/03)
 
 ## Current Position
 
-Phase: 9 of 9 (Lab Folded — COMPLETE; final milestone phase landed)
-Plan: 1 of 1 in Phase 9 complete (09-01 landed)
-Status: Unification Absorb milestone CLOSED (17/17 v3 requirements Complete)
-Last activity: 2026-04-17 -- Phase 09 execution complete; Unification Absorb milestone closed
-Working directory: `C:/Users/alan/Project/co-evolution-absorb/` (worktree on feat/unification-absorb)
+Phase: 4 of 4 — Worktree Management COMPLETE; v1.1 milestone is feature-complete
+Plan: 04-01 complete (3 tasks, 3 commits)
+Status: v1.1 feature-complete — all 4 phases shipped on feat/v1.1-polish (Phase 1 FIX-WR fixes + Phase 2 RTUX-03 auto-loop + Phase 3 RTUX-01 live mode + Phase 4 RTUX-02 branch/worktree management)
+Last activity: 2026-04-17 -- Phase 04 complete; RTUX-02 worktree management shipped
+Working directory: `C:/Users/alan/Project/co-evolution-v11/` (feat/v1.1-polish branch)
 
-Progress: [##########] 9/9 phases complete — Unification Absorb milestone done
+Progress: [##########] 4/4 phases complete — v1.1 Polish & Ergonomics feature-complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 16 min
-- Total execution time: 3.5 hours
+- Total execution time: 3.9 hours
 
 **By Phase:**
 
@@ -109,6 +109,24 @@ Recent decisions affecting current work:
 - [Milestone: Unification Absorb]: Karpathy's `autoresearch` clone excluded from unified repo (unrelated ML training, not about bounce protocol)
 - [Milestone: Unification Absorb]: Evals are the iteration mechanism (not Karpathy-style auto-research); Protocol Evolution Loop deferred as future post-absorb work
 - [P0]: Required-Section blocks copied verbatim from upstream compose template to eliminate ~66% missing-section variance
+- [v1.1 Phase 2]: REVISE auto-loop default (`REVISE_LOOP_MAX=0`) preserves v1.0 behavior byte-for-byte — opt-in only via `--revise-loop N` CLI flag or exported env var
+- [v1.1 Phase 2]: Retry-pass state.json names chosen as `execute-N`/`verify-N` (bare names kept for pass 1) so existing consumers see extra attempts rather than breaking schema
+- [v1.1 Phase 2]: `phase_is_writable` anchored regex `^execute-[0-9]+$` accepts numbered retry passes without enumerating every possible pass number; fails safe on injection-style names (T-02-01)
+- [v1.1 Phase 2]: Loop body extracted into `_run_revise_loop` so simulation test and main flow share one implementation — divergence impossible without test breakage (planner's recommendation)
+- [v1.1 Phase 2]: Reviewer-authored fields rendered via `jq -r` before reaching the execute prompt — T-02-02 defense-in-depth beyond the existing "Do NOT deviate" prompt rule
+- [v1.1 Phase 3]: `LIVE_MODE` default "false" preserves Phase 2 byte-parity; banner gains one "Live mode: false" log line (analogous to Phase 2's "Timeout:" addition) — opt-in only via `--live` CLI flag or `LIVE_MODE=true` env var
+- [v1.1 Phase 3]: `maybe_launch_live_window` always returns 0 — wt.exe/cmd.exe launcher failures log a WARNING but never block the main phase (must-not-block invariant); backgrounded + disowned so main shell never waits
+- [v1.1 Phase 3]: Platform detection priority `$OSTYPE msys*/cygwin* → wt.exe → cmd.exe` — first match wins; `is_windows_host` function can be overridden in tests to simulate any platform
+- [v1.1 Phase 3]: Single `maybe_launch_live_window "verify"` call before the codex/opus verifier branch covers both paths (shared `$review_stderr_file`) — avoids duplicating the call in each branch
+- [v1.1 Phase 3]: Retry branches (execute-retry, bounce-retry-via-ensure_valid_plan_output) NOT wrapped per CONTEXT.md — keeps window count reasonable during recovery scenarios
+- [v1.1 Phase 3]: Smoke test stubs `wt.exe` via PATH-shadowing + overrides `is_windows_host` function per scenario — runs on any OS without a real Windows host, so CI can exercise the full launcher path
+- [v1.1 Phase 4]: Default empty `BRANCH_SPEC` / `WORKTREE_SPEC` preserves Phase 3 byte-parity; only new log lines on default run are two `Branch: <empty>` / `Worktree: <empty>` banner lines per banner block (analogous to Phase 3's single `Live mode: false` addition) — opt-in only via `--branch` / `--worktree` CLI flags or env vars
+- [v1.1 Phase 4]: `maybe_setup_*` helpers route their `log()` calls to stderr (`>&2`) so callers can capture the helper's stdout return value cleanly without WARNING/INFO leakage from `tee -a` echoing through fd 1 (Rule 1 fix discovered during Task 1 verification)
+- [v1.1 Phase 4]: Mutual-exclusion check fires immediately after parser loop closes, BEFORE `WORKDIR` normalization and `mkdir -p "$RUN_DIR"` — `--branch X --worktree Y` exits 1 with no side effects; verified by Scenario E using a distinctive `mutex-test-<RANDOM>` timestamp
+- [v1.1 Phase 4]: Branch/worktree dispatch lands AFTER the PLAN_ONLY early-exit branch and BEFORE `_run_revise_loop` — `--branch auto --plan-only` is a silent no-op on the branching side per CONTEXT.md ("plan artifacts stay reviewable on parent branch / in $REPO_ROOT/runs/")
+- [v1.1 Phase 4]: `git checkout -b` (not `git switch -c`) for branch creation — locked by `skills/dev-review/SKILL.md:136` per CONTEXT.md "Claude's Discretion" note; consistency wins over modernity
+- [v1.1 Phase 4]: No automated cleanup of branches/worktrees after run — explicit per CONTEXT.md success criterion 3 ("leaves it intact for review/merge"); cleanup utility deferred as candidate v1.2+ work
+- [v1.1 Phase 4]: Smoke test scenarios that compare paths against `git worktree list` output must use basename matching on Git Bash for Windows because git tooling outputs Windows-style paths (`C:/Users/.../`) while shell-captured paths are MSYS-style (`/c/Users/.../`)
 
 ### Pending Todos
 
@@ -129,7 +147,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-17 (active)
-Stopped at: Phase 9 execution complete — Lab Folded (LABF-01, LABF-02) landed across 1 plan / 2 tasks / 2 commits (9a838d5, 0a7f708, both pushed); Unification Absorb milestone CLOSED (17/17 v3 requirements Complete across phases 5-9); co-evolution-lab/ and codex-co-evolution/ peer workspaces now both archivable at user's discretion
-Resume file: None — use `git log feat/unification-absorb` for full context
-Active PR: https://github.com/alanshurafa/co-evolution/pull/1 (draft — ready to promote and merge now that milestone is done)
-Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — the MUST/SHOULD/parity list (MUST-items 3-6 landed in Phase 6; parity items 1-5 all landed in Phase 7; portable artifacts table landed in Phase 8; lab fold landed in Phase 9)
+Stopped at: Phase 4 execution complete — Worktree Management (RTUX-02) landed across 1 plan / 3 tasks / 3 commits (cd98af9, 1294477, 7ee77ae, all on feat/v1.1-polish); smoke test covers 5 scenarios (branch-auto, worktree-auto, non-git fallback, empty-flag fallback, mutex error) in ~3s; default empty BRANCH/WORKTREE specs preserve Phase 3 byte-parity; v1.1 milestone is feature-complete — 3 of 3 RTUX + 3 of 3 FIX-WR closed; next move is final review + PR for the v1.1 milestone, or open a v1.2 cycle (deferred items: Bash port of PS eval harness, Protocol Evolution Loop, automated branch/worktree cleanup utility, workspace-agnostic ports of lab PS integration scripts)
+Resume file: `.planning/phases/04-worktree-management/04-SUMMARY.md` — phase-level summary; `04-01-SUMMARY.md` for plan-level detail
+Active PR: None yet on v1.1; branch `feat/v1.1-polish` accumulating commits — milestone now ready for PR
+Reference doc: `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` — original MUST/SHOULD/parity list (all v1.0 items closed); `.planning/phases/04-worktree-management/04-01-PLAN.md` for the canonical implementation contract of this phase

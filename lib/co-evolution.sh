@@ -22,10 +22,26 @@ die() {
 # to surface hangs within a coffee-break window.
 : "${PHASE_TIMEOUT:=1800}"
 
+# RTUX-01: LIVE_MODE default. Set by --live CLI flag or LIVE_MODE env var.
+# Default "false" preserves byte-parity with Phase 2 behavior (invariant).
+: "${LIVE_MODE:=false}"
+# Guard so we only log the non-Windows fallback warning once per run.
+LIVE_MODE_WARNING_LOGGED=false
+
+# RTUX-02: Branch + worktree env-var defaults. Empty = unset (no setup).
+# CLI flags --branch / --worktree override these; both non-empty = die.
+: "${DEV_REVIEW_BRANCH:=}"
+: "${DEV_REVIEW_WORKTREE:=}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
 # (e.g. a future `fix` phase), append its name to this array.
+#
+# RTUX-03: execute-2..execute-N are the REVISE auto-loop retry passes. Rather
+# than enumerate every possible pass number here, `phase_is_writable` carries
+# a second regex gate that accepts ^execute-[0-9]+$ specifically. The anchor
+# is tight so names like `execute-;rm-rf` or `verify-99` cannot slip through.
 WRITABLE_PHASES=(execute execute-retry fix)
 
 # phase_is_writable <phase-name> → prints "true" or "false" on stdout.
@@ -40,8 +56,206 @@ phase_is_writable() {
       return 0
     fi
   done
+  # RTUX-03: REVISE-loop numbered retry passes (execute-2, execute-3, ...).
+  # Anchored regex prevents command-injection-style phase names from matching.
+  if [[ "$phase_name" =~ ^execute-[0-9]+$ ]]; then
+    printf '%s' "true"
+    return 0
+  fi
   printf '%s' "false"
   return 0
+}
+
+# RTUX-01: Detect whether we are running on a Windows host (or a shell that can
+# reach Windows binaries). Returns "true"/"false" on stdout. First match wins.
+# No side effects — safe to call repeatedly.
+is_windows_host() {
+  # 1. MSYS/Cygwin shell indicator (Git Bash, MSYS2, Cygwin)
+  if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
+    printf '%s' "true"
+    return 0
+  fi
+  # 2. Windows Terminal binary present (covers most modern Windows setups)
+  if command -v wt.exe >/dev/null 2>&1; then
+    printf '%s' "true"
+    return 0
+  fi
+  # 3. cmd.exe present (covers WSL and bare Windows shells without wt.exe)
+  if command -v cmd.exe >/dev/null 2>&1; then
+    printf '%s' "true"
+    return 0
+  fi
+  printf '%s' "false"
+  return 0
+}
+
+# RTUX-01: Launch a visible tail window for the given phase's stderr file.
+# No-op when LIVE_MODE is not "true". Always returns 0 — failures log a
+# warning but never block the main phase (must-not-break invariant).
+maybe_launch_live_window() {
+  local phase_name="${1:?maybe_launch_live_window requires a phase name}"
+  local stderr_file="${2:?maybe_launch_live_window requires a stderr file path}"
+
+  [[ "${LIVE_MODE:-false}" == "true" ]] || return 0
+
+  if [[ "$(is_windows_host)" != "true" ]]; then
+    if [[ "${LIVE_MODE_WARNING_LOGGED}" != "true" ]]; then
+      log "WARNING: --live is Windows-only (OSTYPE=${OSTYPE:-unknown}); falling back to inline execution."
+      LIVE_MODE_WARNING_LOGGED=true
+    fi
+    return 0
+  fi
+
+  # Pre-touch the stderr file so tail -f has something to follow.
+  # The phase's own 2>"$stderr_file" redirection will truncate on first write.
+  : > "$stderr_file" 2>/dev/null || true
+
+  local title="phase:${phase_name}"
+  local tail_cmd
+  printf -v tail_cmd 'tail -f %q' "$stderr_file"
+
+  # Preferred: Windows Terminal new-tab. Fall back to cmd.exe /c start.
+  # Both are backgrounded + disowned so we do not wait on them.
+  if command -v wt.exe >/dev/null 2>&1; then
+    ( wt.exe new-tab --title "$title" bash -c "$tail_cmd" >/dev/null 2>&1 & disown ) 2>/dev/null \
+      && return 0
+    log "WARNING: wt.exe launch failed for phase '${phase_name}'; trying cmd.exe fallback."
+  fi
+
+  if command -v cmd.exe >/dev/null 2>&1; then
+    ( cmd.exe /c start "$title" bash -c "$tail_cmd" >/dev/null 2>&1 & disown ) 2>/dev/null \
+      && return 0
+    log "WARNING: cmd.exe live-window launch failed for phase '${phase_name}'; continuing inline."
+  else
+    log "WARNING: no live-window launcher available for phase '${phase_name}'; continuing inline."
+  fi
+
+  return 0
+}
+
+# RTUX-02: Portable check for "is this dir inside a git repo?" Used as the
+# gate for --branch / --worktree so non-git workdirs no-op cleanly.
+is_git_repo() {
+  local dir="${1:?is_git_repo requires a directory}"
+  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+    printf '%s' "true"
+  else
+    printf '%s' "false"
+  fi
+  return 0
+}
+
+# RTUX-02: Compose an auto branch name `dev-review/auto-<TIMESTAMP>-<slug>`.
+# Reuses $TIMESTAMP from the main runner when present; falls back to a fresh
+# stamp so this helper is safely callable from tests that source lib alone.
+derive_auto_branch_name() {
+  local task="${1:-}"
+  local ts="${TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
+  local slug=""
+  if [[ -n "$task" ]]; then
+    # First 5 words → lowercase → non-alnum becomes '-' → collapse → trim
+    slug=$(printf '%s' "$task" \
+      | awk '{for(i=1;i<=NF && i<=5;i++) printf "%s%s",$i,(i<NF && i<5?" ":"")}' \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/[^a-z0-9]+/-/g; s/-+/-/g; s/^-//; s/-$//')
+    slug="${slug:0:30}"
+    slug="${slug%-}"
+  fi
+  if [[ -n "$slug" ]]; then
+    printf 'dev-review/auto-%s-%s' "$ts" "$slug"
+  else
+    printf 'dev-review/auto-%s' "$ts"
+  fi
+}
+
+# RTUX-02: Compose a sibling-dir worktree path relative to WORKDIR.
+# e.g. /c/repos/myrepo → /c/repos/myrepo-dr-20260417-210830
+derive_auto_worktree_path() {
+  local workdir="${1:?derive_auto_worktree_path requires a workdir}"
+  local ts="${TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
+  local parent base
+  parent="$(cd "$workdir" && cd .. && pwd)"
+  base="$(basename "$workdir")"
+  printf '%s/%s-dr-%s' "$parent" "$base" "$ts"
+}
+
+# RTUX-02: Create a dedicated branch off HEAD and switch into it.
+# No-op + WARNING when branch_spec is empty OR workdir is not a git repo.
+# On git failure, log WARNING and return empty — main run continues inline.
+# On success, log the branch name and print it on stdout for the caller to
+# capture (caller writes it to state.json via write_state_field).
+maybe_setup_branch() {
+  local workdir="${1:?maybe_setup_branch requires a workdir}"
+  local branch_spec="${2:-}"
+  local task_desc="${3:-}"
+
+  if [[ -z "$branch_spec" ]]; then
+    # Route log to stderr so the caller's stdout-capture stays clean (no-op = empty stdout).
+    log "WARNING: --branch ignored: value is empty" >&2
+    return 0
+  fi
+  if [[ "$(is_git_repo "$workdir")" != "true" ]]; then
+    log "WARNING: --branch ignored: ${workdir} is not a git repo" >&2
+    return 0
+  fi
+
+  local name
+  if [[ "$branch_spec" == "auto" ]]; then
+    name="$(derive_auto_branch_name "$task_desc")"
+  else
+    name="$branch_spec"
+  fi
+
+  local err_output
+  if err_output=$(git -C "$workdir" checkout -b "$name" 2>&1); then
+    # log to stderr so stdout carries only the branch name for the caller.
+    log "Branch created: ${name}" >&2
+    printf '%s' "$name"
+    return 0
+  else
+    log "WARNING: branch setup failed for '${name}': ${err_output}" >&2
+    return 0
+  fi
+}
+
+# RTUX-02: Create a dedicated worktree and return its absolute path.
+# No-op + WARNING on empty spec or non-git-repo workdir. On git failure,
+# log WARNING and return empty — main run continues inline with original WORKDIR.
+maybe_setup_worktree() {
+  local workdir="${1:?maybe_setup_worktree requires a workdir}"
+  local worktree_spec="${2:-}"
+  local task_desc="${3:-}"
+
+  if [[ -z "$worktree_spec" ]]; then
+    # Route log to stderr so caller's stdout-capture stays clean (no-op = empty stdout).
+    log "WARNING: --worktree ignored: value is empty" >&2
+    return 0
+  fi
+  if [[ "$(is_git_repo "$workdir")" != "true" ]]; then
+    log "WARNING: --worktree ignored: ${workdir} is not a git repo" >&2
+    return 0
+  fi
+
+  local path
+  if [[ "$worktree_spec" == "auto" ]]; then
+    path="$(derive_auto_worktree_path "$workdir")"
+  else
+    path="$worktree_spec"
+  fi
+
+  local err_output
+  if err_output=$(git -C "$workdir" worktree add "$path" 2>&1); then
+    # Resolve to absolute once the dir exists.
+    local abs_path
+    abs_path="$(cd "$path" && pwd)"
+    # log to stderr so stdout carries only the worktree path for the caller.
+    log "Worktree created: ${abs_path}" >&2
+    printf '%s' "$abs_path"
+    return 0
+  else
+    log "WARNING: worktree setup failed for '${path}': ${err_output}" >&2
+    return 0
+  fi
 }
 
 invoke_claude() {
@@ -646,7 +860,9 @@ write_state_phase() {
   if command -v jq >/dev/null 2>&1; then
     local tmp
     tmp=$(mktemp)
-    jq --arg name "$phase_name" \
+    # FIX-WR-02: clean up $tmp on any exit path (jq failure, script interrupt).
+    # Without this, failed jq invocations leak mktemp files in $TMPDIR indefinitely.
+    if jq --arg name "$phase_name" \
        --arg status "$status" \
        --argjson exit_code "$exit_code" \
        --arg started "$started_at" \
@@ -657,7 +873,12 @@ write_state_phase() {
          completed_at: $completed,
          status: $status,
          exit_code: $exit_code
-       }]' "$state_path" > "$tmp" && mv "$tmp" "$state_path"
+       }]' "$state_path" > "$tmp"; then
+      mv "$tmp" "$state_path"
+    else
+      rm -f "$tmp"
+      log "WARNING: jq failed in write_state_phase ($phase_name) — state.json unchanged"
+    fi
   else
     log "WARNING: jq unavailable — write_state_phase skipping ($phase_name)"
   fi
@@ -679,22 +900,31 @@ write_state_field() {
 
   local tmp
   tmp=$(mktemp)
+  local jq_exit
   case "$value_type" in
     string)
-      jq --arg v "$value" "$jq_path = \$v"              "$state_path" > "$tmp" ;;
+      jq --arg v "$value" "$jq_path = \$v"              "$state_path" > "$tmp"; jq_exit=$? ;;
     number)
-      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp" ;;
+      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp"; jq_exit=$? ;;
     bool)
-      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp" ;;
+      jq --argjson v "$value" "$jq_path = \$v"          "$state_path" > "$tmp"; jq_exit=$? ;;
     null)
-      jq "$jq_path = null"                              "$state_path" > "$tmp" ;;
+      jq "$jq_path = null"                              "$state_path" > "$tmp"; jq_exit=$? ;;
     rawfile)
-      jq --slurpfile v "$value" "$jq_path = \$v[0]"     "$state_path" > "$tmp" ;;
+      jq --slurpfile v "$value" "$jq_path = \$v[0]"     "$state_path" > "$tmp"; jq_exit=$? ;;
     *)
       rm -f "$tmp"
       die "Unsupported value_type: $value_type"
       ;;
-  esac && mv "$tmp" "$state_path"
+  esac
+  # FIX-WR-02: clean up $tmp on jq failure so we don't leak files to $TMPDIR.
+  if [[ $jq_exit -eq 0 ]]; then
+    mv "$tmp" "$state_path"
+  else
+    rm -f "$tmp"
+    log "WARNING: jq failed in write_state_field ($jq_path, $value_type) — state.json unchanged"
+    return $jq_exit
+  fi
 }
 
 # RNPT-05: invoke_agent_with_timeout — same signature as invoke_agent but wrapped

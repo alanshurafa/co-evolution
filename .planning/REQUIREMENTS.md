@@ -7,29 +7,42 @@
 
 ## Completed Milestones
 
-- **v1.0 Unification Absorb** — 27/27 requirements Complete (10 v1 CORE/BNCR/CDRT/DOCS + 17 v3 CXPS/PRTP/RNPT/EVAL/LABF). See [`milestones/v1.0-REQUIREMENTS.md`](milestones/v1.0-REQUIREMENTS.md) for full traceability.
+- **v1.0 Unification Absorb** — 27/27 requirements Complete. See [`milestones/v1.0-REQUIREMENTS.md`](milestones/v1.0-REQUIREMENTS.md).
 
-## Carried Forward (deferred — candidates for next milestone)
+## Active Milestone: v1.1 Polish & Ergonomics
 
-These were scoped but not shipped in v1.0. Scope via `/gsd-new-milestone` when ready.
+### Code Review Fixes
 
-### Runtime Ergonomics (from v2 bucket)
+- [x] **FIX-WR-01**: Reset `LAST_INVOKE_EXIT_CODE=0` before the codex verify conditional at `dev-review/codex/dev-review.sh:768-776` (latent; not firing today because execute always leaves 0 on the path to verify, but covers future callers that might not). (Complete 2026-04-17 — Phase 1, commit 5734b84)
+- [x] **FIX-WR-02**: `write_state_phase` and `write_state_field` in `lib/co-evolution.sh` must clean up `mktemp` temp files when `jq` fails (no stale files left in `$TMPDIR`). (Complete 2026-04-17 — Phase 1, commit 5734b84)
+- [x] **FIX-WR-03**: Pass phase-start timestamps as explicit function arguments instead of relying on enclosing-scope globals with `${var:-fallback}` fallback (removes hidden coupling in `abort_on_timeout` / phase runners). (Complete 2026-04-17 — Phase 1, commit 5734b84)
 
-- **RTUX-01**: Codex runtime can launch visible Windows terminals for live pass-by-pass observation
-- **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically
-- **RTUX-03**: Codex runtime can loop automatically on REVISE verdicts until approval or user stop
+### Runtime Ergonomics (from deferred v2 bucket)
 
-### Post-v1.0 Follow-ups (from code review + deferred-ideas)
+- [x] **RTUX-01**: Codex runtime can launch visible Windows terminals (`wt.exe` / `cmd.exe`) for live pass-by-pass observation via `--live` CLI flag. Windows-only feature; on non-Windows, `--live` logs a warning and falls back to inline execution. (Complete 2026-04-17 — Phase 3)
+- [x] **RTUX-02**: Codex runtime can create and manage dedicated branches or worktrees automatically via `--branch auto|NAME` and `--worktree auto|PATH` flags. No-ops when workdir is not a git repo. (Complete 2026-04-17 — Phase 4, commits cd98af9, 1294477, 7ee77ae)
+- [x] **RTUX-03**: Codex runtime can loop automatically on REVISE verdicts until approval or max-iterations via `--revise-loop N` flag. Each loop pass recorded in `state.json` as a new phase entry. (Complete 2026-04-17 — Phase 2)
+
+## Deferred (candidates for v1.2+)
 
 - **BASH-EVAL-01**: Bash port of the PowerShell eval harness (`run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1`) — removes `pwsh` dependency from eval runs (~2 days estimated)
-- **META-01**: Protocol Evolution Loop — automated bounce-to-improve-the-bouncer using evals as fitness function. Reads eval failures, proposes protocol/prompt/adapter deltas, bounces them, scores against the same cases, keeps improvements.
-- **FIX-WR-01**: Reset `LAST_INVOKE_EXIT_CODE=0` before the codex verify conditional at `dev-review/codex/dev-review.sh:768-776` (latent, not firing today)
-- **FIX-WR-02**: Clean up `mktemp` temp files on jq failure in `write_state_phase` / `write_state_field` (cosmetic leak in `$TMPDIR`)
-- **FIX-WR-03**: Pass phase-start timestamps as explicit function args rather than relying on enclosing-scope globals with `${var:-fallback}` fallback pattern
+- **META-01**: Protocol Evolution Loop — automated bounce-to-improve-the-bouncer using evals as fitness function. Reads eval failures, proposes protocol/prompt/adapter deltas, bounces them, scores against the same cases, keeps improvements. Needs design discussion before planning.
 
-## Active Requirements
+## Traceability
 
-None. Start the next milestone via `/gsd-new-milestone` to populate this section.
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FIX-WR-01 | Phase 1 | Complete |
+| FIX-WR-02 | Phase 1 | Complete |
+| FIX-WR-03 | Phase 1 | Complete |
+| RTUX-03 | Phase 2 | Complete |
+| RTUX-01 | Phase 3 | Complete |
+| RTUX-02 | Phase 4 | Complete |
+
+**Coverage:**
+- v1.1 requirements: 6 total (3 FIX-WR + 3 RTUX)
+- Mapped to phases: 6
+- Unmapped: 0 ✓
 
 ---
 *Active requirements reset at each milestone boundary. Historical requirements live in `milestones/vN.N-REQUIREMENTS.md`.*
