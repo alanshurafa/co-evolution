@@ -72,7 +72,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   4. Classifier itself does NOT mutate in v1.2 — its code and prompts are outside PEL's mutable surface (enforced by file allowlist in Phase 7's code proposer)
   5. Simulation test covers: each of the 4 flavor picks with plausible input, override precedence, frozen-surface invariant
 **Plans**: 2 plans (2 waves)
-  - [ ] 04-01-PLAN.md — Core classifier: lab/pel/classifier/{classifier.sh, adapter.sh, prompt.md} + lab/pel/README.md (env-var contract doc)
+  - [x] 04-01-PLAN.md — Core classifier: lab/pel/classifier/{classifier.sh, adapter.sh, prompt.md} + lab/pel/README.md (env-var contract doc)
   - [ ] 04-02-PLAN.md — Simulation gate: tests/classifier-simulation.sh (6 scenarios — 4 flavors + override bypass + frozen-surface invariant)
 
 ### Phase 5: Template-Tier Mutation Proposer
