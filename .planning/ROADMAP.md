@@ -45,7 +45,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   4. `pwsh`-dependency documentation updated — harness section of `evals/README.md` marks Bash as the default, PS as legacy reference
 **Plans**: 3 plans
   - [x] 02-01-PLAN.md — Bash library (co-evolution-evals.sh): YAML loading, deep-merge, report rendering, atomic JSON write + report-template.md copy
-  - [ ] 02-02-PLAN.md — Scorer port (score-run.sh): 7-dimension fitness scoring with Jaccard + Levenshtein helpers
+  - [x] 02-02-PLAN.md — Scorer port (score-run.sh): 7-dimension fitness scoring with Jaccard + Levenshtein helpers
   - [ ] 02-03-PLAN.md — Orchestrator + comparator + Tier 1 regression gate + README update (Bash default, PS legacy)
 
 ### Phase 3: Lab Scaffold
@@ -133,7 +133,7 @@ Waves:
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
 | 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
-| 2. Bash Eval Harness Port | 1/3 | In Progress | — |
+| 2. Bash Eval Harness Port | 2/3 | In Progress|  |
 | 3. Lab Scaffold | TBD | Planned | — |
 | 4. Mode Classifier (frozen) | TBD | Planned | — |
 | 5. Template-Tier Mutation Proposer | TBD | Planned | — |
