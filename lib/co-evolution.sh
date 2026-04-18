@@ -28,6 +28,11 @@ die() {
 # Guard so we only log the non-Windows fallback warning once per run.
 LIVE_MODE_WARNING_LOGGED=false
 
+# RTUX-02: Branch + worktree env-var defaults. Empty = unset (no setup).
+# CLI flags --branch / --worktree override these; both non-empty = die.
+: "${DEV_REVIEW_BRANCH:=}"
+: "${DEV_REVIEW_WORKTREE:=}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -126,6 +131,131 @@ maybe_launch_live_window() {
   fi
 
   return 0
+}
+
+# RTUX-02: Portable check for "is this dir inside a git repo?" Used as the
+# gate for --branch / --worktree so non-git workdirs no-op cleanly.
+is_git_repo() {
+  local dir="${1:?is_git_repo requires a directory}"
+  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+    printf '%s' "true"
+  else
+    printf '%s' "false"
+  fi
+  return 0
+}
+
+# RTUX-02: Compose an auto branch name `dev-review/auto-<TIMESTAMP>-<slug>`.
+# Reuses $TIMESTAMP from the main runner when present; falls back to a fresh
+# stamp so this helper is safely callable from tests that source lib alone.
+derive_auto_branch_name() {
+  local task="${1:-}"
+  local ts="${TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
+  local slug=""
+  if [[ -n "$task" ]]; then
+    # First 5 words → lowercase → non-alnum becomes '-' → collapse → trim
+    slug=$(printf '%s' "$task" \
+      | awk '{for(i=1;i<=NF && i<=5;i++) printf "%s%s",$i,(i<NF && i<5?" ":"")}' \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/[^a-z0-9]+/-/g; s/-+/-/g; s/^-//; s/-$//')
+    slug="${slug:0:30}"
+    slug="${slug%-}"
+  fi
+  if [[ -n "$slug" ]]; then
+    printf 'dev-review/auto-%s-%s' "$ts" "$slug"
+  else
+    printf 'dev-review/auto-%s' "$ts"
+  fi
+}
+
+# RTUX-02: Compose a sibling-dir worktree path relative to WORKDIR.
+# e.g. /c/repos/myrepo → /c/repos/myrepo-dr-20260417-210830
+derive_auto_worktree_path() {
+  local workdir="${1:?derive_auto_worktree_path requires a workdir}"
+  local ts="${TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
+  local parent base
+  parent="$(cd "$workdir" && cd .. && pwd)"
+  base="$(basename "$workdir")"
+  printf '%s/%s-dr-%s' "$parent" "$base" "$ts"
+}
+
+# RTUX-02: Create a dedicated branch off HEAD and switch into it.
+# No-op + WARNING when branch_spec is empty OR workdir is not a git repo.
+# On git failure, log WARNING and return empty — main run continues inline.
+# On success, log the branch name and print it on stdout for the caller to
+# capture (caller writes it to state.json via write_state_field).
+maybe_setup_branch() {
+  local workdir="${1:?maybe_setup_branch requires a workdir}"
+  local branch_spec="${2:-}"
+  local task_desc="${3:-}"
+
+  if [[ -z "$branch_spec" ]]; then
+    # Route log to stderr so the caller's stdout-capture stays clean (no-op = empty stdout).
+    log "WARNING: --branch ignored: value is empty" >&2
+    return 0
+  fi
+  if [[ "$(is_git_repo "$workdir")" != "true" ]]; then
+    log "WARNING: --branch ignored: ${workdir} is not a git repo" >&2
+    return 0
+  fi
+
+  local name
+  if [[ "$branch_spec" == "auto" ]]; then
+    name="$(derive_auto_branch_name "$task_desc")"
+  else
+    name="$branch_spec"
+  fi
+
+  local err_output
+  if err_output=$(git -C "$workdir" checkout -b "$name" 2>&1); then
+    # log to stderr so stdout carries only the branch name for the caller.
+    log "Branch created: ${name}" >&2
+    printf '%s' "$name"
+    return 0
+  else
+    log "WARNING: branch setup failed for '${name}': ${err_output}" >&2
+    return 0
+  fi
+}
+
+# RTUX-02: Create a dedicated worktree and return its absolute path.
+# No-op + WARNING on empty spec or non-git-repo workdir. On git failure,
+# log WARNING and return empty — main run continues inline with original WORKDIR.
+maybe_setup_worktree() {
+  local workdir="${1:?maybe_setup_worktree requires a workdir}"
+  local worktree_spec="${2:-}"
+  local task_desc="${3:-}"
+
+  if [[ -z "$worktree_spec" ]]; then
+    # Route log to stderr so caller's stdout-capture stays clean (no-op = empty stdout).
+    log "WARNING: --worktree ignored: value is empty" >&2
+    return 0
+  fi
+  if [[ "$(is_git_repo "$workdir")" != "true" ]]; then
+    log "WARNING: --worktree ignored: ${workdir} is not a git repo" >&2
+    return 0
+  fi
+
+  local path
+  if [[ "$worktree_spec" == "auto" ]]; then
+    path="$(derive_auto_worktree_path "$workdir")"
+  else
+    path="$worktree_spec"
+  fi
+
+  local err_output
+  if err_output=$(git -C "$workdir" worktree add "$path" 2>&1); then
+    # Resolve to absolute once the dir exists.
+    local abs_path
+    abs_path="$(cd "$path" && pwd)"
+    # log to stderr so stdout carries only the worktree path for the caller.
+    log "Worktree created: ${abs_path}" >&2
+    printf '%s' "$abs_path"
+    return 0
+  else
+    log "WARNING: worktree setup failed for '${path}': ${err_output}" >&2
+    return 0
+  fi
 }
 
 invoke_claude() {
