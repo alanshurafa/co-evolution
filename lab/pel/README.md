@@ -9,8 +9,11 @@ and env var contract do not mutate. Phase 7's code-tier proposer excludes
 `lab/pel/classifier/**` from its mutable-file allowlist (see `## Frozen surface`).
 
 Phases 5-8 add template-tier, policy-tier, and code-tier proposers plus a PR emitter
-— all under `lab/pel/` siblings — that consume this classifier's output. Until those
-phases land, the classifier is reachable directly via `bash lab/pel/classifier/classifier.sh`
+— all under `lab/pel/` siblings — that consume this classifier's output. Phase 5
+ships the **template-tier proposer** under `lab/pel/proposer/template/` — an Opus-4.7
+mutation proposer that emits a single-file unified diff against one
+`skills/dev-review/templates/*.md` file per invocation (see `## Template-tier proposer (v1.2)`).
+The classifier itself remains reachable directly via `bash lab/pel/classifier/classifier.sh`
 for debugging and for the Phase 4 Plan 02 simulation test.
 
 ## Env-var contract (v1.2)
@@ -148,6 +151,130 @@ Files involved:
 
 All three live under `lab/pel/classifier/**` — the Phase 7 allowlist-exclusion
 glob referenced in `## Frozen surface`.
+
+## Template-tier proposer (v1.2)
+
+Phase 5 adds `lab/pel/proposer/template/` — the template-tier mutation proposer.
+A self-contained Opus-4.7 module that consumes a Phase-2-scorer JSON report plus
+a target template path plus a classifier flavor pick, and emits a unified diff
+targeting EXACTLY ONE `skills/dev-review/templates/*.md` file. Phase 8's PR
+emitter calls this proposer internally; end users do not invoke it directly in
+v1.2 (an optional manual invocation for debugging is documented below).
+
+The proposer is self-contained per D-05: the only source statement in
+`lab/pel/proposer/template/**` is `proposer.sh`'s sibling-only
+`source "$SCRIPT_DIR/adapter.sh"`. Zero imports reach into
+`lib/co-evolution.sh`, `lab/pel/classifier/**`, or runner internals.
+
+### Env-var contract
+
+Callers MUST set all three required env vars explicitly — unlike the classifier's
+warn-don't-die posture, the template-tier proposer requires complete inputs and
+dies exit 1 on any missing piece.
+
+| Env var | Value domain | Default | Purpose |
+|---------|--------------|---------|---------|
+| `PEL_EVAL_REPORT` | readable path to a Phase-2-scorer JSON report (inside REPO_ROOT) | unset — REQUIRED | Eval-failure report that drives mutation targeting |
+| `PEL_TEMPLATE_PATH` | readable `.md` file under `skills/dev-review/templates/` OR `tests/fixtures/templates/` | unset — REQUIRED | Template file to mutate (Phase 5 single-file constraint) |
+| `PEL_FLAVOR` | `bug-catcher`, `faster-converger`, `blind-spot-surfacer`, `general` | unset — REQUIRED | Classifier flavor pick that biases mutation direction |
+| `PROPOSER_MODEL` | claude model ID matching `^[a-zA-Z0-9_.-]+$` | `claude-opus-4-7` | Opus model to invoke; override for debugging only |
+
+**Input strictness (D-03).** Missing or unreadable `PEL_EVAL_REPORT` /
+`PEL_TEMPLATE_PATH` / `PEL_FLAVOR` die exit 1 with a specific message. Rationale:
+the proposer is called internally by Phase 8's scoring loop, which always
+provides all three — missing means the caller has a bug, not a user-shell
+residue to degrade past.
+
+**Optional task hint via `$1`.** The proposer accepts one optional positional
+argument: a free-form task hint that biases mutation direction. Empty string is
+allowed per D-04. When a hint is provided, it is a COARSE bias to the LLM, never
+an override of the flavor pick. If the hint contradicts the flavor, the flavor
+wins.
+
+### Output contract
+
+Stdout is a single well-formed unified diff with `---` / `+++` / `@@` headers
+that passes `git apply --check` at REPO_ROOT. Stderr carries all diagnostics.
+
+Example shape the proposer emits (indented, not fenced, so the README renders
+cleanly when the diff is piped through a pretty-printer):
+
+    --- a/skills/dev-review/templates/bounce-protocol.md
+    +++ b/skills/dev-review/templates/bounce-protocol.md
+    @@ -10,7 +10,9 @@
+     Convergence:
+     - If there are zero [CONTESTED] and zero [CLARIFY] notes remaining, the plan has converged. Focus on polish only.
+     - If this is the final pass, you MUST resolve every remaining note and MUST NOT introduce new unresolved notes.
+    +- Bug-catcher bias: before declaring convergence, enumerate at least one
+    +  adversarial case the current plan does not address.
+
+### Single-file invariant (D-09)
+
+After Opus returns, the proposer parses the emitted diff's `---` / `+++`
+headers and rejects with exit 4 any diff that touches more than one file OR
+targets anything outside `skills/dev-review/templates/` and
+`tests/fixtures/templates/` (the hermetic-testing alias per D-14). This is
+belt-and-suspenders: the prompt instructs single-file, but the code check
+catches prompt drift.
+
+### Applyability invariant (D-10)
+
+Before emitting the diff to stdout, the proposer runs
+`printf '%s' "$diff" | git apply --check -` inside REPO_ROOT. If the dry-run
+fails, the proposer dies exit 3 with a captured stderr snippet for debugging.
+Phase 8's scoring loop gets either a guaranteed-applyable diff or a clean error.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success — unified diff emitted to stdout |
+| 1 | Input validation failure (missing env var, invalid `PEL_FLAVOR`, invalid `PROPOSER_MODEL`, path traversal, out-of-prefix `PEL_TEMPLATE_PATH`) |
+| 2 | `claude` CLI missing / auth failure / Opus call non-zero / empty response |
+| 3 | Malformed diff — does not apply cleanly via `git apply --check` (D-10) |
+| 4 | Single-file constraint violation — diff touches more than one file OR a non-template file (D-09) |
+
+Exit codes are load-bearing for Phase 8's scoring loop: 1 = fix your invocation;
+2 = retry after clearing the external issue; 3 / 4 = the proposer produced a
+bad diff (log + move on, don't retry with the same inputs).
+
+### PROPOSER_MODEL escape hatch
+
+`PROPOSER_MODEL` overrides the default Opus 4.7 model ID. The value is validated
+against `^[a-zA-Z0-9_.-]+$` before being passed to `claude --model` — shell
+metacharacters are rejected with exit 1 and the message
+`invalid PROPOSER_MODEL: <value> (must match [A-Za-z0-9_.-]+)`.
+
+This is an escape hatch for debugging (swap in a cheaper or newer model for
+benchmarking), not an everyday knob. Same posture as the classifier's
+`CLASSIFIER_MODEL` escape hatch — a dedicated CLI flag is deferred to v1.3+
+ergonomics.
+
+### Invocation
+
+Direct invocation (used by the Plan 02 simulation test at
+`tests/template-proposer-simulation.sh` and by Phase 8's PR emitter in
+production):
+
+```bash
+export PEL_EVAL_REPORT=$PWD/evals/reports/20260418-120000/scores.json
+export PEL_TEMPLATE_PATH=skills/dev-review/templates/bounce-protocol.md
+export PEL_FLAVOR=bug-catcher
+
+bash lab/pel/proposer/template/proposer.sh "focus mutation on the bounce pass" \
+  | git apply --stat -   # inspect the proposed mutation shape
+```
+
+Output: single unified diff to stdout, diagnostics to stderr.
+
+Files involved:
+
+- `lab/pel/proposer/template/proposer.sh` — public entry point (argv + env validation, path sandboxing, D-09/D-10 gates)
+- `lab/pel/proposer/template/adapter.sh` — self-contained Opus adapter (prompt composition + claude CLI invocation + diff capture)
+- `lab/pel/proposer/template/prompt.md` — mutation-proposer prompt (4 flavor bias riders + strict unified-diff output schema; prompt-cache-friendly ordering)
+
+All three live under `lab/pel/proposer/template/**` — this is the Phase 7
+allowlist-exclusion glob for the template-tier proposer.
 
 ## Further reading
 
