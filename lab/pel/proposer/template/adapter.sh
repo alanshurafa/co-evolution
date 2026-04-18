@@ -1,9 +1,10 @@
 # lab/pel/proposer/template/adapter.sh
 # Co-Evolution PEL Template-Tier Mutation Proposer — Opus adapter (Phase 5 PEL-02).
 #
-# SELF-CONTAINED per D-05: no source/import of lib/co-evolution.sh, lab/pel/classifier,
-# or any other directory. All helpers are defined inline so lab/pel/proposer/template/**
-# is a clean Phase 7 allowlist-exclusion glob.
+# SELF-CONTAINED per D-05: zero import of the co-evolution runner helpers, the
+# classifier subtree, or any other directory outside proposer/template/. All
+# helpers are defined inline so lab/pel/proposer/template/** is a clean Phase 7
+# allowlist-exclusion glob.
 #
 # Sourced by proposer.sh; not executed standalone.
 #
@@ -21,7 +22,8 @@
 # Default PROPOSER_MODEL to Opus 4.7 per D-06 (overrideable via env).
 : "${PROPOSER_MODEL:=claude-opus-4-7}"
 
-# Inline die() — matches lib/co-evolution.sh:13-17 semantics but stays local.
+# Inline die() — matches the runner-helper die() semantics (repo root lib)
+# but stays local so D-05 self-containment holds.
 # Second arg is optional exit code (default 1) so callers can signal distinct
 # fail-fast categories per D-07 (1=input, 2=cli/auth, 3=diff-apply, 4=single-file).
 die() {
@@ -34,7 +36,8 @@ log_stderr() {
   printf "%s\n" "$1" >&2
 }
 
-# CLI availability check (mirrors classifier adapter.sh pattern).
+# CLI availability check — shape mirrors the sibling-tier Haiku adapter's
+# pattern (re-implemented inline; NOT imported — D-05 self-containment).
 # Under WSL, probe via cmd.exe since WSL and Windows keep separate auth state.
 require_claude_cli() {
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
@@ -46,7 +49,8 @@ require_claude_cli() {
   fi
 }
 
-# Auth-failure regex (mirrors lib/co-evolution.sh:402-408 + classifier adapter.sh).
+# Auth-failure regex — semantic twin of the runner helper's equivalent regex
+# (re-implemented inline here so D-05 self-containment holds; NOT imported).
 # Returns 0 if file exists AND contains an auth-failure marker.
 file_contains_auth_failure() {
   local file_path="$1"
