@@ -276,6 +276,116 @@ Files involved:
 All three live under `lab/pel/proposer/template/**` — this is the Phase 7
 allowlist-exclusion glob for the template-tier proposer.
 
+## Policy proposer (Phase 6 PEL-03)
+
+`lab/pel/proposer/policy/` is the **policy-tier mutation proposer** — Phase 6's
+inhabitant. Given eval-failure feedback + a target policy YAML + a flavor pick,
+it emits a **JSON delta** describing proposed mutations to `policy.yaml`. It does
+NOT apply the delta (D-11 dry-run by construction); Phase 8's PR emitter applies
+via `yq` after human review.
+
+### Env-var contract
+
+Callers MUST export these before invoking `bash lab/pel/proposer/policy/proposer.sh`:
+
+| Env var | Value domain | Required | Purpose |
+|---------|--------------|----------|---------|
+| `PEL_FEEDBACK` | path to eval-failure JSON (readable file within repo) | yes (D-06) | Signal driving the mutation — e.g. `tests/fixtures/policy-feedback/retry-failure.json` |
+| `PEL_POLICY_PATH` | path to target policy YAML (readable file within repo) | yes (D-06) | The file the proposed delta targets; typically `lab/pel/proposer/policy/policy.yaml` |
+| `PEL_FLAVOR` | one of `bug-catcher`, `faster-converger`, `blind-spot-surfacer`, `general` | yes (D-06) | Classifier pick (normally fed by Phase 4's classifier JSON `.flavor` field) |
+| `POLICY_PROPOSER_MODEL` | claude model ID matching `^[a-zA-Z0-9_.-]+$` | no (default `claude-haiku-4-5-20251001`) | Model override for debugging |
+
+Task string via `$1` is optional — if passed, used as an additional hint. Empty
+is legal. Single-argv slot per W-3 (`lab/README.md` §How to add).
+
+### Output contract (D-10)
+
+Successful invocation emits a single JSON delta object on stdout:
+
+```json
+{
+  "mutations": [
+    {"key": "retry_cap", "old": 3, "new": 5}
+  ],
+  "rationale": "eval feedback shows transient failures; raising retry cap",
+  "flavor": "faster-converger",
+  "policy_path": "lab/pel/proposer/policy/policy.yaml"
+}
+```
+
+- `mutations[]` has 1-3 entries.
+- Each `.key` is one of the 6 enumerated knobs from `policy.yaml` (validated by `bounds.jq`).
+- Each `.new` value is within the knob's documented bound (also validated by `bounds.jq`).
+- `.flavor` echoes the input `PEL_FLAVOR` verbatim.
+- `.policy_path` echoes the input `PEL_POLICY_PATH` verbatim.
+
+All diagnostics route to stderr; stdout stays pure JSON.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success — delta emitted |
+| 1 | Input validation failure (missing env var, bad flavor token, shell-meta model, path traversal) |
+| 2 | `claude` CLI missing / `jq` missing / `yq` missing / auth failure / Haiku call non-zero |
+| 3 | Malformed response from Haiku (non-JSON, missing required fields) |
+| 4 | bounds violation in proposed delta (`bounds.jq halt_error(4)`) — legal knob, illegal value |
+| 5 | non-enumerated knob in proposed delta (`bounds.jq halt_error(5)`) — knob key not in D-03 allowlist |
+
+Exit codes 4 (bounds violation) and 5 (non-enumerated knob) are distinct so Phase 8's
+PR emitter can tell the difference between "LLM drifted on value" and "LLM tried
+to mutate something not allowed."
+
+### Mutable knobs (v1.2 frozen enumeration)
+
+The 6 knobs in `lab/pel/proposer/policy/policy.yaml` are the ONLY fields the
+proposer may mutate. `bounds.jq` enforces the enumeration AND bounds:
+
+| Knob | Type | Bounds | Default |
+|------|------|--------|---------|
+| `retry_cap` | integer | [0, 10] | 3 |
+| `marker_semantics` | enum | `strict` or `lax` | `strict` |
+| `writable_phase_default` | boolean | `true` or `false` | `false` |
+| `arbitrate_threshold` | float | [0.0, 1.0] | 0.7 |
+| `max_passes` | integer | [1, 10] | 4 |
+| `flavor_weights` | object | each sub-value in [0.0, 1.0], sum in [0.95, 1.05] | 0.25 each |
+
+Adding new knobs is a new phase (bounds review, test coverage, prompt update).
+
+### Dry-run by construction (D-11)
+
+The proposer emits a delta; it NEVER modifies the live `policy.yaml`. This is
+architectural, not policy — the proposer has zero `yq -i` invocations in its
+code (verified by grep in `tests/policy-proposer-simulation.sh`). Applying the
+delta is Phase 8's problem and always happens via PR review.
+
+Humans may hand-edit `policy.yaml` between PEL runs. Both mechanisms coexist —
+hand edits and PEL-proposed deltas land through the same PR review gate.
+
+### Invocation example
+
+```bash
+export PEL_FEEDBACK=tests/fixtures/policy-feedback/retry-failure.json
+export PEL_POLICY_PATH=lab/pel/proposer/policy/policy.yaml
+export PEL_FLAVOR=bug-catcher
+
+bash lab/pel/proposer/policy/proposer.sh "optional task hint"
+```
+
+### Files involved
+
+- `lab/pel/proposer/policy/proposer.sh` — public entry (env validation, require_tools jq+yq, bounds enforcement)
+- `lab/pel/proposer/policy/adapter.sh` — self-contained Haiku adapter (D-05)
+- `lab/pel/proposer/policy/prompt.md` — frozen mutation prompt with flavor-bias guidance (D-15, D-16)
+- `lab/pel/proposer/policy/policy.yaml` — the mutable 6-knob surface (D-03)
+- `lab/pel/proposer/policy/bounds.jq` — single-source-of-truth bounds validator (D-13)
+
+### Simulation gate
+
+`tests/policy-proposer-simulation.sh` exercises all 8 SC-4 scenarios (4 flavor
+paths + 4 adversarial rejections) hermetically via a PATH-injected stub `claude`
+CLI. Final line `8/8 scenarios passed` on a clean proposer surface.
+
 ## Further reading
 
 - [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) — binding v1.2 design decisions; §1 "Multi-flavor fitness" is the authoritative source for the four flavor definitions that appear in `prompt.md`.
