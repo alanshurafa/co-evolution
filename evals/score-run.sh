@@ -30,6 +30,88 @@ source "${REPO_ROOT}/lib/co-evolution.sh"
 source "${SCRIPT_DIR}/lib/co-evolution-evals.sh"
 
 # ---------------------------------------------------------------------------
+# Helpers — Jaccard + Levenshtein (ported from score-run.ps1:102-169)
+# ---------------------------------------------------------------------------
+
+# jaccard <a_json_file> <b_json_file>
+# Each input file must contain a JSON array of strings. Emits a float in [0.0, 1.0].
+# Semantics match score-run.ps1:122-133:
+#   both-empty  -> 1.0
+#   one-empty   -> 0.0 (union is non-empty from the other side -> empty intersection)
+#   otherwise   -> |A ∩ B| / |A ∪ B|
+jaccard() {
+  local a_file="${1:?jaccard requires path a}"
+  local b_file="${2:?jaccard requires path b}"
+  jq -n --slurpfile a "$a_file" --slurpfile b "$b_file" '
+    ($a[0] // []) as $A | ($b[0] // []) as $B |
+    if ($A|length)==0 and ($B|length)==0 then 1.0
+    else
+      (($A + $B) | unique) as $union |
+      if ($union|length)==0 then 0.0
+      else
+        ($A - ($A - $B)) as $inter |
+        (($inter|length) / ($union|length))
+      end
+    end
+  '
+}
+
+# levenshtein <a_file> <b_file>
+# Emits the integer edit distance on stdout using Wagner-Fischer 2-row DP.
+# 4000-character cap per PS (prevents O(n*m) blowup on multi-MB bounces).
+# awk's 2D-via-two-1D-arrays pattern is portable across BSD and GNU awk.
+# The function reads the raw file bytes and strips a UTF-8 BOM on either side
+# so PS-produced compose.txt / bounce-*.txt (BOM-prefixed) compare cleanly.
+levenshtein() {
+  local a_file="${1:?levenshtein requires path a}"
+  local b_file="${2:?levenshtein requires path b}"
+  awk -v a_file="$a_file" -v b_file="$b_file" '
+    BEGIN {
+      # Read both files into single strings, preserving newlines.
+      a = ""
+      while ((getline l < a_file) > 0) {
+        if (a == "") a = l; else a = a "\n" l
+      }
+      close(a_file)
+      b = ""
+      while ((getline l < b_file) > 0) {
+        if (b == "") b = l; else b = b "\n" l
+      }
+      close(b_file)
+
+      # Strip UTF-8 BOM (0xEF 0xBB 0xBF) if present.
+      bom = sprintf("%c%c%c", 0xef, 0xbb, 0xbf)
+      if (substr(a, 1, 3) == bom) a = substr(a, 4)
+      if (substr(b, 1, 3) == bom) b = substr(b, 4)
+
+      la = length(a); lb = length(b)
+      cap = 4000
+      if (la > cap) { la = cap; a = substr(a, 1, cap) }
+      if (lb > cap) { lb = cap; b = substr(b, 1, cap) }
+      if (la == 0) { print lb; exit }
+      if (lb == 0) { print la; exit }
+
+      for (j = 0; j <= lb; j++) prev[j] = j
+      for (i = 1; i <= la; i++) {
+        curr[0] = i
+        ca = substr(a, i, 1)
+        for (j = 1; j <= lb; j++) {
+          cb = substr(b, j, 1)
+          cost = (ca == cb) ? 0 : 1
+          del_ = prev[j]   + 1
+          ins  = curr[j-1] + 1
+          sub_ = prev[j-1] + cost
+          m = del_; if (ins < m) m = ins; if (sub_ < m) m = sub_
+          curr[j] = m
+        }
+        for (j = 0; j <= lb; j++) prev[j] = curr[j]
+      }
+      print prev[lb]
+    }
+  '
+}
+
+# ---------------------------------------------------------------------------
 # Usage
 # ---------------------------------------------------------------------------
 
@@ -134,6 +216,10 @@ plan_path="$RUN_DIR/plan.md"
 plan_text=""
 if [[ -f "$plan_path" ]]; then
   plan_text=$(<"$plan_path")
+  # Strip UTF-8 BOM if present (PS-produced fixtures are BOM-prefixed; PS reads
+  # them transparently, but Bash grep on ^# would miss "# Plan" after a BOM.
+  # \xef\xbb\xbf is the 3-byte UTF-8 BOM).
+  plan_text="${plan_text#$'\xef\xbb\xbf'}"
 fi
 
 verdict_path="$RUN_DIR/verdict.json"
@@ -215,26 +301,311 @@ if [[ "$wall_secs" =~ ^[0-9]+$ && "$max_wall" =~ ^[0-9]+$ ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Dimension: Cross-AI diversity — N/A guard only in Task 1 scaffold
-# Full Levenshtein-based comparison lands in Task 2.
+# Dimension: Convergence (port score-run.ps1:253-301)
+# Checks: (1) marker_counts.total -> PASS=0 / PARTIAL<=2 / FAIL>2;
+#         (2) if expects_bounces, outputs/bounce-*.txt OR state.history has a
+#             "bounce-NN" phase -> structural_ok (Tier 4 regression A axiom).
 # ---------------------------------------------------------------------------
 
-cross_ai_diversity="N/A"
-if [[ "$composer" != "$reviewer" ]]; then
-  # Placeholder: Task 2 replaces with Levenshtein-based computation against
-  # outputs/compose.txt vs outputs/bounce-01.txt.
-  cross_ai_diversity="FAIL"
+final_markers=$(jq -r '.marker_counts.total // 0' "$state_json_path")
+convergence="FAIL"
+if [[ "$final_markers" =~ ^[0-9]+$ ]]; then
+  if   (( final_markers == 0 )); then convergence="PASS"
+  elif (( final_markers <= 2 )); then convergence="PARTIAL"
+  fi
+fi
+
+# Bounces expected iff runner.bounces is a positive integer (default "auto" -> expected).
+requested_bounces=$(jq -r '.runner.bounces // "auto"' <<<"$case_json")
+expects_bounces=true
+if [[ "$requested_bounces" =~ ^[0-9]+$ ]] && (( requested_bounces <= 0 )); then
+  expects_bounces=false
+fi
+
+# Structural bounce-check (PS Tier 4 regression A): require either a real
+# outputs/bounce-NN.txt artifact OR a state.history entry matching "^bounce-[0-9]+$".
+# The plain "bounce" wrapper phase is insufficient — it is written BEFORE the
+# loop body runs and doesn't prove any iteration executed.
+bounce_phases_ran=false
+if [[ -d "$outputs_dir" ]]; then
+  # find | sort for deterministic iteration; wc -l gives count.
+  bounce_files_count=$(find "$outputs_dir" -maxdepth 1 -type f -name 'bounce-*.txt' 2>/dev/null | wc -l | tr -d ' ')
+  if (( bounce_files_count > 0 )); then
+    bounce_phases_ran=true
+  fi
+fi
+if [[ "$bounce_phases_ran" != "true" ]]; then
+  bounce_hist=$(jq -r '[.history[]? | select((.phase // "") | test("^bounce-[0-9]+$"))] | length' "$state_json_path" 2>/dev/null || echo 0)
+  if [[ "$bounce_hist" =~ ^[0-9]+$ ]] && (( bounce_hist > 0 )); then
+    bounce_phases_ran=true
+  fi
+fi
+
+bounce_structural_ok=true
+if [[ "$expects_bounces" == "true" && "$bounce_phases_ran" != "true" ]]; then
+  convergence="FAIL"
+  bounce_structural_ok=false
 fi
 
 # ---------------------------------------------------------------------------
-# TASK-2 port targets — placeholder values so scores.json shape is complete.
-# Replaced in Task 2 with full implementations.
+# Dimension: Plan Quality (port score-run.ps1:303-320)
+# Checks: (1) words >= min_word_count; (2) every heading group has >=1 match;
+#         PASS = both OK; PARTIAL = PASS + has TODO/TBD/FIXME; FAIL otherwise.
+# Default heading groups match PS hardcoded fallback: (Plan|Approach|Strategy) + (Risks|Concerns|Caveats).
 # ---------------------------------------------------------------------------
 
-convergence="FAIL"
-plan_quality="FAIL"
-execution_fidelity="FAIL"
-verify_accuracy="FAIL"
+min_words=$(jq -r '.expectations.plan_quality.min_word_count // 120' <<<"$case_json")
+# must_contain_any is a list of lists: each inner list is an OR group; ALL groups
+# must have ≥1 hit. Default to PS hardcoded fallback when case and defaults omit it.
+has_mca=$(jq -r 'has("expectations") and (.expectations | has("plan_quality")) and (.expectations.plan_quality | has("must_contain_any"))' <<<"$case_json")
+if [[ "$has_mca" == "true" ]]; then
+  heading_groups_json=$(jq -c '.expectations.plan_quality.must_contain_any' <<<"$case_json")
+else
+  heading_groups_json='[["Plan","Approach","Strategy"],["Risks","Concerns","Caveats"]]'
+fi
+
+# Word count: split on whitespace, drop empties. Use awk for deterministic behavior.
+plan_word_count=$(printf '%s' "$plan_text" | awk 'BEGIN{n=0} {for(i=1;i<=NF;i++) if(length($i)>0) n++} END{print n}')
+
+# Heading check: each group must have ≥1 heading of form ^#+\s+<token>.
+# Iterate with jq to enumerate groups/tokens deterministically; grep each token
+# against plan_text via process substitution (stream through bash here-string
+# would require echo -n semantics that differ across shells).
+headings_ok=true
+groups_count=$(jq -r 'length' <<<"$heading_groups_json")
+for ((gi = 0; gi < groups_count; gi++)); do
+  group_size=$(jq -r --argjson i "$gi" '.[$i] | length' <<<"$heading_groups_json")
+  group_matched=false
+  for ((ti = 0; ti < group_size; ti++)); do
+    token=$(jq -r --argjson i "$gi" --argjson t "$ti" '.[$i][$t]' <<<"$heading_groups_json")
+    # Build extended regex; grep -E. Case-SENSITIVE to match PS default.
+    # Use fixed-string in token portion defused via grep's -P escape-like handling;
+    # PS uses [regex]::Escape($h). Since fixture tokens are plain words (Plan,
+    # Risks, etc.) no escape issues arise; but guard anyway by rejecting anything
+    # that isn't alphanumeric/space for the security posture T-02-02-03.
+    if [[ "$token" =~ ^[[:alnum:][:space:]_-]+$ ]]; then
+      if printf '%s\n' "$plan_text" | grep -qE "^#+[[:space:]]+${token}\\b"; then
+        group_matched=true
+        break
+      fi
+    fi
+  done
+  if [[ "$group_matched" != "true" ]]; then
+    headings_ok=false
+    break
+  fi
+done
+
+has_todo_stub=false
+if printf '%s\n' "$plan_text" | grep -qE '\b(TODO|TBD|FIXME)\b'; then
+  has_todo_stub=true
+fi
+
+plan_quality="PASS"
+if ! [[ "$plan_word_count" =~ ^[0-9]+$ ]] || (( plan_word_count < min_words )) || [[ "$headings_ok" != "true" ]]; then
+  plan_quality="FAIL"
+elif [[ "$has_todo_stub" == "true" ]]; then
+  plan_quality="PARTIAL"
+fi
+
+# ---------------------------------------------------------------------------
+# Dimension: Execution Fidelity (port score-run.ps1:102-133 Jaccard + 322-337)
+# Jaccard(plan-declared files, state.changed_files). PASS if >= min_jaccard;
+# PARTIAL if >= min_jaccard * 0.6; FAIL otherwise.
+# Special case: no-op plan AND no changes -> PASS.
+# ---------------------------------------------------------------------------
+
+min_jaccard=$(jq -r '.expectations.execution_fidelity.min_jaccard // 0.5' <<<"$case_json")
+
+# Extract "Files to Change" section from plan.md, then per-line match
+# ^- `path` (preferred) OR ^- word (fallback). Sort -u for determinism.
+# Use awk to scan only the "## Files to Change" section up to the next "##".
+plan_files_file=$(mktemp)
+printf '%s\n' "$plan_text" | awk '
+  BEGIN { in_section = 0 }
+  /^##[[:space:]]+Files to Change[[:space:]]*$/ { in_section = 1; next }
+  /^##[[:space:]]/ { if (in_section) exit }
+  in_section { print }
+' | awk '
+  # Extract path from either: `- \`path\` ...` or `- path ...` (no backticks).
+  {
+    line = $0
+    sub(/^[[:space:]]+/, "", line)
+    if (line !~ /^-[[:space:]]+/) next
+    sub(/^-[[:space:]]+/, "", line)
+    # Backtick-delimited path preferred.
+    if (match(line, /`[^`]+`/)) {
+      p = substr(line, RSTART + 1, RLENGTH - 2)
+      print p
+    } else {
+      # First token up to whitespace or (/).
+      n = split(line, parts, /[[:space:]()]+/)
+      if (n >= 1 && parts[1] != "" && parts[1] != "(no") print parts[1]
+    }
+  }
+' | sort -u | jq -Rn '[inputs | select(length > 0)]' > "$plan_files_file"
+
+# Normalize state.changed_files to a JSON array (could be string or array).
+state_files_file=$(mktemp)
+jq '
+  .changed_files as $cf |
+  if $cf == null then []
+  elif ($cf | type) == "string" then [$cf]
+  elif ($cf | type) == "array" then [$cf[] | select(. != null and . != "")]
+  else []
+  end
+' "$state_json_path" > "$state_files_file"
+
+plan_files_count=$(jq -r 'length' "$plan_files_file")
+state_files_count=$(jq -r 'length' "$state_files_file")
+
+if (( plan_files_count == 0 && state_files_count == 0 )); then
+  # No-op plan + no changes: PASS
+  jac="1.0"
+  execution_fidelity="PASS"
+else
+  jac=$(jaccard "$plan_files_file" "$state_files_file")
+  execution_fidelity=$(jq -nr --argjson j "$jac" --argjson m "$min_jaccard" '
+    if   $j >= $m        then "PASS"
+    elif $j >= ($m * 0.6) then "PARTIAL"
+    else                       "FAIL"
+    end
+  ')
+fi
+rm -f "$plan_files_file" "$state_files_file"
+
+# ---------------------------------------------------------------------------
+# Dimension: Verify Accuracy (port score-run.ps1:339-378)
+# Scored only when case.expectations.verify_accuracy is set; else N/A.
+# missing/unparseable verdict.json -> FAIL.
+# must_catch_issue branch: verdict=REVISE + keyword hit -> PASS;
+#                           verdict=REVISE only -> PARTIAL;
+#                           else -> FAIL.
+# non-catch branch: verdict in allow_verdict -> PASS; else -> FAIL.
+# ---------------------------------------------------------------------------
+
+has_va_expect=$(jq -r 'has("expectations") and (.expectations | has("verify_accuracy"))' <<<"$case_json")
+verify_accuracy="N/A"
+if [[ "$has_va_expect" == "true" ]]; then
+  if [[ "$verdict_state" == "unparseable" || "$verdict_state" == "missing" ]]; then
+    verify_accuracy="FAIL"
+  else
+    must_catch=$(jq -r '(.expectations.verify_accuracy.must_catch_issue // false) | tostring' <<<"$case_json")
+    # allow_verdict default matches PS: ['APPROVED','REVISE']
+    allow_verdict_json=$(jq -c '.expectations.verify_accuracy.allow_verdict // ["APPROVED","REVISE"]' <<<"$case_json")
+    keywords_json=$(jq -c '.expectations.verify_accuracy.issue_keywords // []' <<<"$case_json")
+
+    actual_verdict=$(jq -r '.verdict // ""' "$verdict_path")
+
+    # keyword_hit: any keyword appears (as a literal substring) in the
+    # issues-as-JSON text. PS iterates $verdict.issues, compresses each to JSON,
+    # joins with newline, then tests -match (regex, case-insensitive by default
+    # in PS with [regex]::Escape wrapping the keyword — i.e. literal substring,
+    # case-insensitive). We use awk's case-folded `index()` because MINGW/MSYS
+    # grep has a known abort when `-i` is combined with `-F`; see
+    # notes/grep-windows-iF-abort for the workaround rationale.
+    issues_text=$(jq -r '(.issues // []) | map(tostring) | join("\n")' "$verdict_path")
+    kw_count=$(jq -r 'length' <<<"$keywords_json")
+    keyword_hit=true
+    if (( kw_count > 0 )); then
+      keyword_hit=false
+      for ((ki = 0; ki < kw_count; ki++)); do
+        kw=$(jq -r --argjson i "$ki" '.[$i]' <<<"$keywords_json")
+        if [[ -z "$kw" ]]; then
+          continue
+        fi
+        # awk tolower + index: fixed-string case-insensitive substring test.
+        if awk -v text="$issues_text" -v kw="$kw" \
+              'BEGIN { exit (index(tolower(text), tolower(kw)) > 0) ? 0 : 1 }'; then
+          keyword_hit=true
+          break
+        fi
+      done
+    fi
+
+    verdict_ok=$(jq -r --argjson av "$allow_verdict_json" --arg v "$actual_verdict" '$av | index($v) != null' <<<'null')
+
+    if [[ "$must_catch" == "true" ]]; then
+      if [[ "$actual_verdict" == "REVISE" && "$keyword_hit" == "true" ]]; then
+        verify_accuracy="PASS"
+      elif [[ "$actual_verdict" == "REVISE" ]]; then
+        verify_accuracy="PARTIAL"
+      else
+        verify_accuracy="FAIL"
+      fi
+    else
+      if [[ "$verdict_ok" == "true" ]]; then
+        verify_accuracy="PASS"
+      else
+        verify_accuracy="FAIL"
+      fi
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Dimension: Cross-AI diversity (port score-run.ps1:404-426, full impl)
+# composer==reviewer -> N/A.
+# Else: Levenshtein(compose.txt, bounce-01.txt). similarity = 1 - dist/max(len).
+# change_ratio = 1 - similarity. >= min_edit -> PASS; >= min_edit*0.5 -> PARTIAL; else FAIL.
+# Missing compose.txt or bounce-01.txt -> FAIL.
+# ---------------------------------------------------------------------------
+
+cross_ai_diversity="N/A"
+cross_ai_reason=""
+cross_ai_similarity=""
+cross_ai_change_ratio=""
+if [[ "$composer" != "$reviewer" ]]; then
+  compose_file="$outputs_dir/compose.txt"
+  # First bounce-*.txt file in sort order (PS Sort-Object Name | Select -First 1).
+  first_bounce=""
+  if [[ -d "$outputs_dir" ]]; then
+    first_bounce=$(find "$outputs_dir" -maxdepth 1 -type f -name 'bounce-*.txt' 2>/dev/null | sort | head -1)
+  fi
+  min_edit=$(jq -r '.expectations.cross_ai_diversity.min_edit_distance // 0.15' <<<"$case_json")
+
+  if [[ ! -f "$compose_file" || -z "$first_bounce" || ! -f "$first_bounce" ]]; then
+    cross_ai_diversity="FAIL"
+    cross_ai_reason="missing compose or first bounce output"
+  else
+    # Compute max length (BOM-stripped char count) matching the awk Levenshtein's
+    # view of the files. wc -c counts bytes; for BOM-prefixed ASCII that's the
+    # same as chars + 3. Subtract 3 if BOM detected. Cap at 4000.
+    compose_bytes=$(wc -c < "$compose_file" | tr -d ' ')
+    bounce_bytes=$(wc -c < "$first_bounce" | tr -d ' ')
+    compose_has_bom=0; bounce_has_bom=0
+    if [[ $(head -c 3 "$compose_file" 2>/dev/null | xxd -p 2>/dev/null) == "efbbbf" ]]; then
+      compose_has_bom=1
+    fi
+    if [[ $(head -c 3 "$first_bounce" 2>/dev/null | xxd -p 2>/dev/null) == "efbbbf" ]]; then
+      bounce_has_bom=1
+    fi
+    compose_len=$(( compose_bytes - (compose_has_bom * 3) ))
+    bounce_len=$(( bounce_bytes - (bounce_has_bom * 3) ))
+    (( compose_len < 0 )) && compose_len=0
+    (( bounce_len < 0 )) && bounce_len=0
+    (( compose_len > 4000 )) && compose_len=4000
+    (( bounce_len > 4000 )) && bounce_len=4000
+    max_len=$(( compose_len > bounce_len ? compose_len : bounce_len ))
+
+    if (( max_len == 0 )); then
+      # Both empty -> PS returns similarity=1.0 -> change_ratio=0.0 -> FAIL (below 0.075)
+      cross_ai_similarity="1.0"
+      cross_ai_change_ratio="0.0"
+      cross_ai_diversity="FAIL"
+    else
+      edit_dist=$(levenshtein "$compose_file" "$first_bounce")
+      cross_ai_similarity=$(jq -n --argjson d "$edit_dist" --argjson m "$max_len" '(1.0 - ($d / $m)) * 1000 | round / 1000')
+      cross_ai_change_ratio=$(jq -n --argjson d "$edit_dist" --argjson m "$max_len" '($d / $m) * 1000 | round / 1000')
+      cross_ai_diversity=$(jq -nr --argjson cr "$cross_ai_change_ratio" --argjson me "$min_edit" '
+        if   $cr >= $me         then "PASS"
+        elif $cr >= ($me * 0.5) then "PARTIAL"
+        else                         "FAIL"
+        end
+      ')
+    fi
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Scores object (fixed key order for determinism; jq -S re-sorts at final write)
