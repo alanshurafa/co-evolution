@@ -37,7 +37,9 @@ Confirm state before picking up:
 
 **Effort:** ~1–2 hours for the rewrite + GSD coordination.
 
-### Item B (was #5): MCP server wrapper
+### Item B (was #5): MCP server wrapper — TABLED 2026-04-19
+
+**Status update (2026-04-19):** Tabled in favor of shipping `BOUNCE-PROTOCOL.md` first (the cheaper interop play). Full design captured at `docs/superpowers/specs/2026-04-19-mcp-server-design.md` — pick up there when reviving, no re-design needed. Trigger to revive: external signal that someone wants to invoke the bounce protocol from Claude Desktop / Cursor without `git clone`-ing the repo, OR `BOUNCE-PROTOCOL.md` adoption that warrants a reference-implementation distribution channel. See ROADMAP.md "Deferred" section.
 
 **Problem:** co-evolution runs *inside* Claude Code via skill. External MCP clients (Claude Desktop, Cursor, Continue) can't reach it. Distribution is `git clone`-only — every competitor ships npm / pip / plugin marketplace.
 
