@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: executing
-stopped_at: "Completed 07-01-PLAN.md (code-tier proposer core: 5 module files + README extension, 7 commits). Ready to plan 07-02 (simulation gate tests/code-proposer-simulation.sh)."
-last_updated: "2026-04-19T02:55:22.365Z"
+status: verifying
+stopped_at: "Completed 07-02-PLAN.md (simulation gate: 16/16 scenarios passed). Phase 7 code-tier-proposer ready for verification; v1.2 milestone Phase 7 complete, Phase 8 (PR emitter) unblocked."
+last_updated: "2026-04-19T03:30:40.076Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 14
-  completed_plans: 14
+  completed_plans: 15
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 Phase: 07 (code-tier-proposer) — EXECUTING
 Plan: 2 of 2
 Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-19
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
@@ -50,6 +50,7 @@ Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 | Phase 04-mode-classifier-frozen P02 | 9 min | 1 tasks | 1 files |
 | Phase 07-code-tier-proposer P01 | 15min 49s | 6 tasks | 6 files |
+| Phase 07-code-tier-proposer P02 | 27min 32s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 04-mode-classifier-frozen]: Phase 4 Plan 01: Self-contained PEL classifier shipped as lab/pel/classifier/** (4 files, zero lib/co-evolution.sh imports). classifier.sh public entry + adapter.sh inline-helpers Haiku adapter + frozen prompt.md + lab/pel/README.md env-var contract. D-05 self-containment + D-11 path-based freeze both hold under grep audit. Override fast-path emits canonical D-08 JSON without invoking Haiku; all 6 high-severity STRIDE threats have grep-checkable mitigations. Deviations: 1 Rule-3 comment rewording (grep false positive), 1 plan-verifier regex escape bug noted not patched (functional tests prove correctness).
 - [Phase 04-mode-classifier-frozen]: Phase 4 Plan 02: Hermetic classifier simulation gate shipped at tests/classifier-simulation.sh (429 lines, 8 scenarios: 6 primary SC-5 + 2 bonus). PATH-injection stub pattern (fake claude CLI at $TEST_DIR/bin/claude echoing canned JSON from $CLASSIFIER_STUB_FILE) + fingerprint-marker proof that PEL_FLAVOR_OVERRIDE bypasses Haiku + structural grep frozen-surface invariant for D-11. Primary/bonus counter split keeps tail -1 stable at 6/6 scenarios passed per v1.2 phase-gate convention while surfacing 2/2 bonus scenarios passed on the line above. Cross-platform (Git Bash Windows + Linux + macOS) hermetic, no new dependencies, zero classifier-surface modifications.
 - [Phase 07-code-tier-proposer]: Phase 7 Plan 01: code-tier proposer shipped at lab/pel/proposer/code/** (5 files, 930 lines). D-07 pre-flight gate chain (parse -> single-file -> allowlist -> budget -> git apply --check) runs BEFORE sandbox creation; cheap syntactic rejections avoid the expensive worktree+canary cycle. Sandbox via git worktree add --detach HEAD at $TMPDIR/pel-code-sandbox-XXXXXX with defense-in-depth cleanup (git worktree remove --force + rm -rf in trap EXIT). Canary.sh runs 5 scenarios (source-survives/helper-signatures/agent-bounce/dev-review-plan-only/one-eval-case) with PATH-injected stubs for claude+codex; distinct canary exit codes 1-5 map to proposer exit 7 with scenario name in state.json. Allowlist ordering fix (Rule 3): string-only allowlist check runs BEFORE PEL_CODE_FEEDBACK readability so frozen-target violations surface even with stale feedback paths. DIFF_BUDGET integer regex validation added (Rule 2) to block shell-metachar injection into the arithmetic comparison. Live 5/5 canary pass against current unmutated repo.
+- [Phase 07-code-tier-proposer]: Phase 7 Plan 02: 16-scenario hermetic SC-5 gate shipped at tests/code-proposer-simulation.sh (1074 lines, 4 happy-paths + 5 text-pipeline edge cases + 7 adversarial rejections). PATH-injected git shim pattern introduced (intercepts git worktree remove --force to snapshot state.json before teardown) — enables post-exec state.json assertions without modifying Plan 01 proposer.sh. 4 Phase-2-scorer-shaped JSON fixtures under tests/fixtures/code-feedback/. All text-pipeline edge cases (E-I: empty-line context marker, trailing newline, CRLF, shell metachars, patch-vs-git-apply divergence) from phase-7-simulation-lessons.md pass on first run against Plan 01 surface — confirms Plan 01's capture_diff narrow-regex and --whitespace=nowarn wiring work. Plan 01 stdout leak ('HEAD is now at...' from git worktree add) logged to deferred-items.md as DEF-07-01 for Phase 8 to fix. Final line 16/16 scenarios passed matches v1.2 phase-gate convention.
 
 ### Pending Todos
 
@@ -95,8 +97,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-19T02:55:22.359Z
-Stopped at: Completed 07-01-PLAN.md (code-tier proposer core: 5 module files + README extension, 7 commits). Ready to plan 07-02 (simulation gate tests/code-proposer-simulation.sh).
+Last session: 2026-04-19T03:30:40.070Z
+Stopped at: Completed 07-02-PLAN.md (simulation gate: 16/16 scenarios passed). Phase 7 code-tier-proposer ready for verification; v1.2 milestone Phase 7 complete, Phase 8 (PR emitter) unblocked.
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
