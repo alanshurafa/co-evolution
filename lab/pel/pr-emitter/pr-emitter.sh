@@ -207,6 +207,10 @@ DRY_STUB_BIN=""
 EMITTER_WORKDIR=""
 EMITTER_SANDBOX=""
 EMITTER_BODY_FILE=""
+# WR-06: track branch name that was created so dry-run cleanup can delete it.
+# Real runs (non-dry) keep the branch so `gh pr create` has something to point
+# at; only dry-run leaves a branch that would otherwise orphan.
+BRANCH_CREATED=""
 
 emitter_cleanup_all() {
   # Order: sandbox (git worktree remove) → workdir → dry-stub → body-file.
@@ -217,6 +221,11 @@ emitter_cleanup_all() {
   [[ -n "$EMITTER_WORKDIR" ]] && rm -rf "$EMITTER_WORKDIR" 2>/dev/null || true
   [[ -n "$DRY_STUB_BIN"   ]] && rm -rf "$DRY_STUB_BIN"   2>/dev/null || true
   [[ -n "$EMITTER_BODY_FILE" && -f "$EMITTER_BODY_FILE" ]] && rm -f "$EMITTER_BODY_FILE" 2>/dev/null || true
+  # WR-06: drop the branch ref on dry-run so user invocations don't pollute
+  # refs/heads/pel/<tier>/<hash> over time. Real runs keep the branch.
+  if [[ -n "$BRANCH_CREATED" && "${CO_EVOLVE_DRY_RUN:-}" == "1" ]]; then
+    "${REAL_GIT:-git}" -C "$REPO_ROOT" branch -D "$BRANCH_CREATED" >/dev/null 2>&1 || true
+  fi
 }
 trap emitter_cleanup_all EXIT
 
@@ -681,6 +690,9 @@ printf '%s' "$PR_BODY" > "$EMITTER_BODY_FILE"
 # Create branch + commit + push from the sandbox worktree only (D-12).
 (cd "$EMITTER_SANDBOX" && "$REAL_GIT" checkout -b "$PR_BRANCH") >/dev/null 2>&1 \
   || die "failed to create branch $PR_BRANCH in emitter sandbox" 8
+# WR-06: record branch name for cleanup trap. Real runs keep the branch so
+# `gh pr create` has something to point at; dry-run cleanup will delete it.
+BRANCH_CREATED="$PR_BRANCH"
 if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
   (
     cd "$EMITTER_SANDBOX"
