@@ -125,7 +125,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   5. Default runner byte-parity preserved: running `co-evolve "task"` or `dev-review "task"` without `--lab pel-proposer` produces identical behavior to v1.1 (regression test)
 **Plans**: 3 plans (foundation + feature/simulation + release-gate tracker)
   - [x] 08-01-PLAN.md — Foundation: DEF-07-01 fix + 7 wrapper flags on both runners + pel-proposer dispatch + emitter skeleton (pr-emitter.sh + pr-body-template.md) + tier auto-detect + --dry-run PATH-stub scaffolding
-  - [ ] 08-02-PLAN.md — Feature + SC-3 simulation gate: full pipeline (classifier + proposer + emitter-owned scoring sandbox + eval cache + PR body render + gh pr create --draft) + 10-scenario hermetic simulation + lab/pel/README.md extension
+  - [x] 08-02-PLAN.md — Feature + SC-3 simulation gate: full pipeline (classifier + proposer + emitter-owned scoring sandbox + eval cache + PR body render + gh pr create --draft) + 10-scenario hermetic simulation + lab/pel/README.md extension
   - [ ] 08-03-PLAN.md — Release-gate tracker: .planning/VERIFY-SC4.md (human-dogfood review log for v1.2 tag)
 
 ## Progress
