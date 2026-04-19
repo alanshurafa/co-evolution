@@ -700,7 +700,7 @@ All seven flags default off / unset so non-PEL invocations (e.g., plain
 
 | Path pattern                                                                    | Tier     |
 |---------------------------------------------------------------------------------|----------|
-| `skills/dev-review/templates/*.md` OR `tests/fixtures/templates/**.md`          | template |
+| `skills/dev-review/templates/*.md` OR `tests/fixtures/templates/*.md`           | template |
 | `lab/pel/proposer/policy/policy.yaml`                                           | policy   |
 | Any exact-line match in `lab/pel/proposer/code/allowlist.txt`                   | code     |
 | Anything else                                                                   | hard-error (exit 10) |
