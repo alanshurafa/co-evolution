@@ -1421,8 +1421,41 @@ _run_revise_loop() {
 _run_revise_loop
 unset REVISE_FEEDBACK_JSON
 
+# Phase 8.1 WR-01 / D-02: derive terminal .status from exit bands (mirrors the
+# final-exit switch at lines 1420-1428). Values per evals/RUNNER-CONTRACT.md §1.
+if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY_EXIT" -eq 0 ]]; then
+  _run_status="completed"
+elif [[ "$EXECUTE_EXIT" -eq 2 || "$VERIFY_EXIT" -eq 2 ]]; then
+  _run_status="partial"
+else
+  _run_status="failed"
+fi
+
+# Shared end-of-run ISO8601 timestamp — reused for both .completed_at and .updated_at
+# so the scorer's wall-clock calc (score-run.sh:261) reads a consistent value.
+_run_end_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+write_state_field "$STATE_JSON" ".status"       "string" "$_run_status"
 # RNPT-04: run completion timestamp (before cleanup sweeps transient dotfiles).
-write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+write_state_field "$STATE_JSON" ".completed_at" "string" "$_run_end_ts"
+# Phase 8.1 WR-02 supporting: .updated_at feeds Cost dimension (score-run.sh:261).
+write_state_field "$STATE_JSON" ".updated_at"   "string" "$_run_end_ts"
+
+# Phase 8.1 / D-01: mirror phases[] into history[] (canonical contract name).
+# Field-rename transition posture — phases[] stays as legacy alias for one
+# minor version; scorer's .history[] reads (score-run.sh:338) get populated.
+if command -v jq >/dev/null 2>&1; then
+  _tmp_history=$(mktemp)
+  if jq '.history = (.phases | map({phase: .name, status: .status, detail: "", timestamp: .completed_at}))' \
+       "$STATE_JSON" > "$_tmp_history"; then
+    mv "$_tmp_history" "$STATE_JSON"
+  else
+    rm -f "$_tmp_history"
+    log "WARNING: jq failed mirroring phases -> history — state.json unchanged (.history will read as [])"
+  fi
+  unset _tmp_history
+fi
+unset _run_status _run_end_ts
 
 cleanup_runtime_artifacts
 
