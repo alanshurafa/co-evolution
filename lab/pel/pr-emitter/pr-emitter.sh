@@ -194,6 +194,28 @@ log_stderr "INFO: resolved tier: $resolved_tier for target $TARGET"
 # for claude + codex). Same posture here for gh.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Cleanup registry — Plan 02 chains multiple cleanup steps (dry-stub,
+# emitter workdir, emitter scoring sandbox). We register a single EXIT trap
+# that invokes the accumulated cleanup function.
+# ---------------------------------------------------------------------------
+DRY_STUB_BIN=""
+EMITTER_WORKDIR=""
+EMITTER_SANDBOX=""
+EMITTER_BODY_FILE=""
+
+emitter_cleanup_all() {
+  # Order: sandbox (git worktree remove) → workdir → dry-stub → body-file.
+  if [[ -n "$EMITTER_SANDBOX" && -d "$EMITTER_SANDBOX" ]]; then
+    "${REAL_GIT:-git}" -C "$REPO_ROOT" worktree remove --force "$EMITTER_SANDBOX" 2>/dev/null || true
+    rm -rf "$EMITTER_SANDBOX" 2>/dev/null || true
+  fi
+  [[ -n "$EMITTER_WORKDIR" ]] && rm -rf "$EMITTER_WORKDIR" 2>/dev/null || true
+  [[ -n "$DRY_STUB_BIN"   ]] && rm -rf "$DRY_STUB_BIN"   2>/dev/null || true
+  [[ -n "$EMITTER_BODY_FILE" && -f "$EMITTER_BODY_FILE" ]] && rm -f "$EMITTER_BODY_FILE" 2>/dev/null || true
+}
+trap emitter_cleanup_all EXIT
+
 if [[ "$DRY_RUN" == "true" || "${CO_EVOLVE_DRY_RUN:-}" == "1" ]]; then
   export CO_EVOLVE_DRY_RUN=1
   DRY_STUB_BIN=$(mktemp -d -t co-evolve-dry-XXXXXX)
@@ -201,24 +223,422 @@ if [[ "$DRY_RUN" == "true" || "${CO_EVOLVE_DRY_RUN:-}" == "1" ]]; then
 #!/usr/bin/env bash
 # PATH-shadowed gh stub for --dry-run.
 printf 'DRY-RUN: gh %s\n' "$*" >&2
-if [[ ! -t 0 ]]; then cat >&2; fi
+# Capture --body-file content to GH_BODY_SINK when present (simulation harness
+# sets this env var so per-scenario body can be asserted via grep).
+if [[ "$*" == *"--body-file"* ]]; then
+  i=1
+  for a in "$@"; do
+    if [[ "$a" == "--body-file" ]]; then
+      n=$((i+1))
+      shift "$((n-1))"
+      body_path="$1"
+      if [[ -n "${GH_BODY_SINK:-}" && -f "$body_path" ]]; then
+        cp "$body_path" "$GH_BODY_SINK" 2>/dev/null || true
+      fi
+      break
+    fi
+    i=$((i+1))
+  done
+fi
+if [[ -n "${GH_ARGS_MARKER:-}" ]]; then
+  printf 'called: %s\n' "$*" >> "$GH_ARGS_MARKER"
+fi
+# Drain any leftover stdin so callers don't block on pipes.
+if [[ ! -t 0 ]]; then cat >/dev/null; fi
 printf 'https://github.com/REPO/pull/0 (dry-run stub)\n'
 DRYSTUB
   chmod +x "$DRY_STUB_BIN/gh"
   export PATH="$DRY_STUB_BIN:$PATH"
-  # Cleanup on exit — Plan 02 will extend this.
-  trap 'rm -rf "$DRY_STUB_BIN" 2>/dev/null || true' EXIT
   log_stderr "INFO: --dry-run active — gh stubbed at $DRY_STUB_BIN/gh"
 fi
 
 # ---------------------------------------------------------------------------
-# Scoring stub (Plan 01 ends here)
-#
-# Plan 01: scoring + PR body rendering + gh pr create are Plan 02's scope.
-# Emit a marker so live smoke confirms dispatch + argv parsing + tier detect
-# work, and Plan 02 replaces this block with real scoring + emission.
+# Section A: require_tools — Exit 2 on missing (env problem, not caller-input).
+# Resolved at startup so later PATH-shadowing doesn't affect canonical tool
+# locations except where intentional (dry-run gh shim, git shim).
 # ---------------------------------------------------------------------------
+require_tools() {
+  local tool
+  for tool in jq git sha1sum; do
+    command -v "$tool" >/dev/null 2>&1 \
+      || die "required tool not found: $tool" 2
+  done
+  # gh is only strictly required when not in dry-run. In dry-run we stubbed it
+  # above; require_tools would otherwise fail on hosts without gh installed.
+  if [[ "$DRY_RUN" != "true" && "${CO_EVOLVE_DRY_RUN:-}" != "1" ]]; then
+    command -v gh >/dev/null 2>&1 \
+      || die "required tool not found: gh (install from https://cli.github.com)" 2
+  fi
+}
+require_tools
 
-log_stderr "INFO: scoring not implemented yet (Plan 02)"
-log_stderr "  target=$TARGET tier=$resolved_tier dry_run=$DRY_RUN budget=\$$BUDGET_USD flavor_override=${FLAVOR_OVERRIDE:-<none>}"
+# ---------------------------------------------------------------------------
+# Section B: Classifier invocation (stdout JSON per Phase 4 D-08 schema).
+# Env-var discipline per lab/pel/README.md:27-30 — "never inherit from user
+# shell". We set explicitly from parsed argv / defaults.
+# ---------------------------------------------------------------------------
+export PEL_BOUNCE_STEP="${PEL_BOUNCE_STEP:-unknown}"
+export PEL_PHASE_TYPE="${PEL_PHASE_TYPE:-unknown}"
+if [[ -n "$FLAVOR_OVERRIDE" ]]; then
+  export PEL_FLAVOR_OVERRIDE="$FLAVOR_OVERRIDE"
+fi
+
+log_stderr "INFO: invoking classifier for tier=$resolved_tier target=$TARGET"
+classifier_rc=0
+classifier_json=$(bash "$REPO_ROOT/lab/pel/classifier/classifier.sh" "${TASK:-mutate $TARGET}") \
+  || classifier_rc=$?
+if [[ "$classifier_rc" -ne 0 ]]; then
+  die "classifier failed (exit $classifier_rc); see stderr" "$classifier_rc"
+fi
+
+flavor=$(printf '%s' "$classifier_json" | jq -r '.flavor')
+rationale=$(printf '%s' "$classifier_json" | jq -r '.rationale')
+classifier_override=$(printf '%s' "$classifier_json" | jq -r '.override')
+log_stderr "INFO: classifier picked flavor=$flavor override=$classifier_override"
+
+# ---------------------------------------------------------------------------
+# Section C: PEL_EVAL_REPORT fixture selection.
+# Default to the most recent evals report; hard-fail if none available.
+# ---------------------------------------------------------------------------
+if [[ -z "${PEL_EVAL_REPORT:-}" ]]; then
+  latest_report=$(find "$REPO_ROOT/evals/reports" -maxdepth 2 -name 'raw-scores.json' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -nr | head -1 | awk '{print $2}')
+  if [[ -n "$latest_report" && -f "$latest_report" ]]; then
+    export PEL_EVAL_REPORT="$latest_report"
+    log_stderr "INFO: using PEL_EVAL_REPORT default: $PEL_EVAL_REPORT"
+  else
+    die "PEL_EVAL_REPORT env var not set and no default report under evals/reports/. Run 'bash evals/run-evals.sh' first or set PEL_EVAL_REPORT explicitly." 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Section D: Invoke proposer + capture stdout diff.
+# Uses a PATH-injected git shim to snapshot state.json before the proposer's
+# trap EXIT handler removes the sandbox worktree (D-09). Does NOT modify any
+# proposer.sh — this shim lives in the emitter's workdir only.
+# ---------------------------------------------------------------------------
+EMITTER_WORKDIR=$(mktemp -d -t pel-emitter-work-XXXXXX)
+STATE_SNAPSHOT="$EMITTER_WORKDIR/proposer-state.json"
+EMITTER_BIN="$EMITTER_WORKDIR/bin"
+mkdir -p "$EMITTER_BIN"
+
+# Resolve the real git BEFORE we shadow it with our shim on PATH.
+REAL_GIT=$(command -v git)
+export REAL_GIT STATE_SNAPSHOT
+
+cat > "$EMITTER_BIN/git" <<'GITSHIM'
+#!/usr/bin/env bash
+# PATH-injected git shim — intercepts `git [-C ...] worktree remove --force <sandbox>`
+# to copy the sandbox's state.json to $STATE_SNAPSHOT before delegation to real git.
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+  if [[ "${args[i]}" == "worktree" ]] && [[ "${args[i+1]:-}" == "remove" ]]; then
+    last_idx=$((${#args[@]} - 1))
+    sbox="${args[last_idx]}"
+    if [[ -d "$sbox" && -f "$sbox/state.json" && -n "${STATE_SNAPSHOT:-}" ]]; then
+      cp "$sbox/state.json" "$STATE_SNAPSHOT" 2>/dev/null || true
+    fi
+    break
+  fi
+done
+exec "$REAL_GIT" "$@"
+GITSHIM
+chmod +x "$EMITTER_BIN/git"
+
+TARGET_ABS="$REPO_ROOT/$TARGET"
+
+proposer_rc=0
+case "$resolved_tier" in
+  template)
+    export PEL_EVAL_REPORT
+    export PEL_TEMPLATE_PATH="$TARGET_ABS"
+    export PEL_FLAVOR="$flavor"
+    proposer_output=$(PATH="$EMITTER_BIN:$PATH" bash "$REPO_ROOT/lab/pel/proposer/template/proposer.sh" "${TASK:-mutate $TARGET}") || proposer_rc=$?
+    ;;
+  policy)
+    export PEL_FEEDBACK="$PEL_EVAL_REPORT"
+    export PEL_POLICY_PATH="$TARGET_ABS"
+    export PEL_FLAVOR="$flavor"
+    proposer_output=$(PATH="$EMITTER_BIN:$PATH" bash "$REPO_ROOT/lab/pel/proposer/policy/proposer.sh" "${TASK:-mutate $TARGET}") || proposer_rc=$?
+    ;;
+  code)
+    export PEL_CODE_FEEDBACK="$PEL_EVAL_REPORT"
+    export PEL_CODE_TARGET="$TARGET"
+    export PEL_FLAVOR="$flavor"
+    proposer_output=$(PATH="$EMITTER_BIN:$PATH" bash "$REPO_ROOT/lab/pel/proposer/code/proposer.sh" "${TASK:-mutate $TARGET}") || proposer_rc=$?
+    ;;
+esac
+
+log_stderr "INFO: proposer exited rc=$proposer_rc (tier=$resolved_tier)"
+
+# ---------------------------------------------------------------------------
+# Section E: Failure policy branches (D-15 canary-failed → diagnostic PR;
+# D-16 all other non-zero proposer exits → abort).
+# ---------------------------------------------------------------------------
+CANARY_FAILED_MODE=false
+case "$proposer_rc" in
+  0) : ;;
+  7)
+    log_stderr "INFO: proposer exit 7 (canary-failed) — creating [CANARY-FAILED] diagnostic PR (D-15)"
+    CANARY_FAILED_MODE=true
+    ;;
+  *)
+    log_stderr "ERROR: proposer exit $proposer_rc (non-canary failure) — aborting, no PR"
+    exit "$proposer_rc"
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Section F: Parse state.json snapshot (code tier only — template/policy have
+# no state.json contract). Fall back to minimal metadata if snapshot absent.
+# ---------------------------------------------------------------------------
+diff_content="$proposer_output"
+diff_lines=0
+diff_budget=0
+canary_result="n/a (non-code tier)"
+
+if [[ -f "$STATE_SNAPSHOT" ]]; then
+  diff_lines=$(jq -r '.diff_lines // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
+  diff_budget=$(jq -r '.diff_budget // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
+  if [[ "$resolved_tier" == "code" ]]; then
+    canary_passed=$(jq -r '.canary.passed // false' "$STATE_SNAPSHOT" 2>/dev/null || echo false)
+    canary_failed_at=$(jq -r '.canary.failed_at // "none"' "$STATE_SNAPSHOT" 2>/dev/null || echo none)
+    if [[ "$canary_passed" == "true" ]]; then
+      canary_result="PASS (all 5 scenarios)"
+    else
+      canary_result="FAIL at scenario: $canary_failed_at"
+    fi
+  fi
+else
+  if [[ "$resolved_tier" == "code" ]]; then
+    log_stderr "WARN: state.json snapshot missing; falling back to minimal metadata"
+  fi
+fi
+
+# Derive diff_lines from the captured diff content when state.json did not
+# supply it (template/policy have no state.json; code has it but keep the
+# fallback defensive in case the shim misses the interception).
+if [[ "$diff_lines" -eq 0 ]] && [[ -n "$diff_content" ]]; then
+  diff_lines=$(printf '%s\n' "$diff_content" | grep -cE '^\+[^+]|^-[^-]' || true)
+fi
+
+# ---------------------------------------------------------------------------
+# Section G: Emitter-owned scoring sandbox (D-08) + apply mutation.
+# Skip scoring when CANARY_FAILED_MODE=true (no valid mutation to score).
+# Template/code tiers apply unified diffs via `git apply`; policy tier applies
+# JSON-delta mutations via `yq -i` per mutation.
+# ---------------------------------------------------------------------------
+if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
+  EMITTER_SANDBOX=$(mktemp -d -t pel-score-sandbox-XXXXXX)
+  rmdir "$EMITTER_SANDBOX"  # git worktree wants non-existent target
+  if ! "$REAL_GIT" -C "$REPO_ROOT" worktree add --detach "$EMITTER_SANDBOX" HEAD >/dev/null 2>&1; then
+    die "emitter scoring sandbox creation failed" 8
+  fi
+  log_stderr "INFO: emitter sandbox created: $EMITTER_SANDBOX"
+
+  case "$resolved_tier" in
+    template|code)
+      printf '%s\n' "$diff_content" | (cd "$EMITTER_SANDBOX" && "$REAL_GIT" apply --whitespace=nowarn -) \
+        || die "diff failed to apply in emitter sandbox (inconsistent with proposer's apply)" 3
+      ;;
+    policy)
+      policy_sandbox_path="$EMITTER_SANDBOX/$TARGET"
+      if ! command -v yq >/dev/null 2>&1; then
+        die "yq required for policy-tier mutation apply (install mikefarah/yq v4+)" 2
+      fi
+      # Iterate the mutations array, applying each key=new pair via yq -i.
+      printf '%s\n' "$diff_content" | jq -c '.mutations[]' | while IFS= read -r mutation; do
+        key=$(printf '%s' "$mutation" | jq -r '.key')
+        new_val=$(printf '%s' "$mutation" | jq -r '.new')
+        # Quote scalar values when they are strings so yq writes them verbatim;
+        # numeric/boolean new values flow through unquoted.
+        if printf '%s' "$new_val" | jq -e 'type == "number" or type == "boolean"' >/dev/null 2>&1; then
+          yq -i ".$key = $new_val" "$policy_sandbox_path"
+        else
+          yq -i ".$key = \"$new_val\"" "$policy_sandbox_path"
+        fi
+      done
+      ;;
+  esac
+fi
+
+# ---------------------------------------------------------------------------
+# Section H: Eval cache + scorer invocation + budget (D-05 + D-18 + D-19).
+# Cache key = fixture_hash + scripts_hash + worktree_hash + optional dirty_hash.
+# Including worktree_hash/dirty_hash is load-bearing: before/after runs share
+# REPO_ROOT but have different applied state, so they must hash differently.
+# ---------------------------------------------------------------------------
+CACHE_DIR="$REPO_ROOT/.co-evolve-cache/evals"
+mkdir -p "$CACHE_DIR"
+
+compute_cache_key() {
+  local report_path="$1" worktree_dir="$2"
+  local scripts_dir="$REPO_ROOT/evals"
+  local fixture_hash scripts_hash worktree_hash dirty_hash
+  fixture_hash=$(sha1sum "$report_path" | awk '{print $1}')
+  scripts_hash=$(find "$scripts_dir" -maxdepth 2 -type f -name '*.sh' -exec sha1sum {} + 2>/dev/null \
+    | sort | sha1sum | awk '{print $1}')
+  worktree_hash=$("$REAL_GIT" -C "$worktree_dir" rev-parse HEAD 2>/dev/null \
+    | awk '{print substr($0,1,12)}')
+  worktree_hash="${worktree_hash:-nohead}"
+  dirty_hash=""
+  if ! "$REAL_GIT" -C "$worktree_dir" diff --quiet 2>/dev/null; then
+    dirty_hash=$("$REAL_GIT" -C "$worktree_dir" diff 2>/dev/null | sha1sum | awk '{print substr($1,1,12)}')
+  fi
+  printf '%s-%s-%s%s' "$fixture_hash" "$scripts_hash" "$worktree_hash" "${dirty_hash:+-$dirty_hash}"
+}
+
+BUDGET_CENTS=$(( BUDGET_USD * 100 ))
+spent_cents=0
+COST_PER_SCORER_RUN_CENTS=50
+
+run_scorer_cached() {
+  local label="$1" report_path="$2" worktree_dir="$3"
+  local key cache_file
+  key=$(compute_cache_key "$report_path" "$worktree_dir")
+  cache_file="$CACHE_DIR/$key.json"
+
+  if [[ -f "$cache_file" ]]; then
+    log_stderr "INFO: eval cache hit: $label ($cache_file)"
+    cat "$cache_file"
+    return 0
+  fi
+
+  if (( spent_cents + COST_PER_SCORER_RUN_CENTS > BUDGET_CENTS )); then
+    die "emitter eval budget exhausted (\$$BUDGET_USD cap; override with --budget)" 6
+  fi
+  spent_cents=$(( spent_cents + COST_PER_SCORER_RUN_CENTS ))
+  log_stderr "INFO: eval cache miss: $label"
+
+  local tmp_out scores_file
+  tmp_out=$(mktemp)
+  if ! (cd "$worktree_dir" && bash "$REPO_ROOT/evals/run-evals.sh" >"$tmp_out" 2>&1); then
+    rm -f "$tmp_out"
+    die "scorer run failed for $label" 2
+  fi
+  scores_file=$(find "$worktree_dir/evals/reports" -maxdepth 2 -name raw-scores.json -newer "$tmp_out" 2>/dev/null | head -1)
+  rm -f "$tmp_out"
+  [[ -n "$scores_file" && -f "$scores_file" ]] \
+    || die "scorer did not produce raw-scores.json for $label" 2
+  cp "$scores_file" "$cache_file"
+  cat "$cache_file"
+}
+
+if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
+  log_stderr "INFO: scoring pipeline (before + after)"
+  eval_before_json=$(run_scorer_cached "before" "$PEL_EVAL_REPORT" "$REPO_ROOT")
+  eval_after_json=$(run_scorer_cached "after"  "$PEL_EVAL_REPORT" "$EMITTER_SANDBOX")
+
+  eval_before_text=$(printf '%s' "$eval_before_json" | jq -c '.aggregate // {}' 2>/dev/null || printf '{}')
+  eval_after_text=$(printf  '%s' "$eval_after_json"  | jq -c '.aggregate // {}' 2>/dev/null || printf '{}')
+
+  eval_delta_text=$(printf '%s\n%s' "$eval_before_json" "$eval_after_json" | jq -s -r '
+    (.[0].aggregate // {}) as $b | (.[1].aggregate // {}) as $a
+    | ([($b | keys[]), ($a | keys[])] | unique) as $keys
+    | $keys[] as $k
+    | "| \($k) | \($b[$k] // "n/a") | \($a[$k] // "n/a") | \((($a[$k] // 0) - ($b[$k] // 0)) | tostring) |"
+  ' 2>/dev/null || printf '| — | — | — | — |')
+else
+  eval_before_text="(scoring skipped: canary-failed)"
+  eval_after_text="(scoring skipped: canary-failed)"
+  eval_delta_text="| — | — | — | canary-failed |"
+fi
+
+# ---------------------------------------------------------------------------
+# Section I: render_pr_body — D-20 bash parameter-expansion substitution.
+# No eval. Diff content (which may contain {, }, $, backticks) passes through
+# verbatim. For policy tier, pretty-print the JSON delta for readability.
+# ---------------------------------------------------------------------------
+render_pr_body() {
+  local template_path="$REPO_ROOT/lab/pel/pr-emitter/pr-body-template.md"
+  local rendered
+  rendered=$(cat "$template_path")
+
+  local def_ref=""
+  if [[ "$resolved_tier" == "code" ]]; then
+    def_ref="Related: closes Phase 7 DEF-07-01 stdout-leak in Phase 8 Plan 01."
+  fi
+
+  local rendered_diff="$diff_content"
+  if [[ "$resolved_tier" == "policy" ]]; then
+    rendered_diff=$(printf '%s' "$diff_content" | jq '.' 2>/dev/null || printf '%s' "$diff_content")
+  fi
+
+  rendered="${rendered//\{\{tier\}\}/$resolved_tier}"
+  rendered="${rendered//\{\{target\}\}/$TARGET}"
+  rendered="${rendered//\{\{flavor\}\}/$flavor}"
+  rendered="${rendered//\{\{classifier_rationale\}\}/$rationale}"
+  rendered="${rendered//\{\{diff\}\}/$rendered_diff}"
+  rendered="${rendered//\{\{diff_lines\}\}/$diff_lines}"
+  rendered="${rendered//\{\{diff_budget\}\}/$diff_budget}"
+  rendered="${rendered//\{\{eval_before\}\}/$eval_before_text}"
+  rendered="${rendered//\{\{eval_after\}\}/$eval_after_text}"
+  rendered="${rendered//\{\{eval_delta\}\}/$eval_delta_text}"
+  rendered="${rendered//\{\{canary_result\}\}/$canary_result}"
+  rendered="${rendered//\{\{timestamp\}\}/$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
+  rendered="${rendered//\{\{def_07_01_ref\}\}/$def_ref}"
+
+  printf '%s' "$rendered"
+}
+
+# ---------------------------------------------------------------------------
+# Section J: Branch name + commit + gh pr create (D-11 + D-13 + D-17).
+# ---------------------------------------------------------------------------
+if [[ -z "$PR_BRANCH" ]]; then
+  short_hash=$(printf '%s' "$diff_content" | sha1sum | awk '{print substr($1,1,7)}')
+  if [[ -z "$short_hash" ]]; then
+    # sha1sum fallback — use git hash-object on the diff.
+    short_hash=$(printf '%s' "$diff_content" | "$REAL_GIT" hash-object --stdin | awk '{print substr($0,1,7)}')
+  fi
+  PR_BRANCH="pel/$resolved_tier/$short_hash"
+fi
+# Validate branch name against a git-ref safe subset before handing to gh.
+[[ "$PR_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+  || die "invalid --pr-branch (must match [A-Za-z0-9][A-Za-z0-9._/-]*): $PR_BRANCH" 1
+
+# If canary-failed skipped sandbox creation, make a fresh sandbox now so we
+# have somewhere clean to branch/push from.
+if [[ "$CANARY_FAILED_MODE" == "true" ]] && [[ -z "$EMITTER_SANDBOX" ]]; then
+  EMITTER_SANDBOX=$(mktemp -d -t pel-score-sandbox-XXXXXX)
+  rmdir "$EMITTER_SANDBOX"
+  "$REAL_GIT" -C "$REPO_ROOT" worktree add --detach "$EMITTER_SANDBOX" HEAD >/dev/null 2>&1 \
+    || die "emitter scoring sandbox creation failed" 8
+fi
+
+if [[ "$CANARY_FAILED_MODE" == "true" ]]; then
+  PR_TITLE="[CANARY-FAILED] pel($resolved_tier): $TARGET"
+else
+  rationale_subject=$(printf '%s' "$rationale" | head -c 50 | tr '\n' ' ' | sed 's/  */ /g')
+  PR_TITLE="pel($resolved_tier): $rationale_subject"
+fi
+
+PR_BODY=$(render_pr_body)
+EMITTER_BODY_FILE=$(mktemp)
+printf '%s' "$PR_BODY" > "$EMITTER_BODY_FILE"
+
+# Create branch + commit + push from the sandbox worktree only (D-12).
+(cd "$EMITTER_SANDBOX" && "$REAL_GIT" checkout -b "$PR_BRANCH") >/dev/null 2>&1 \
+  || die "failed to create branch $PR_BRANCH in emitter sandbox" 8
+if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
+  (
+    cd "$EMITTER_SANDBOX"
+    "$REAL_GIT" add -A
+    "$REAL_GIT" -c user.email=pel@co-evolve -c user.name=pel-emitter \
+      commit -m "$PR_TITLE" --no-verify >/dev/null
+  ) || die "failed to commit mutation in emitter sandbox" 8
+fi
+# Push the branch. In dry-run the gh stub short-circuits PR creation but the
+# push still runs against origin — which would fail in hermetic sim. Skip push
+# when CO_EVOLVE_DRY_RUN=1 so hermetic simulations don't hit the network.
+if [[ "${CO_EVOLVE_DRY_RUN:-}" != "1" ]]; then
+  (cd "$EMITTER_SANDBOX" && "$REAL_GIT" push origin "$PR_BRANCH") \
+    || die "git push failed before gh pr create" 9
+fi
+
+pr_url=$(gh pr create --draft --base master --head "$PR_BRANCH" \
+  --title "$PR_TITLE" --body-file "$EMITTER_BODY_FILE" 2>&1) \
+  || die "gh pr create failed post-scoring" 9
+
+printf '%s\n' "$pr_url"
+log_stderr "INFO: PR drafted: $pr_url"
 exit 0
