@@ -1,82 +1,59 @@
 ## Summary
 
-v1.1 Polish & Ergonomics — addresses the three non-blocking warnings from v1.0 and delivers the three deferred runtime ergonomics requirements (RTUX-01/02/03). All four phases complete; code review approved with 0 blockers.
+v1.2 **Protocol Evolution Loop — Proposer Only** ships the Option 1 vehicle: `co-evolve --lab pel-proposer --target <file>` picks a flavor, mutates against the correct tier (template / policy / code), scores before/after under an eval cap, and drafts a PR with eval deltas in the body. 8 phases, 129 commits. Byte-parity invariant locked for non-`--lab` paths (SC-5).
 
 ## Phases shipped
 
-| Phase | Requirement | Commits |
-|-------|-------------|---------|
-| 1 Code Review Fixes | FIX-WR-01/02/03 | `5734b84` |
-| 2 REVISE Auto-Loop | RTUX-03 | `549850c`, `be0af3b`, `e15332a`, `fc08304`, `db1f044` |
-| 3 Visible Live Mode | RTUX-01 | `5c09fc1`, `cd84c13`, `7c15e33`, `9bc5597` |
-| 4 Worktree Management | RTUX-02 | `cd98af9`, `1294477`, `7ee77ae`, `60067a1`, `9bb3eea` |
+| Phase | What | Shipped | Commits |
+|-------|------|---------|---------|
+| 1 Post-v1.1 Fixes | WR-04/05 from v1.1 review | 2026-04-17 | 5 |
+| 2 Bash Eval Harness Port | PowerShell → Bash, 13/13 scorer-verification green | 2026-04-18 | 4 |
+| 3 Lab Scaffold | `lab/` dir + `--lab` wiring + 4-scenario routing sim | 2026-04-18 | 2 |
+| 4 Mode Classifier (frozen) | 4 flavors, transparent rationale, 6/6 sim | 2026-04-18 | 12 |
+| 5 Template-Tier Proposer | `skills/dev-review/templates/*.md`, 8/8 sim | 2026-04-18 | 11 |
+| 6 Policy-Tier Proposer | 6 enumerated YAML/JSON knobs, 8/8 sim | 2026-04-18 | 11 |
+| 7 Code-Tier Proposer | `lib/co-evolution.sh` + runners, sandbox + canary + file allowlist, 16/16 sim | 2026-04-18 | 13 |
+| 8 PR Emission + Scoring | full pipeline + `gh pr create --draft`, 10/10 SC-3 sim | 2026-04-19 | 37 |
 
-## What shipped
+(Total 95 phase-tagged commits; remaining are chore/docs/state.)
 
-**Phase 1 — Code review fixes (from v1.0 review)**
-- `LAST_INVOKE_EXIT_CODE=0` reset before codex verify conditional (WR-01)
-- `mktemp` temp file cleanup on jq failure in `write_state_phase` + `write_state_field` (WR-02)
-- Phase start timestamps passed as explicit function args, removing enclosing-scope global coupling (WR-03)
+## Ship vehicle
 
-**Phase 2 — REVISE auto-loop (RTUX-03)**
-- `--revise-loop N` CLI flag + `REVISE_LOOP_MAX` env var (default 0 = disabled)
-- Loop wraps execute+verify with numbered phase names (`execute-N` / `verify-N` from pass 2)
-- Reviewer feedback injected into execute prompt on retry
-- `phase_is_writable` gained anchored regex for retry passes
-- `tests/revise-loop-simulation.sh` covers 4 scenarios
+`co-evolve --lab pel-proposer --target <file>` runs end-to-end:
 
-**Phase 3 — Visible live mode (RTUX-01)**
-- `--live` CLI flag + `LIVE_MODE` env var (default off)
-- `is_windows_host` platform detector + `maybe_launch_live_window` helper
-- Wired into 4 phase sites: compose, each bounce pass, execute, verify
-- Tail-window approach via detached `wt.exe` / `cmd.exe start`
-- Additive / must-not-block invariant: launcher failure logs warning, inline execution continues
-- `tests/live-mode-simulation.sh` covers no-op / non-Windows / stubbed-Windows fallback
+1. **Classifier** (Phase 4) picks flavor: bug-catcher / faster / blind-spot / general
+2. **Tier auto-detect** from `--target`: templates → template-tier, policy files → policy-tier, `lib/co-evolution.sh` + runners → code-tier
+3. **Proposer** (Phases 5/6/7) generates candidate diff under the tier's rails
+4. **Sandbox** — mutation applied in isolated worktree; `state.json` captured via git-shim
+5. **Canary smoke-test** (code-tier only) before scoring
+6. **Scorer** — second hermetic sandbox, eval-cached, `$25` before/after run cap
+7. **PR body** rendered from `{{KEY}}` template with eval deltas
+8. **`gh pr create --draft`** against master for human review
 
-**Phase 4 — Worktree management (RTUX-02)**
-- `--branch auto|NAME` + `--worktree auto|PATH` CLI flags (mutually exclusive)
-- `DEV_REVIEW_BRANCH` / `DEV_REVIEW_WORKTREE` env var fallbacks
-- New helpers in `lib/co-evolution.sh`: `is_git_repo`, `derive_auto_branch_name`, `derive_auto_worktree_path`, `maybe_setup_branch`, `maybe_setup_worktree`
-- Branch/worktree creation happens post-plan, pre-execute; plan artifacts stay on parent branch
-- State.json records `.branch_created` + `.worktree_path` for audit trail
-- Final summary banner echoes created location for easy review
-- No-ops gracefully when flags empty or `WORKDIR` is not a git repo
-- `tests/worktree-management-simulation.sh` covers 5 scenarios (branch-auto, worktree-auto, non-git fallback, empty-flag fallback, mutex error)
+7 wrapper flags symmetric on both runners: `--target`, `--tier`, `--pr-branch`, `--dry-run`, `--budget`, `--yes`, `--flavor`.
 
-## Code review result
+## Quality gates
 
-**APPROVED with 0 blockers, 2 warnings, 4 info notes.** Same posture as v1.0 (which shipped with 3 warnings).
+- **Plan bounce (claude ↔ codex)** caught 3 bugs in Plan 08-02 pre-execution: cache-key collision, policy-tier `git apply` on JSON delta, `set -u` crash in canary-failed path.
+- **Code review** post-execution: 1 critical + 8 warning + 6 info. All 15/15 applied across 14 atomic commits; sims stayed green throughout (REVIEW.md + REVIEW-FIX.md in `.planning/phases/08-pr-emitter-scoring/`).
+- **Regression gate** — 48/48 scenarios green across Phases 4/5/6/7/8 simulations.
+- **Verification** — 5/5 must-haves verified. SC-4 (human dogfood) scope-separated to post-ship per Phase 8 `CONTEXT.md §D-01`, tracked in [.planning/VERIFY-SC4.md](.planning/VERIFY-SC4.md).
+- **Byte-parity invariant (SC-5)** — Scenario I confirms non-`--lab` invocations are byte-identical to v1.1.
 
-Both warnings are real but narrow-trigger — captured for v1.2+ follow-up:
+## Out of scope / deferred
 
-- **WR-04** — `INITIAL_GIT_DIRTY` captured from parent repo before `WORKDIR` is reassigned to worktree; triggers silent verify skip when parent is dirty AND worktree mode is active. Real interaction bug, narrow trigger.
-- **WR-05** — `git worktree add` and `git checkout -b` lack `--` argv terminator. Hardening gap, not security-exploitable (git rejects invalid refs harmlessly).
+- **SC-4 human dogfood** — ≥3 real PEL-emitted PRs reviewed (≥1 merged, ≥1 closed-without-merge). Blocks `git tag v1.2`, does NOT block this PR.
+- **Classifier evolution** (v1.3+) — classifier remains frozen-surface in v1.2 per Phase 4 invariant.
+- **Workspace-agnostic PS ports** — v1.0 Phase 9 deferred item, still deferred.
 
-Full review: `.planning/REVIEW.md`.
+## Remaining gates before `git tag v1.2`
 
-## Deferred to v1.2+
+1. `/gsd-secure-phase 8` — produce SECURITY.md
+2. `/gsd-ship --review` — automated code review on this PR
+3. VERIFY-SC4 dogfood — ≥3 PEL-emitted PRs reviewed per above
 
-- **WR-04 / WR-05** — the two non-blocking warnings above
-- **Bash port of PS eval harness** (~2 days) — removes `pwsh` dependency from eval runs
-- **Protocol Evolution Loop** — automated bounce-to-improve-the-bouncer using evals as fitness function. Design exploration complete; artifacts under `.planning/notes/`, `.planning/seeds/`, `.planning/research/`. Ready for `/gsd-new-milestone v1.2` kickoff.
+## Review guidance
 
-## Verification
-
-- Per-phase acceptance criteria all passed
-- Simulation tests pass: revise-loop (4 scenarios), live-mode (3 scenarios), worktree-management (5 scenarios)
-- Syntax check clean on runner + lib + all tests
-- Byte-parity guards verified: every new flag is default-off with zero behavior change when unset
-- Flag composition matrix verified: `--live` × `--branch`/`--worktree`, `--revise-loop` × `--branch`/`--worktree`, `--plan-only` × `--branch` all compose correctly
-
-## Test plan
-
-- [x] All four phases' simulation tests run to completion
-- [x] `--help` text shows all new flags (`--revise-loop`, `--live`, `--branch`, `--worktree`)
-- [x] `bash -n` clean on `dev-review/codex/dev-review.sh` and `lib/co-evolution.sh`
-- [x] No-op paths (empty flags, non-git-repo) verified to match v1.0 baseline behavior
-
-## Breaking changes
-
-None. All four phases are additive — every new flag defaults off, preserving v1.0 behavior for unmodified callers.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+- High-traffic paths: `lab/pel/pr-emitter/pr-emitter.sh`, `lab/pel/proposer/code/proposer.sh`, `lib/co-evolution.sh` (PEL wrapper flags), `evals/run-evals.sh` (Bash port).
+- Simulation entry points: `tests/lab-routing-simulation.sh`, `tests/pr-emitter-simulation.sh`, `tests/code-proposer-simulation.sh`, `evals/tests/scorer-verification.sh`.
+- Contract docs: `lab/pel/README.md`, `evals/README.md`.
