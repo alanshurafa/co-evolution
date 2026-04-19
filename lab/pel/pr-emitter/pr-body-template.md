@@ -23,9 +23,9 @@ After (summary):  {{eval_after}}
 
 ## Mutation ({{diff_lines}} / {{diff_budget}} lines)
 
-```diff
+{{fence}}diff
 {{diff}}
-```
+{{fence}}
 
 ## Canary
 
