@@ -609,6 +609,23 @@ render_pr_body() {
     rendered_diff=$(printf '%s' "$diff_content" | jq '.' 2>/dev/null || printf '%s' "$diff_content")
   fi
 
+  # WR-05: compute a fence length longer than any consecutive backtick run in
+  # the diff so a malicious proposer cannot escape the fenced block. Default 3
+  # (standard ```); scan for longest run of backticks in the content and use
+  # max(3, run+1). `grep -oE '\`{3,}' ... | awk '{print length}'` would be
+  # fragile with escaped backticks in a heredoc, so we do it inline.
+  local max_fence_len=3
+  local longest_run
+  longest_run=$(printf '%s' "$rendered_diff" | grep -oE '`+' 2>/dev/null | awk '{print length}' | sort -n | tail -1)
+  longest_run="${longest_run:-0}"
+  if (( longest_run >= max_fence_len )); then
+    max_fence_len=$((longest_run + 1))
+  fi
+  local fence=""
+  local i=0
+  while (( i < max_fence_len )); do fence="$fence"'`'; i=$((i + 1)); done
+
+  rendered="${rendered//\{\{fence\}\}/$fence}"
   rendered="${rendered//\{\{tier\}\}/$resolved_tier}"
   rendered="${rendered//\{\{target\}\}/$TARGET}"
   rendered="${rendered//\{\{flavor\}\}/$flavor}"
