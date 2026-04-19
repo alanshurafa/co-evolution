@@ -81,6 +81,10 @@ TIER=""
 PR_BRANCH=""
 DRY_RUN=false
 BUDGET_USD="25"
+# TODO(v1.3): --yes parsed but not consumed yet — the interactive preflight
+# cost-estimate prompt is deferred. Keep the flag plumbed through dev-review
+# and co-evolve-bouncer so the v1.2 surface stays stable; wire it when the
+# prompt lands in v1.3. Tracked by WR-01 from Phase 8 REVIEW.md.
 AUTO_YES=false
 FLAVOR_OVERRIDE=""
 TASK=""
