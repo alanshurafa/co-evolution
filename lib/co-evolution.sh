@@ -899,7 +899,11 @@ init_state_json() {
         execute_delta: {modified: [], added: [], deleted: []},
         verify_verdict: null,
         started_at: $started,
-        completed_at: null
+        completed_at: null,
+        status: "pending",
+        updated_at: null,
+        changed_files: [],
+        history: []
       }' > "$state_path"
   else
     local escaped_task
@@ -917,7 +921,11 @@ init_state_json() {
   "execute_delta": {"modified": [], "added": [], "deleted": []},
   "verify_verdict": null,
   "started_at": "$started_at",
-  "completed_at": null
+  "completed_at": null,
+  "status": "pending",
+  "updated_at": null,
+  "changed_files": [],
+  "history": []
 }
 EOF
   fi
