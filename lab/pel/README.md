@@ -644,6 +644,164 @@ Phase-2-scorer-shaped eval-failure reports, one per flavor).
 - [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) §5 — "Option 2 and Option 3 → graduate via lab/" — human-review Goodhart mitigation rationale. Phase 7's canary is a safety net, not a replacement for human review.
 - [`.planning/notes/phase-7-simulation-lessons.md`](../../.planning/notes/phase-7-simulation-lessons.md) — BINDING simulation + canary requirements distilled from Phase 5's red-simulation session.
 
+## PR Emitter (v1.2)
+
+The PR emitter (`lab/pel/pr-emitter/`) is the Phase 8 Option 1 ship: a
+wrapper behind a single invocation `co-evolve --lab pel-proposer --target
+<file>` that composes Phases 4–7 (classifier → tier proposer → sandbox +
+scoring → PR draft) and emits a GitHub draft PR for human review. Humans
+merge or close; there is no auto-merge path in v1.2.
+
+### Invocation example
+
+```bash
+co-evolve --lab pel-proposer \
+  --target lib/co-evolution.sh \
+  --flavor bug-catcher \
+  --budget 25 \
+  "improve retry handling"
+```
+
+Under `--dry-run`, the emitter stubs `gh` via PATH shadow (no PR created,
+body assembled and logged to stderr) so SC-3's hermetic simulation can
+exercise the full pipeline without touching GitHub.
+
+### Env-var contract
+
+| Var                   | Required | Default                               | Purpose                                                                        |
+|-----------------------|----------|---------------------------------------|--------------------------------------------------------------------------------|
+| `PEL_BOUNCE_STEP`     | No       | `unknown`                             | Classifier input: current bounce phase (compose\|bounce\|execute\|verify)      |
+| `PEL_PHASE_TYPE`      | No       | `unknown`                             | Classifier input: GSD phase type (scoping\|implementation\|verification)       |
+| `PEL_FLAVOR_OVERRIDE` | No       | unset                                 | Classifier override; set by `--flavor` wrapper flag                            |
+| `PEL_EVAL_REPORT`     | No       | latest `evals/reports/*/raw-scores.json` | Eval-failure JSON consumed by tier proposers                                |
+| `CO_EVOLVE_DRY_RUN`   | No       | unset                                 | `1` = stub gh via PATH shadow; set by `--dry-run` wrapper flag                 |
+
+Internal env (set by the emitter for downstream proposers): `PEL_TEMPLATE_PATH`,
+`PEL_POLICY_PATH`, `PEL_CODE_TARGET`, `PEL_FLAVOR`, `PEL_FEEDBACK`, `PEL_CODE_FEEDBACK`.
+Per `lab/pel/README.md`'s "never inherit from user shell" discipline, the emitter
+sets these explicitly from parsed argv, never inherits from the calling shell.
+
+### Wrapper CLI flags (both `co-evolve` and `dev-review`)
+
+| Flag             | Type    | Default | Purpose                                                                     |
+|------------------|---------|---------|-----------------------------------------------------------------------------|
+| `--target FILE`  | string  | —       | File to mutate; tier auto-detected via D-04 rule table                      |
+| `--tier TIER`    | enum    | —       | Override auto-detect (`template`\|`policy`\|`code`)                         |
+| `--pr-branch N`  | string  | auto    | Override default `pel/<tier>/<short-hash>` branch name                      |
+| `--dry-run`      | boolean | off     | Stub `gh` via `CO_EVOLVE_DRY_RUN=1` + PATH shadow                           |
+| `--budget USD`   | integer | `25`    | Scoring budget hard cap; exit 6 on exhaustion                                |
+| `--yes`          | boolean | off     | Skip interactive preflight cost-estimate prompt                             |
+| `--flavor NAME`  | enum    | —       | Classifier override (one of bug-catcher\|faster-converger\|blind-spot-surfacer\|general) |
+
+All seven flags default off / unset so non-PEL invocations (e.g., plain
+`co-evolve "task"`) preserve byte-parity with v1.1 (SC-5).
+
+### Tier auto-detect rule table (D-04)
+
+| Path pattern                                                                    | Tier     |
+|---------------------------------------------------------------------------------|----------|
+| `skills/dev-review/templates/*.md` OR `tests/fixtures/templates/**.md`          | template |
+| `lab/pel/proposer/policy/policy.yaml`                                           | policy   |
+| Any exact-line match in `lab/pel/proposer/code/allowlist.txt`                   | code     |
+| Anything else                                                                   | hard-error (exit 10) |
+
+`--tier NAME` overrides auto-detect for a single invocation. Mixed-tier
+globs hard-error. Ambiguous matches hard-error. Hard-errors exit 10.
+
+### Output contract
+
+- **stdout:** Draft PR URL on success (from `gh pr create --draft`). For
+  `--dry-run`, the URL is `https://github.com/REPO/pull/0 (dry-run stub)`.
+  For canary-failed the URL is the real `gh` URL, but the PR title is
+  prefixed `[CANARY-FAILED]` (D-15).
+- **stderr:** Progress log prefixed `INFO:`; errors prefixed `ERROR:`.
+
+### Exit codes (D-17)
+
+| Code | Meaning                                                                        |
+|------|--------------------------------------------------------------------------------|
+| 0    | PR draft created (or `[CANARY-FAILED]` diagnostic PR per D-15)                 |
+| 1    | Input validation failure (bad `--target`, invalid `--tier`, etc.)              |
+| 2    | Classifier or proposer propagated exit 2 (CLI / auth failure)                  |
+| 3    | Malformed diff propagated from proposer                                        |
+| 4    | Multi-file violation propagated from proposer                                  |
+| 5    | Allowlist violation propagated from proposer                                   |
+| 6    | **EMITTER** eval budget exhausted (distinct from Phase 7's DIFF_BUDGET exit 6) |
+| 7    | Canary-failed surfaced as `[CANARY-FAILED]` PR (Phase 7 proposer's own code)   |
+| 8    | Sandbox setup failed (proposer's or emitter's)                                 |
+| 9    | `gh pr create` failed post-scoring (D-17)                                      |
+| 10   | Tier auto-detect hard-error (ambiguous / no-match / mixed-tier glob)           |
+
+Exit 6 log message distinguishes the emitter case from Phase 7's: the
+emitter logs `ERROR: emitter eval budget exhausted ($25 cap; override with --budget)`.
+
+### Failure policy
+
+- **Canary-failed (proposer exit 7) → `[CANARY-FAILED]` diagnostic draft PR (D-15).**
+  PR title prefixed `[CANARY-FAILED]`. Body includes the `state.json`
+  snapshot and the mutation diff so humans can triage. Scoring is skipped
+  (no point scoring a mutation that breaks the runner). Humans closing these
+  PRs counts toward SC-4's "≥1 closed without merge".
+- **All other non-zero proposer exits (1/2/3/4/5/6/8) → abort with propagation (D-16).**
+  The emitter emits no PR and propagates the proposer's exit code so
+  callers see the failure category.
+- **Emitter's own exits (6/8/9/10):** see the table above.
+
+### Branch naming (D-11)
+
+- **Default:** `pel/<tier>/<short-hash>` where `<short-hash>` is the first
+  7 chars of `sha1sum` of the diff content.
+- **Override:** `--pr-branch NAME` — regex-validated against
+  `^[A-Za-z0-9][A-Za-z0-9._/-]*$` before reaching `gh`.
+
+### Eval cache (D-18 + D-19)
+
+Scorer output is cached at
+`.co-evolve-cache/evals/<fixture-hash>-<script-hash>-<worktree-hash>[-<dirty-hash>].json`.
+The cache is:
+
+- **Gitignored** (`.co-evolve-cache/` added to root `.gitignore` in Plan 01)
+- **Hash-invalidated** — rebuilt when fixtures OR `evals/*.sh` OR worktree
+  HEAD OR worktree dirty state change. No TTL.
+- **Cost-attributed** — cache hits cost `$0.00`; cache misses bill against
+  the emitter's `$BUDGET_USD` (default `$25`). Exceeding the cap exits 6.
+
+The worktree and dirty components are load-bearing: before/after scoring
+runs share `$REPO_ROOT` but have different applied state, so identical
+keys are undesirable. Including them separates the two cache lines.
+
+### Simulation gate
+
+`tests/pr-emitter-simulation.sh` provides the hermetic SC-3 gate:
+10 scenarios (A–J) covering happy-path per tier, `--dry-run`, canary-failed
+PR, budget exceeded, tier hard-error, tier override, byte-parity (SC-5),
+and eval cache hit. PATH-injected stubs (`claude`, `gh`, `codex`) make it
+hermetic across Git Bash Windows + Linux + macOS. Final line on success:
+`10/10 scenarios passed`.
+
+### Files involved
+
+- `lab/pel/pr-emitter/pr-emitter.sh` — public entry point (10 sections
+  A–J: require_tools, classifier, PEL_EVAL_REPORT selection, proposer
+  invoke + git-shim state.json capture, failure policy, state parse,
+  emitter sandbox + apply, eval cache + scorer + budget, render_pr_body,
+  branch + commit + gh pr create).
+- `lab/pel/pr-emitter/pr-body-template.md` — 13-placeholder `{{KEY}}`
+  double-brace template per D-20.
+- `lab/pel/pr-emitter/entry.sh` — dispatch shim (one-line exec into
+  `pr-emitter.sh`).
+- `lab/pel-proposer/entry.sh` — flat-namespace dispatch resolver (Plan 01
+  Rule-3 deviation; routes `--lab pel-proposer` → `lab/pel/pr-emitter/`).
+
+### Cross-references
+
+- [`.planning/phases/08-pr-emitter-scoring/08-CONTEXT.md`](../../.planning/phases/08-pr-emitter-scoring/08-CONTEXT.md)
+  — Phase 8 CONTEXT with D-01..D-22 decisions.
+- [`.planning/phases/08-pr-emitter-scoring/08-02-PLAN.md`](../../.planning/phases/08-pr-emitter-scoring/08-02-PLAN.md)
+  — feature + simulation plan (this plan).
+- `.planning/phases/08-pr-emitter-scoring/VERIFY-SC4.md` — post-ship human-review
+  tracker for ≥3 real PEL PRs (blocks v1.2 git tag, NOT Phase 8 closure).
+
 ## Further reading
 
 - [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) — binding v1.2 design decisions; §1 "Multi-flavor fitness" is the authoritative source for the four flavor definitions that appear in `prompt.md`.
