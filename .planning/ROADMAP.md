@@ -161,3 +161,13 @@ Waves:
 - **Automated branch/worktree cleanup utility** — carried forward from v1.1 deferred list; standalone utility.
 - **Workspace-agnostic ports of lab PS integration scripts** — v1.0 Phase 9 deferred item.
 - **Goodhart mitigations beyond human review** — research question RQ-001 in `.planning/research/questions.md`; becomes critical for Options 2+3 once auto-merge is on the table.
+
+### Phase 08.1: Scorer/Runner Contract Wiring (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 8
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 08.1 to break down)
