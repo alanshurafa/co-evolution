@@ -13,7 +13,7 @@
     "discuss_mode": "discuss",
     "research_before_questions": false,
     "plan_bounce": false,
-    "plan_bounce_script": null,
+    "plan_bounce_script": "agent-bouncer/agent-bouncer.sh",
     "plan_bounce_passes": 2,
     "cross_ai_execution": false,
     "cross_ai_command": null,
