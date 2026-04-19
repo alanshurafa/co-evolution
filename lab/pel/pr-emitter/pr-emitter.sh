@@ -306,8 +306,21 @@ log_stderr "INFO: classifier picked flavor=$flavor override=$classifier_override
 # Default to the most recent evals report; hard-fail if none available.
 # ---------------------------------------------------------------------------
 if [[ -z "${PEL_EVAL_REPORT:-}" ]]; then
-  latest_report=$(find "$REPO_ROOT/evals/reports" -maxdepth 2 -name 'raw-scores.json' -printf '%T@ %p\n' 2>/dev/null \
-    | sort -nr | head -1 | awk '{print $2}')
+  # WR-02: `find -printf` is GNU-only; BSD find on macOS silently produces empty
+  # output. Match the detection pattern already used in lib/co-evolution.sh
+  # list_available_lab_modes (find --version | grep GNU).
+  if find --version 2>/dev/null | grep -q GNU; then
+    latest_report=$(find "$REPO_ROOT/evals/reports" -maxdepth 2 -name 'raw-scores.json' -printf '%T@ %p\n' 2>/dev/null \
+      | sort -nr | head -1 | awk '{print $2}')
+  else
+    # BSD fallback — stat emits mtime separately. Try BSD `stat -f %m` first,
+    # fall back to GNU `stat -c %Y` for unusual hybrid environments.
+    latest_report=$(find "$REPO_ROOT/evals/reports" -maxdepth 2 -name 'raw-scores.json' 2>/dev/null \
+      | while read -r f; do
+          printf '%s %s\n' "$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null)" "$f"
+        done \
+      | sort -nr | head -1 | awk '{print $2}')
+  fi
   if [[ -n "$latest_report" && -f "$latest_report" ]]; then
     export PEL_EVAL_REPORT="$latest_report"
     log_stderr "INFO: using PEL_EVAL_REPORT default: $PEL_EVAL_REPORT"
