@@ -148,6 +148,22 @@ teardown:
 See `VERIFICATION-PLAN.md` for the five-tier strategy that validates the
 scorer against these expectations.
 
+## Scorer output cache (`.co-evolve-cache/`)
+
+The PEL PR emitter (`lab/pel/pr-emitter/`) caches scorer output at
+`.co-evolve-cache/evals/<fixture-hash>-<script-hash>-<worktree-hash>[-<dirty-hash>].json`.
+The cache is:
+
+- **Gitignored** — lives per-clone, not in repo history (`.co-evolve-cache/` was added
+  to the root `.gitignore` in Phase 8 Plan 01)
+- **Hash-invalidated** — rebuilt when fixtures OR `evals/*.sh` OR the scored worktree
+  HEAD OR the worktree dirty state change
+- **Cost-attributed** — cache hits cost `$0.00`; cache misses bill against the
+  emitter's `$25` budget cap (Phase 8 D-05)
+
+No TTL — hash-based invalidation is sufficient. Delete `.co-evolve-cache/` to force
+a rebuild. See `lab/pel/README.md` §PR Emitter (v1.2) for the full emitter contract.
+
 ## Reference
 
 - **Upstream message** (why this directory exists): `runners/codex-ps/evals/UPSTREAM-MESSAGE.md`
