@@ -530,7 +530,12 @@ compute_cache_key() {
   local scripts_dir="$REPO_ROOT/evals"
   local fixture_hash scripts_hash worktree_hash dirty_hash
   fixture_hash=$(sha1sum "$report_path" | awk '{print $1}')
-  scripts_hash=$(find "$scripts_dir" -maxdepth 2 -type f -name '*.sh' -exec sha1sum {} + 2>/dev/null \
+  # WR-07: hash the full eval-runtime surface, not just *.sh. The scorer reads
+  # cases/*.yaml, fixtures/*.json, fixtures/*.md — any of which change the
+  # output the cache stores. Maxdepth 3 to cover evals/cases + evals/fixtures.
+  scripts_hash=$(find "$scripts_dir" -maxdepth 3 -type f \
+    \( -name '*.sh' -o -name '*.yaml' -o -name '*.json' -o -name '*.md' \) \
+    -exec sha1sum {} + 2>/dev/null \
     | sort | sha1sum | awk '{print $1}')
   worktree_hash=$("$REAL_GIT" -C "$worktree_dir" rev-parse HEAD 2>/dev/null \
     | awk '{print substr($0,1,12)}')
