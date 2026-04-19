@@ -654,6 +654,16 @@ if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
     "$REAL_GIT" -c user.email=pel@co-evolve -c user.name=pel-emitter \
       commit -m "$PR_TITLE" --no-verify >/dev/null
   ) || die "failed to commit mutation in emitter sandbox" 8
+else
+  # WR-04: [CANARY-FAILED] branch has no mutation commit (Section G skipped the
+  # apply block). GitHub rejects PRs where head and base have no commit
+  # difference ("No commits between master and pel/...") — so create an empty
+  # diagnostic commit. The substantive diff + state live in the PR body.
+  (
+    cd "$EMITTER_SANDBOX"
+    "$REAL_GIT" -c user.email=pel@co-evolve -c user.name=pel-emitter \
+      commit --allow-empty -m "$PR_TITLE" --no-verify >/dev/null
+  ) || die "failed to create diagnostic commit in canary-failed sandbox" 8
 fi
 # Push the branch. In dry-run the gh stub short-circuits PR creation but the
 # push still runs against origin — which would fail in hermetic sim. Skip push
