@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: verifying
-stopped_at: Phases 4/5/6 shipped (5+6 in parallel worktrees, merged 642d704). Milestone v1.2 at 6/8 phases. Ready to plan Phase 7.
-last_updated: "2026-04-18T22:32:07.577Z"
-last_activity: 2026-04-18
+status: executing
+stopped_at: "Completed 07-01-PLAN.md (code-tier proposer core: 5 module files + README extension, 7 commits). Ready to plan 07-02 (simulation gate tests/code-proposer-simulation.sh)."
+last_updated: "2026-04-19T02:55:22.365Z"
+last_activity: 2026-04-19
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 12
-  completed_plans: 13
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** Phase 7 — Code-Tier Mutation Proposer (not yet planned)
+**Current focus:** Phase 07 — code-tier-proposer
 
 ## Current Position
 
-Phase: 6 shipped (Phases 4+5+6 complete; 5+6 merged in parallel at 642d704)
-Plan: — (Phase 7 not yet planned)
+Phase: 07 (code-tier-proposer) — EXECUTING
+Plan: 2 of 2
 Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
-Status: Ready to plan Phase 7
-Last activity: 2026-04-18
+Status: Ready to execute
+Last activity: 2026-04-19
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
 Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
@@ -49,6 +49,7 @@ Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
 
 *Reset at milestone boundary. Historical velocity preserved in `.planning/milestones/v1.1-SUMMARY.md`.*
 | Phase 04-mode-classifier-frozen P02 | 9 min | 1 tasks | 1 files |
+| Phase 07-code-tier-proposer P01 | 15min 49s | 6 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 03-lab-scaffold-02]: Bash 5.2 set -e + $() + die-via-exit quirk — when a library function that calls exit is invoked under set -e inside command substitution, wrap the inner expression in an explicit extra subshell: out=$( (dispatch_lab_mode ...) 2>&1 || true ). Relevant for future verify blocks
 - [Phase 04-mode-classifier-frozen]: Phase 4 Plan 01: Self-contained PEL classifier shipped as lab/pel/classifier/** (4 files, zero lib/co-evolution.sh imports). classifier.sh public entry + adapter.sh inline-helpers Haiku adapter + frozen prompt.md + lab/pel/README.md env-var contract. D-05 self-containment + D-11 path-based freeze both hold under grep audit. Override fast-path emits canonical D-08 JSON without invoking Haiku; all 6 high-severity STRIDE threats have grep-checkable mitigations. Deviations: 1 Rule-3 comment rewording (grep false positive), 1 plan-verifier regex escape bug noted not patched (functional tests prove correctness).
 - [Phase 04-mode-classifier-frozen]: Phase 4 Plan 02: Hermetic classifier simulation gate shipped at tests/classifier-simulation.sh (429 lines, 8 scenarios: 6 primary SC-5 + 2 bonus). PATH-injection stub pattern (fake claude CLI at $TEST_DIR/bin/claude echoing canned JSON from $CLASSIFIER_STUB_FILE) + fingerprint-marker proof that PEL_FLAVOR_OVERRIDE bypasses Haiku + structural grep frozen-surface invariant for D-11. Primary/bonus counter split keeps tail -1 stable at 6/6 scenarios passed per v1.2 phase-gate convention while surfacing 2/2 bonus scenarios passed on the line above. Cross-platform (Git Bash Windows + Linux + macOS) hermetic, no new dependencies, zero classifier-surface modifications.
+- [Phase 07-code-tier-proposer]: Phase 7 Plan 01: code-tier proposer shipped at lab/pel/proposer/code/** (5 files, 930 lines). D-07 pre-flight gate chain (parse -> single-file -> allowlist -> budget -> git apply --check) runs BEFORE sandbox creation; cheap syntactic rejections avoid the expensive worktree+canary cycle. Sandbox via git worktree add --detach HEAD at $TMPDIR/pel-code-sandbox-XXXXXX with defense-in-depth cleanup (git worktree remove --force + rm -rf in trap EXIT). Canary.sh runs 5 scenarios (source-survives/helper-signatures/agent-bounce/dev-review-plan-only/one-eval-case) with PATH-injected stubs for claude+codex; distinct canary exit codes 1-5 map to proposer exit 7 with scenario name in state.json. Allowlist ordering fix (Rule 3): string-only allowlist check runs BEFORE PEL_CODE_FEEDBACK readability so frozen-target violations surface even with stale feedback paths. DIFF_BUDGET integer regex validation added (Rule 2) to block shell-metachar injection into the arithmetic comparison. Live 5/5 canary pass against current unmutated repo.
 
 ### Pending Todos
 
@@ -93,8 +95,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:32:07.572Z
-Stopped at: Phases 4/5/6 shipped (5+6 in parallel worktrees, merged 642d704). Milestone v1.2 at 6/8 phases. Ready to plan Phase 7.
+Last session: 2026-04-19T02:55:22.359Z
+Stopped at: Completed 07-01-PLAN.md (code-tier proposer core: 5 module files + README extension, 7 commits). Ready to plan 07-02 (simulation gate tests/code-proposer-simulation.sh).
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
