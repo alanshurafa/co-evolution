@@ -6,12 +6,15 @@
 #   Tier 3: Determinism sanity check (1 scenario)         — D-09 Tier 3.
 #   Tier 2: Hermetic end-to-end smoke via fake runner     — D-09 Tier 2.
 #           (2 scenarios: FAKE_MODE=pass and fail-robustness).
+#   Tier 4: Real-runner contract smoke (1 scenario)       — D-07 contract gate.
+#           Exercises dev-review/codex/dev-review.sh end-to-end with PATH-stubbed
+#           claude + codex CLIs. Regression barrier for WR-01/WR-02/WR-04.
 #
 # Satisfies ROADMAP SC-3 (multi-platform CI simulation) on any Bash + jq + yq
 # environment without pwsh.
 #
-# Total scenarios: 10 + 1 + 2 = 13. Success: exit 0, final stdout line
-# exactly '13/13 scenarios passed'. Leaves no side effects in evals/reports/.
+# Total scenarios: 10 + 1 + 2 + 1 = 14. Success: exit 0, final stdout line
+# exactly '14/14 scenarios passed'. Leaves no side effects in evals/reports/.
 #
 # Dependencies: bash, jq, yq (indirectly via evals/score-run.sh + run-evals.sh).
 
@@ -212,8 +215,279 @@ run_tier2_scenario "pass-e2e" "pass" 0 '.[0].status == "scored" and (.[0].scores
 # Accept any of: scored+robustness=FAIL, scorer-failed, or fail.
 run_tier2_scenario "fail-robustness-e2e" "fail-robustness" 1 '(.[0].status == "scored" and .[0].scores.robustness == "FAIL") or (.[0].status == "scorer-failed") or (.[0].status == "fail")'
 
-# Cleanup Tier 2 report dirs so the test leaves no on-disk artifacts in the
-# real reports tree.
+# ---------------------------------------------------------------------------
+# Tier 4: Real-runner contract smoke — D-07 of 08.1-CONTEXT.md.
+# Exercises the REAL dev-review/codex/dev-review.sh end-to-end via run-evals.sh
+# with PATH-stubbed claude + codex CLIs. This is the regression barrier that
+# would have caught WR-01 / WR-02 / WR-04 before ship-time review.
+#
+# Why this scenario exists: Tier 2 uses fake-runner.sh which DOES emit the full
+# contract shape — so a missing .status or missing outputs/compose.txt in the
+# REAL runner slipped through every pre-ship gate. Tier 4 closes that gap.
+#
+# Assertions (see evals/RUNNER-CONTRACT.md for field semantics):
+#   1. state.json top-level .status in {completed, partial, failed} and NOT
+#      stuck at the 'pending' init sentinel (WR-01 / D-02).
+#   2. outputs/compose.txt exists and is non-empty (WR-02 / D-03).
+#   3. run dir was discovered under $fixture/.co-evolution/runs/ — harness did
+#      NOT emit "no run artifacts found" (WR-04 / D-05).
+#   4. Contract field names split into SCORER-READ (7, both runner-write
+#      surface AND score-run.sh) + RUNNER-ONLY (6, runner-write surface only).
+#      Runner-write surface = lib/co-evolution.sh + dev-review/codex/dev-review.sh
+#      because init_state_json lives in the sourced library. D-08 poor-man's
+#      lint per CONTEXT.md §decisions D-08.
+#   5. scorer produced non-null, non-FAIL Robustness (proves // "unknown"
+#      fallback did NOT fire — real runner wrote a real .status).
+# ---------------------------------------------------------------------------
+
+run_tier4_real_runner() {
+  TOTAL=$((TOTAL + 1))
+
+  local t4_dir="$TEST_DIR/tier4-real-runner"
+  mkdir -p "$t4_dir/bin"
+
+  # PATH-stub claude: drains stdin with a read-loop (NOT `cat >/dev/null`) to
+  # avoid SIGPIPE against the runner's stdin producer. `cat` closing stdin
+  # prematurely can propagate a broken pipe that crashes the producer on
+  # strict-mode bash. The claude stub is present even though 01-trivial-task
+  # runs codex-only — dev-review.sh's require_agent_cli probes claude when any
+  # role is claude-based, and defense-in-depth dictates a claude stub on PATH
+  # for future cases.
+  cat > "$t4_dir/bin/claude" <<'STUB'
+#!/usr/bin/env bash
+# Version-probe fast-path (dev-review.sh's require_agent_cli does `command -v`
+# which needs the binary present; some invocations pass --version).
+for arg in "$@"; do
+  case "$arg" in
+    --version|-v|version)
+      echo "claude 1.0.0 (tier4-stub)"
+      exit 0
+      ;;
+  esac
+done
+# Drain stdin via read-loop to avoid SIGPIPE against the runner producer.
+while IFS= read -r _line; do :; done
+# Default: emit a minimal plan satisfying plan_quality heading regex + word
+# count (01-trivial-task sets min_word_count=40). claude writes to stdout.
+cat <<'PLAN'
+# Tier 4 Contract Smoke Plan
+
+## Approach
+
+This is a hermetic stub plan emitted by the scorer-verification Tier 4
+real-runner contract smoke test. It exists solely to satisfy the plan_quality
+heading regex plus the min_word_count threshold; it is not a real plan.
+
+## Files to Change
+
+- (no file changes)
+
+## Risks
+
+- None identified. Stubbed CLI produces a fixed plan with no side effects.
+PLAN
+STUB
+  chmod +x "$t4_dir/bin/claude"
+
+  # PATH-stub codex: dev-review.sh invokes `codex exec ... -o OUTPUT_FILE`
+  # (see lib/co-evolution.sh::invoke_codex). The stub must:
+  #   (1) drain stdin via read-loop (no SIGPIPE),
+  #   (2) parse args to find `-o FILE` and write the plan there,
+  #   (3) handle `--version` / `-v` fast-path for require_agent_cli probes.
+  cat > "$t4_dir/bin/codex" <<'STUB'
+#!/usr/bin/env bash
+# Version-probe fast-path.
+for arg in "$@"; do
+  case "$arg" in
+    --version|-v|version)
+      echo "codex 0.117.0 (tier4-stub)"
+      exit 0
+      ;;
+  esac
+done
+
+# Parse args to find -o FILE (codex exec writes output to this path).
+output_file=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "-o" ]]; then
+    output_file="$arg"
+    prev=""
+    continue
+  fi
+  prev="$arg"
+done
+
+# Drain stdin via read-loop to avoid SIGPIPE against the runner producer.
+while IFS= read -r _line; do :; done
+
+# Produce a minimal valid plan. If -o was given, write to that file;
+# otherwise emit to stdout as a fallback (some codex invocations omit -o).
+plan_content=$(cat <<'PLAN'
+# Tier 4 Contract Smoke Plan
+
+## Approach
+
+This is a hermetic stub plan emitted by the scorer-verification Tier 4
+real-runner contract smoke test. It exists solely to satisfy the plan_quality
+heading regex plus the min_word_count threshold; it is not a real plan.
+
+## Files to Change
+
+- (no file changes)
+
+## Risks
+
+- None identified. Stubbed codex produces a fixed plan with no side effects.
+PLAN
+)
+
+if [[ -n "$output_file" ]]; then
+  printf '%s\n' "$plan_content" > "$output_file"
+else
+  printf '%s\n' "$plan_content"
+fi
+exit 0
+STUB
+  chmod +x "$t4_dir/bin/codex"
+
+  # Pre-listing snapshot for report-dir discovery (matches Tier 2 pattern).
+  local reports_dir="$REPO_ROOT/evals/reports"
+  mkdir -p "$reports_dir"
+  local pre_listing="$t4_dir/pre.txt"
+  local post_listing="$t4_dir/post.txt"
+  ls -1 "$reports_dir" 2>/dev/null | sort > "$pre_listing" || : > "$pre_listing"
+
+  # Invoke real runner through the harness with an explicit 120s timeout.
+  # Expected runtime <30s; the wrapper is belt-and-suspenders against runner
+  # hang (e.g. stuck REVISE loop) — we own our own timeout rather than
+  # inheriting CI's outer bound. Exit code 124 = timeout hit.
+  local rc=0
+  PATH="$t4_dir/bin:$PATH" timeout 120 bash "$REPO_ROOT/evals/run-evals.sh" \
+    --case 01-trivial-task \
+    --runner-path "$REPO_ROOT/dev-review/codex/dev-review.sh" \
+    > "$t4_dir/run-evals.stdout" 2> "$t4_dir/run-evals.stderr" || rc=$?
+
+  if [[ "$rc" -eq 124 ]]; then
+    fail "Tier 4: run-evals.sh exceeded 120s timeout — runner hang suspected (see $t4_dir/run-evals.stderr)"
+    return
+  fi
+
+  ls -1 "$reports_dir" 2>/dev/null | sort > "$post_listing" || : > "$post_listing"
+  local new_report
+  new_report=$(comm -13 "$pre_listing" "$post_listing" | tail -1)
+  if [[ -z "$new_report" ]]; then
+    fail "Tier 4: no new report dir created under $reports_dir (runner or harness failed; see $t4_dir/run-evals.stderr)"
+    return
+  fi
+  local report_abs="$reports_dir/$new_report"
+  # Track for cleanup alongside Tier 2 (reuse the same cleanup list).
+  echo "$report_abs" >> "$TEST_DIR/tier2-reports-to-cleanup.txt"
+
+  # --- Assertion 3 (WR-04): harness found the run dir under fixture subtree ---
+  if grep -q "no run artifacts found" "$t4_dir/run-evals.stdout" \
+     || grep -q "no run artifacts found" "$t4_dir/run-evals.stderr"; then
+    fail "Tier 4 / WR-04 regression: harness logged 'no run artifacts found' — real runner wrote outside \$fixture/.co-evolution/runs/"
+    return
+  fi
+
+  # Discover the per-case run subdir (matches run-evals.sh:291 naming). If not
+  # found, dump the report tree for debugging — silent "not found" would leave
+  # debugging blind (Warning #8 guard against layout drift in run-evals.sh).
+  local run_subdir
+  run_subdir=$(find "$report_abs/runs" -maxdepth 2 -mindepth 1 -type d -name '01-trivial-task-*' 2>/dev/null | head -1)
+  if [[ -z "$run_subdir" || ! -d "$run_subdir" ]]; then
+    echo "FAIL: Tier 4: per-case run subdir not found under $report_abs/runs/" >&2
+    ls -la "$report_abs/runs/" 2>&1 >&2 || true
+    find "$report_abs" -maxdepth 3 -type d 2>&1 >&2 || true
+    fail "Tier 4: per-case run subdir not found under $report_abs/runs/ (see stderr for tree dump)"
+    return
+  fi
+
+  # --- Assertion 1 (WR-01): state.json .status is a concrete value ---
+  if [[ ! -f "$run_subdir/state.json" ]]; then
+    fail "Tier 4 / WR-01 regression: state.json missing at $run_subdir/state.json"
+    return
+  fi
+  if ! jq -e '.status | IN("completed", "partial", "failed")' "$run_subdir/state.json" >/dev/null 2>&1; then
+    fail "Tier 4 / WR-01 regression: .status is '$(jq -r .status "$run_subdir/state.json")' — expected one of completed|partial|failed"
+    return
+  fi
+  # Additionally guard against .status stuck at the 'pending' init sentinel
+  # (means run-end writeback never fired).
+  local state_status
+  state_status=$(jq -r '.status' "$run_subdir/state.json")
+  if [[ "$state_status" == "pending" || "$state_status" == "unknown" ]]; then
+    fail "Tier 4 / WR-01 regression: .status stuck at '$state_status' — run-end writeback didn't fire"
+    return
+  fi
+
+  # --- Assertion 2 (WR-02): outputs/compose.txt exists and is non-empty ---
+  if [[ ! -s "$run_subdir/outputs/compose.txt" ]]; then
+    fail "Tier 4 / WR-02 regression: outputs/compose.txt missing or empty at $run_subdir/outputs/compose.txt"
+    return
+  fi
+
+  # --- Assertion 5: scorer consumed real state without null-fallback masking ---
+  # Intent: prove the scorer actually read real runner state (no missing fields
+  # silently null'd). A non-null robustness value — PASS, PARTIAL, or FAIL — all
+  # demonstrate the scorer reached state.status. FAIL is a legitimate outcome
+  # under Tier 4's stubs (the stubbed codex can't emit a real verdict, so VERIFY
+  # exits non-zero → .status = "failed" → robustness = FAIL). What we're guarding
+  # against is null-from-missing-field, which would indicate contract drift.
+  if [[ ! -f "$report_abs/raw-scores.json" ]]; then
+    fail "Tier 4: raw-scores.json missing — scorer did not run against real state"
+    return
+  fi
+  if ! jq -e '.[0].scores.robustness != null' \
+         "$report_abs/raw-scores.json" >/dev/null 2>&1; then
+    fail "Tier 4 / contract regression: scorer produced null robustness — missing contract field (see evals/RUNNER-CONTRACT.md §1)"
+    return
+  fi
+
+  # --- Assertion 4 (D-08 grep-pin): contract fields split into two subsets ---
+  # SCORER-READ fields (7): appear in BOTH the runner-write surface
+  # (lib/co-evolution.sh + dev-review/codex/dev-review.sh — init_state_json
+  # lives in the sourced library) AND evals/score-run.sh.
+  # RUNNER-ONLY fields (6): appear in runner-write surface only; score-run.sh
+  # does not consume them directly (verify_verdict is read from verdict.json,
+  # not state.json; completed_at is a runner bookkeeping field).
+  # This is the poor-man's lint per CONTEXT.md D-08 — v1.2 posture, defers to
+  # AST lint in v1.3. Field subsets sourced from evals/RUNNER-CONTRACT.md §1.
+  local field_drift=""
+  local runner_write_surface="$REPO_ROOT/lib/co-evolution.sh $REPO_ROOT/dev-review/codex/dev-review.sh"
+  # 7 scorer-read fields — both sides (runner-write surface + score-run.sh).
+  # Grep pattern widened to cover .field (jq path refs) OR "field": (JSON-key
+  # literals in jq -n payloads) OR field: (jq shorthand keys) — the init
+  # helper in lib/co-evolution.sh uses all three shapes.
+  for field in run_id status started_at updated_at marker_counts changed_files history; do
+    if ! grep -qE "(\\.${field}\\b|\"${field}\":|[^A-Za-z_]${field}:)" $runner_write_surface 2>/dev/null; then
+      field_drift="$field_drift runner-write-missing:${field}"
+    fi
+    if ! grep -qE "\\.${field}\\b" "$REPO_ROOT/evals/score-run.sh" 2>/dev/null; then
+      field_drift="$field_drift score-run.sh-missing:${field}"
+    fi
+  done
+  # 6 runner-only fields — runner-write surface only. mode is excluded per
+  # contract §1 ("Runner-owned metadata — NOT written by the shared
+  # init_state_json library"); task/composer/executor/reviewer/completed_at/
+  # verify_verdict are all present in the init_state_json jq payload.
+  for field in task composer executor reviewer completed_at verify_verdict; do
+    if ! grep -qE "(\\.${field}\\b|\"${field}\":|[^A-Za-z_]${field}:)" $runner_write_surface 2>/dev/null; then
+      field_drift="$field_drift dev-review.sh-missing-runner-only:${field}"
+    fi
+  done
+  if [[ -n "$field_drift" ]]; then
+    fail "Tier 4 / D-08 contract drift:$field_drift"
+    return
+  fi
+
+  pass "Tier 4 / real-runner-smoke (status=$state_status, compose.txt non-empty, no drift)"
+}
+run_tier4_real_runner
+
+# Cleanup Tier 2 + Tier 4 report dirs so the test leaves no on-disk artifacts
+# in the real reports tree.
 if [[ -f "$TEST_DIR/tier2-reports-to-cleanup.txt" ]]; then
   while IFS= read -r r; do
     [[ -n "$r" && -d "$r" ]] && rm -rf "$r"
