@@ -19,8 +19,8 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - [x] **Phase 4: Mode Classifier (frozen)** (shipped 2026-04-18) — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. 2 plans complete. 6/6 simulation green.
 - [x] **Phase 5: Template-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 6) — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. 2 plans complete. 8/8 simulation green.
 - [x] **Phase 6: Policy-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 5) — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations across 6 enumerated knobs. 2 plans complete. 8/8 simulation green.
-- [ ] **Phase 7: Code-Tier Mutation Proposer** — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist.
-- [ ] **Phase 8: PR Emission + Scoring Integration** — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship.
+- [x] **Phase 7: Code-Tier Mutation Proposer** (shipped 2026-04-18) — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist. 2 plans complete. 16/16 simulation green.
+- [x] **Phase 8: PR Emission + Scoring Integration** (shipped 2026-04-19) — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship. 3 plans complete. 10/10 simulation green.
 
 ## Phase Details
 
