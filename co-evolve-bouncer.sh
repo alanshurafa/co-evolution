@@ -65,7 +65,7 @@ Options:
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
   --lab MODE         Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
-  --target FILE      PEL-only: file to mutate (used with --lab pel-proposer)
+  --target FILE      PEL-only: file to mutate (used with --lab pel-proposer; repo-relative forward-slash path, e.g. lib/co-evolution.sh)
   --tier TIER        PEL-only: override tier auto-detect (template|policy|code)
   --pr-branch NAME   PEL-only: override default pel/<tier>/<short-hash> branch name
   --dry-run          PEL-only: stub `gh` via CO_EVOLVE_DRY_RUN=1 + PATH shadow
