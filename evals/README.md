@@ -76,7 +76,8 @@ Both are single-binary dependencies that Just Work on every supported platform.
 - **Tier 1 (golden-fixture regression):** `bash evals/tests/scorer-verification.sh` asserts the Bash scorer reproduces PS-produced `EXPECTED.json` outputs for all 10 fixture suites under `runners/codex-ps/evals/tests/fixtures/`.
 - **Tier 2 (hermetic end-to-end smoke):** Same script runs `evals/run-evals.sh --case 01-trivial-task --runner-path evals/tests/fake-runner.sh` in two modes (PASS + FAIL) to prove the orchestrator produces a non-empty `report.md`, a valid JSON `raw-scores.json`, and that the `robust_fails > 0` exit-code policy fires correctly. The fake runner is a deterministic test double — no LLM cost. Satisfies SC-3 (multi-platform CI simulation) on any Bash + jq + yq environment.
 - **Tier 3 (determinism):** Same script scores the same fixture twice and asserts byte-identical output (after stripping the ISO timestamp).
-- Final stdout line on success: `13/13 scenarios passed` (10 Tier 1 + 1 Tier 3 + 2 Tier 2).
+- **Tier 4 (real-runner contract smoke):** Same script invokes `evals/run-evals.sh` against the REAL `dev-review/codex/dev-review.sh` with PATH-stubbed `claude` + `codex` CLIs, wrapped in a 120s timeout. Asserts state.json contract conformance end-to-end: `.status` ∈ {completed, partial, failed}, `outputs/compose.txt` non-empty, scorer produces non-null robustness. Closes the gap where WR-01/WR-02/WR-04 slipped past because every pre-ship Tier was hermetic on `fake-runner.sh`. See [`RUNNER-CONTRACT.md`](RUNNER-CONTRACT.md) for the shared spec both sides conform to.
+- Final stdout line on success: `14/14 scenarios passed` (10 Tier 1 + 1 Tier 3 + 2 Tier 2 + 1 Tier 4).
 
 ## Legacy PowerShell Harness
 
