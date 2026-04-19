@@ -267,12 +267,18 @@ for iteration in $(seq 1 "$REPEAT"); do
     verify_flag=""
     [[ "$verify" == "true" ]] && verify_flag="--verify"
 
+    # WR-04 / D-05: pass --run-dir so the real runner writes its artifacts under
+    # the fixture's .co-evolution/runs/ subtree — the same layout fake-runner.sh:64
+    # already uses — so the newest-run discovery at lines 284-287 below works
+    # unchanged for both runners. fake-runner.sh ignores unknown flags (see its
+    # argv loop default arm) so unconditional injection is safe for Tier 2.
     (
       cd "$fixture"
       bash "$RUNNER_PATH_ABS" \
         --composer "$composer" \
         --executor "$executor" \
         --bounces "$bounces" \
+        --run-dir "$fixture/.co-evolution/runs/dev-review-${iteration}" \
         $verify_flag \
         -- "$task"
     ) > "$stdout_path" 2> "$stderr_path" || exit_code=$?
