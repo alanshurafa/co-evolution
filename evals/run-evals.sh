@@ -222,7 +222,6 @@ for iteration in $(seq 1 "$REPEAT"); do
     executor=$(echo "$merged" | jq -r '.runner.executor // "codex"')
     bounces=$(echo "$merged" | jq -r '.runner.bounces // 2')
     verify=$(echo "$merged" | jq -r '.runner.verify // false')
-    autonomous=$(echo "$merged" | jq -r '.runner.autonomous // false')
 
     log "Running case: $case_id (iteration $iteration / $REPEAT)"
 
@@ -267,8 +266,6 @@ for iteration in $(seq 1 "$REPEAT"); do
     exit_code=0
     verify_flag=""
     [[ "$verify" == "true" ]] && verify_flag="--verify"
-    autonomous_flag=""
-    [[ "$autonomous" == "true" ]] && autonomous_flag="--autonomous"
 
     (
       cd "$fixture"
@@ -276,7 +273,7 @@ for iteration in $(seq 1 "$REPEAT"); do
         --composer "$composer" \
         --executor "$executor" \
         --bounces "$bounces" \
-        $verify_flag $autonomous_flag \
+        $verify_flag \
         -- "$task"
     ) > "$stdout_path" 2> "$stderr_path" || exit_code=$?
 
