@@ -123,7 +123,10 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   3. Simulation test: `co-evolve --lab pel-proposer --target skills/dev-review/templates/compose-prompt.md --dry-run` walks the full pipeline up to the PR-create step (stubs `gh`) and verifies the body is well-formed
   4. Human-in-the-loop dogfood: at least 3 real PEL-emitted PRs are reviewed by the user during v1.2 verification — at least 1 merged, at least 1 closed-without-merge — proving the review gate is real and the UX works
   5. Default runner byte-parity preserved: running `co-evolve "task"` or `dev-review "task"` without `--lab pel-proposer` produces identical behavior to v1.1 (regression test)
-**Plans**: 2 plans (invocation wiring + PR body generation; human-dogfood verification)
+**Plans**: 3 plans (foundation + feature/simulation + release-gate tracker)
+  - [ ] 08-01-PLAN.md — Foundation: DEF-07-01 fix + 7 wrapper flags on both runners + pel-proposer dispatch + emitter skeleton (pr-emitter.sh + pr-body-template.md) + tier auto-detect + --dry-run PATH-stub scaffolding
+  - [ ] 08-02-PLAN.md — Feature + SC-3 simulation gate: full pipeline (classifier + proposer + emitter-owned scoring sandbox + eval cache + PR body render + gh pr create --draft) + 10-scenario hermetic simulation + lab/pel/README.md extension
+  - [ ] 08-03-PLAN.md — Release-gate tracker: .planning/VERIFY-SC4.md (human-dogfood review log for v1.2 tag)
 
 ## Progress
 
@@ -147,7 +150,7 @@ Waves:
 | 5. Template-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 6. Policy-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 7. Code-Tier Mutation Proposer | TBD | Planned | — |
-| 8. PR Emission + Scoring Integration | TBD | Planned | — |
+| 8. PR Emission + Scoring Integration | 0/3 | Planned | — |
 
 ## Deferred (candidates for v1.3+)
 
