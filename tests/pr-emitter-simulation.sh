@@ -136,11 +136,14 @@ mkdir -p "$CACHE_DIR"
 
 compute_emitter_cache_key() {
   # Duplicates lab/pel/pr-emitter/pr-emitter.sh::compute_cache_key verbatim.
+  # WR-07: keep in sync with emitter's broadened hash inputs (cases/fixtures).
   local report_path="$1" worktree_dir="$2"
   local scripts_dir="$REPO_ROOT/evals"
   local fixture_hash scripts_hash worktree_hash dirty_hash
   fixture_hash=$(sha1sum "$report_path" | awk '{print $1}')
-  scripts_hash=$(find "$scripts_dir" -maxdepth 2 -type f -name '*.sh' -exec sha1sum {} + 2>/dev/null \
+  scripts_hash=$(find "$scripts_dir" -maxdepth 3 -type f \
+    \( -name '*.sh' -o -name '*.yaml' -o -name '*.json' -o -name '*.md' \) \
+    -exec sha1sum {} + 2>/dev/null \
     | sort | sha1sum | awk '{print $1}')
   worktree_hash=$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null \
     | awk '{print substr($0,1,12)}')
