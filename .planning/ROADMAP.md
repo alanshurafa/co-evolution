@@ -122,6 +122,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. PR body includes: mutation diff (inline), eval scores before/after, flavor pick + classifier rationale, canary result (if code tier), diff budget usage, timestamps
   3. Simulation test: `co-evolve --lab pel-proposer --target skills/dev-review/templates/compose-prompt.md --dry-run` walks the full pipeline up to the PR-create step (stubs `gh`) and verifies the body is well-formed
   4. Human-in-the-loop dogfood: at least 3 real PEL-emitted PRs are reviewed by the user during v1.2 verification — at least 1 merged, at least 1 closed-without-merge — proving the review gate is real and the UX works
+     > Tracked in [`.planning/VERIFY-SC4.md`](VERIFY-SC4.md). Blocks `git tag v1.2`; does NOT block Phase 8 closure (per 08-CONTEXT.md §D-01 scope separation — Phase 8 closes on SC-1/2/3/5).
   5. Default runner byte-parity preserved: running `co-evolve "task"` or `dev-review "task"` without `--lab pel-proposer` produces identical behavior to v1.1 (regression test)
 **Plans**: 3 plans (foundation + feature/simulation + release-gate tracker)
   - [x] 08-01-PLAN.md — Foundation: DEF-07-01 fix + 7 wrapper flags on both runners + pel-proposer dispatch + emitter skeleton (pr-emitter.sh + pr-body-template.md) + tier auto-detect + --dry-run PATH-stub scaffolding
