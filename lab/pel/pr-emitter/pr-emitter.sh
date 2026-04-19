@@ -575,14 +575,24 @@ run_scorer_cached() {
   spent_cents=$(( spent_cents + COST_PER_SCORER_RUN_CENTS ))
   log_stderr "INFO: eval cache miss: $label"
 
-  local tmp_out scores_file
+  local tmp_out scores_file marker
   tmp_out=$(mktemp)
+  # IN-03: `find -newer` compares mtime at 1-second resolution on HFS+ and some
+  # NTFS mounts, so a fast scorer run can produce a raw-scores.json in the same
+  # second as the marker and `-newer` may miss it. Create a dedicated marker
+  # file and age it by 1s BEFORE invoking the scorer so any scorer output is
+  # unambiguously newer. The scorer's stdout still goes to $tmp_out (for error
+  # diagnosis); the marker is only used as the -newer reference.
+  marker=$(mktemp)
+  touch -d '1 second ago' "$marker" 2>/dev/null \
+    || touch -t "$(date -u -v-1S +%Y%m%d%H%M.%S 2>/dev/null || date -u -d '1 second ago' +%Y%m%d%H%M.%S 2>/dev/null)" "$marker" 2>/dev/null \
+    || true
   if ! (cd "$worktree_dir" && bash "$REPO_ROOT/evals/run-evals.sh" >"$tmp_out" 2>&1); then
-    rm -f "$tmp_out"
+    rm -f "$tmp_out" "$marker"
     die "scorer run failed for $label" 2
   fi
-  scores_file=$(find "$worktree_dir/evals/reports" -maxdepth 2 -name raw-scores.json -newer "$tmp_out" 2>/dev/null | head -1)
-  rm -f "$tmp_out"
+  scores_file=$(find "$worktree_dir/evals/reports" -maxdepth 2 -name raw-scores.json -newer "$marker" 2>/dev/null | head -1)
+  rm -f "$tmp_out" "$marker"
   [[ -n "$scores_file" && -f "$scores_file" ]] \
     || die "scorer did not produce raw-scores.json for $label" 2
   cp "$scores_file" "$cache_file"
