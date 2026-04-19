@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-04-19T14:02:26.772Z"
-last_activity: 2026-04-19 -- Phase 08 planning complete
+last_updated: "2026-04-19T14:06:39.392Z"
+last_activity: 2026-04-19 -- Phase 08 execution started
 progress:
   total_phases: 8
   completed_phases: 7
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 **Core value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps. From v1.2 onward co-evolution becomes self-improving via PEL (living in `lab/`) proposing protocol mutations for human review.
-**Current focus:** Phase 07 — code-tier-proposer
+**Current focus:** Phase 08 — pr-emitter-scoring
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (pr-emitter-scoring) — EXECUTING
+Plan: 1 of 3
 Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
-Status: Ready to execute
-Last activity: 2026-04-19 -- Phase 08 planning complete
+Status: Executing Phase 08
+Last activity: 2026-04-19 -- Phase 08 execution started
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
 Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
