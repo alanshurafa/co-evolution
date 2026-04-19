@@ -164,10 +164,13 @@ Waves:
 
 ### Phase 08.1: Scorer/Runner Contract Wiring (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Close the 4 warnings from `.planning/REVIEW-v1.2-ship.md` (WR-01/02/03/04) by wiring the real `dev-review.sh` runner to the Bash eval harness contract it implicitly depends on. Establish `evals/RUNNER-CONTRACT.md` as the shared spec both runners conform to, add a real-runner Tier 4 regression barrier in `evals/tests/scorer-verification.sh`, and unblock the first real eval round (prerequisite for SC-4 dogfood and `git tag v1.2`). Non-`--lab` invocations preserve SC-5 byte-parity.
+**Requirements**: [WR-01, WR-02, WR-03, WR-04, D-01..D-11] (from `08.1-CONTEXT.md`; WR-IDs source: `REVIEW-v1.2-ship.md`)
 **Depends on:** Phase 8
-**Plans:** 0 plans
+**Plans:** 4 plans (3 waves)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 08.1 to break down)
+- [ ] 08.1-01-PLAN.md — Contract spec: `evals/RUNNER-CONTRACT.md` + `lib/co-evolution.sh::init_state_json` field extension (Wave 1, blocker)
+- [ ] 08.1-02-PLAN.md — Runner conformance: `dev-review.sh` WR-01 `.status` + WR-02 `outputs/compose.txt` + WR-02 `.updated_at` + WR-04 `--run-dir` flag + phases->history mirror (Wave 2)
+- [ ] 08.1-03-PLAN.md — Harness conformance: `run-evals.sh` WR-03 `--autonomous` removal + WR-04 `--run-dir` passthrough + 9 case-YAML cleanups (Wave 2, parallel with 08.1-02)
+- [ ] 08.1-04-PLAN.md — Regression barrier: Tier 4 real-runner smoke in `scorer-verification.sh` + `evals/README.md` cross-reference + D-11 cache-invalidation verification (Wave 3)
