@@ -1,0 +1,23 @@
+{
+  "scored_at": "2026-04-19T10:00:00Z",
+  "runner": "bash",
+  "scenarios": [
+    {
+      "name": "retry-cap-too-low",
+      "passed": false,
+      "robust_fails": 1,
+      "scores": {
+        "fitness": 0.6,
+        "convergence": 0.4
+      }
+    }
+  ],
+  "aggregate": {
+    "fitness": 0.6,
+    "convergence": 0.4,
+    "robust_fails": 1
+  },
+  "failed_dimensions": ["convergence"],
+  "target_hint": "lab/pel/proposer/policy/policy.yaml",
+  "flavor_hint": "faster-converger"
+}

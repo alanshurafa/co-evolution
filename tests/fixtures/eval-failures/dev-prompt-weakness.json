@@ -1,0 +1,20 @@
+{
+  "case_id": "05-sim-dev-prompt-weakness",
+  "status": "ok",
+  "run_id": "20260418-000300",
+  "composite": 0.72,
+  "scores": {
+    "robustness": "PARTIAL",
+    "convergence": "PARTIAL",
+    "plan_quality": "PARTIAL",
+    "execution_fidelity": "PARTIAL",
+    "verify_accuracy": "PASS",
+    "cost": "PARTIAL",
+    "cross_ai_diversity": "PASS"
+  },
+  "details": {
+    "weakness": "broad mid-quality regression: execute prompt produces workmanlike output but no signal dominates; calls for balanced improvement",
+    "failure_mode": "overall quality dip across multiple execute-phase dimensions, no single-axis fix"
+  },
+  "target_template": "skills/dev-review/templates/dev-prompt-opus.md"
+}

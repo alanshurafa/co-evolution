@@ -131,6 +131,26 @@ init_repo() {
     || { echo "E: RUN_DIR was created despite die — side-effect leaked" >&2; exit 1; }
 ) || fail "Scenario E (mutual exclusion)"
 
+# --- Scenario F: WR-04 regression — INITIAL_GIT_DIRTY capture must happen
+# AFTER the branch/worktree setup block so --worktree mode captures the
+# worktree's git state, not the parent repo's. Static-order check on the
+# runner source: if a future refactor moves the capture back above the
+# setup block, this scenario fails. ---
+(
+  runner="$REPO_ROOT/dev-review/codex/dev-review.sh"
+  [[ -f "$runner" ]] || { echo "F: runner not found at $runner" >&2; exit 1; }
+
+  setup_line=$(grep -n 'if \[\[ -n "\$BRANCH_SPEC" \]\]; then' "$runner" | head -1 | cut -d: -f1)
+  capture_line=$(grep -n 'INITIAL_GIT_STATUS=\$(git -C "\$WORKDIR" status --short)' "$runner" | head -1 | cut -d: -f1)
+
+  [[ -n "$setup_line" ]] \
+    || { echo "F: could not locate branch/worktree setup block in runner" >&2; exit 1; }
+  [[ -n "$capture_line" ]] \
+    || { echo "F: could not locate INITIAL_GIT_STATUS capture in runner" >&2; exit 1; }
+  (( capture_line > setup_line )) \
+    || { echo "F: INITIAL_GIT_STATUS capture at line $capture_line happens BEFORE branch/worktree setup at line $setup_line — WR-04 regression (worktree mode would silently skip verify on dirty parent)" >&2; exit 1; }
+) || fail "Scenario F (WR-04 capture-order regression)"
+
 if (( FAILURES == 0 )); then
   echo "ALL SCENARIOS PASSED"
   exit 0

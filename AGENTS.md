@@ -145,3 +145,9 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
+
+## Lab Subdirectory
+
+The `lab/` subdirectory is the first-class beta channel for opt-in experimental features. Features there are invoked via `--lab <mode>` on `co-evolve` or `dev-review` and cannot modify master directly — only via emitted PRs that a human reviews and merges. See [`lab/README.md`](lab/README.md) for the full contract: boundary conventions, graduation criteria, anti-criteria, sandbox guarantee, and first inhabitants (v1.2 ships `lab/pel/`; `lab/pel-auto/` and `lab/pel-explorer/` are v1.3+ placeholders).
+
+This section lives outside all `<!-- GSD:*-start -->` / `<!-- GSD:*-end -->` blocks so it survives GSD regeneration sweeps.

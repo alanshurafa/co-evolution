@@ -13,14 +13,15 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 **Goal:** Ship PEL Option 1 — an LLM-powered proposer that generates protocol-mutation PRs for human review, using the eval harness as fitness signal. PEL machinery lives entirely in `lab/pel/`; the default runner (`co-evolve`, `dev-review`) is unchanged for users who never invoke `--lab pel-proposer`. Accepted mutations merge to master and upgrade the default runner transparently.
 
-- [ ] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — avoids a separate v1.1.1 patch cycle
-- [ ] **Phase 2: Bash Eval Harness Port** — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+.
-- [ ] **Phase 3: Lab Scaffold** — Create `lab/` directory + README documenting default/lab boundary, promotion flow, graduation criteria. First-class beta channel with clear identity.
-- [ ] **Phase 4: Mode Classifier (frozen)** — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. Classifier itself does NOT evolve in v1.2.
-- [ ] **Phase 5: Template-Tier Mutation Proposer** — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. Safest first cut.
-- [ ] **Phase 6: Policy-Tier Mutation Proposer** — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations (retry caps, marker-semantics, flavor weights). Composes with Phase 5 independently.
-- [ ] **Phase 7: Code-Tier Mutation Proposer** — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist.
-- [ ] **Phase 8: PR Emission + Scoring Integration** — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship.
+- [x] **Phase 1: Post-v1.1 Fixes** — Fold WR-04 (INITIAL_GIT_DIRTY timing in worktree mode) + WR-05 (missing `--` argv terminator on git commands) — shipped 2026-04-17 (commits `3a06af8`, `68b9d76`, `f265135`)
+- [x] **Phase 2: Bash Eval Harness Port** (shipped 2026-04-18) — Port `run-evals.ps1`, `score-run.ps1`, `compare-reports.ps1` to Bash; eliminate `pwsh` dependency; produce machine-readable eval reports consumable by PEL. Prerequisite for Phases 4+. Tier 1 (10/10 fixtures) + Tier 2 (hermetic end-to-end) + Tier 3 (determinism) all green via `bash evals/tests/scorer-verification.sh` → `13/13 scenarios passed`.
+- [x] **Phase 3: Lab Scaffold** (shipped 2026-04-18) — `lab/` directory + README (127 lines, 16 verbatim items from concept-note PRD), repo-level discoverability in README.md + AGENTS.md, `--lab <mode>` parser wired into both runners via shared `lib/co-evolution.sh` helpers, hermetic 4-scenario simulation gate at `tests/lab-routing-simulation.sh` green. First-class beta channel with clear identity AND working runtime surface.
+- [x] **Phase 4: Mode Classifier (frozen)** (shipped 2026-04-18) — `lab/pel/classifier/` picks flavor (bug-catcher / faster / blind-spot / general) per invocation with transparent rationale and user override. 2 plans complete. 6/6 simulation green.
+- [x] **Phase 5: Template-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 6) — `lab/pel/proposer/template/` proposes diffs against `skills/dev-review/templates/*.md` driven by eval-failure signal. 2 plans complete. 8/8 simulation green.
+- [x] **Phase 6: Policy-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 5) — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations across 6 enumerated knobs. 2 plans complete. 8/8 simulation green.
+- [x] **Phase 7: Code-Tier Mutation Proposer** (shipped 2026-04-18) — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist. 2 plans complete. 16/16 simulation green.
+- [x] **Phase 8: PR Emission + Scoring Integration** (shipped 2026-04-19) — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship. 3 plans complete. 10/10 simulation green.
+- [x] **Phase 8.1: Scorer/Runner Contract Wiring** (INSERTED, shipped 2026-04-19) — close 4 warnings from ship-time review (WR-01/02/03/04) by establishing `evals/RUNNER-CONTRACT.md` as shared runner↔scorer spec, wiring real `dev-review.sh` to contract, adding Tier 4 real-runner regression barrier. Unblocks SC-4 dogfood. 4 plans complete. 14/14 simulation green.
 
 ## Phase Details
 
@@ -43,7 +44,10 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. Scorer logic from `score-run.ps1` + comparison logic from `compare-reports.ps1` have Bash equivalents; outputs validated against PS references
   3. Bash harness runs end-to-end on Git Bash for Windows + Linux + macOS without `pwsh` installed (CI simulation on at least two of these)
   4. `pwsh`-dependency documentation updated — harness section of `evals/README.md` marks Bash as the default, PS as legacy reference
-**Plans**: 2-3 plans (likely split: runner port, scorer port, cross-platform verification)
+**Plans**: 3 plans (3/3 complete)
+  - [x] 02-01-PLAN.md — Bash library (co-evolution-evals.sh): YAML loading, deep-merge, report rendering, atomic JSON write + report-template.md copy
+  - [x] 02-02-PLAN.md — Scorer port (score-run.sh): 7-dimension fitness scoring with Jaccard + Levenshtein helpers
+  - [x] 02-03-PLAN.md — Orchestrator + comparator + hermetic Tier 2 via fake runner + combined Tier 1/2/3 gate + README reframe (Bash default, PS legacy)
 
 ### Phase 3: Lab Scaffold
 **Goal**: Establish the `lab/` subdirectory as a first-class beta channel with documented conventions, so every future opt-in feature (PEL tiers, future experiments) has a clear home.
@@ -54,7 +58,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. `lab/README.md` lists current and planned inhabitants (`lab/pel/` for v1.2; `lab/pel-auto/` and `lab/pel-explorer/` noted as v1.3+ placeholders not yet created)
   3. `co-evolve` and `dev-review` runners parse a `--lab <mode>` flag that routes into `lab/<mode>/` without any behavior change for users who don't pass the flag (byte-parity for default invocations verified via simulation)
   4. `lab/README.md` documents the sandbox guarantee: any `--lab` mode runs in isolation from the live checkout and cannot modify master directly — only via emitted PRs
-**Plans**: 1 plan
+**Plans**: 2 plans (wave 1 parallel — non-overlapping file sets) (2/2 complete)
+  - [x] 03-01-PLAN.md — lab/README.md (127 lines) + repo-level README.md + AGENTS.md discoverability (shipped 2026-04-18, commits `36a4f14` + `ab8b6e1`)
+  - [x] 03-02-PLAN.md — --lab <mode> parser in co-evolve-bouncer.sh + dev-review/codex/dev-review.sh (via lib/co-evolution.sh helpers: validate_lab_mode / list_available_lab_modes / dispatch_lab_mode) + tests/lab-routing-simulation.sh (4/4 scenarios) + dev-review/codex/README.md CLI row (shipped 2026-04-18, commits `9e523f0` + `a3ccee3` + `e3fbffb` + `b5efef9`)
 
 ### Phase 4: Mode Classifier (frozen)
 **Goal**: Build the decision layer that auto-selects a fitness flavor for each PEL invocation while staying interpretable and overridable.
@@ -66,7 +72,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   3. User override via `--flavor <name>` on `co-evolve --lab pel-proposer` takes precedence over classifier's pick and is logged
   4. Classifier itself does NOT mutate in v1.2 — its code and prompts are outside PEL's mutable surface (enforced by file allowlist in Phase 7's code proposer)
   5. Simulation test covers: each of the 4 flavor picks with plausible input, override precedence, frozen-surface invariant
-**Plans**: 1-2 plans
+**Plans**: 2 plans (2 waves)
+  - [x] 04-01-PLAN.md — Core classifier: lab/pel/classifier/{classifier.sh, adapter.sh, prompt.md} + lab/pel/README.md (env-var contract doc)
+  - [x] 04-02-PLAN.md — Simulation gate: tests/classifier-simulation.sh (6 scenarios — 4 flavors + override bypass + frozen-surface invariant)
 
 ### Phase 5: Template-Tier Mutation Proposer
 **Goal**: First mutation proposer — the safest tier. Can change only `skills/dev-review/templates/*.md`. This proves the propose-score-emit loop end-to-end before tackling harder tiers.
@@ -77,7 +85,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. Proposer consumes: an eval-failure report from Phase 2's harness, the current template file, and the flavor pick from Phase 4
   3. Proposer output is a well-formed unified diff that applies cleanly to the current template via `patch` or `git apply`
   4. Simulation test: fed a synthetic eval-failure report pointing at a specific template weakness, proposer produces a diff that addresses the weakness (human-graded in the test — this test isn't fully automatable, but the diff-well-formedness and apply-cleanly checks are)
-**Plans**: 1-2 plans
+**Plans**: 2 plans (2 waves)
+  - [ ] 05-01-PLAN.md — Core proposer: lab/pel/proposer/template/{proposer.sh, adapter.sh, prompt.md} + lab/pel/README.md extension (Template-tier section)
+  - [ ] 05-02-PLAN.md — Simulation gate: tests/template-proposer-simulation.sh (8 scenarios — 4 flavors + D-09 multi-file rejection + D-09 non-template-path rejection + D-10 malformed-diff rejection + D-03 missing-env rejection) + tests/fixtures/{eval-failures/*.json, templates/*.md}
 
 ### Phase 6: Policy-Tier Mutation Proposer
 **Goal**: Second mutation proposer — tunes numeric/string knobs that shape protocol behavior without touching templates or code.
@@ -88,7 +98,9 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. `lab/pel/proposer/policy/` produces a proposed delta to the policy file (single knob or a small coherent set) given eval feedback + flavor pick
   3. Proposer output applies via jq/yq deterministically — simulation verifies the resulting policy is syntactically valid and semantically within documented bounds (e.g., retry cap in [0, 10])
   4. Simulation test: proposer takes a synthetic failure, emits a policy delta that would plausibly address it, applies cleanly
-**Plans**: 1 plan
+**Plans**: 2 plans (2 waves)
+  - [ ] 06-01-PLAN.md — Core proposer: lab/pel/proposer/policy/{policy.yaml (6 enumerated knobs per D-03), bounds.jq (single-source bounds validator — halt_error(4)=bounds, halt_error(5)=non-enumerated), prompt.md (cache-friendly mutation prompt with 4-flavor bias), adapter.sh (self-contained Haiku 4.5 adapter), proposer.sh (env validation + jq+yq require_tools + bounds enforcement + D-11 dry-run-by-construction)}
+  - [ ] 06-02-PLAN.md — Simulation gate: tests/policy-proposer-simulation.sh (8 scenarios — 4 flavors with yq-apply verification + D-12 bounds rejection exit 4 + D-12 non-enumerated rejection exit 5 + malformed-JSON exit 3 + env/model/path validation exit 1) + tests/fixtures/policy-feedback/{retry-failure,convergence-slow,cost-overrun,blind-spot-missed}.json + lab/pel/README.md extension (policy proposer contract documentation)
 
 ### Phase 7: Code-Tier Mutation Proposer
 **Goal**: The hardest tier — PEL can propose diffs against `lib/co-evolution.sh` and runner paths. Sandbox + canary + budget enforcement are the ship criteria, not optional.
@@ -111,8 +123,12 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
   2. PR body includes: mutation diff (inline), eval scores before/after, flavor pick + classifier rationale, canary result (if code tier), diff budget usage, timestamps
   3. Simulation test: `co-evolve --lab pel-proposer --target skills/dev-review/templates/compose-prompt.md --dry-run` walks the full pipeline up to the PR-create step (stubs `gh`) and verifies the body is well-formed
   4. Human-in-the-loop dogfood: at least 3 real PEL-emitted PRs are reviewed by the user during v1.2 verification — at least 1 merged, at least 1 closed-without-merge — proving the review gate is real and the UX works
+     > Tracked in [`.planning/VERIFY-SC4.md`](VERIFY-SC4.md). Blocks `git tag v1.2`; does NOT block Phase 8 closure (per 08-CONTEXT.md §D-01 scope separation — Phase 8 closes on SC-1/2/3/5).
   5. Default runner byte-parity preserved: running `co-evolve "task"` or `dev-review "task"` without `--lab pel-proposer` produces identical behavior to v1.1 (regression test)
-**Plans**: 2 plans (invocation wiring + PR body generation; human-dogfood verification)
+**Plans**: 3 plans (foundation + feature/simulation + release-gate tracker)
+  - [x] 08-01-PLAN.md — Foundation: DEF-07-01 fix + 7 wrapper flags on both runners + pel-proposer dispatch + emitter skeleton (pr-emitter.sh + pr-body-template.md) + tier auto-detect + --dry-run PATH-stub scaffolding
+  - [x] 08-02-PLAN.md — Feature + SC-3 simulation gate: full pipeline (classifier + proposer + emitter-owned scoring sandbox + eval cache + PR body render + gh pr create --draft) + 10-scenario hermetic simulation + lab/pel/README.md extension
+  - [x] 08-03-PLAN.md — Release-gate tracker: .planning/VERIFY-SC4.md (human-dogfood review log for v1.2 tag)
 
 ## Progress
 
@@ -129,14 +145,14 @@ Waves:
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 1. Post-v1.1 Fixes | TBD | Planned | — |
-| 2. Bash Eval Harness Port | TBD | Planned | — |
-| 3. Lab Scaffold | TBD | Planned | — |
-| 4. Mode Classifier (frozen) | TBD | Planned | — |
-| 5. Template-Tier Mutation Proposer | TBD | Planned | — |
-| 6. Policy-Tier Mutation Proposer | TBD | Planned | — |
+| 1. Post-v1.1 Fixes | 1/1 | Complete | 2026-04-17 |
+| 2. Bash Eval Harness Port | 3/3 | Complete | 2026-04-18 |
+| 3. Lab Scaffold | 2/2 | Complete | 2026-04-18 |
+| 4. Mode Classifier (frozen) | 2/2 | Complete | 2026-04-18 |
+| 5. Template-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
+| 6. Policy-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 7. Code-Tier Mutation Proposer | TBD | Planned | — |
-| 8. PR Emission + Scoring Integration | TBD | Planned | — |
+| 8. PR Emission + Scoring Integration | 3/3 | Complete | 2026-04-19 |
 
 ## Deferred (candidates for v1.3+)
 
@@ -146,3 +162,16 @@ Waves:
 - **Automated branch/worktree cleanup utility** — carried forward from v1.1 deferred list; standalone utility.
 - **Workspace-agnostic ports of lab PS integration scripts** — v1.0 Phase 9 deferred item.
 - **Goodhart mitigations beyond human review** — research question RQ-001 in `.planning/research/questions.md`; becomes critical for Options 2+3 once auto-merge is on the table.
+
+### Phase 08.1: Scorer/Runner Contract Wiring (INSERTED)
+
+**Goal:** Close the 4 warnings from `.planning/REVIEW-v1.2-ship.md` (WR-01/02/03/04) by wiring the real `dev-review.sh` runner to the Bash eval harness contract it implicitly depends on. Establish `evals/RUNNER-CONTRACT.md` as the shared spec both runners conform to, add a real-runner Tier 4 regression barrier in `evals/tests/scorer-verification.sh`, and unblock the first real eval round (prerequisite for SC-4 dogfood and `git tag v1.2`). Non-`--lab` invocations preserve SC-5 byte-parity.
+**Requirements**: [WR-01, WR-02, WR-03, WR-04, D-01..D-11] (from `08.1-CONTEXT.md`; WR-IDs source: `REVIEW-v1.2-ship.md`)
+**Depends on:** Phase 8
+**Plans:** 4 plans (3 waves)
+
+Plans:
+- [x] 08.1-01-PLAN.md — Contract spec: `evals/RUNNER-CONTRACT.md` + `lib/co-evolution.sh::init_state_json` field extension (shipped 2026-04-19, commits `b479189` + `27ac969`)
+- [x] 08.1-02-PLAN.md — Runner conformance: `dev-review.sh` WR-01 `.status` + WR-02 `outputs/compose.txt` + WR-02 `.updated_at` + WR-04 `--run-dir` flag + phases->history mirror (shipped 2026-04-19, commits `a93f189` + `989d8c8` + `85ee6c1`)
+- [x] 08.1-03-PLAN.md — Harness conformance: `run-evals.sh` WR-03 `--autonomous` removal + WR-04 `--run-dir` passthrough + 9 case-YAML cleanups (shipped 2026-04-19, commits `575cdda` + `3242b08` + `853bc0d`)
+- [x] 08.1-04-PLAN.md — Regression barrier: Tier 4 real-runner smoke in `scorer-verification.sh` + `evals/README.md` cross-reference + D-11 cache-invalidation verification (shipped 2026-04-19, commits `5b79eb2` + `bbeb3a8`)

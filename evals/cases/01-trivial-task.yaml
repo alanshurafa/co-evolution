@@ -15,7 +15,6 @@ runner:
   executor: codex
   bounces: 0
   verify: false
-  autonomous: true
 setup:
   mode: temp_repo
   seed_files:

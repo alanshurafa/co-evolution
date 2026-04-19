@@ -1,0 +1,15 @@
+{
+  "case_id": "synthetic-cost-01",
+  "scores": {
+    "robustness": "PASS",
+    "convergence": "PASS",
+    "plan_quality": "PASS",
+    "execution_fidelity": "PASS",
+    "verify_accuracy": "PASS",
+    "cost": "FAIL",
+    "cross_ai_diversity": "PASS"
+  },
+  "composite": 0.714,
+  "failed_dimension": "cost",
+  "symptom": "wall-clock 1800s exceeds max_wall_clock_seconds=900 by 2x; arbitrate_threshold=0.7 too low so runs keep bouncing past good-enough"
+}

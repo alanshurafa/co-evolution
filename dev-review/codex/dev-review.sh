@@ -46,6 +46,20 @@ CURRENT_HASHES_JSON=""
 EXECUTE_DELTA_JSON=""
 RUN_ID=""
 LAST_INVOKE_EXIT_CODE=0
+# Phase 3 LAB-01: opt-in lab-mode routing. Empty = default runner (byte-parity invariant L-03).
+LAB_MODE=""
+# Phase 8 flags — default off / unset so v1.1 invocations remain byte-parity (SC-5).
+TARGET=""
+TIER=""
+PR_BRANCH=""
+DRY_RUN=false
+BUDGET_USD="25"
+AUTO_YES=false
+FLAVOR_OVERRIDE=""
+# Phase 8.1 WR-04 / D-05: run-dir override for eval harness. Empty = v1.2 default path
+# (byte-parity invariant SC-5 / D-06). Harness-side passes an absolute path rooted under
+# the eval fixture's .co-evolution/runs/ subtree.
+RUN_DIR_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
@@ -67,6 +81,14 @@ Options:
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
+  --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
+  --target FILE            PEL-only: file to mutate (used with --lab pel-proposer; must be repo-relative forward-slash path, e.g. lib/co-evolution.sh — NOT absolute or WSL/Windows-style)
+  --tier TIER              PEL-only: override tier auto-detect (template|policy|code)
+  --pr-branch NAME         PEL-only: override default pel/<tier>/<short-hash> branch name
+  --dry-run                PEL-only: stub `gh` via CO_EVOLVE_DRY_RUN=1 + PATH shadow
+  --budget USD             PEL-only: scoring budget cap (default 25; exit 6 on exhaustion)
+  --yes                    PEL-only: skip interactive preflight cost-estimate prompt
+  --flavor NAME            PEL-only: override classifier (maps to PEL_FLAVOR_OVERRIDE)
   --help                   Show this help text
 EOF
 }
@@ -561,6 +583,11 @@ Output ONLY the plan document. No preamble."
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
+  # WR-02 / D-03: persist compose output at the contract path (evals/RUNNER-CONTRACT.md §2)
+  # so scorer cross-AI diversity dimension (evals/score-run.sh:559) can read it. Plain path
+  # (no dot-prefix) survives cleanup_runtime_artifacts (maxdepth 1, -name '.*'). Mirrors the
+  # outputs/bounce-NN.txt persistence pattern at line 675.
+  cp "$compose_output_file" "$RUN_DIR/outputs/compose.txt"
 }
 
 verify_bounce_ran() {
@@ -1006,6 +1033,62 @@ while [[ $# -gt 0 ]]; do
       WORKTREE_SPEC="$2"
       shift 2
       ;;
+    --lab)
+      # Phase 3 LAB-01: opt-in routing to lab/<MODE>/entry.sh.
+      # Arm sits BEFORE the `--` argv-terminator so args after `--` remain
+      # positional (T-03-02-04 argv-position invariant).
+      [[ $# -gt 1 ]] || die "--lab requires a mode"
+      LAB_MODE="$2"
+      shift 2
+      ;;
+    --target)
+      [[ $# -gt 1 ]] || die "--target requires a value"
+      TARGET="$2"
+      shift 2
+      ;;
+    --tier)
+      [[ $# -gt 1 ]] || die "--tier requires a value"
+      case "$2" in
+        template|policy|code) TIER="$2" ;;
+        *) die "--tier must be template|policy|code (got: $2)" ;;
+      esac
+      shift 2
+      ;;
+    --pr-branch)
+      [[ $# -gt 1 ]] || die "--pr-branch requires a value"
+      PR_BRANCH="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --budget)
+      [[ $# -gt 1 ]] || die "--budget requires a value"
+      [[ "$2" =~ ^[0-9]+$ ]] || die "--budget must be a positive integer (got: $2)"
+      BUDGET_USD="$2"
+      shift 2
+      ;;
+    --yes)
+      AUTO_YES=true
+      shift
+      ;;
+    --flavor)
+      [[ $# -gt 1 ]] || die "--flavor requires a value"
+      case "$2" in
+        bug-catcher|faster-converger|blind-spot-surfacer|general) FLAVOR_OVERRIDE="$2" ;;
+        *) die "--flavor must be one of bug-catcher|faster-converger|blind-spot-surfacer|general (got: $2)" ;;
+      esac
+      shift 2
+      ;;
+    --run-dir)
+      [[ $# -gt 1 ]] || die "--run-dir requires a value"
+      # Path-traversal guard — no '..' anywhere. Harness-side already sanitizes per
+      # evals/run-evals.sh path policy; this is defense in depth.
+      [[ "$2" != *..* ]] || die "--run-dir must not contain '..': $2"
+      RUN_DIR_OVERRIDE="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -1033,6 +1116,42 @@ done
 # side effect (RUN_DIR creation, state.json init, git ops). Fails fast with die.
 if [[ -n "$BRANCH_SPEC" && -n "$WORKTREE_SPEC" ]]; then
   die "--branch and --worktree are mutually exclusive"
+fi
+
+# Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
+# (RUN_DIR creation, git ops, agent-CLI require checks). Byte-parity
+# invariant (L-03): LAB_MODE empty → no-op. L-04: unknown-mode fail-fast
+# is handled inside dispatch_lab_mode.
+#
+# Argv contract (v1.2, W-3): "$TASK" here is the concatenated task string
+# produced by the existing parser. Lab inhabitants receive it as a
+# single argv slot — i.e. entry.sh's $1 is the whole task string.
+# See lab/README.md §How-to-add for the v1.2 contract. If a lab inhabitant
+# needs multi-slot argv, it must split $1 itself.
+# Phase 8: when routing to pel-proposer, rebuild argv from the parsed
+# flag variables so the emitter sees them. For other lab modes, preserve
+# Phase 3 behavior (pass $TASK as sole trailing arg).
+if [[ "$LAB_MODE" == "pel-proposer" ]]; then
+  # IN-04: $TARGET is forwarded verbatim. The pr-emitter requires a
+  # repo-relative forward-slash path (matches allowlist.txt format). WSL users
+  # passing `C:\...` paths will fail the allowlist check downstream — that's
+  # the documented contract (see --target help text above).
+  lab_tail=()
+  [[ -n "$TARGET" ]] && lab_tail+=("--target" "$TARGET")
+  [[ -n "$TIER" ]] && lab_tail+=("--tier" "$TIER")
+  [[ -n "$PR_BRANCH" ]] && lab_tail+=("--pr-branch" "$PR_BRANCH")
+  [[ "$DRY_RUN" == "true" ]] && lab_tail+=("--dry-run")
+  [[ "$BUDGET_USD" != "25" ]] && lab_tail+=("--budget" "$BUDGET_USD")
+  [[ "$AUTO_YES" == "true" ]] && lab_tail+=("--yes")
+  [[ -n "$FLAVOR_OVERRIDE" ]] && lab_tail+=("--flavor" "$FLAVOR_OVERRIDE")
+  [[ -n "$TASK" ]] && lab_tail+=("--" "$TASK")
+  # REPO_ROOT is set at the top of this script (line 6); lab/ is at repo root.
+  dispatch_lab_mode "$LAB_MODE" "$REPO_ROOT/lab" "${lab_tail[@]}"
+  # dispatch_lab_mode exec's — unreachable on success.
+elif [[ -n "$LAB_MODE" ]]; then
+  # REPO_ROOT is set at the top of this script (line 6); lab/ is at repo root.
+  dispatch_lab_mode "$LAB_MODE" "$REPO_ROOT/lab" "$TASK"
+  # dispatch_lab_mode exec's — unreachable on success.
 fi
 
 WORKDIR=$(normalize_path_for_bash "$WORKDIR")
@@ -1086,7 +1205,12 @@ ensure_codex_compatible_workdir
 
 require_selected_agent_clis
 
-RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
+# Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
+if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
+  RUN_DIR="$RUN_DIR_OVERRIDE"
+else
+  RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
+fi
 mkdir -p "$RUN_DIR"
 mkdir -p "$RUN_DIR/outputs"
 PLAN_PATH="${RUN_DIR}/plan.md"
@@ -1102,14 +1226,6 @@ CURRENT_HASHES_JSON="${RUN_DIR}/.current-hashes.json"
 EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
 RUN_ID="dev-review-${TIMESTAMP}"
 init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
-
-if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  IN_GIT=true
-  INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
-  if [[ -n "$INITIAL_GIT_STATUS" ]]; then
-    INITIAL_GIT_DIRTY=true
-  fi
-fi
 
 log "============================================"
 log " DEV-REVIEW SESSION"
@@ -1198,6 +1314,19 @@ elif [[ -n "$WORKTREE_SPEC" ]]; then
     write_state_field "$STATE_JSON" ".worktree_path" "string" "$WORKTREE_PATH"
   fi
   unset _new_wt
+fi
+
+# FIX-WR-04: Capture WORKDIR's git state AFTER any --worktree reassignment
+# above so worktree mode sees the worktree's status, not the parent repo's.
+# Previously this block ran BEFORE the worktree reassignment — a dirty parent
+# + clean worktree would make verify silently skip even though the worktree
+# was actually fine. Moved here so execute/verify see the real workdir state.
+if git -C "$WORKDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  IN_GIT=true
+  INITIAL_GIT_STATUS=$(git -C "$WORKDIR" status --short)
+  if [[ -n "$INITIAL_GIT_STATUS" ]]; then
+    INITIAL_GIT_DIRTY=true
+  fi
 fi
 
 # RTUX-03: REVISE auto-loop. Default REVISE_LOOP_MAX=0 runs exactly one pass
@@ -1292,8 +1421,41 @@ _run_revise_loop() {
 _run_revise_loop
 unset REVISE_FEEDBACK_JSON
 
+# Phase 8.1 WR-01 / D-02: derive terminal .status from exit bands (mirrors the
+# final-exit switch at lines 1420-1428). Values per evals/RUNNER-CONTRACT.md §1.
+if [[ "$EXECUTE_EXIT" -eq 0 && "$VERIFY_EXIT" -eq 0 ]]; then
+  _run_status="completed"
+elif [[ "$EXECUTE_EXIT" -eq 2 || "$VERIFY_EXIT" -eq 2 ]]; then
+  _run_status="partial"
+else
+  _run_status="failed"
+fi
+
+# Shared end-of-run ISO8601 timestamp — reused for both .completed_at and .updated_at
+# so the scorer's wall-clock calc (score-run.sh:261) reads a consistent value.
+_run_end_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+write_state_field "$STATE_JSON" ".status"       "string" "$_run_status"
 # RNPT-04: run completion timestamp (before cleanup sweeps transient dotfiles).
-write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+write_state_field "$STATE_JSON" ".completed_at" "string" "$_run_end_ts"
+# Phase 8.1 WR-02 supporting: .updated_at feeds Cost dimension (score-run.sh:261).
+write_state_field "$STATE_JSON" ".updated_at"   "string" "$_run_end_ts"
+
+# Phase 8.1 / D-01: mirror phases[] into history[] (canonical contract name).
+# Field-rename transition posture — phases[] stays as legacy alias for one
+# minor version; scorer's .history[] reads (score-run.sh:338) get populated.
+if command -v jq >/dev/null 2>&1; then
+  _tmp_history=$(mktemp)
+  if jq '.history = (.phases | map({phase: .name, status: .status, detail: "", timestamp: .completed_at}))' \
+       "$STATE_JSON" > "$_tmp_history"; then
+    mv "$_tmp_history" "$STATE_JSON"
+  else
+    rm -f "$_tmp_history"
+    log "WARNING: jq failed mirroring phases -> history — state.json unchanged (.history will read as [])"
+  fi
+  unset _tmp_history
+fi
+unset _run_status _run_end_ts
 
 cleanup_runtime_artifacts
 
