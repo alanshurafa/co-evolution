@@ -700,7 +700,10 @@ fi
 if [[ "$CANARY_FAILED_MODE" == "true" ]]; then
   PR_TITLE="[CANARY-FAILED] pel($resolved_tier): $TARGET"
 else
-  rationale_subject=$(printf '%s' "$rationale" | head -c 50 | tr '\n' ' ' | sed 's/  */ /g')
+  # IN-05: `head -c` cuts at bytes and can land mid-UTF-8 codepoint, producing
+  # mojibake in the PR title. `cut -c` counts characters. Newline/whitespace
+  # collapse happens first so `cut -c1-50` operates on a single-line stream.
+  rationale_subject=$(printf '%s' "$rationale" | tr '\n' ' ' | sed 's/  */ /g' | cut -c1-50)
   PR_TITLE="pel($resolved_tier): $rationale_subject"
 fi
 
