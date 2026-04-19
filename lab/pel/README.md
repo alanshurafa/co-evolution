@@ -610,9 +610,32 @@ allowlist-exclusion glob for the code-tier proposer.
 ### Simulation gate
 
 Plan 02 ships `tests/code-proposer-simulation.sh` — a hermetic simulation
-covering SC-5 (≥15 scenarios: 4 flavor happy-paths + 5 text-pipeline edge
-cases + 5 canary scenarios + 5+ adversarial rejections). Final line
-`N/N scenarios passed` once Plan 02 lands.
+covering SC-5 with **16 scenarios**:
+
+- **A–D (4 flavor happy-paths):** one per flavor, each emits a valid diff,
+  passes the 5 pre-flight gates, applies in sandbox, survives canary, and
+  writes `state.json` with `outcome=accepted` + `canary.passed=true`.
+- **E–I (5 text-pipeline edge cases)** from
+  `.planning/notes/phase-7-simulation-lessons.md`: empty-line context
+  marker (E), no-trailing-newline marker (F), CRLF-on-disk file (G),
+  shell metacharacters `$VAR` + `` ` `` + `<<'EOF'` + `*.sh` (H), and
+  `patch`-vs-`git apply` divergence (I, exits 3).
+- **J–P (7 adversarial rejections):** allowlist violations targeting
+  classifier frozen surface (J), `.planning/STATE.md` (K), and `tests/`
+  (L) — each exits 5. Budget exceeded (M, exit 6), multi-file (N, exit 4),
+  missing `PEL_CODE_FEEDBACK` (O, exit 1), canary-breaking mutation (P,
+  exit 7 with `state.json.outcome=canary-failed`).
+
+Final line on success: `16/16 scenarios passed`. The simulation is
+hermetic — stub `claude` CLI via PATH injection, no network, no real Opus
+invocation. The canary runs inside a real sandbox worktree with Plan 01's
+own PATH-injected `claude`/`codex` stubs, so all 5 canary scenarios pass
+against unmutated-surface happy-paths and fail deterministically on the
+syntax-breaking mutation in scenario P.
+
+The simulation lives at `tests/code-proposer-simulation.sh`. Fixtures used
+by the simulation live at `tests/fixtures/code-feedback/*.json` (4 synthetic
+Phase-2-scorer-shaped eval-failure reports, one per flavor).
 
 ### Cross-references
 
