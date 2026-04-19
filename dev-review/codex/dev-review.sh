@@ -56,6 +56,10 @@ DRY_RUN=false
 BUDGET_USD="25"
 AUTO_YES=false
 FLAVOR_OVERRIDE=""
+# Phase 8.1 WR-04 / D-05: run-dir override for eval harness. Empty = v1.2 default path
+# (byte-parity invariant SC-5 / D-06). Harness-side passes an absolute path rooted under
+# the eval fixture's .co-evolution/runs/ subtree.
+RUN_DIR_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
@@ -1077,6 +1081,14 @@ while [[ $# -gt 0 ]]; do
       esac
       shift 2
       ;;
+    --run-dir)
+      [[ $# -gt 1 ]] || die "--run-dir requires a value"
+      # Path-traversal guard — no '..' anywhere. Harness-side already sanitizes per
+      # evals/run-evals.sh path policy; this is defense in depth.
+      [[ "$2" != *..* ]] || die "--run-dir must not contain '..': $2"
+      RUN_DIR_OVERRIDE="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -1193,7 +1205,12 @@ ensure_codex_compatible_workdir
 
 require_selected_agent_clis
 
-RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
+# Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
+if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
+  RUN_DIR="$RUN_DIR_OVERRIDE"
+else
+  RUN_DIR="${REPO_ROOT}/runs/dev-review-${TIMESTAMP}"
+fi
 mkdir -p "$RUN_DIR"
 mkdir -p "$RUN_DIR/outputs"
 PLAN_PATH="${RUN_DIR}/plan.md"
