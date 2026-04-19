@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
-status: executing
-stopped_at: Completed Phase 08 Plan 02 (08-02-PLAN.md) — full PEL pipeline + 10/10 SC-3 sim + README docs; Phase 7 still 16/16; ready for Plan 03 (VERIFY-SC4.md dogfood tracker)
-last_updated: "2026-04-19T15:13:57.803Z"
+status: verifying
+stopped_at: Completed Phase 08 Plan 03 (08-03-PLAN.md) — VERIFY-SC4.md release-gate tracker shipped; ROADMAP cross-referenced; Phase 8 ready for closure verification on SC-1/2/3/5 (SC-4 deferred to post-ship dogfood per D-01)
+last_updated: "2026-04-19T15:25:40.836Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 17
-  completed_plans: 17
+  completed_plans: 18
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 Phase: 08 (pr-emitter-scoring) — EXECUTING
 Plan: 3 of 3
 Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-19
 Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
 
@@ -53,6 +53,7 @@ Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
 | Phase 07-code-tier-proposer P02 | 27min 32s | 2 tasks | 6 files |
 | Phase 08-pr-emitter-scoring P01 | 15min 13s | 3 tasks | 9 files |
 | Phase 08-pr-emitter-scoring P02 | 37min 2s | 3 tasks | 7 files |
+| Phase 08-pr-emitter-scoring P03 | 3min 22s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ Recent decisions affecting current work (v1.2 kickoff):
 - [Phase 07-code-tier-proposer]: Phase 7 Plan 02: 16-scenario hermetic SC-5 gate shipped at tests/code-proposer-simulation.sh (1074 lines, 4 happy-paths + 5 text-pipeline edge cases + 7 adversarial rejections). PATH-injected git shim pattern introduced (intercepts git worktree remove --force to snapshot state.json before teardown) — enables post-exec state.json assertions without modifying Plan 01 proposer.sh. 4 Phase-2-scorer-shaped JSON fixtures under tests/fixtures/code-feedback/. All text-pipeline edge cases (E-I: empty-line context marker, trailing newline, CRLF, shell metachars, patch-vs-git-apply divergence) from phase-7-simulation-lessons.md pass on first run against Plan 01 surface — confirms Plan 01's capture_diff narrow-regex and --whitespace=nowarn wiring work. Plan 01 stdout leak ('HEAD is now at...' from git worktree add) logged to deferred-items.md as DEF-07-01 for Phase 8 to fix. Final line 16/16 scenarios passed matches v1.2 phase-gate convention.
 - [Phase 08-pr-emitter-scoring]: Phase 8 Plan 01: DEF-07-01 fix landed (proposer.sh:306 stdout suppression) — Phase 7 sim 16/16 re-verified; 7 PEL wrapper flags wired symmetrically on co-evolve-bouncer.sh + dev-review.sh with byte-parity defaults (SC-5 preserved); lab/pel/pr-emitter/ skeleton shipped with D-04 tier auto-detect + D-17 exit 10 + D-20 double-brace placeholder template; Rule 3 deviation — added lab/pel-proposer/entry.sh one-line flat-namespace dispatch resolver to reconcile plan's three joint constraints (dispatch via --lab pel-proposer, artifact at lab/pel/pr-emitter/entry.sh, dispatch_lab_mode unchanged)
 - [Phase 08-pr-emitter-scoring]: Phase 8 Plan 02: Full PEL Option 1 pipeline shipped — pr-emitter.sh expanded from 224 to 644 LOC (Sections A-J) replacing Plan 01 scoring stub with classifier invoke + proposer dispatch via PATH-injected git shim for state.json capture + tier-aware apply (git apply for template/code; yq -i per mutation for policy) + emitter-owned scoring sandbox + cache with fixture+scripts+worktree+dirty hash + budget enforcement + render_pr_body with 13 double-brace placeholders + gh pr create --draft. Hermetic SC-3 gate: tests/pr-emitter-simulation.sh 10 scenarios (A template, B policy, C code+canary, D dry-run, E CANARY-FAILED, F budget exit 6, G hard-error exit 10, H override, I byte-parity, J cache hit) 10/10 green + idempotent. Phase 7 sim still 16/16. 4 auto-fixed deviations (gh stub argv-capture order bug, policy_path verbatim contract documentation, sim branch-name cleanup, cleanup-trap registry pattern). Self-containment D-07 holds. Plan 03 (VERIFY-SC4.md dogfood tracker) ready to ship.
+- [Phase 08-pr-emitter-scoring]: Phase 8 Plan 03: VERIFY-SC4.md release-gate tracker shipped at .planning/VERIFY-SC4.md (89 lines, 8 sections) with SC-4 rubric verbatim + review-log scaffold (3 empty rows + rolling totals + Pass state ❌) + D-15 canary-failed accounting + triple-AND closure policy. ROADMAP Phase 8 SC-4 entry gains single additive sub-bullet cross-referencing VERIFY-SC4.md with explicit blocking semantics (blocks git tag v1.2; does NOT block Phase 8 closure per D-01). Phase 8 now closable on SC-1/2/3/5; SC-4 deferred to post-ship dogfood. No deviations — plan executed exactly as written.
 
 ### Pending Todos
 
@@ -101,8 +103,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-19T15:13:57.797Z
-Stopped at: Completed Phase 08 Plan 02 (08-02-PLAN.md) — full PEL pipeline + 10/10 SC-3 sim + README docs; Phase 7 still 16/16; ready for Plan 03 (VERIFY-SC4.md dogfood tracker)
+Last session: 2026-04-19T15:25:40.831Z
+Stopped at: Completed Phase 08 Plan 03 (08-03-PLAN.md) — VERIFY-SC4.md release-gate tracker shipped; ROADMAP cross-referenced; Phase 8 ready for closure verification on SC-1/2/3/5 (SC-4 deferred to post-ship dogfood per D-01)
 Resume file: None
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
