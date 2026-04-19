@@ -78,7 +78,7 @@ Options:
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
   --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
-  --target FILE            PEL-only: file to mutate (used with --lab pel-proposer)
+  --target FILE            PEL-only: file to mutate (used with --lab pel-proposer; must be repo-relative forward-slash path, e.g. lib/co-evolution.sh — NOT absolute or WSL/Windows-style)
   --tier TIER              PEL-only: override tier auto-detect (template|policy|code)
   --pr-branch NAME         PEL-only: override default pel/<tier>/<short-hash> branch name
   --dry-run                PEL-only: stub `gh` via CO_EVOLVE_DRY_RUN=1 + PATH shadow
@@ -1115,6 +1115,10 @@ fi
 # flag variables so the emitter sees them. For other lab modes, preserve
 # Phase 3 behavior (pass $TASK as sole trailing arg).
 if [[ "$LAB_MODE" == "pel-proposer" ]]; then
+  # IN-04: $TARGET is forwarded verbatim. The pr-emitter requires a
+  # repo-relative forward-slash path (matches allowlist.txt format). WSL users
+  # passing `C:\...` paths will fail the allowlist check downstream — that's
+  # the documented contract (see --target help text above).
   lab_tail=()
   [[ -n "$TARGET" ]] && lab_tail+=("--target" "$TARGET")
   [[ -n "$TIER" ]] && lab_tail+=("--tier" "$TIER")
