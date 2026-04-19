@@ -1,0 +1,19 @@
+{
+  "case_id": "07-sim-lab-routing-edge",
+  "status": "ok",
+  "run_id": "20260418-000300",
+  "composite": 0.61,
+  "scores": {
+    "robustness": "PARTIAL",
+    "convergence": "PARTIAL",
+    "plan_quality": "PARTIAL",
+    "execution_fidelity": "PARTIAL",
+    "verify_accuracy": "PASS",
+    "cost": "PARTIAL",
+    "cross_ai_diversity": "PASS"
+  },
+  "details": {
+    "weakness": "broad mid-quality regression: dispatch_lab_mode in lib/co-evolution.sh falls through to default case for unrecognized modes without logging; lab routing silently drops unknown modes"
+  },
+  "target_file": "lib/co-evolution.sh"
+}
