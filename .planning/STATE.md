@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Protocol Evolution Loop — Proposer Only
 status: verifying
-stopped_at: "Completed 07-02-PLAN.md (simulation gate: 16/16 scenarios passed). Phase 7 code-tier-proposer ready for verification; v1.2 milestone Phase 7 complete, Phase 8 (PR emitter) unblocked."
-last_updated: "2026-04-19T03:48:05.747Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-04-19T04:33:15.799Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
@@ -97,8 +97,8 @@ Recent decisions affecting current work (v1.2 kickoff):
 
 ## Session Continuity
 
-Last session: 2026-04-19T03:30:40.070Z
-Stopped at: Completed 07-02-PLAN.md (simulation gate: 16/16 scenarios passed). Phase 7 code-tier-proposer ready for verification; v1.2 milestone Phase 7 complete, Phase 8 (PR emitter) unblocked.
-Resume file: None
+Last session: 2026-04-19T04:33:15.793Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-pr-emitter-scoring/08-CONTEXT.md
 Active PR: None yet on v1.2 branch (not yet created)
 Reference docs: v1.0 `.planning/milestones/v1.0-SUMMARY.md`, v1.1 `.planning/milestones/v1.1-SUMMARY.md`; upstream contract at `runners/codex-ps/evals/UPSTREAM-MESSAGE.md` (all v1.0 items closed); Phase 2 final: `.planning/phases/02-bash-eval-harness-port/02-03-SUMMARY.md`; Phase 3 finals: `.planning/phases/03-lab-scaffold/03-01-SUMMARY.md` + `.planning/phases/03-lab-scaffold/03-02-SUMMARY.md`
