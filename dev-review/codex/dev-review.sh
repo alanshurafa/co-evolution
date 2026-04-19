@@ -579,6 +579,11 @@ Output ONLY the plan document. No preamble."
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
   cp "$compose_output_file" "$PLAN_PATH"
   cp "$PLAN_PATH" "$RUN_DIR/original-plan.md"
+  # WR-02 / D-03: persist compose output at the contract path (evals/RUNNER-CONTRACT.md §2)
+  # so scorer cross-AI diversity dimension (evals/score-run.sh:559) can read it. Plain path
+  # (no dot-prefix) survives cleanup_runtime_artifacts (maxdepth 1, -name '.*'). Mirrors the
+  # outputs/bounce-NN.txt persistence pattern at line 675.
+  cp "$compose_output_file" "$RUN_DIR/outputs/compose.txt"
 }
 
 verify_bounce_ran() {
