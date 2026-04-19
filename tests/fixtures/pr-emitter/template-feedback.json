@@ -1,0 +1,25 @@
+{
+  "scored_at": "2026-04-19T10:00:00Z",
+  "runner": "bash",
+  "scenarios": [
+    {
+      "name": "template-weakness",
+      "passed": false,
+      "robust_fails": 2,
+      "scores": {
+        "fitness": 0.55,
+        "convergence": 0.7,
+        "verify_accuracy": 0.6
+      }
+    }
+  ],
+  "aggregate": {
+    "fitness": 0.55,
+    "convergence": 0.7,
+    "verify_accuracy": 0.6,
+    "robust_fails": 2
+  },
+  "failed_dimensions": ["fitness", "verify_accuracy"],
+  "target_hint": "skills/dev-review/templates/compose-prompt.md",
+  "flavor_hint": "bug-catcher"
+}

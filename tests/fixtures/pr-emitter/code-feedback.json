@@ -1,0 +1,23 @@
+{
+  "scored_at": "2026-04-19T10:00:00Z",
+  "runner": "bash",
+  "scenarios": [
+    {
+      "name": "helper-signature-gap",
+      "passed": false,
+      "robust_fails": 3,
+      "scores": {
+        "fitness": 0.5,
+        "verify_accuracy": 0.55
+      }
+    }
+  ],
+  "aggregate": {
+    "fitness": 0.5,
+    "verify_accuracy": 0.55,
+    "robust_fails": 3
+  },
+  "failed_dimensions": ["fitness", "verify_accuracy"],
+  "target_hint": "lib/co-evolution.sh",
+  "flavor_hint": "bug-catcher"
+}

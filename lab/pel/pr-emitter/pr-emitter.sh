@@ -223,25 +223,26 @@ if [[ "$DRY_RUN" == "true" || "${CO_EVOLVE_DRY_RUN:-}" == "1" ]]; then
 #!/usr/bin/env bash
 # PATH-shadowed gh stub for --dry-run.
 printf 'DRY-RUN: gh %s\n' "$*" >&2
+# Log full argv to GH_ARGS_MARKER BEFORE any shift-based body-file extraction
+# so grep-against-argv assertions see the whole invocation.
+if [[ -n "${GH_ARGS_MARKER:-}" ]]; then
+  printf 'called: %s\n' "$*" >> "$GH_ARGS_MARKER"
+fi
 # Capture --body-file content to GH_BODY_SINK when present (simulation harness
 # sets this env var so per-scenario body can be asserted via grep).
 if [[ "$*" == *"--body-file"* ]]; then
-  i=1
+  body_path=""
+  prev=""
   for a in "$@"; do
-    if [[ "$a" == "--body-file" ]]; then
-      n=$((i+1))
-      shift "$((n-1))"
-      body_path="$1"
-      if [[ -n "${GH_BODY_SINK:-}" && -f "$body_path" ]]; then
-        cp "$body_path" "$GH_BODY_SINK" 2>/dev/null || true
-      fi
+    if [[ "$prev" == "--body-file" ]]; then
+      body_path="$a"
       break
     fi
-    i=$((i+1))
+    prev="$a"
   done
-fi
-if [[ -n "${GH_ARGS_MARKER:-}" ]]; then
-  printf 'called: %s\n' "$*" >> "$GH_ARGS_MARKER"
+  if [[ -n "$body_path" && -n "${GH_BODY_SINK:-}" && -f "$body_path" ]]; then
+    cp "$body_path" "$GH_BODY_SINK" 2>/dev/null || true
+  fi
 fi
 # Drain any leftover stdin so callers don't block on pipes.
 if [[ ! -t 0 ]]; then cat >/dev/null; fi
@@ -359,6 +360,11 @@ case "$resolved_tier" in
     export PEL_FEEDBACK="$PEL_EVAL_REPORT"
     export PEL_POLICY_PATH="$TARGET_ABS"
     export PEL_FLAVOR="$flavor"
+    # Policy proposer's adapter enforces that the LLM-returned `.policy_path`
+    # equals PEL_POLICY_PATH verbatim (Phase 6 adapter.sh:179-183). Callers
+    # whose LLM output uses repo-relative paths must supply PEL_POLICY_PATH
+    # repo-relative as well. The emitter passes the absolute path here; its
+    # stub/real LLM must return the same absolute form.
     proposer_output=$(PATH="$EMITTER_BIN:$PATH" bash "$REPO_ROOT/lab/pel/proposer/policy/proposer.sh" "${TASK:-mutate $TARGET}") || proposer_rc=$?
     ;;
   code)
