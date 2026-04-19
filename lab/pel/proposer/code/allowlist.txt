@@ -1,0 +1,3 @@
+lib/co-evolution.sh
+dev-review/codex/dev-review.sh
+agent-bouncer/agent-bouncer.sh
