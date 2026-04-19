@@ -4,6 +4,8 @@ Items discovered during Phase 7 execution that are out of scope for the current 
 
 ## DEF-07-01: proposer.sh stdout leak from `git worktree add`
 
+**Status:** Closed 2026-04-19 in Phase 8 Plan 01 commit 1d43019. Phase 7 simulation re-verified 16/16 green.
+
 **Discovered:** 2026-04-19 during Plan 02 execution (end-to-end verification of scenario A)
 **Severity:** Moderate (Plan 01 surface bug; does NOT block Plan 02, but WILL block Phase 8 PR emitter)
 **Scope:** Cross-plan — cannot fix in Plan 02 per the plan constraint "No modifications to Plan 01 code (lab/pel/proposer/code/**)"
