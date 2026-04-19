@@ -127,7 +127,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 **Plans**: 3 plans (foundation + feature/simulation + release-gate tracker)
   - [x] 08-01-PLAN.md — Foundation: DEF-07-01 fix + 7 wrapper flags on both runners + pel-proposer dispatch + emitter skeleton (pr-emitter.sh + pr-body-template.md) + tier auto-detect + --dry-run PATH-stub scaffolding
   - [x] 08-02-PLAN.md — Feature + SC-3 simulation gate: full pipeline (classifier + proposer + emitter-owned scoring sandbox + eval cache + PR body render + gh pr create --draft) + 10-scenario hermetic simulation + lab/pel/README.md extension
-  - [ ] 08-03-PLAN.md — Release-gate tracker: .planning/VERIFY-SC4.md (human-dogfood review log for v1.2 tag)
+  - [x] 08-03-PLAN.md — Release-gate tracker: .planning/VERIFY-SC4.md (human-dogfood review log for v1.2 tag)
 
 ## Progress
 
@@ -151,7 +151,7 @@ Waves:
 | 5. Template-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 6. Policy-Tier Mutation Proposer | 2/2 | Complete | 2026-04-18 |
 | 7. Code-Tier Mutation Proposer | TBD | Planned | — |
-| 8. PR Emission + Scoring Integration | 0/3 | Planned | — |
+| 8. PR Emission + Scoring Integration | 3/3 | Complete | 2026-04-19 |
 
 ## Deferred (candidates for v1.3+)
 
