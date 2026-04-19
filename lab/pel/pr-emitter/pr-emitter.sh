@@ -430,8 +430,14 @@ diff_budget=0
 canary_result="n/a (non-code tier)"
 
 if [[ -f "$STATE_SNAPSHOT" ]]; then
-  diff_lines=$(jq -r '.diff_lines // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
-  diff_budget=$(jq -r '.diff_budget // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
+  # WR-08: `jq -r '... // 0'` emits the raw string form — if state.json has a
+  # non-numeric value or is corrupted mid-write, `-eq 0` below errors under
+  # set -e ([[: "null": syntax error). Normalize via a shell-level numeric
+  # check so non-integers fall back to 0 deterministically.
+  diff_lines_raw=$(jq -r '.diff_lines // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
+  [[ "$diff_lines_raw" =~ ^[0-9]+$ ]] && diff_lines="$diff_lines_raw" || diff_lines=0
+  diff_budget_raw=$(jq -r '.diff_budget // 0' "$STATE_SNAPSHOT" 2>/dev/null || echo 0)
+  [[ "$diff_budget_raw" =~ ^[0-9]+$ ]] && diff_budget="$diff_budget_raw" || diff_budget=0
   if [[ "$resolved_tier" == "code" ]]; then
     canary_passed=$(jq -r '.canary.passed // false' "$STATE_SNAPSHOT" 2>/dev/null || echo false)
     canary_failed_at=$(jq -r '.canary.failed_at // "none"' "$STATE_SNAPSHOT" 2>/dev/null || echo none)
