@@ -48,6 +48,14 @@ RUN_ID=""
 LAST_INVOKE_EXIT_CODE=0
 # Phase 3 LAB-01: opt-in lab-mode routing. Empty = default runner (byte-parity invariant L-03).
 LAB_MODE=""
+# Phase 8 flags — default off / unset so v1.1 invocations remain byte-parity (SC-5).
+TARGET=""
+TIER=""
+PR_BRANCH=""
+DRY_RUN=false
+BUDGET_USD="25"
+AUTO_YES=false
+FLAVOR_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
@@ -70,6 +78,13 @@ Options:
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
   --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
+  --target FILE            PEL-only: file to mutate (used with --lab pel-proposer)
+  --tier TIER              PEL-only: override tier auto-detect (template|policy|code)
+  --pr-branch NAME         PEL-only: override default pel/<tier>/<short-hash> branch name
+  --dry-run                PEL-only: stub `gh` via CO_EVOLVE_DRY_RUN=1 + PATH shadow
+  --budget USD             PEL-only: scoring budget cap (default 25; exit 6 on exhaustion)
+  --yes                    PEL-only: skip interactive preflight cost-estimate prompt
+  --flavor NAME            PEL-only: override classifier (maps to PEL_FLAVOR_OVERRIDE)
   --help                   Show this help text
 EOF
 }
@@ -1017,6 +1032,46 @@ while [[ $# -gt 0 ]]; do
       LAB_MODE="$2"
       shift 2
       ;;
+    --target)
+      [[ $# -gt 1 ]] || die "--target requires a value"
+      TARGET="$2"
+      shift 2
+      ;;
+    --tier)
+      [[ $# -gt 1 ]] || die "--tier requires a value"
+      case "$2" in
+        template|policy|code) TIER="$2" ;;
+        *) die "--tier must be template|policy|code (got: $2)" ;;
+      esac
+      shift 2
+      ;;
+    --pr-branch)
+      [[ $# -gt 1 ]] || die "--pr-branch requires a value"
+      PR_BRANCH="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --budget)
+      [[ $# -gt 1 ]] || die "--budget requires a value"
+      [[ "$2" =~ ^[0-9]+$ ]] || die "--budget must be a positive integer (got: $2)"
+      BUDGET_USD="$2"
+      shift 2
+      ;;
+    --yes)
+      AUTO_YES=true
+      shift
+      ;;
+    --flavor)
+      [[ $# -gt 1 ]] || die "--flavor requires a value"
+      case "$2" in
+        bug-catcher|faster-converger|blind-spot-surfacer|general) FLAVOR_OVERRIDE="$2" ;;
+        *) die "--flavor must be one of bug-catcher|faster-converger|blind-spot-surfacer|general (got: $2)" ;;
+      esac
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -1056,7 +1111,23 @@ fi
 # single argv slot — i.e. entry.sh's $1 is the whole task string.
 # See lab/README.md §How-to-add for the v1.2 contract. If a lab inhabitant
 # needs multi-slot argv, it must split $1 itself.
-if [[ -n "$LAB_MODE" ]]; then
+# Phase 8: when routing to pel-proposer, rebuild argv from the parsed
+# flag variables so the emitter sees them. For other lab modes, preserve
+# Phase 3 behavior (pass $TASK as sole trailing arg).
+if [[ "$LAB_MODE" == "pel-proposer" ]]; then
+  lab_tail=()
+  [[ -n "$TARGET" ]] && lab_tail+=("--target" "$TARGET")
+  [[ -n "$TIER" ]] && lab_tail+=("--tier" "$TIER")
+  [[ -n "$PR_BRANCH" ]] && lab_tail+=("--pr-branch" "$PR_BRANCH")
+  [[ "$DRY_RUN" == "true" ]] && lab_tail+=("--dry-run")
+  [[ "$BUDGET_USD" != "25" ]] && lab_tail+=("--budget" "$BUDGET_USD")
+  [[ "$AUTO_YES" == "true" ]] && lab_tail+=("--yes")
+  [[ -n "$FLAVOR_OVERRIDE" ]] && lab_tail+=("--flavor" "$FLAVOR_OVERRIDE")
+  [[ -n "$TASK" ]] && lab_tail+=("--" "$TASK")
+  # REPO_ROOT is set at the top of this script (line 6); lab/ is at repo root.
+  dispatch_lab_mode "$LAB_MODE" "$REPO_ROOT/lab" "${lab_tail[@]}"
+  # dispatch_lab_mode exec's — unreachable on success.
+elif [[ -n "$LAB_MODE" ]]; then
   # REPO_ROOT is set at the top of this script (line 6); lab/ is at repo root.
   dispatch_lab_mode "$LAB_MODE" "$REPO_ROOT/lab" "$TASK"
   # dispatch_lab_mode exec's — unreachable on success.
