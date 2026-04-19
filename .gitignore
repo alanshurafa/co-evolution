@@ -21,6 +21,9 @@ experiments/prompt-refinement/
 tmp-*/
 tmp/
 
+# Phase 8 eval cache — gitignored per D-18
+.co-evolve-cache/
+
 # Local project notes (decisions, plans, handoffs)
 .notes/
 

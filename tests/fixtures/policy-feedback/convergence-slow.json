@@ -1,0 +1,15 @@
+{
+  "case_id": "synthetic-convergence-01",
+  "scores": {
+    "robustness": "PASS",
+    "convergence": "FAIL",
+    "plan_quality": "PASS",
+    "execution_fidelity": "PASS",
+    "verify_accuracy": "PASS",
+    "cost": "PASS",
+    "cross_ai_diversity": "PASS"
+  },
+  "composite": 0.714,
+  "failed_dimension": "convergence",
+  "symptom": "marker_counts.total stays > 2 at the end of max_passes=4; runs need more bounce budget to converge"
+}

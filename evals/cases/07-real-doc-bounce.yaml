@@ -18,7 +18,6 @@ runner:
   executor: claude
   bounces: 2
   verify: false
-  autonomous: true
 setup:
   mode: temp_repo
   copy_from:

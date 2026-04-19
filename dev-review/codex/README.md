@@ -43,6 +43,11 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 | `--plan FILE` | Plan file used with `--skip-plan` |
 | `--model MODEL` | Override the Codex model for Codex-backed passes |
 | `--workdir DIR` | Execute against a target working directory |
+| `--lab MODE` | Route to `lab/<MODE>/entry.sh` (opt-in beta channel; fails fast with `unknown --lab mode: <MODE>. Available: <list>` if `lab/<MODE>/` does not exist). See [`lab/README.md`](../../lab/README.md) for boundary, graduation criteria, and sandbox guarantee. |
+
+### Lab routing
+
+`--lab <mode>` hands the invocation off to an experimental lab inhabitant. Default invocations (no `--lab` flag) are unaffected — byte-parity is guaranteed. Unknown modes fail fast with an available-modes listing. See [`lab/README.md`](../../lab/README.md) for the full contract, including the v1.2 argv convention (entry point receives the full task string as `$1`).
 
 ## Common Workflows
 

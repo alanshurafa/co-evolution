@@ -1,0 +1,20 @@
+{
+  "case_id": "05-sim-compose-prompt-weakness",
+  "status": "ok",
+  "run_id": "20260418-000100",
+  "composite": 0.64,
+  "scores": {
+    "robustness": "PASS",
+    "convergence": "PARTIAL",
+    "plan_quality": "PASS",
+    "execution_fidelity": "PASS",
+    "verify_accuracy": "PASS",
+    "cost": "FAIL",
+    "cross_ai_diversity": "PASS"
+  },
+  "details": {
+    "weakness": "cost FAIL: 5 bounces required to converge on a trivial task; compose prompt encourages over-elaboration",
+    "failure_mode": "too many bounce rounds for low-complexity task"
+  },
+  "target_template": "skills/dev-review/templates/bounce-prompt-portable.md"
+}
