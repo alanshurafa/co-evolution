@@ -21,6 +21,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - [x] **Phase 6: Policy-Tier Mutation Proposer** (shipped 2026-04-18 in parallel with Phase 5) — `lab/pel/proposer/policy/` proposes YAML/JSON config-knob mutations across 6 enumerated knobs. 2 plans complete. 8/8 simulation green.
 - [x] **Phase 7: Code-Tier Mutation Proposer** (shipped 2026-04-18) — `lab/pel/proposer/code/` proposes diffs against `lib/co-evolution.sh` and runner paths. LLM-only (random mutation breaks shell). Hard safety rails: sandbox isolation, canary smoke-test before scoring, diff budget + file allowlist. 2 plans complete. 16/16 simulation green.
 - [x] **Phase 8: PR Emission + Scoring Integration** (shipped 2026-04-19) — `lab/pel/pr-emitter/` wraps Phases 4-7 as a single invocation: `co-evolve --lab pel-proposer --target <file>` picks flavor, mutates, scores, drafts PR with eval deltas in body. Exit — human reviews and merges. This IS the Option 1 ship. 3 plans complete. 10/10 simulation green.
+- [x] **Phase 8.1: Scorer/Runner Contract Wiring** (INSERTED, shipped 2026-04-19) — close 4 warnings from ship-time review (WR-01/02/03/04) by establishing `evals/RUNNER-CONTRACT.md` as shared runner↔scorer spec, wiring real `dev-review.sh` to contract, adding Tier 4 real-runner regression barrier. Unblocks SC-4 dogfood. 4 plans complete. 14/14 simulation green.
 
 ## Phase Details
 
@@ -170,7 +171,7 @@ Waves:
 **Plans:** 4 plans (3 waves)
 
 Plans:
-- [ ] 08.1-01-PLAN.md — Contract spec: `evals/RUNNER-CONTRACT.md` + `lib/co-evolution.sh::init_state_json` field extension (Wave 1, blocker)
-- [ ] 08.1-02-PLAN.md — Runner conformance: `dev-review.sh` WR-01 `.status` + WR-02 `outputs/compose.txt` + WR-02 `.updated_at` + WR-04 `--run-dir` flag + phases->history mirror (Wave 2)
-- [ ] 08.1-03-PLAN.md — Harness conformance: `run-evals.sh` WR-03 `--autonomous` removal + WR-04 `--run-dir` passthrough + 9 case-YAML cleanups (Wave 2, parallel with 08.1-02)
-- [ ] 08.1-04-PLAN.md — Regression barrier: Tier 4 real-runner smoke in `scorer-verification.sh` + `evals/README.md` cross-reference + D-11 cache-invalidation verification (Wave 3)
+- [x] 08.1-01-PLAN.md — Contract spec: `evals/RUNNER-CONTRACT.md` + `lib/co-evolution.sh::init_state_json` field extension (shipped 2026-04-19, commits `b479189` + `27ac969`)
+- [x] 08.1-02-PLAN.md — Runner conformance: `dev-review.sh` WR-01 `.status` + WR-02 `outputs/compose.txt` + WR-02 `.updated_at` + WR-04 `--run-dir` flag + phases->history mirror (shipped 2026-04-19, commits `a93f189` + `989d8c8` + `85ee6c1`)
+- [x] 08.1-03-PLAN.md — Harness conformance: `run-evals.sh` WR-03 `--autonomous` removal + WR-04 `--run-dir` passthrough + 9 case-YAML cleanups (shipped 2026-04-19, commits `575cdda` + `3242b08` + `853bc0d`)
+- [x] 08.1-04-PLAN.md — Regression barrier: Tier 4 real-runner smoke in `scorer-verification.sh` + `evals/README.md` cross-reference + D-11 cache-invalidation verification (shipped 2026-04-19, commits `5b79eb2` + `bbeb3a8`)
