@@ -440,6 +440,11 @@ if [[ -f "$STATE_SNAPSHOT" ]]; then
   [[ "$diff_budget_raw" =~ ^[0-9]+$ ]] && diff_budget="$diff_budget_raw" || diff_budget=0
   if [[ "$resolved_tier" == "code" ]]; then
     canary_passed=$(jq -r '.canary.passed // false' "$STATE_SNAPSHOT" 2>/dev/null || echo false)
+    # IN-06: `jq -r '... // "none"'` applies the fallback when the left side is
+    # null or false. For accepted state.json, `canary.failed_at` is JSON null,
+    # so this returns "none". We only read $canary_failed_at below when the
+    # canary actually failed (real scenario name present) — so the "none" vs
+    # "null" difference is never user-visible.
     canary_failed_at=$(jq -r '.canary.failed_at // "none"' "$STATE_SNAPSHOT" 2>/dev/null || echo none)
     if [[ "$canary_passed" == "true" ]]; then
       canary_result="PASS (all 5 scenarios)"
