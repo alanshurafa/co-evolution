@@ -13,8 +13,12 @@ Phases 5-8 add template-tier, policy-tier, and code-tier proposers plus a PR emi
 ships the **template-tier proposer** under `lab/pel/proposer/template/` — an Opus-4.7
 mutation proposer that emits a single-file unified diff against one
 `skills/dev-review/templates/*.md` file per invocation (see `## Template-tier proposer (v1.2)`).
-The classifier itself remains reachable directly via `bash lab/pel/classifier/classifier.sh`
-for debugging and for the Phase 4 Plan 02 simulation test.
+Phase 7 ships the **code-tier proposer** under `lab/pel/proposer/code/` — an
+Opus-4.7 mutation proposer targeting executable shell scripts with sandbox
+isolation, canary smoke-test, and diff budget + allowlist enforcement (see
+`## Code-tier proposer (v1.2)`). The classifier itself remains reachable directly
+via `bash lab/pel/classifier/classifier.sh` for debugging and for the Phase 4
+Plan 02 simulation test.
 
 ## Env-var contract (v1.2)
 
@@ -385,6 +389,237 @@ bash lab/pel/proposer/policy/proposer.sh "optional task hint"
 `tests/policy-proposer-simulation.sh` exercises all 8 SC-4 scenarios (4 flavor
 paths + 4 adversarial rejections) hermetically via a PATH-injected stub `claude`
 CLI. Final line `8/8 scenarios passed` on a clean proposer surface.
+
+## Code-tier proposer (v1.2)
+
+Phase 7 adds `lab/pel/proposer/code/` — the **code-tier mutation proposer**. The
+hardest of the three proposer tiers because mutations target executable shell
+code, not text templates or YAML config. A bad template mutation produces a
+bad template; a bad policy mutation produces a bad knob value; a bad code
+mutation breaks the runner itself. Phase 7 therefore ships three capabilities
+absent from Phases 5/6:
+
+1. **Sandbox isolation** — mutation applied in a `git worktree`, never the
+   live checkout.
+2. **Canary smoke-test suite** — runs AFTER mutation, BEFORE eval scoring;
+   rejects broken runners at 5 scenarios.
+3. **Diff budget + file allowlist** — caps blast radius; prevents mutation
+   of frozen or protected paths.
+
+The proposer is self-contained per D-12: the only source statement in
+`lab/pel/proposer/code/**` is `proposer.sh`'s sibling-only
+`source "$SCRIPT_DIR/adapter.sh"`. Zero imports reach into `lib/co-evolution.sh`,
+`lab/pel/classifier/**`, `lab/pel/proposer/template/**`,
+`lab/pel/proposer/policy/**`, or runner internals.
+
+### Env-var contract
+
+Callers MUST set all three required env vars explicitly — same die-on-missing
+posture as template-tier and policy-tier. Missing inputs die exit 1.
+
+| Env var | Value domain | Default | Purpose |
+|---------|--------------|---------|---------|
+| `PEL_CODE_FEEDBACK` | readable path to a Phase-2-scorer JSON report (inside REPO_ROOT) | unset — REQUIRED | Eval-failure report that drives mutation targeting |
+| `PEL_CODE_TARGET` | relative path on `lab/pel/proposer/code/allowlist.txt` | unset — REQUIRED | Shell file to mutate (single-file constraint; only the 3 allowlisted paths) |
+| `PEL_FLAVOR` | `bug-catcher`, `faster-converger`, `blind-spot-surfacer`, `general` | unset — REQUIRED | Classifier flavor pick that biases mutation direction |
+| `CODE_PROPOSER_MODEL` | claude model ID matching `^[a-zA-Z0-9_.-]+$` | `claude-opus-4-7` | Opus model to invoke; override for debugging only |
+| `DIFF_BUDGET` | positive integer (lines changed cap) | `20` | Per D-06 budget; mutations exceeding this die exit 6 |
+
+**Input strictness (D-17).** Missing or unreadable `PEL_CODE_FEEDBACK` /
+`PEL_CODE_TARGET` / `PEL_FLAVOR` die exit 1 with a specific message. Rationale:
+the proposer is called internally by Phase 8's scoring loop, which always
+provides all three — missing means the caller has a bug, not a user-shell
+residue to degrade past.
+
+**Optional task hint via `$1`.** The proposer accepts one optional positional
+argument: a free-form task hint that biases mutation direction. Empty string is
+allowed per D-18. When a hint is provided, it is a COARSE bias to the LLM, never
+an override of the flavor pick. If the hint contradicts the flavor, the flavor
+wins.
+
+### Allowlist (D-04)
+
+`lab/pel/proposer/code/allowlist.txt` enumerates the mutable surface. v1.2
+ships exactly 3 paths:
+
+    lib/co-evolution.sh
+    dev-review/codex/dev-review.sh
+    agent-bouncer/agent-bouncer.sh
+
+Adding new files to the mutable surface is a deliberate act (edit the
+allowlist file, commit, review). The allowlist IS the frozen-surface
+enforcement mechanism — `lab/pel/classifier/**`, `.planning/**`, `tests/**`,
+`.gitignore` are excluded by absence, not by a denylist. Each target is
+validated via `grep -Fxq` for exact-line match; trailing slashes, absolute
+forms, or `../` relative paths all fail the gate.
+
+### Diff budget (D-06)
+
+Default `DIFF_BUDGET=20`. Counts lines starting with `+` or `-` in the diff
+body, EXCLUDING `---`, `+++`, and `@@` hunk headers. A rewrite counts as
+2 (one `-` + one `+`). The budget is checked BEFORE sandbox creation, so an
+oversized diff never triggers the expensive `git worktree add` + canary
+cycle. Exceeding the budget dies exit 6.
+
+### Output contract
+
+Stdout is a single well-formed unified diff with `---` / `+++` / `@@` headers
+that passed pre-flight gates AND canary. Stderr carries all diagnostics.
+
+Example shape the proposer emits (indented, not fenced, so the README renders
+cleanly when the diff is piped through a pretty-printer):
+
+    --- a/lib/co-evolution.sh
+    +++ b/lib/co-evolution.sh
+    @@ -42,6 +42,8 @@
+     validate_lab_mode() {
+       local mode="$1"
+    +  # Validate that mode name contains only allowed characters
+    +  [[ "$mode" =~ ^[a-zA-Z0-9_-]+$ ]] || { log "ERROR: invalid mode name: $mode"; return 1; }
+       case "$mode" in
+
+### Sandbox isolation (D-01, D-02, D-03)
+
+The mutation is applied inside a `git worktree` at
+`$TMPDIR/pel-code-sandbox-XXXXXX`, not the live checkout. The live repo is
+never `cd`'d into for mutation purposes. Sandbox lifecycle:
+
+1. `SANDBOX_PATH=$(mktemp -d ...)` then `rmdir` (git worktree wants a
+   non-existent target).
+2. `git -C REPO_ROOT worktree add --detach "$SANDBOX_PATH" HEAD` — creates a
+   detached-HEAD worktree from current state. Failure → exit 8.
+3. `git apply` the diff inside the sandbox (`cd` into sandbox first).
+4. Run `canary.sh "$SANDBOX_PATH"` — failure → exit 7 with state.json set.
+5. Write `state.json` to the sandbox root.
+6. Emit diff to stdout.
+7. Trap EXIT cleans up via `git worktree remove --force` + `rm -rf` (defense
+   in depth; either on its own is insufficient).
+
+### Canary smoke-test suite (D-08, D-09, D-10)
+
+`canary.sh` runs 5 scenarios sequentially inside the sandbox. PATH-injected
+stub `claude` and `codex` binaries shadow the real CLIs so no network calls
+happen during canary. Any scenario failure aborts the canary with a distinct
+exit code 1-5; proposer translates to exit 7.
+
+| Scenario | Canary exit | What it checks |
+|----------|-------------|----------------|
+| source-survives | 1 | `bash -n lib/co-evolution.sh` + `source lib/co-evolution.sh` |
+| helper-signatures | 2 | grep for 4 function defs (`validate_lab_mode`, `dispatch_lab_mode`, `phase_is_writable`, `list_available_lab_modes`) |
+| agent-bounce | 3 | `agent-bouncer.sh` e2e with stub agents |
+| dev-review-plan-only | 4 | `dev-review.sh --plan-only` with stub agents |
+| one-eval-case | 5 | simplest eval fixture present + `bash -n` of eval harness scripts |
+
+The canary's job is "did the runner survive?", not "did scores improve?" —
+full eval scoring is Phase 8's responsibility. Final success line is
+`canary: 5/5 scenarios passed` to stderr.
+
+### Pre-flight gate order (D-07)
+
+After the LLM emits a diff and BEFORE sandbox creation, 5 gates run in order:
+
+1. Parse diff headers → extract file targets.
+2. Single-file check: count unique targets, must == 1 (exit 4).
+3. Allowlist check: the single target must appear in `allowlist.txt` via
+   `grep -Fxq` (exit 5).
+4. Budget check: count `+`/`-` lines, must ≤ `DIFF_BUDGET` (exit 6).
+5. `git apply --check` dry-run against REPO_ROOT (exit 3).
+
+Only diffs surviving ALL five checks proceed to sandbox creation. The
+sandbox is a second line of defense after these cheap syntactic gates.
+
+### state.json (D-20)
+
+Written to `$SANDBOX_PATH/state.json` with this schema:
+
+    {
+      "outcome": "accepted|canary-failed",
+      "exit_code": 0,
+      "target": "lib/co-evolution.sh",
+      "flavor": "bug-catcher",
+      "diff_lines": 14,
+      "diff_budget": 20,
+      "canary": {"passed": true, "scenarios": 5, "failed_at": null},
+      "sandbox_path": "/tmp/pel-code-sandbox-XXXXXX",
+      "timestamp": "2026-04-18T12:00:00Z"
+    }
+
+Phase 8's PR emitter reads this BEFORE cleanup. The proposer holds the
+worktree alive until after `state.json` is written and the diff is emitted
+to stdout; the trap EXIT handler then removes the worktree.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success — diff emitted to stdout, canary passed, state.json written |
+| 1 | Input validation failure (missing env var, invalid `PEL_FLAVOR`, invalid `CODE_PROPOSER_MODEL`, path traversal, invalid `DIFF_BUDGET`, non-existent `PEL_CODE_TARGET`) |
+| 2 | `claude` CLI missing / auth failure / Opus call non-zero / empty response |
+| 3 | Malformed diff — does not apply cleanly via `git apply --check` |
+| 4 | Single-file constraint violation — diff touches more than one file |
+| 5 | Allowlist violation — diff targets a file not on `allowlist.txt` |
+| 6 | Diff budget exceeded — mutation exceeds `DIFF_BUDGET` lines changed |
+| 7 | Canary failed — mutation applied but runner broke (state.json has details) |
+| 8 | Sandbox setup failed — `git worktree add` failed |
+
+Exit codes 5/6/7/8 are new to Phase 7 (Phases 5/6 had 0-4). They are
+load-bearing for Phase 8's PR emitter: 5/6 = pre-flight rejection (no
+sandbox touched); 7 = mutation tested and rejected; 8 = infrastructure
+failure.
+
+### CODE_PROPOSER_MODEL escape hatch
+
+`CODE_PROPOSER_MODEL` overrides the default Opus 4.7 model ID. The value is
+validated against `^[a-zA-Z0-9_.-]+$` before being passed to `claude --model`
+— shell metacharacters are rejected with exit 1 and the message
+`invalid CODE_PROPOSER_MODEL: <value> (must match [A-Za-z0-9_.-]+)`.
+
+This is an escape hatch for debugging (swap in a cheaper or newer model for
+benchmarking), not an everyday knob. Same posture as the classifier's
+`CLASSIFIER_MODEL escape hatch` and the template-tier's `PROPOSER_MODEL`
+escape hatch — a dedicated CLI flag is deferred to v1.3+ ergonomics.
+
+### Invocation
+
+Direct invocation (used by the Plan 02 simulation test at
+`tests/code-proposer-simulation.sh` and by Phase 8's PR emitter in production):
+
+```bash
+export PEL_CODE_FEEDBACK=$PWD/evals/reports/20260418-120000/scores.json
+export PEL_CODE_TARGET=lib/co-evolution.sh
+export PEL_FLAVOR=bug-catcher
+
+bash lab/pel/proposer/code/proposer.sh "improve retry logic"
+```
+
+Output: single unified diff to stdout, diagnostics + canary progress to
+stderr. The sandbox worktree is created, canary-validated, and cleaned up
+automatically.
+
+### Files involved
+
+- `lab/pel/proposer/code/proposer.sh` — public entry point (argv + env validation, path sandboxing, allowlist gate, diff budget gate, sandbox setup, git apply, canary orchestration, state.json emission, cleanup)
+- `lab/pel/proposer/code/adapter.sh` — self-contained Opus adapter (6-placeholder prompt composition + claude CLI invocation + diff capture)
+- `lab/pel/proposer/code/prompt.md` — mutation-proposer prompt (shell-aware framing, 4 flavor bias riders, diff budget reminder)
+- `lab/pel/proposer/code/canary.sh` — canary smoke-test suite (5 scenarios, distinct exit codes, PATH-injection stubs, trap cleanup)
+- `lab/pel/proposer/code/allowlist.txt` — explicit file allowlist (3 mutable paths)
+
+All 5 files live under `lab/pel/proposer/code/**` — this is the Phase 7
+allowlist-exclusion glob for the code-tier proposer.
+
+### Simulation gate
+
+Plan 02 ships `tests/code-proposer-simulation.sh` — a hermetic simulation
+covering SC-5 (≥15 scenarios: 4 flavor happy-paths + 5 text-pipeline edge
+cases + 5 canary scenarios + 5+ adversarial rejections). Final line
+`N/N scenarios passed` once Plan 02 lands.
+
+### Cross-references
+
+- [`.planning/phases/07-code-tier-proposer/07-CONTEXT.md`](../../.planning/phases/07-code-tier-proposer/07-CONTEXT.md) — Phase 7 CONTEXT with D-01..D-23 decisions.
+- [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) §3 — "Mutable surface = templates + policy + code" — why code-tier is LLM-only (random mutation breaks shell).
+- [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) §5 — "Option 2 and Option 3 → graduate via lab/" — human-review Goodhart mitigation rationale. Phase 7's canary is a safety net, not a replacement for human review.
+- [`.planning/notes/phase-7-simulation-lessons.md`](../../.planning/notes/phase-7-simulation-lessons.md) — BINDING simulation + canary requirements distilled from Phase 5's red-simulation session.
 
 ## Further reading
 
