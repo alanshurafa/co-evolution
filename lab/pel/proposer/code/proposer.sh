@@ -303,7 +303,7 @@ trap "cleanup_sandbox" EXIT
 # D-01, D-02: create detached-HEAD worktree from current state. Fail-closed
 # per D-01: if git worktree add fails, die exit 8 (never fall back to
 # mutating the live checkout).
-if ! git -C "$REPO_ROOT" worktree add --detach "$SANDBOX_PATH" HEAD 2>"$apply_err"; then
+if ! git -C "$REPO_ROOT" worktree add --detach "$SANDBOX_PATH" HEAD >/dev/null 2>"$apply_err"; then
   printf "ERROR: sandbox setup failed: git worktree add returned non-zero\n" >&2
   printf "git worktree stderr (first 500 bytes):\n" >&2
   head -c 500 "$apply_err" >&2
