@@ -453,17 +453,39 @@ if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
         die "yq required for policy-tier mutation apply (install mikefarah/yq v4+)" 2
       fi
       # Iterate the mutations array, applying each key=new pair via yq -i.
-      printf '%s\n' "$diff_content" | jq -c '.mutations[]' | while IFS= read -r mutation; do
+      # Process substitution keeps the loop in the parent shell so `die` exits
+      # the whole script, not just the pipeline's subshell (WR-03).
+      while IFS= read -r mutation; do
         key=$(printf '%s' "$mutation" | jq -r '.key')
         new_val=$(printf '%s' "$mutation" | jq -r '.new')
+
+        # CR-01 defense-in-depth: re-enforce the 6-knob enumeration from
+        # lab/pel/README.md:343-355 at the emitter trust boundary. The
+        # policy proposer's bounds.jq enforces this upstream, but the
+        # emitter reads attacker-controllable proposer stdout and must
+        # not depend on upstream validation.
+        case "$key" in
+          retry_cap|marker_semantics|writable_phase_default|arbitrate_threshold|max_passes|flavor_weights) ;;
+          *) die "policy mutation rejected: key '$key' not in enumerated knob set" 5 ;;
+        esac
+
+        # Belt-and-braces: reject shell/yq metacharacters in key (should be
+        # impossible given case-match, but cheap to re-assert).
+        [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] \
+          || die "policy mutation rejected: key '$key' contains disallowed characters" 5
+
         # Quote scalar values when they are strings so yq writes them verbatim;
         # numeric/boolean new values flow through unquoted.
         if printf '%s' "$new_val" | jq -e 'type == "number" or type == "boolean"' >/dev/null 2>&1; then
-          yq -i ".$key = $new_val" "$policy_sandbox_path"
+          yq -i ".$key = $new_val" "$policy_sandbox_path" \
+            || die "yq mutation failed for key=$key new=$new_val" 3
         else
-          yq -i ".$key = \"$new_val\"" "$policy_sandbox_path"
+          # Use yq's env-var indirection (strenv) to bypass shell-quoting the
+          # value into the expression — yq's documented safe-interpolation idiom.
+          VAL="$new_val" yq -i ".$key = strenv(VAL)" "$policy_sandbox_path" \
+            || die "yq mutation failed for key=$key" 3
         fi
-      done
+      done < <(printf '%s\n' "$diff_content" | jq -c '.mutations[]')
       ;;
   esac
 fi
