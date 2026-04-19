@@ -730,9 +730,27 @@ if [[ "${CO_EVOLVE_DRY_RUN:-}" != "1" ]]; then
     || die "git push failed before gh pr create" 9
 fi
 
+# IN-02: keep gh stderr out of pr_url so our stdout contract (Draft PR URL)
+# stays clean when gh emits warnings (auth refresh, rate-limit soft hints) or
+# the dry-run stub prints its DRY-RUN: marker. Capture gh stderr to a file,
+# forward it to our own stderr (success or failure), and keep pr_url pure.
+gh_stderr=$(mktemp)
+gh_rc=0
 pr_url=$(gh pr create --draft --base master --head "$PR_BRANCH" \
-  --title "$PR_TITLE" --body-file "$EMITTER_BODY_FILE" 2>&1) \
-  || die "gh pr create failed post-scoring" 9
+  --title "$PR_TITLE" --body-file "$EMITTER_BODY_FILE" 2>"$gh_stderr") || gh_rc=$?
+# Forward gh's stderr to our stderr so callers (and simulations) still see
+# DRY-RUN markers / warnings. On failure also cap at 500 bytes for diagnosis.
+if [[ "$gh_rc" -ne 0 ]]; then
+  log_stderr "gh stderr:"
+  head -c 500 "$gh_stderr" >&2
+  printf '\n' >&2
+  rm -f "$gh_stderr"
+  die "gh pr create failed post-scoring" 9
+fi
+cat "$gh_stderr" >&2
+rm -f "$gh_stderr"
+# Defensive: trim to first line only in case gh emits trailing whitespace.
+pr_url=$(printf '%s' "$pr_url" | head -n1)
 
 printf '%s\n' "$pr_url"
 log_stderr "INFO: PR drafted: $pr_url"
