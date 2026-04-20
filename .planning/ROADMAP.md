@@ -156,6 +156,7 @@ Waves:
 
 ## Deferred (candidates for v1.3+)
 
+- **MCP server wrapper (`@alanshurafa/co-evolution-mcp`)** — Node/TypeScript MCP server wrapping `agent-bouncer.sh`, distributed via npm. Tabled 2026-04-19 in favor of shipping `BOUNCE-PROTOCOL.md` (the cheaper interop play) first. Trigger to revive: external signal that someone wants to invoke the bounce protocol from Claude Desktop / Cursor without `git clone`-ing the repo, OR `BOUNCE-PROTOCOL.md` adoption that warrants a reference-implementation distribution channel. Full design captured in [`docs/superpowers/specs/2026-04-19-mcp-server-design.md`](../docs/superpowers/specs/2026-04-19-mcp-server-design.md) — pick up from there, no re-design needed.
 - **PEL Option 2 (Auto-Promote)** — seeded in `.planning/seeds/pel-auto-promote-and-explorer.md`. Trigger: v1.2 Option 1 has ≥4 weeks production data + canary suite mature + Goodhart research findings in place. Lives in `lab/pel-auto/`.
 - **PEL Option 3 (Explorer + Curator)** — same seed, same triggers. Lives in `lab/pel-explorer/`.
 - **Classifier evolution** — allowing Phase 4's classifier to mutate based on later-tier data. Requires clean attribution signal separating protocol improvement from classifier changes.
