@@ -29,3 +29,6 @@ tmp/
 
 # Claude Code user-local settings
 .claude/
+
+# Paper build outputs — pipeline is dormant; build/ is populated only when activated
+docs/paper/build/
