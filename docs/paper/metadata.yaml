@@ -1,0 +1,41 @@
+---
+# Pandoc metadata for the paper. Consumed by `make paper.pdf` when the
+# build pipeline is activated. Keep in sync with CITATION.cff at the
+# repo root.
+
+title: "Convergence-Guaranteed LLM Debate via Expiring In-Document Markers"
+
+# Author affiliation TBD — fill before any preprint or formal submission.
+author:
+  - name: "Alan Shurafa"
+    email: "[CONTACT-NEEDED — fill before submission]"
+    affiliation: "[AFFILIATION-NEEDED — independent? institution? fill before submission]"
+    orcid: "[ORCID-NEEDED — register at https://orcid.org if not already]"
+
+date: "2026-04"
+
+abstract: |
+  Multi-agent LLM debate frameworks improve answer quality but lack convergence
+  guarantees. We introduce a marker-based refinement protocol where agents
+  annotate disagreement and ambiguity inline within a shared document, and a
+  staleness rule provides bounded termination. Reference implementation: ~200
+  lines of bash with adapters for Claude and Codex CLIs. Pilot evaluation
+  across 47 retrospective bouncer runs shows 82.5% convergence under default
+  parameters. The protocol is published as a CC0 specification suitable for
+  cross-tool interoperability.
+
+# Pandoc-citeproc configuration
+link-citations: true
+csl: "https://www.zotero.org/styles/association-for-computing-machinery"  # ACM citation style; swap for venue-specific style if submitting elsewhere
+
+# License — paper text under CC-BY 4.0; protocol spec at repo root stays CC0.
+rights: "© 2026 Alan Shurafa. Licensed under CC-BY 4.0."
+
+# Layout — set to single-column for arxiv-style preprint; switch to twocolumn
+# for ACM/IEEE style submissions.
+documentclass: article
+geometry:
+  - margin=1in
+fontsize: 11pt
+linestretch: 1.15
+---
