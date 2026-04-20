@@ -61,6 +61,37 @@ Recommended approach to collect ≥3 PRs efficiently:
 2. **Policy tier second** (`--target lab/pel/proposer/policy/policy.yaml`) — constrained to the 6-knob surface; fitness-knob tweaks are easy to evaluate.
 3. **Code tier third** (`--target lib/co-evolution.sh`) — canary is the safety rail; expect some `[CANARY-FAILED]` signal. One successful code-tier merge is strong evidence for the ship.
 
+### Pre-flight checklist (run before each PEL invocation)
+
+- [ ] Master is clean (`git status --short` returns empty)
+- [ ] On master at the latest tip (`git pull origin master`)
+- [ ] `claude` and `codex` CLIs authenticated (`claude --version` + `codex --version` both succeed)
+- [ ] `gh` CLI authenticated and able to push (`gh auth status` shows logged in)
+- [ ] `compute-guard` daily cap not exceeded (skip if not installed) — PEL invocations consume Haiku classifier + Opus proposer + Phase 2 scoring; budget several dollars per code-tier run
+- [ ] No active PR backlog from prior dogfood runs (close stale PRs first to keep the review log clean)
+- [ ] Working directory is the main `co-evolution` checkout, not a worktree
+
+### Concrete candidate targets
+
+Three named targets, one per tier — copy/paste the invocation, review the resulting PR, log the outcome in the table above.
+
+| # | Tier | Target file | Why this target | Expected outcome | Invocation |
+|---|------|-------------|-----------------|------------------|------------|
+| 1 | template | `skills/dev-review/templates/review-prompt-opus.md` | Reviewer prompt has highest behavioral leverage; small wording tweaks measurably affect bounce convergence. Most likely to produce a mergeable diff. | Merge candidate | `co-evolve --lab pel-proposer --target skills/dev-review/templates/review-prompt-opus.md` |
+| 2 | policy | `lab/pel/proposer/policy/policy.yaml` | Bounded 6-knob surface (retry caps, marker semantics, etc.) — proposer can only mutate known-safe knobs within documented bounds. Easy to evaluate. | Merge or close candidate | `co-evolve --lab pel-proposer --target lab/pel/proposer/policy/policy.yaml` |
+| 3 | code | `lib/co-evolution.sh` (1072 LOC, all helpers) | Hardest tier; canary smoke-test is the safety rail. Mutation may pass canary and merge (strong signal) or trip canary and produce `[CANARY-FAILED]` PR (also a useful signal — proves the safety rail works). | Either outcome is dogfood-valid | `co-evolve --lab pel-proposer --target lib/co-evolution.sh` |
+
+After each invocation: a draft PR appears at `pel/<tier>/<short-hash>` with the proposed diff + eval scores in the body. Review it, decide merge or close, update the Review Log table above.
+
+### Failure-mode quick reference
+
+| Symptom | Meaning | Action |
+|---------|---------|--------|
+| Exit code 6 | Diff exceeded budget | Re-run; the proposer will retry with a tighter mutation |
+| Exit code 7 with canary scenario name in stderr | Canary smoke-test caught a bad mutation | PR is created with `[CANARY-FAILED]` prefix — this counts toward `closed_without_merge_count` per D-15 |
+| Exit code 10 | Hard infrastructure error (gh failed, sandbox setup failed) | Check `gh auth status`, verify worktree disk space; not a PEL bug |
+| No PR created, exit 0 | Proposer found nothing worth mutating | Re-run against a different target; this is a valid outcome |
+
 ## Closure Policy
 
 This file is closed when ALL THREE of these hold:
