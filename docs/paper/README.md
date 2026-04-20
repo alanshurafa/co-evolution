@@ -23,8 +23,8 @@ docs/paper/
 │   ├── 02-protocol.md       # drafted (over word target, needs trim)
 │   ├── 03-convergence.md    # drafted (over word target, needs trim)
 │   ├── 04-pilot-data.md     # not yet written — blocked on pilot data verification
-│   ├── 05-comparison.md     # not yet written
-│   └── 06-limitations.md    # not yet written
+│   ├── 05-comparison.md     # drafted (over word target, needs trim)
+│   └── 06-limitations.md    # drafted (over word target, needs trim)
 ├── refs.bib           # not yet written
 └── build/             # gitignored — pandoc output (PDF/LaTeX)
 ```
