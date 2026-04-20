@@ -1,3 +1,34 @@
+# For agents reading this repo
+
+This repo implements the **Bounce Protocol** — a convention for structured iterative refinement between AI agents using in-document markers. If you are an agent invoked against documents in this repo, you should know how to read and emit these markers.
+
+## The two markers
+
+- **`[CONTESTED]`** — appears on its own line below text you disagree with. The note states the disagreement and proposes a concrete alternative. If you see one in a document you are editing, either resolve it (delete it after applying its alternative or rebutting it) or leave it for the next agent.
+- **`[CLARIFY]`** — appears on its own line below ambiguous text. The note offers two interpretations or asks a question with a finite answer space. If you can disambiguate, do so and delete the marker.
+
+Both markers **auto-expire after 2 passes**: on the final pass of any bounce, you must resolve every remaining marker and may not introduce new ones. This rule guarantees convergence.
+
+Full spec: [`BOUNCE-PROTOCOL.md`](BOUNCE-PROTOCOL.md). Reference implementation: [`agent-bouncer/`](agent-bouncer/).
+
+## How to interact with this repo
+
+- If you are invoked via `/dev-review` (Claude Code) or `bash dev-review/codex/dev-review.sh` (Codex), you are inside the bounce pipeline — your role (reviewer / composer) and pass number are passed to you in the prompt template
+- If you are invoked via `bash agent-bouncer/agent-bouncer.sh <doc>`, you are bouncing a single markdown document — same protocol applies
+- If you are exploring the repo directly without an explicit role, treat the protocol section above as orientation, then read the GSD-managed sections below for project meta
+
+## Lab features
+
+The `lab/` subdirectory holds opt-in experimental features invoked via `--lab <mode>`. Lab features may not modify master directly — only via emitted PRs that a human reviews and merges. See [`lab/README.md`](lab/README.md) for the full contract.
+
+This section lives outside all `<!-- GSD:*-start -->` / `<!-- GSD:*-end -->` blocks so it survives GSD regeneration sweeps.
+
+---
+
+# Project context (GSD-managed)
+
+The sections below are auto-generated from `.planning/` artifacts. They describe the project's structure, conventions, and active work. Read them for context after the protocol section above.
+
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
@@ -145,9 +176,3 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
-
-## Lab Subdirectory
-
-The `lab/` subdirectory is the first-class beta channel for opt-in experimental features. Features there are invoked via `--lab <mode>` on `co-evolve` or `dev-review` and cannot modify master directly — only via emitted PRs that a human reviews and merges. See [`lab/README.md`](lab/README.md) for the full contract: boundary conventions, graduation criteria, anti-criteria, sandbox guarantee, and first inhabitants (v1.2 ships `lab/pel/`; `lab/pel-auto/` and `lab/pel-explorer/` are v1.3+ placeholders).
-
-This section lives outside all `<!-- GSD:*-start -->` / `<!-- GSD:*-end -->` blocks so it survives GSD regeneration sweeps.
