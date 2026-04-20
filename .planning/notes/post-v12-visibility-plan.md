@@ -56,7 +56,13 @@ Confirm state before picking up:
 
 **Why after Phase 7:** MCP shim should wrap the stable bash runtime, not the lab/ PEL experiments. Once the code-tier proposer is in, runtime surface is stable enough to wrap without churn.
 
-### Item C (was #4): Paper / arxiv anchor
+### Item C (was #4): Paper / arxiv anchor — DEFERRED INDEFINITELY 2026-04-20
+
+**Status update (2026-04-20):** First draft of the paper was completed (7 markdown sections in `docs/paper/sections/`, real pilot data from 47 bouncer runs), but the arxiv push was deferred indefinitely after honest review. The paper exists as a markdown artifact and provides citable substrate via per-section URLs; converting it to PDF + arxiv submission carries real costs (trim pass, citation verification, author affiliation, ORCID, build pipeline maintenance) without validated demand.
+
+**Trigger to revive:** explicit external request for a PDF preprint, an outreach reply mentioning citation, or a downstream tool wanting to reference the protocol formally. The build pipeline is preserved at `docs/paper/Makefile` (dormant); editorial open items are listed in `docs/paper/README.md`.
+
+**Original problem framing kept below for context if revived.**
 
 **Problem:** No paper → no Semantic Scholar / Google Scholar / Perplexity / Claude-research-mode indexing. Without it, we're GitHub-only for agent discovery.
 
