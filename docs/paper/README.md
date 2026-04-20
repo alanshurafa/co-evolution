@@ -18,11 +18,11 @@ docs/paper/
 ├── README.md          # this file
 ├── outline.md         # full structure + section-by-section plan
 ├── sections/
-│   ├── 00-abstract.md
-│   ├── 01-introduction.md
-│   ├── 02-protocol.md       # not yet written
-│   ├── 03-convergence.md    # not yet written
-│   ├── 04-pilot-data.md     # not yet written
+│   ├── 00-abstract.md       # drafted (over word target, needs trim)
+│   ├── 01-introduction.md   # drafted (over word target, needs trim)
+│   ├── 02-protocol.md       # drafted (over word target, needs trim)
+│   ├── 03-convergence.md    # drafted (over word target, needs trim)
+│   ├── 04-pilot-data.md     # not yet written — blocked on pilot data verification
 │   ├── 05-comparison.md     # not yet written
 │   └── 06-limitations.md    # not yet written
 ├── refs.bib           # not yet written
