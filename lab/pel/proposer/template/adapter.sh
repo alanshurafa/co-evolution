@@ -19,8 +19,13 @@
 # Stdout contract: raw diff bytes captured from Opus (proposer.sh runs D-09/D-10 gates).
 # Stderr: diagnostics only.
 
-# Default PROPOSER_MODEL to Opus 4.7 per D-06 (overrideable via env).
-: "${PROPOSER_MODEL:=claude-opus-4-7}"
+# Default PROPOSER_MODEL to Opus 4.6 per D-06 (overrideable via env).
+# 2026-04-20: changed from claude-opus-4-7 to claude-opus-4-6 after first SC-4
+# dogfood run hung at the proposer step. claude-opus-4-7 was selected when this
+# adapter was originally written; claude-opus-4-6 is what subscriptions reliably
+# resolve today. Override via env when 4-7 (or successor) is universally
+# available again.
+: "${PROPOSER_MODEL:=claude-opus-4-6}"
 
 # Inline die() — matches the runner-helper die() semantics (repo root lib)
 # but stays local so D-05 self-containment holds.
@@ -113,7 +118,7 @@ invoke_opus() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
-  local model="${PROPOSER_MODEL:-claude-opus-4-7}"
+  local model="${PROPOSER_MODEL:-claude-opus-4-6}"
   local -a cmd
   local -a tool_flags
 

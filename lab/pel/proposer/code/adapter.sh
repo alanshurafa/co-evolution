@@ -21,8 +21,10 @@
 # D-07 pre-flight gates + sandbox + canary).
 # Stderr: diagnostics only.
 
-# Default CODE_PROPOSER_MODEL to Opus 4.7 per D-11 (overrideable via env).
-: "${CODE_PROPOSER_MODEL:=claude-opus-4-7}"
+# Default CODE_PROPOSER_MODEL to Opus 4.6 per D-11 (overrideable via env).
+# 2026-04-20: changed from claude-opus-4-7 to claude-opus-4-6 — see template
+# adapter docstring at lab/pel/proposer/template/adapter.sh:22 for rationale.
+: "${CODE_PROPOSER_MODEL:=claude-opus-4-6}"
 
 # Default DIFF_BUDGET per D-06 (proposer.sh also sets this; belt-and-suspenders).
 : "${DIFF_BUDGET:=20}"
@@ -119,7 +121,7 @@ invoke_opus() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
-  local model="${CODE_PROPOSER_MODEL:-claude-opus-4-7}"
+  local model="${CODE_PROPOSER_MODEL:-claude-opus-4-6}"
   local -a cmd
   local -a tool_flags
 
