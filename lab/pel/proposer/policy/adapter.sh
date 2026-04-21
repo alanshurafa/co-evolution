@@ -129,11 +129,33 @@ Additional task hint from caller: ${TASK_HINT}"
 #
 #   Dies exit 3 on any schema failure after dumping first 500 bytes of the
 #   response to stderr so a debugging human can see what Haiku emitted.
+# strip_markdown_fences <response_file>
+#   Edits response_file IN PLACE. If first line is a markdown code fence
+#   (```json / ``` / ```yaml), strip every fence-marker line. Defense-in-depth
+#   against Haiku wrapping its JSON output in fences despite prompt saying
+#   raw JSON. Bug #10 (2026-04-21 policy-tier dogfood): Haiku emitted
+#   ```json\n{...}\n``` and jq failed on the fence chars. Mirrors
+#   lab/pel/classifier/adapter.sh::strip_markdown_fences (D-05 rule: each
+#   adapter inlines its own helpers, no cross-sibling imports).
+strip_markdown_fences() {
+  local file="$1"
+  head -n 1 "$file" 2>/dev/null | grep -q '^```' || return 0
+  local tmp
+  tmp=$(mktemp -t policy-stripped-XXXXXX)
+  sed '/^```[a-zA-Z0-9_-]*[[:space:]]*$/d' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 validate_delta_response() {
   local response_file="$1"
 
   command -v jq >/dev/null 2>&1 \
     || die "jq is required to validate Haiku response but is not installed" 2
+
+  # Bug #10 fix: strip any markdown code fences Haiku wrapped around its
+  # JSON response. Must run BEFORE any jq parse attempt. No-op if the
+  # response is already raw JSON (first line not a fence).
+  strip_markdown_fences "$response_file"
 
   # Top-level schema. Bug #9 fix: flavor + policy_path are known to the caller
   # (PEL_FLAVOR, PEL_POLICY_PATH env vars) so they're optional in Haiku's output.
