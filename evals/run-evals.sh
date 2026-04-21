@@ -246,12 +246,23 @@ for iteration in $(seq 1 "$REPEAT"); do
     done
 
     # Copy-from (port Fixture.ps1:78-94).
+    # Bug #7 fix: accept both .src/.dst (original schema) AND .source/.dest
+    # (cases 07/09 convention). jq's // returns the first non-null. Absolute
+    # src (e.g. "C:/Users/..." from cases 07/09) bypasses the REPO_ROOT join.
     copy_count=$(echo "$merged" | jq -r '.setup.copy_from // [] | length')
     for ((ci = 0; ci < copy_count; ci++)); do
-      src=$(echo "$merged" | jq -r --argjson i "$ci" '.setup.copy_from[$i].src')
-      dst=$(echo "$merged" | jq -r --argjson i "$ci" '.setup.copy_from[$i].dst')
+      src=$(echo "$merged" | jq -r --argjson i "$ci" '.setup.copy_from[$i].src // .setup.copy_from[$i].source // ""')
+      dst=$(echo "$merged" | jq -r --argjson i "$ci" '.setup.copy_from[$i].dst // .setup.copy_from[$i].dest // ""')
+      [[ -z "$src" || "$src" == "null" ]] && die "copy_from[$ci]: missing src|source in case $case_id"
+      [[ -z "$dst" || "$dst" == "null" ]] && die "copy_from[$ci]: missing dst|dest in case $case_id"
       [[ "$dst" == *..* ]] && die "copy_from dst must not contain '..': $dst"
-      src_abs="$REPO_ROOT/$src"
+      # Absolute path (Windows drive letter or POSIX abs) passes through
+      # verbatim; relative path joins with REPO_ROOT.
+      if [[ "$src" =~ ^([A-Za-z]:|/) ]]; then
+        src_abs="$src"
+      else
+        src_abs="$REPO_ROOT/$src"
+      fi
       [[ -e "$src_abs" ]] || die "copy_from src not found: $src_abs"
       mkdir -p "$fixture/$(dirname "$dst")"
       cp -R "$src_abs" "$fixture/$dst"
