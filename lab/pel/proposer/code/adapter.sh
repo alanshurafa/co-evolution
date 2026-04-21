@@ -124,15 +124,18 @@ invoke_opus() {
   local output_file="$2"
   local stderr_file="$3"
   local model="${CODE_PROPOSER_MODEL:-opus}"
+  # v1.3-adaptive: --fallback-model degrades gracefully when the primary model
+  # is overloaded / quota-exhausted. See template/adapter.sh comment for context.
+  local fallback_model="${FALLBACK_MODEL:-sonnet}"
   local -a cmd
   local -a tool_flags
 
   tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
 
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    cmd=(cmd.exe /c claude -p --output-format text --model "$model" "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text --model "$model" --fallback-model "$fallback_model" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model "$model" "${tool_flags[@]}")
+    cmd=(claude -p --output-format text --model "$model" --fallback-model "$fallback_model" "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file"
