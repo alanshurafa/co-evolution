@@ -135,12 +135,15 @@ validate_delta_response() {
   command -v jq >/dev/null 2>&1 \
     || die "jq is required to validate Haiku response but is not installed" 2
 
-  # Top-level schema.
-  jq -e 'type == "object" and has("mutations") and has("rationale") and has("flavor") and has("policy_path")' "$response_file" >/dev/null 2>&1 || {
+  # Top-level schema. Bug #9 fix: flavor + policy_path are known to the caller
+  # (PEL_FLAVOR, PEL_POLICY_PATH env vars) so they're optional in Haiku's output.
+  # If Haiku returns them they must match (validation below); if Haiku omits
+  # them, emit_delta injects the env-var values.
+  jq -e 'type == "object" and has("mutations") and has("rationale")' "$response_file" >/dev/null 2>&1 || {
     log_stderr "DEBUG: Haiku response head (first 500 bytes):"
     head -c 500 "$response_file" >&2
     printf "\n" >&2
-    die "Haiku response missing required top-level fields (mutations, rationale, flavor, policy_path)" 3
+    die "Haiku response missing required top-level fields (mutations, rationale)" 3
   }
 
   # mutations: array length 1..3.
@@ -163,24 +166,33 @@ validate_delta_response() {
   jq -e '.rationale | type == "string" and length > 0' "$response_file" >/dev/null 2>&1 \
     || die "Haiku response .rationale must be a non-empty string" 3
 
-  # flavor must match input FLAVOR verbatim AND be one of the 4 legal tokens.
-  local flavor
-  flavor=$(jq -r ".flavor" "$response_file")
-  case "$flavor" in
-    bug-catcher|faster-converger|blind-spot-surfacer|general) ;;
-    *)
-      die "Haiku returned invalid flavor: $flavor (expected one of bug-catcher, faster-converger, blind-spot-surfacer, general)" 3
-      ;;
-  esac
-  if [[ "$flavor" != "$PEL_FLAVOR" ]]; then
-    die "Haiku returned flavor=$flavor but PEL_FLAVOR=$PEL_FLAVOR; values must match" 3
+  # flavor: optional in Haiku output. If present, must be a legal token AND
+  # match PEL_FLAVOR verbatim. If absent, emit_delta injects PEL_FLAVOR.
+  if jq -e 'has("flavor")' "$response_file" >/dev/null 2>&1; then
+    local flavor
+    flavor=$(jq -r ".flavor" "$response_file")
+    case "$flavor" in
+      bug-catcher|faster-converger|blind-spot-surfacer|general) ;;
+      *)
+        die "Haiku returned invalid flavor: $flavor (expected one of bug-catcher, faster-converger, blind-spot-surfacer, general)" 3
+        ;;
+    esac
+    if [[ "$flavor" != "$PEL_FLAVOR" ]]; then
+      die "Haiku returned flavor=$flavor but PEL_FLAVOR=$PEL_FLAVOR; values must match" 3
+    fi
+  else
+    log_stderr "INFO: Haiku omitted .flavor; will inject PEL_FLAVOR=$PEL_FLAVOR"
   fi
 
-  # policy_path must match input PEL_POLICY_PATH verbatim.
-  local echoed_policy
-  echoed_policy=$(jq -r ".policy_path" "$response_file")
-  if [[ "$echoed_policy" != "$PEL_POLICY_PATH" ]]; then
-    die "Haiku returned policy_path=$echoed_policy but PEL_POLICY_PATH=$PEL_POLICY_PATH; values must match" 3
+  # policy_path: optional. If present, must match PEL_POLICY_PATH.
+  if jq -e 'has("policy_path")' "$response_file" >/dev/null 2>&1; then
+    local echoed_policy
+    echoed_policy=$(jq -r ".policy_path" "$response_file")
+    if [[ "$echoed_policy" != "$PEL_POLICY_PATH" ]]; then
+      die "Haiku returned policy_path=$echoed_policy but PEL_POLICY_PATH=$PEL_POLICY_PATH; values must match" 3
+    fi
+  else
+    log_stderr "INFO: Haiku omitted .policy_path; will inject PEL_POLICY_PATH=$PEL_POLICY_PATH"
   fi
 }
 
@@ -190,7 +202,12 @@ validate_delta_response() {
 #   (D-10) — everything else routes through log_stderr or dies to stderr.
 emit_delta() {
   local response_file="$1"
-  jq -c . "$response_file"
+  # Bug #9 fix: inject flavor + policy_path from env when Haiku omitted them.
+  # validate_response() already guaranteed any present values match env vars,
+  # so injecting is always safe and keeps the downstream delta shape stable.
+  jq -c --arg flavor "$PEL_FLAVOR" --arg policy_path "$PEL_POLICY_PATH" \
+    '. + {flavor: (.flavor // $flavor), policy_path: (.policy_path // $policy_path)}' \
+    "$response_file"
 }
 
 # run_adapter
