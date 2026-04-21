@@ -31,8 +31,11 @@ log_stderr() {
 }
 
 # require_claude_cli — mirrors classifier/adapter.sh require_claude_cli.
+# Under WSL, probe via cmd.exe since WSL and Windows keep separate auth state.
+# On MINGW (Git Bash on Windows), the native `claude` is on PATH and works
+# directly — also lets PATH-injected stubs in tests get picked up.
 require_claude_cli() {
-  if [[ -n "${WSL_DISTRO_NAME:-}" || "$(uname -s)" == "MINGW"* ]]; then
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     cmd.exe /c claude --version >/dev/null 2>&1 \
       || die "claude CLI (Windows side, via cmd.exe) is required but not installed or not authenticated" 2
   else
@@ -54,9 +57,53 @@ strip_markdown_fences() {
   mv "$tmp" "$file"
 }
 
-# Placeholder run_adapter — Task 3 will fill this in.
-# This skeleton just exists so router.sh can source and reference run_adapter
-# without exploding during Task 1's commit.
+# run_adapter
+#   Invokes Haiku with the prompt template + context vars, writes raw response
+#   to stdout. Caller (router.sh) handles fence-stripping and JSON parsing.
+#
+#   Required env (caller sets these):
+#     TARGET, PEL_TIER, PEL_FLAVOR, TARGET_SIZE_BYTES, ROUTER_MODEL
 run_adapter() {
-  die "run_adapter not yet implemented (Task 3)" 99
+  require_claude_cli
+
+  local prompt_file output_file stderr_file
+  prompt_file=$(mktemp -t router-prompt-XXXXXX)
+  output_file=$(mktemp -t router-output-XXXXXX)
+  stderr_file=$(mktemp -t router-stderr-XXXXXX)
+
+  # shellcheck disable=SC2064
+  trap "rm -f \"$prompt_file\" \"$output_file\" \"$stderr_file\"" RETURN
+
+  # Render prompt by substituting template vars.
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local template
+  template=$(cat "$script_dir/prompt.md")
+  local rendered
+  rendered="${template//\{PEL_TIER\}/$PEL_TIER}"
+  rendered="${rendered//\{TARGET\}/$TARGET}"
+  rendered="${rendered//\{TARGET_SIZE_BYTES\}/$TARGET_SIZE_BYTES}"
+  rendered="${rendered//\{PEL_FLAVOR\}/$PEL_FLAVOR}"
+  printf "%s" "$rendered" > "$prompt_file"
+
+  log_stderr "INFO: invoking router Haiku (model: $ROUTER_MODEL)"
+
+  local cmd
+  # Same WSL-only branch as require_claude_cli — keeps PATH-injected test
+  # stubs working on MINGW (Git Bash on Windows).
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
+    cmd=(cmd.exe /c claude -p --output-format text --model "$ROUTER_MODEL" --tools "")
+  else
+    cmd=(claude -p --output-format text --model "$ROUTER_MODEL" --tools "")
+  fi
+
+  # Run Haiku. On failure, return non-zero so caller can take fallback path.
+  if ! "${cmd[@]}" < "$prompt_file" > "$output_file" 2> "$stderr_file"; then
+    log_stderr "ERROR: Haiku call failed; stderr: $(head -c 500 "$stderr_file")"
+    return 1
+  fi
+
+  # Strip fences, then emit response on stdout.
+  strip_markdown_fences "$output_file"
+  cat "$output_file"
 }
