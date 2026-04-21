@@ -126,16 +126,21 @@ invoke_opus() {
   local model="${CODE_PROPOSER_MODEL:-opus}"
   # v1.3-adaptive: --fallback-model degrades gracefully when the primary model
   # is overloaded / quota-exhausted. See template/adapter.sh comment for context.
+  # Bug #6 fix: Claude CLI rejects main==fallback. Skip the flag when the
+  # adaptive router has already picked the fallback model as the primary.
   local fallback_model="${FALLBACK_MODEL:-sonnet}"
-  local -a cmd
-  local -a tool_flags
+  local -a cmd fallback_args tool_flags
 
   tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
+  fallback_args=()
+  if [[ -n "$fallback_model" && "$fallback_model" != "$model" ]]; then
+    fallback_args=(--fallback-model "$fallback_model")
+  fi
 
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    cmd=(cmd.exe /c claude -p --output-format text --model "$model" --fallback-model "$fallback_model" "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text --model "$model" "${fallback_args[@]}" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model "$model" --fallback-model "$fallback_model" "${tool_flags[@]}")
+    cmd=(claude -p --output-format text --model "$model" "${fallback_args[@]}" "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file"
