@@ -669,8 +669,13 @@ run_scorer_cached() {
   # the FAIL band" — valid data for the PR body. Only a MISSING raw-scores.json
   # means the scorer itself crashed. Capture exit code, then let the file-
   # presence check decide fatality.
+  # Test hook (hermetic gate only): PEL_RUN_EVALS_OVERRIDE points at a stub
+  # run-evals.sh so tests can exercise exit-code branches without burning
+  # real LLM quota. Never set in production.
+  local run_evals_script="$REPO_ROOT/evals/run-evals.sh"
+  [[ -n "${PEL_RUN_EVALS_OVERRIDE:-}" ]] && run_evals_script="$PEL_RUN_EVALS_OVERRIDE"
   local run_evals_exit=0
-  (cd "$worktree_dir" && bash "$REPO_ROOT/evals/run-evals.sh") >"$tmp_out" 2>&1 \
+  (cd "$worktree_dir" && bash "$run_evals_script") >"$tmp_out" 2>&1 \
     || run_evals_exit=$?
   scores_file=$(find "$worktree_dir/evals/reports" -maxdepth 2 -name raw-scores.json -newer "$marker" 2>/dev/null | head -1)
   if [[ -z "$scores_file" || ! -f "$scores_file" ]]; then
