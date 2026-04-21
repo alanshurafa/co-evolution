@@ -1,6 +1,6 @@
 # VERIFY-SC4: v1.2 Release-Gate Tracker
 
-**Status:** Open — awaiting post-ship dogfood
+**Status:** Closed — 2026-04-21
 **Blocks:** `git tag v1.2`
 **Does NOT block:** Phase 8 closure (Phase 8 closes on SC-1, SC-2, SC-3, SC-5 per 08-CONTEXT.md §D-01)
 
@@ -31,17 +31,25 @@ Update this table as PRs land during dogfood. Leave `outcome` as `pending` while
 
 | # | PR URL | Tier | Opened | Reviewer | Outcome | Notes |
 |---|--------|------|--------|----------|---------|-------|
-| 1 | _[fill in during dogfood]_ | template/policy/code | YYYY-MM-DD | Alan | pending/merged/closed | _one-line takeaway_ |
-| 2 | _[fill in during dogfood]_ | | | Alan | pending | |
-| 3 | _[fill in during dogfood]_ | | | Alan | pending | |
+| 1 | https://github.com/alanshurafa/co-evolution/pull/21 | template | 2026-04-21 | Alan | merged | First real PEL→PR after Bug #5 fix; adds "unstated assumptions" + "adversarial scenarios" dimensions to review prompt. Clean diff, genuine content. |
+| 2 | https://github.com/alanshurafa/co-evolution/pull/22 | code | 2026-04-21 | Alan | merged | 1-line `validate_lab_mode` length cap `[[ "${#mode}" -le 64 ]]`. Defensive hardening; minor but benign. (Note: auto-merged mid-session in error; retained on review.) |
+| 3 | https://github.com/alanshurafa/co-evolution/pull/27 | policy | 2026-04-21 | Alan | closed | retry_cap 3→5 + max_passes 4→5 are plausible within bounds, but accompanying whitespace churn is unjustified — blank-line reorder across the whole file without rationale. Review gate doing its job. |
 
 **Rolling totals** (update whenever a row changes):
 
-- `review_count` = **0** (count of rows with outcome ≠ `pending`)
-- `merged_count` = **0** (count of rows with outcome = `merged`)
-- `closed_without_merge_count` = **0** (count of rows with outcome = `closed`)
+- `review_count` = **3** (count of rows with outcome ≠ `pending`)
+- `merged_count` = **2** (count of rows with outcome = `merged`)
+- `closed_without_merge_count` = **1** (count of rows with outcome = `closed`)
 
-**Pass state:** ❌ (all three conditions must be ≥1 for the gate to flip to ✅)
+**Pass state:** ✅ (all three conditions met)
+
+## Closure (2026-04-21)
+
+Closed 2026-04-21. Three PEL-emitted PRs reviewed across template / code / policy tiers. Outcome: 2 merged (PR #21 template, PR #22 code) + 1 closed-without-merge (PR #27 policy). Review-gate efficacy confirmed: PR #27 was rejected for unjustified whitespace churn despite semantically-plausible knob changes, demonstrating the human-in-loop review is not rubber-stamping.
+
+**Dogfood context:** The SC-4 dogfood also surfaced six previously-latent integration bugs (#5 scorer exit-code conflation, #6 fallback-model collision, #7 copy_from schema mismatch, #9 policy adapter requiring unknowable fields, #10 fence-wrap parsing, #11 nonsensical path validation) — all fixed and merged before SC-4 completion (PRs #18/19/20/23/25/26). Hermetic tests missed them because they stubbed the full claude CLI surface; only real invocations exercised the adapter-to-Haiku-output contracts. This should inform v1.3 test strategy: a higher-fidelity claude stub that validates real-CLI flag-combination constraints would have caught at least #6 and #10 hermetically.
+
+`git tag v1.2` proceeds next.
 
 ## Canary-Failed PR Accounting (D-15)
 
@@ -136,6 +144,6 @@ Not tracked here (intentionally):
 
 ---
 
-**Last updated:** 2026-04-19 (created by Phase 8 Plan 03)
+**Last updated:** 2026-04-21 (SC-4 closed by dogfood completion)
 **Owner:** Alan
 **Binding decisions:** 08-CONTEXT.md §D-01 (scope separation), §D-15 (canary-failed counting)
