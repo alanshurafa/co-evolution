@@ -30,6 +30,9 @@ DRY_RUN=false
 BUDGET_USD="25"
 AUTO_YES=false
 FLAVOR_OVERRIDE=""
+# v1.3-adaptive flags — default off so PEL behavior unchanged unless invoked.
+NO_ADAPTIVE=0
+COMPLEXITY_OVERRIDE=""
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 TEMPLATE_DIR="$SCRIPT_DIR/templates/co-evolve"
@@ -72,6 +75,8 @@ Options:
   --budget USD       PEL-only: scoring budget cap (default 25; exit 6 on exhaustion)
   --yes              PEL-only: skip interactive preflight cost-estimate prompt
   --flavor NAME      PEL-only: override classifier (maps to PEL_FLAVOR_OVERRIDE)
+  --no-adaptive      PEL-only: skip the adaptive router (force pre-router behavior — always Opus)
+  --complexity TIER  PEL-only: force complexity (NORMAL|COMPLEX); skips Haiku router call
   --help             Show this help text
 USAGE
   exit 0
@@ -150,6 +155,18 @@ while [[ $# -gt 0 ]]; do
       esac
       shift 2
       ;;
+    --no-adaptive)
+      NO_ADAPTIVE=1
+      shift
+      ;;
+    --complexity)
+      [[ $# -gt 1 ]] || die "--complexity requires a value (NORMAL|COMPLEX)"
+      case "$2" in
+        NORMAL|COMPLEX) COMPLEXITY_OVERRIDE="$2" ;;
+        *) die "invalid --complexity value: $2 (expected NORMAL|COMPLEX)" 1 ;;
+      esac
+      shift 2
+      ;;
     --)
       shift
       TASK="$*"
@@ -184,6 +201,16 @@ done
 # flag variables so the emitter sees them. For other lab modes, preserve
 # Phase 3 behavior (pass $TASK as sole trailing arg).
 if [[ "$LAB_MODE" == "pel-proposer" ]]; then
+  # v1.3-adaptive: propagate routing flags as env vars (consumed by router.sh).
+  # Default-on means router runs unless --no-adaptive set; --complexity
+  # short-circuits the Haiku call inside the router.
+  if [[ "$NO_ADAPTIVE" == "1" ]]; then
+    export PEL_NO_ADAPTIVE=1
+  fi
+  if [[ -n "$COMPLEXITY_OVERRIDE" ]]; then
+    export PEL_COMPLEXITY_OVERRIDE="$COMPLEXITY_OVERRIDE"
+  fi
+
   lab_tail=()
   [[ -n "$TARGET" ]] && lab_tail+=("--target" "$TARGET")
   [[ -n "$TIER" ]] && lab_tail+=("--tier" "$TIER")
