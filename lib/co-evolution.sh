@@ -80,6 +80,7 @@ phase_is_writable() {
 validate_lab_mode() {
   local mode="${1:-}"
   [[ -n "$mode" ]] || return 1
+  [[ "${#mode}" -le 64 ]] || return 1
   [[ "$mode" =~ ^[a-zA-Z0-9_-]+$ ]] || return 1
   return 0
 }
