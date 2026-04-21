@@ -511,9 +511,18 @@ run_tier5_real_runner_and_llm() {
   echo
   echo "--- Tier 5: Real-runner + real LLM smoke (SCORER_SMOKE_REAL=1) ---"
 
-  local smoke_log report_parent latest_scores
+  local smoke_log marker report_parent latest_scores
   smoke_log=$(mktemp -t tier5-smoke-XXXXXX)
+  marker=$(mktemp -t tier5-marker-XXXXXX)
   report_parent="$REPO_ROOT/evals/reports"
+
+  # Age the marker 1s backward so mtime-resolution quirks on HFS+/NTFS don't
+  # hide freshly-produced raw-scores.json. Same defense pattern as
+  # pr-emitter.sh:664-666. Separate from smoke_log because redirecting stdout
+  # to smoke_log would bump its mtime to "now" and invalidate the aging.
+  touch -d '1 second ago' "$marker" 2>/dev/null \
+    || touch -t "$(date -u -v-1S +%Y%m%d%H%M.%S 2>/dev/null || date -u -d '1 second ago' +%Y%m%d%H%M.%S 2>/dev/null)" "$marker" 2>/dev/null \
+    || true
 
   # Run. run-evals.sh exits 1 when any case robust-fails — that's still a
   # successful run. The Bug #5 fix in pr-emitter.sh treats exit 1 + scores
@@ -521,20 +530,22 @@ run_tier5_real_runner_and_llm() {
   # file was produced (regardless of composite outcomes).
   ( cd "$REPO_ROOT" && bash evals/run-evals.sh ) >"$smoke_log" 2>&1 || true
 
+  # STRICT -newer only: no ls -1t fallback. A fallback would green-light a
+  # stale raw-scores.json from a prior run if the current run crashed without
+  # producing one — defeating Tier 5's whole purpose. Marker-aging above is
+  # the defense against mtime-resolution false negatives.
   latest_scores=$(find "$report_parent" -maxdepth 2 -name raw-scores.json -type f \
-    -newer "$smoke_log" 2>/dev/null \
+    -newer "$marker" 2>/dev/null \
     | sort | tail -1)
-  # Fallback: if -newer misses (mtime resolution), use most-recent by sort.
-  [[ -z "$latest_scores" ]] && latest_scores=$(ls -1t "$report_parent"/*/raw-scores.json 2>/dev/null | head -1)
 
   if [[ -n "$latest_scores" ]] && jq -e 'any(.[]?; .status == "scored")' "$latest_scores" >/dev/null 2>&1; then
     pass "Tier 5 / real-runner-smoke (raw-scores.json has ≥1 scored record — Bug #5 stays fixed)"
   else
     echo "--- Tier 5 stderr tail ---" >&2
     tail -30 "$smoke_log" >&2 || true
-    fail "Tier 5 / real-runner-smoke (no raw-scores.json or no scored records; see $smoke_log)"
+    fail "Tier 5 / real-runner-smoke (no new raw-scores.json or no scored records; see $smoke_log)"
   fi
-  rm -f "$smoke_log"
+  rm -f "$smoke_log" "$marker"
 }
 run_tier5_real_runner_and_llm
 

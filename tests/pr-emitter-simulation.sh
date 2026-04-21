@@ -6,7 +6,7 @@
 # Scenario K is the Bug #5 regression guard — proves pr-emitter treats
 # run-evals.sh exit 1 + raw-scores.json present as scored-with-fails, not
 # as a scorer crash. Uses PEL_RUN_EVALS_OVERRIDE test hook.
-# Exit 0 iff all 10 pass, 1 otherwise.
+# Exit 0 iff all 11 pass, 1 otherwise.
 #
 # Scenarios (see <success_criteria> in 08-02-PLAN.md for full coverage matrix):
 #   A: Happy-path, template tier   — stubbed classifier + template proposer;
