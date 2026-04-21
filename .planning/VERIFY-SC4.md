@@ -83,6 +83,27 @@ Three named targets, one per tier — copy/paste the invocation, review the resu
 
 After each invocation: a draft PR appears at `pel/<tier>/<short-hash>` with the proposed diff + eval scores in the body. Review it, decide merge or close, update the Review Log table above.
 
+### Realistic runtime expectations (revised 2026-04-20)
+
+A single PEL invocation runs **~20-30 minutes** end-to-end under default parameters. Breakdown:
+
+- Classifier (Haiku): ~30 sec
+- Proposer (Opus 4.6): ~3-8 min
+- Eval cache lookup or miss: instant or full bounce
+- Scoring "before" (real bounce against unmutated target): ~5-10 min
+- Scoring "after" (real bounce against mutated target): ~5-10 min
+- Emitter PR rendering + `gh pr create`: ~30 sec
+
+Budget **~90 minutes** for the full 3-PR dogfood cycle, not "a few minutes" as earlier wording implied. Run during a session where you can afford the wall-clock; don't kick off and walk away expecting completion in 15 min.
+
+Cache hits on the "before" baseline (unchanged target = same hash) cut subsequent invocations on the same target by ~5-10 min, but cross-target invocations re-pay the full cost.
+
+### Pre-invocation gotchas (collected from 2026-04-20 first dogfood run)
+
+- **Eval report required.** Emitter hard-fails if neither `evals/reports/<ts>/raw-scores.json` exists nor `PEL_EVAL_REPORT` is set. Either run `bash evals/run-evals.sh` first, OR for testing set `PEL_EVAL_REPORT=tests/fixtures/pr-emitter/<tier>-feedback.json`. The error message documents both paths.
+- **Opus model name drift.** The proposer adapter pins a specific Opus model. If your subscription doesn't have that model, the `claude -p` call hangs silently rather than erroring. Default is currently `claude-opus-4-6`; override via `PROPOSER_MODEL=<model-id>` env var.
+- **Codex needed for nested-Claude workaround.** When invoking from inside Claude Code (e.g., orchestrating SC-4 from a session), wrap the bash command in `codex exec "..."` so the inner `claude` CLI calls aren't nested under Claude Code's authentication.
+
 ### Failure-mode quick reference
 
 | Symptom | Meaning | Action |
