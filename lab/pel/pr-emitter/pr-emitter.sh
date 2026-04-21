@@ -58,6 +58,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # ---------------------------------------------------------------------------
+# Section A.0: PEL invocation start time (consumed by Section K telemetry).
+# Use ms-resolution if available; fall back to seconds*1000 for portability.
+# ---------------------------------------------------------------------------
+PEL_START_MS=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+
+# ---------------------------------------------------------------------------
 # Inline helpers (D-07 self-containment — do NOT source lib/co-evolution.sh)
 # ---------------------------------------------------------------------------
 
@@ -309,6 +315,53 @@ flavor=$(printf '%s' "$classifier_json" | jq -r '.flavor')
 rationale=$(printf '%s' "$classifier_json" | jq -r '.rationale')
 classifier_override=$(printf '%s' "$classifier_json" | jq -r '.override')
 log_stderr "INFO: classifier picked flavor=$flavor override=$classifier_override"
+
+# ---------------------------------------------------------------------------
+# Section C.5: Adaptive router (v1.3 — picks complexity tier + model).
+# Skipped entirely if PEL_NO_ADAPTIVE=1. Best-effort: router failure or
+# missing/non-JSON output falls back to current hardcoded behavior
+# (PROPOSER_MODEL stays as "opus" default in the proposer adapters).
+# ---------------------------------------------------------------------------
+if [[ "${PEL_NO_ADAPTIVE:-0}" != "1" ]]; then
+  log_stderr "INFO: invoking adaptive router for tier=$resolved_tier"
+
+  # Export inputs the router expects.
+  export TARGET PEL_TIER="$resolved_tier" PEL_FLAVOR="$flavor" PEL_FEEDBACK
+
+  # Time the router call so telemetry has a real router_duration_ms value.
+  router_start_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+
+  router_json=""
+  if router_json=$(bash "$REPO_ROOT/lab/pel/router/router.sh" 2>/dev/null) && [[ -n "$router_json" ]]; then
+    router_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+    ROUTER_DURATION_MS=$((router_end_ms - router_start_ms))
+
+    chosen_model=$(printf '%s' "$router_json" | jq -r '.model')
+    chosen_complexity=$(printf '%s' "$router_json" | jq -r '.complexity')
+    fallback_model=$(printf '%s' "$router_json" | jq -r '.fallback_model')
+
+    # Export PROPOSER_MODEL so the proposer adapter picks it up.
+    case "$resolved_tier" in
+      template) export PROPOSER_MODEL="$chosen_model" ;;
+      code)     export CODE_PROPOSER_MODEL="$chosen_model" ;;
+      policy)   ;;  # policy uses Haiku — router decision N/A but logged
+    esac
+    export FALLBACK_MODEL="$fallback_model"
+
+    log_stderr "INFO: router picked complexity=$chosen_complexity model=$chosen_model"
+  else
+    router_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+    ROUTER_DURATION_MS=$((router_end_ms - router_start_ms))
+    log_stderr "WARN: router invocation failed; falling back to default model"
+    chosen_complexity="UNKNOWN"
+    chosen_model="opus"  # the existing default
+  fi
+else
+  log_stderr "INFO: PEL_NO_ADAPTIVE=1 — adaptive router skipped"
+  chosen_complexity="DISABLED"
+  chosen_model="opus"  # the existing default
+  ROUTER_DURATION_MS=0  # router not invoked; record zero so telemetry is honest
+fi
 
 # ---------------------------------------------------------------------------
 # Section C: PEL_EVAL_REPORT fixture selection.
@@ -784,4 +837,49 @@ pr_url=$(printf '%s' "$pr_url" | head -n1)
 
 printf '%s\n' "$pr_url"
 log_stderr "INFO: PR drafted: $pr_url"
+
+# ---------------------------------------------------------------------------
+# Section K: Append routing telemetry (best-effort; never fail PEL on a
+# logging error). Outer `|| true` ensures telemetry write never propagates
+# a failure that could mask a successful PR creation.
+# ---------------------------------------------------------------------------
+{
+  telemetry_dir="$REPO_ROOT/.co-evolve"
+  mkdir -p "$telemetry_dir" 2>/dev/null || true
+  telemetry_file="$telemetry_dir/router-history.jsonl"
+
+  fallback_fired="false"
+  # Future: detect fallback fire from claude -p stderr signal; for now record false.
+
+  # Compute total PEL duration from the start marker set in Section A.0.
+  pel_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+  PEL_DURATION_MS=$((pel_end_ms - ${PEL_START_MS:-pel_end_ms}))
+
+  jq -n \
+    --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg run_id "${TIMESTAMP:-unknown}" \
+    --arg target "$TARGET" \
+    --arg pel_tier "$resolved_tier" \
+    --arg flavor "$flavor" \
+    --arg complexity "${chosen_complexity:-UNKNOWN}" \
+    --arg model_chosen "${chosen_model:-opus}" \
+    --argjson fallback_fired "$fallback_fired" \
+    --argjson router_duration_ms "${ROUTER_DURATION_MS:-0}" \
+    --argjson total_pel_duration_ms "${PEL_DURATION_MS:-0}" \
+    --arg user_override "${PEL_COMPLEXITY_OVERRIDE:-}" \
+    '{
+      ts: $ts,
+      run_id: $run_id,
+      target: $target,
+      pel_tier: $pel_tier,
+      flavor: $flavor,
+      complexity: $complexity,
+      model_chosen: $model_chosen,
+      fallback_fired: $fallback_fired,
+      router_duration_ms: $router_duration_ms,
+      total_pel_duration_ms: $total_pel_duration_ms,
+      user_override: (if $user_override == "" then null else $user_override end)
+    }' >> "$telemetry_file" 2>/dev/null || true
+} || true
+
 exit 0
