@@ -206,16 +206,12 @@ validate_delta_response() {
     log_stderr "INFO: Haiku omitted .flavor; will inject PEL_FLAVOR=$PEL_FLAVOR"
   fi
 
-  # policy_path: optional. If present, must match PEL_POLICY_PATH.
-  if jq -e 'has("policy_path")' "$response_file" >/dev/null 2>&1; then
-    local echoed_policy
-    echoed_policy=$(jq -r ".policy_path" "$response_file")
-    if [[ "$echoed_policy" != "$PEL_POLICY_PATH" ]]; then
-      die "Haiku returned policy_path=$echoed_policy but PEL_POLICY_PATH=$PEL_POLICY_PATH; values must match" 3
-    fi
-  else
-    log_stderr "INFO: Haiku omitted .policy_path; will inject PEL_POLICY_PATH=$PEL_POLICY_PATH"
-  fi
+  # Bug #11 (2026-04-21): the prompt template never substitutes the canonical
+  # path into Haiku's context (only {POLICY_YAML} body + {EVAL_FEEDBACK} +
+  # {FLAVOR}). So whatever policy_path Haiku echoes is its own guess, not an
+  # echo of a known input. Validating the guess is nonsensical. emit_delta
+  # always overrides with PEL_POLICY_PATH from env — which the adapter DOES
+  # know canonically.
 }
 
 # emit_delta <response_file>
@@ -224,11 +220,12 @@ validate_delta_response() {
 #   (D-10) — everything else routes through log_stderr or dies to stderr.
 emit_delta() {
   local response_file="$1"
-  # Bug #9 fix: inject flavor + policy_path from env when Haiku omitted them.
-  # validate_response() already guaranteed any present values match env vars,
-  # so injecting is always safe and keeps the downstream delta shape stable.
+  # Bug #9 fix: inject flavor + policy_path from env. For flavor, prefer
+  # Haiku's echo (it's been validated against PEL_FLAVOR) and fall back to
+  # env if missing. For policy_path, ALWAYS use env — Bug #11 proved Haiku
+  # has no ground truth for the path (not in prompt), so its echo is a guess.
   jq -c --arg flavor "$PEL_FLAVOR" --arg policy_path "$PEL_POLICY_PATH" \
-    '. + {flavor: (.flavor // $flavor), policy_path: (.policy_path // $policy_path)}' \
+    '. + {flavor: (.flavor // $flavor), policy_path: $policy_path}' \
     "$response_file"
 }
 
