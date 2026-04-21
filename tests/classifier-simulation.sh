@@ -400,6 +400,43 @@ BONUS_TOTAL=$((BONUS_TOTAL + 1))
   || bonus_fail "Scenario H (warn-don't-die)"
 
 # ---------------------------------------------------------------------------
+# Scenario I: Markdown-fence tolerance — BONUS
+# ---------------------------------------------------------------------------
+# Real Haiku CLI sometimes emits JSON wrapped in ```json ... ``` fences
+# despite the prompt asking for raw JSON. Discovered 2026-04-20 during the
+# first SC-4 dogfood run, which failed the entire PEL pipeline at the
+# classifier step. Adapter now strips fence-marker lines before jq parsing
+# (lab/pel/classifier/adapter.sh::strip_markdown_fences). This scenario
+# locks in the fix: a fenced JSON stub must parse cleanly to the same
+# canonical D-08 envelope as raw JSON would.
+BONUS_TOTAL=$((BONUS_TOTAL + 1))
+(
+  stub_file="$TEST_DIR/stub-I.json"
+  # Fenced JSON — exactly the shape that broke the first dogfood run.
+  cat > "$stub_file" <<'FENCED'
+```json
+{"flavor": "blind-spot-surfacer", "rationale": "fence-tolerance regression test"}
+```
+FENCED
+
+  result=$(CLASSIFIER_STUB_FILE="$stub_file" \
+           CLASSIFIER_STUB_MARKER="$TEST_DIR/marker-I" \
+           PATH="$TEST_DIR/bin:$PATH" \
+           PEL_BOUNCE_STEP=bounce \
+           PEL_PHASE_TYPE=verification \
+           bash "$REPO_ROOT/lab/pel/classifier/classifier.sh" \
+             "test fence tolerance" 2>/dev/null)
+
+  echo "$result" | jq -e '.flavor == "blind-spot-surfacer"' >/dev/null \
+    || { echo "I: .flavor mismatch (fence not stripped?); got: $result" >&2; exit 1; }
+  echo "$result" | jq -e '.rationale == "fence-tolerance regression test"' >/dev/null \
+    || { echo "I: .rationale mismatch; got: $result" >&2; exit 1; }
+  echo "$result" | jq -e '.override == false' >/dev/null \
+    || { echo "I: .override must be false on Haiku path; got: $result" >&2; exit 1; }
+) && bonus_pass "Scenario I (fenced JSON tolerance — strip markdown code-fence wrappers, regression for 2026-04-20 dogfood failure)" \
+  || bonus_fail "Scenario I (fenced JSON tolerance)"
+
+# ---------------------------------------------------------------------------
 # Summary footer (matches Phase 2 scorer-verification.sh + Phase 3
 # lab-routing-simulation.sh convention: "N/N scenarios passed")
 #
