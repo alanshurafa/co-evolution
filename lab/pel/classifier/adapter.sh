@@ -102,6 +102,27 @@ compose_prompt() {
   printf "%s" "$filled" > "$out_file"
 }
 
+# strip_markdown_fences <response_file>
+#   Edits response_file IN PLACE: if the file starts with a markdown code
+#   fence (e.g., ```json ... ``` or ``` ... ```), strip every fence-marker
+#   line. Defense-in-depth against LLMs that emit fenced JSON despite prompt
+#   instructions otherwise. Discovered 2026-04-20 during first SC-4 dogfood
+#   invocation: real Haiku responses sometimes wrap JSON in ```json fences
+#   even though prompt.md asks for raw JSON. No-op if no opening fence.
+strip_markdown_fences() {
+  local file="$1"
+  # Only act if first line is a markdown code fence (defensive — never strip
+  # fences that appear deeper in the file, which would indicate the JSON
+  # itself contains ``` and is not the wrapper case we are trying to fix).
+  head -n 1 "$file" 2>/dev/null | grep -q '^```' || return 0
+  local tmp
+  tmp=$(mktemp -t classifier-stripped-XXXXXX)
+  # Match any line that is a pure code fence (opening with optional language
+  # tag, or bare closing). Allow trailing whitespace.
+  sed '/^```[a-zA-Z0-9_-]*[[:space:]]*$/d' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 # validate_haiku_response <response_file>
 #   Asserts file contains a single JSON object with flavor + rationale fields
 #   AND a legal flavor value. Dies exit 3 on any failure (D-07 response-shape
@@ -112,6 +133,10 @@ validate_haiku_response() {
 
   command -v jq >/dev/null 2>&1 \
     || die "jq is required to validate Haiku response but is not installed" 2
+
+  # Strip markdown code fences if present (defense-in-depth — see
+  # strip_markdown_fences docstring for rationale).
+  strip_markdown_fences "$response_file"
 
   # Schema check: must be object with required fields.
   jq -e 'type == "object" and has("flavor") and has("rationale")' "$response_file" >/dev/null 2>&1 || {
