@@ -21,10 +21,12 @@
 # D-07 pre-flight gates + sandbox + canary).
 # Stderr: diagnostics only.
 
-# Default CODE_PROPOSER_MODEL to Opus 4.6 per D-11 (overrideable via env).
-# 2026-04-20: changed from claude-opus-4-7 to claude-opus-4-6 — see template
-# adapter docstring at lab/pel/proposer/template/adapter.sh:22 for rationale.
-: "${CODE_PROPOSER_MODEL:=claude-opus-4-6}"
+# Default CODE_PROPOSER_MODEL to the "opus" alias — Claude CLI resolves this
+# to the latest available Opus model on the user's plan. See template adapter
+# docstring at lab/pel/proposer/template/adapter.sh:22 for rationale and
+# 2026-04-20 history (originally pinned 4-7, briefly downgraded to 4-6 on a
+# wrong quota-vs-availability diagnosis, now uses alias to track latest).
+: "${CODE_PROPOSER_MODEL:=opus}"
 
 # Default DIFF_BUDGET per D-06 (proposer.sh also sets this; belt-and-suspenders).
 : "${DIFF_BUDGET:=20}"
@@ -121,7 +123,7 @@ invoke_opus() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
-  local model="${CODE_PROPOSER_MODEL:-claude-opus-4-6}"
+  local model="${CODE_PROPOSER_MODEL:-opus}"
   local -a cmd
   local -a tool_flags
 
