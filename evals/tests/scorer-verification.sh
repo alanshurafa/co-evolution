@@ -9,12 +9,19 @@
 #   Tier 4: Real-runner contract smoke (1 scenario)       — D-07 contract gate.
 #           Exercises dev-review/codex/dev-review.sh end-to-end with PATH-stubbed
 #           claude + codex CLIs. Regression barrier for WR-01/WR-02/WR-04.
+#   Tier 5: Real-runner + real LLM smoke (opt-in)          — Bug #5 regression.
+#           Gated by SCORER_SMOKE_REAL=1. Runs the full scorer against real
+#           claude + codex (~$1-3 quota, ~5-10 min wall clock). Proves Bug #5
+#           stays fixed without burning quota in CI. Adds +1 scenario to TOTAL
+#           only when the env var is set; off-by-default keeps the 14/14 gate
+#           stable.
 #
 # Satisfies ROADMAP SC-3 (multi-platform CI simulation) on any Bash + jq + yq
 # environment without pwsh.
 #
-# Total scenarios: 10 + 1 + 2 + 1 = 14. Success: exit 0, final stdout line
-# exactly '14/14 scenarios passed'. Leaves no side effects in evals/reports/.
+# Total scenarios: 10 + 1 + 2 + 1 = 14 default, 15 with SCORER_SMOKE_REAL=1.
+# Success: exit 0, final stdout line '14/14 scenarios passed' (or '15/15' when
+# the real-runner smoke is opted in). Leaves no side effects in evals/reports/.
 #
 # Dependencies: bash, jq, yq (indirectly via evals/score-run.sh + run-evals.sh).
 
@@ -486,8 +493,54 @@ STUB
 }
 run_tier4_real_runner
 
+# ---------------------------------------------------------------------------
+# Tier 5 (opt-in): Real-runner + real LLM smoke. Proves Bug #5 stays fixed
+# without burning quota in CI. Gated by SCORER_SMOKE_REAL=1. Cost: ~$1-3
+# per run; wall clock: ~5-10 min. Adds 1 to TOTAL only when run, so the
+# default 14/14 gate stays stable for headless CI.
+#
+# From inside Claude Code sessions, run as:
+#   codex exec "SCORER_SMOKE_REAL=1 bash evals/tests/scorer-verification.sh"
+# so the nested claude invocations don't collide with the session auth.
+# ---------------------------------------------------------------------------
+run_tier5_real_runner_and_llm() {
+  if [[ "${SCORER_SMOKE_REAL:-0}" != "1" ]]; then
+    return 0
+  fi
+  TOTAL=$((TOTAL + 1))
+  echo
+  echo "--- Tier 5: Real-runner + real LLM smoke (SCORER_SMOKE_REAL=1) ---"
+
+  local smoke_log report_parent latest_scores
+  smoke_log=$(mktemp -t tier5-smoke-XXXXXX)
+  report_parent="$REPO_ROOT/evals/reports"
+
+  # Run. run-evals.sh exits 1 when any case robust-fails — that's still a
+  # successful run. The Bug #5 fix in pr-emitter.sh treats exit 1 + scores
+  # file as scored-with-fails; Tier 5 here just asserts the raw-scores.json
+  # file was produced (regardless of composite outcomes).
+  ( cd "$REPO_ROOT" && bash evals/run-evals.sh ) >"$smoke_log" 2>&1 || true
+
+  latest_scores=$(find "$report_parent" -maxdepth 2 -name raw-scores.json -type f \
+    -newer "$smoke_log" 2>/dev/null \
+    | sort | tail -1)
+  # Fallback: if -newer misses (mtime resolution), use most-recent by sort.
+  [[ -z "$latest_scores" ]] && latest_scores=$(ls -1t "$report_parent"/*/raw-scores.json 2>/dev/null | head -1)
+
+  if [[ -n "$latest_scores" ]] && jq -e 'any(.[]?; .status == "scored")' "$latest_scores" >/dev/null 2>&1; then
+    pass "Tier 5 / real-runner-smoke (raw-scores.json has ≥1 scored record — Bug #5 stays fixed)"
+  else
+    echo "--- Tier 5 stderr tail ---" >&2
+    tail -30 "$smoke_log" >&2 || true
+    fail "Tier 5 / real-runner-smoke (no raw-scores.json or no scored records; see $smoke_log)"
+  fi
+  rm -f "$smoke_log"
+}
+run_tier5_real_runner_and_llm
+
 # Cleanup Tier 2 + Tier 4 report dirs so the test leaves no on-disk artifacts
-# in the real reports tree.
+# in the real reports tree. Tier 5's reports are kept (user opted in; useful
+# for debugging if the smoke fails).
 if [[ -f "$TEST_DIR/tier2-reports-to-cleanup.txt" ]]; then
   while IFS= read -r r; do
     [[ -n "$r" && -d "$r" ]] && rm -rf "$r"
