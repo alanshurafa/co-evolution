@@ -32,3 +32,11 @@ tmp/
 
 # Paper build outputs — pipeline is dormant; build/ is populated only when activated
 docs/paper/build/
+
+# Private-by-convention sidecar files — anything named *.private.* or *.local.*
+# is treated as local-only and kept out of the public repo. Use for scratch
+# notes, identifiers, tokens, or personal context that shouldn't leave the
+# machine. Commit a *.md or *.local.example.md template if others need the shape.
+*.private.*
+*.local.*
+!*.local.example.*
