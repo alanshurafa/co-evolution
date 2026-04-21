@@ -2,8 +2,11 @@
 # tests/pr-emitter-simulation.sh
 # Phase 8 Plan 02 — Hermetic SC-3 simulation of lab/pel/pr-emitter/ behavior.
 #
-# 10 scenarios (A-J). Final stdout line on success: "10/10 scenarios passed".
-# Exit 0 iff all 10 pass, 1 otherwise.
+# 11 scenarios (A-K). Final stdout line on success: "11/11 scenarios passed".
+# Scenario K is the Bug #5 regression guard — proves pr-emitter treats
+# run-evals.sh exit 1 + raw-scores.json present as scored-with-fails, not
+# as a scorer crash. Uses PEL_RUN_EVALS_OVERRIDE test hook.
+# Exit 0 iff all 11 pass, 1 otherwise.
 #
 # Scenarios (see <success_criteria> in 08-02-PLAN.md for full coverage matrix):
 #   A: Happy-path, template tier   — stubbed classifier + template proposer;
@@ -814,6 +817,91 @@ TEMPLATE (scenario J)'
   grep -qF 'eval cache hit: before' "$TEST_DIR/stderr-J2" \
     || { echo "J: run-2 missing 'eval cache hit: before'" >&2; cat "$TEST_DIR/stderr-J2" >&2; exit 1; }
 ) && pass "Scenario J (eval cache hit — both runs hit cache)" || fail "Scenario J (eval cache hit — both runs hit cache)"
+clear_cache
+
+# ---------------------------------------------------------------------------
+# Scenario K — Bug #5 regression: run-evals.sh exit 1 with raw-scores.json
+# present MUST be treated as scored-with-fails, not scorer crash.
+#
+# Pre-Bug-5-fix: pr-emitter.sh:667-670 `if ! (run-evals)` then-branch died
+# with "scorer run failed for before" whenever run-evals.sh exited 1, which
+# run-evals.sh does any time ≥1 case robust-fails — valid scored output.
+# Post-fix: exit code captured separately; file-presence check decides
+# fatality; exit 1 + file = INFO log + continue.
+# Uses PEL_RUN_EVALS_OVERRIDE hook (zero API cost, deterministic).
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+(
+  label="K"
+  template_target=$(pick_template_target)
+  write_template_diff "$TEST_DIR/diff-$label.patch" "$template_target" \
+    '1a\
+TEMPLATE BIAS COMMENT (bug-catcher, scenario K)'
+  write_classifier_stub "bug-catcher" "template weakness (scenario K)" "$TEST_DIR/classifier-$label.json"
+
+  write_claude_rotator "$label" \
+    "$TEST_DIR/classifier-$label.json" \
+    "$TEST_DIR/diff-$label.patch"
+  activate_rotator "$label"
+
+  # Deliberately skip preseed_cache_for_scenario — we want the scorer path to
+  # fire so the run-evals-exit-code wire is exercised.
+  clear_cache
+
+  # Stub run-evals.sh: write a valid raw-scores.json + exit 1.
+  stub_scorer="$TEST_DIR/stub-run-evals-$label.sh"
+  cat > "$stub_scorer" <<'SCORER_STUB'
+#!/usr/bin/env bash
+# Scenario K stub run-evals.sh: produce valid scores, exit 1 (robust-fail).
+set -u
+ts=$(date -u +"%Y%m%dT%H%M%S")
+report_dir="evals/reports/scenario-K-$ts-$$"
+mkdir -p "$report_dir"
+cat > "$report_dir/raw-scores.json" <<RAW
+[
+  {"case_id": "stub-case", "iteration": 1, "status": "scored",
+   "scores": {"robustness": "FAIL", "composite": 0.3}, "composite": 0.3}
+]
+RAW
+# Exit 1 as "some case robust-failed" — the classic Bug #5 trigger.
+exit 1
+SCORER_STUB
+  chmod +x "$stub_scorer"
+
+  export GH_BODY_SINK="$TEST_DIR/body-$label.md"
+  export GH_ARGS_MARKER="$TEST_DIR/gh-args-$label"
+
+  rc=0
+  PATH="$TEST_DIR/bin:$PATH" \
+  CO_EVOLVE_DRY_RUN=1 \
+  PEL_EVAL_REPORT="$REPO_ROOT/tests/fixtures/pr-emitter/template-feedback.json" \
+  PEL_RUN_EVALS_OVERRIDE="$stub_scorer" \
+  bash "$REPO_ROOT/lab/pel/pr-emitter/pr-emitter.sh" \
+    --target "$template_target" \
+    --pr-branch "$SIM_BRANCH_PREFIX/K" \
+    --dry-run \
+    "Scenario K task" \
+    >"$TEST_DIR/stdout-$label" 2>"$TEST_DIR/stderr-$label" || rc=$?
+
+  deactivate_rotator "$label"
+
+  # Cleanup: remove scenario-K report dirs we wrote to REPO_ROOT and any
+  # EMITTER_SANDBOX would be cleaned by pr-emitter's own trap.
+  rm -rf "$REPO_ROOT"/evals/reports/scenario-K-* 2>/dev/null || true
+
+  if [[ "$rc" -ne 0 ]]; then
+    echo "$label: expected exit 0 (Bug #5 regression); got $rc" >&2
+    echo "--- stderr ---" >&2; cat "$TEST_DIR/stderr-$label" >&2
+    exit 1
+  fi
+  grep -qF 'treating as scored-with-fails' "$TEST_DIR/stderr-$label" \
+    || { echo "$label: stderr missing 'treating as scored-with-fails' INFO log" >&2; cat "$TEST_DIR/stderr-$label" >&2; exit 1; }
+  test -f "$GH_BODY_SINK" \
+    || { echo "$label: body not captured" >&2; exit 1; }
+  grep -qE '^## PEL Mutation: template tier' "$GH_BODY_SINK" \
+    || { echo "$label: body missing template heading" >&2; cat "$GH_BODY_SINK" >&2; exit 1; }
+) && pass "Scenario K (Bug #5 regression — run-evals exit 1 + scores present)" \
+  || fail "Scenario K (Bug #5 regression)"
 clear_cache
 
 # ---------------------------------------------------------------------------
