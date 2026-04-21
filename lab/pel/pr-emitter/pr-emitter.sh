@@ -334,7 +334,19 @@ if [[ -z "${PEL_EVAL_REPORT:-}" ]]; then
     export PEL_EVAL_REPORT="$latest_report"
     log_stderr "INFO: using PEL_EVAL_REPORT default: $PEL_EVAL_REPORT"
   else
-    die "PEL_EVAL_REPORT env var not set and no default report under evals/reports/. Run 'bash evals/run-evals.sh' first or set PEL_EVAL_REPORT explicitly." 1
+    die "PEL_EVAL_REPORT env var not set and no default report under evals/reports/.
+
+To unblock, choose ONE of:
+  1. Run a real eval cycle:
+       bash evals/run-evals.sh
+     (produces evals/reports/<timestamp>/raw-scores.json that this emitter will then auto-detect)
+
+  2. Use a test fixture to validate the pipeline without running real evals:
+       PEL_EVAL_REPORT=tests/fixtures/pr-emitter/template-feedback.json bash co-evolve-bouncer.sh --lab pel-proposer --target ...
+     Available tier fixtures: tests/fixtures/pr-emitter/{template,policy,code}-feedback.json
+
+  3. Point at an existing raw-scores.json elsewhere on disk:
+       PEL_EVAL_REPORT=/abs/path/to/raw-scores.json bash co-evolve-bouncer.sh --lab pel-proposer --target ..." 1
   fi
 fi
 
