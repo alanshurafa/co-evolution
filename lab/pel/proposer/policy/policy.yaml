@@ -8,27 +8,26 @@
 #
 # Each knob's bound is authoritative in bounds.jq — this file's comments
 # describe intent but bounds.jq enforces constraint.
-
+# 
 # How many retries on transient failures. Bounds [0, 10]. Raise when transient
 # failures dominate; lower to surface latent issues faster.
-retry_cap: 3
-
+retry_cap: 5
 # Whether [CONTESTED]/[CLARIFY] markers require exact-string match (strict) or
+
 # fuzzy match (lax). Valid values: strict, lax.
 marker_semantics: strict
-
 # Default posture for unknown phase names. false = fail-closed (safer),
+
 # true = permit unknown phases. Valid values: true, false.
 writable_phase_default: false
-
 # Confidence needed to arbitrate without another bounce. Bounds [0.0, 1.0].
+
 # Higher values = more bounces before arbitration (safer); lower = faster exit.
 arbitrate_threshold: 0.7
-
 # Maximum bounce passes before giving up. Bounds [1, 10].
-max_passes: 4
-
+max_passes: 5
 # Probabilistic weights when classifier is uncertain. Each value in [0.0, 1.0];
+
 # total must sum to [0.95, 1.05] (soft bound for floating-point slack).
 flavor_weights:
   bug_catcher: 0.25
