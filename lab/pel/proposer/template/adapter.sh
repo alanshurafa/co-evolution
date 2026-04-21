@@ -19,13 +19,23 @@
 # Stdout contract: raw diff bytes captured from Opus (proposer.sh runs D-09/D-10 gates).
 # Stderr: diagnostics only.
 
-# Default PROPOSER_MODEL to Opus 4.6 per D-06 (overrideable via env).
-# 2026-04-20: changed from claude-opus-4-7 to claude-opus-4-6 after first SC-4
-# dogfood run hung at the proposer step. claude-opus-4-7 was selected when this
-# adapter was originally written; claude-opus-4-6 is what subscriptions reliably
-# resolve today. Override via env when 4-7 (or successor) is universally
-# available again.
-: "${PROPOSER_MODEL:=claude-opus-4-6}"
+# Default PROPOSER_MODEL to the "opus" alias — Claude CLI resolves this to
+# the latest available Opus model on the user's plan (per `claude --help`:
+# "Provide an alias for the latest model (e.g. 'sonnet' or 'opus')...").
+#
+# History (2026-04-20):
+#   1. Original adapter pinned claude-opus-4-7. PR #13 changed default to
+#      claude-opus-4-6 thinking 4-7 was unavailable; that diagnosis was
+#      wrong — the actual hang was Claude Max quota exhaustion, not model
+#      availability.
+#   2. This commit replaces the literal version pin with the "opus" alias
+#      so the default tracks the latest Opus on the user's plan rather
+#      than locking to a specific version that bit-rots with each release.
+#   3. Quota-related hangs still need handling — see follow-up adaptive
+#      design (B in 2026-04-20 session) for the proper solution.
+#
+# Override via env (PROPOSER_MODEL=claude-opus-4-6 or specific) when needed.
+: "${PROPOSER_MODEL:=opus}"
 
 # Inline die() — matches the runner-helper die() semantics (repo root lib)
 # but stays local so D-05 self-containment holds.
@@ -118,7 +128,7 @@ invoke_opus() {
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
-  local model="${PROPOSER_MODEL:-claude-opus-4-6}"
+  local model="${PROPOSER_MODEL:-opus}"
   local -a cmd
   local -a tool_flags
 
