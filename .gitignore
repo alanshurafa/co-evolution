@@ -24,6 +24,9 @@ tmp/
 # Phase 8 eval cache — gitignored per D-18
 .co-evolve-cache/
 
+# v1.3-adaptive router telemetry (append-only JSONL log of routing decisions)
+.co-evolve/
+
 # Local project notes (decisions, plans, handoffs)
 .notes/
 
