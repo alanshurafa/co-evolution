@@ -101,7 +101,17 @@ emit_routing_json() {
 # control flow shape exists.
 # ---------------------------------------------------------------------------
 if [[ -n "${PEL_COMPLEXITY_OVERRIDE:-}" ]]; then
-  die "Override path not yet implemented (Task 4)" 99
+  # Validate the override value.
+  case "$PEL_COMPLEXITY_OVERRIDE" in
+    NORMAL|COMPLEX) ;;
+    *)
+      die "invalid PEL_COMPLEXITY_OVERRIDE: $PEL_COMPLEXITY_OVERRIDE (expected NORMAL|COMPLEX)" 1
+      ;;
+  esac
+
+  log_stderr "INFO: --complexity override active: $PEL_COMPLEXITY_OVERRIDE (skipping Haiku)"
+  emit_routing_json "$PEL_COMPLEXITY_OVERRIDE" "user-override" "$PEL_COMPLEXITY_OVERRIDE"
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -110,7 +120,11 @@ fi
 # ---------------------------------------------------------------------------
 haiku_response=""
 if ! haiku_response=$(run_adapter); then
-  die "Haiku call failed (Task 5 will add safe-side fallback here)" 99
+  # Safe-side default: when in doubt, escalate to COMPLEX (Opus). The router
+  # is best-effort; PEL must keep working even if the router itself fails.
+  log_stderr "WARN: Haiku call failed; falling back to COMPLEX (safe-side default)"
+  emit_routing_json "COMPLEX" "router-failure-fallback"
+  exit 0
 fi
 
 # Validate Haiku response shape.
