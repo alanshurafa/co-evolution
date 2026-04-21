@@ -664,14 +664,31 @@ run_scorer_cached() {
   touch -d '1 second ago' "$marker" 2>/dev/null \
     || touch -t "$(date -u -v-1S +%Y%m%d%H%M.%S 2>/dev/null || date -u -d '1 second ago' +%Y%m%d%H%M.%S 2>/dev/null)" "$marker" 2>/dev/null \
     || true
-  if ! (cd "$worktree_dir" && bash "$REPO_ROOT/evals/run-evals.sh" >"$tmp_out" 2>&1); then
-    rm -f "$tmp_out" "$marker"
-    die "scorer run failed for $label" 2
-  fi
+  # Bug #5 fix: run-evals.sh exits 1 whenever ANY case robust-fails (see
+  # evals/run-evals.sh:380-386). That's "scored successfully, some cases in
+  # the FAIL band" — valid data for the PR body. Only a MISSING raw-scores.json
+  # means the scorer itself crashed. Capture exit code, then let the file-
+  # presence check decide fatality.
+  # Test hook (hermetic gate only): PEL_RUN_EVALS_OVERRIDE points at a stub
+  # run-evals.sh so tests can exercise exit-code branches without burning
+  # real LLM quota. Never set in production.
+  local run_evals_script="$REPO_ROOT/evals/run-evals.sh"
+  [[ -n "${PEL_RUN_EVALS_OVERRIDE:-}" ]] && run_evals_script="$PEL_RUN_EVALS_OVERRIDE"
+  local run_evals_exit=0
+  (cd "$worktree_dir" && bash "$run_evals_script") >"$tmp_out" 2>&1 \
+    || run_evals_exit=$?
   scores_file=$(find "$worktree_dir/evals/reports" -maxdepth 2 -name raw-scores.json -newer "$marker" 2>/dev/null | head -1)
+  if [[ -z "$scores_file" || ! -f "$scores_file" ]]; then
+    log_stderr "ERROR: scorer produced no raw-scores.json for $label (run-evals exit $run_evals_exit)"
+    log_stderr "ERROR: scorer stderr tail for $label:"
+    tail -30 "$tmp_out" >&2 || true
+    rm -f "$tmp_out" "$marker"
+    die "scorer did not produce raw-scores.json for $label" 2
+  fi
+  if (( run_evals_exit != 0 )); then
+    log_stderr "INFO: run-evals.sh exit $run_evals_exit for $label — treating as scored-with-fails (raw-scores.json present)"
+  fi
   rm -f "$tmp_out" "$marker"
-  [[ -n "$scores_file" && -f "$scores_file" ]] \
-    || die "scorer did not produce raw-scores.json for $label" 2
   cp "$scores_file" "$cache_file"
   cat "$cache_file"
 }
