@@ -137,6 +137,21 @@ invoke_opus() {
     fallback_args=(--fallback-model "$fallback_model")
   fi
 
+  # I-1: Prompt-inject "Think harder" preamble when THINKING_BUDGET=harder.
+  # Router sets this env var on COMPLEX-tier routing. Prompt injection (not a
+  # CLI flag) so it works across Claude CLI versions.
+  if [[ "${THINKING_BUDGET:-}" == "harder" ]]; then
+    local augmented_prompt
+    augmented_prompt=$(mktemp -t code-prompt-harder-XXXXXX)
+    {
+      printf 'Think harder before responding.\n\n'
+      cat "$prompt_file"
+    } > "$augmented_prompt"
+    prompt_file="$augmented_prompt"
+    # shellcheck disable=SC2064
+    trap "rm -f \"$augmented_prompt\"" RETURN
+  fi
+
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     cmd=(cmd.exe /c claude -p --output-format text --model "$model" "${fallback_args[@]}" "${tool_flags[@]}")
   else
@@ -144,6 +159,15 @@ invoke_opus() {
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file"
+  local rc=$?
+
+  # I-2: Detect --fallback-model activation from claude stderr; export
+  # FALLBACK_FIRED=true for pr-emitter telemetry. Same pattern as template.
+  if [[ -s "$stderr_file" ]] && grep -qiE 'falling back to|model fallback|primary model.*overloaded' "$stderr_file"; then
+    export FALLBACK_FIRED=true
+  fi
+
+  return $rc
 }
 
 # capture_diff <output_file>
