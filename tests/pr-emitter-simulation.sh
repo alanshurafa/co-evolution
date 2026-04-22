@@ -2,11 +2,14 @@
 # tests/pr-emitter-simulation.sh
 # Phase 8 Plan 02 — Hermetic SC-3 simulation of lab/pel/pr-emitter/ behavior.
 #
-# 11 scenarios (A-K). Final stdout line on success: "11/11 scenarios passed".
+# 12 scenarios (A-L). Final stdout line on success: "12/12 scenarios passed".
 # Scenario K is the Bug #5 regression guard — proves pr-emitter treats
 # run-evals.sh exit 1 + raw-scores.json present as scored-with-fails, not
 # as a scorer crash. Uses PEL_RUN_EVALS_OVERRIDE test hook.
-# Exit 0 iff all 11 pass, 1 otherwise.
+# Scenario L is the I-3 router-fires integration guard — proves the router
+# is actually invoked (not silently failing and falling back to opus) by
+# queueing a real router Haiku response and asserting the expected log line.
+# Exit 0 iff all 12 pass, 1 otherwise.
 #
 # Scenarios (see <success_criteria> in 08-02-PLAN.md for full coverage matrix):
 #   A: Happy-path, template tier   — stubbed classifier + template proposer;
@@ -902,6 +905,96 @@ SCORER_STUB
     || { echo "$label: body missing template heading" >&2; cat "$GH_BODY_SINK" >&2; exit 1; }
 ) && pass "Scenario K (Bug #5 regression — run-evals exit 1 + scores present)" \
   || fail "Scenario K (Bug #5 regression)"
+clear_cache
+
+# ---------------------------------------------------------------------------
+# Scenario L — I-3 integration guard: router fires in production flow.
+#
+# Context: Scenarios A-K all rotate the claude stub with 2 items (classifier +
+# proposer). When pr-emitter invokes the router, it's the 3rd claude call,
+# and the rotator's fallback replays the proposer response — which is not
+# valid router JSON, so the router silently fails and pr-emitter falls back
+# to the pre-adaptive "opus" default. That silent-fail path hid C-1 from the
+# 2026-04-21 adaptive review.
+#
+# Scenario L queues THREE items (classifier, router, proposer) so the router's
+# Haiku call gets a valid NORMAL/sonnet response and the router actually runs.
+# Assertion: stderr contains "router picked complexity=NORMAL model=sonnet".
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+(
+  label="L"
+  template_target=$(pick_template_target)
+  write_template_diff "$TEST_DIR/diff-$label.patch" "$template_target" \
+    '1a\
+TEMPLATE BIAS COMMENT (bug-catcher, scenario L)'
+  write_classifier_stub "bug-catcher" "router fires (scenario L)" "$TEST_DIR/classifier-$label.json"
+
+  # Router Haiku response: NORMAL → router.sh constructs
+  # {complexity: NORMAL, model: sonnet, fallback_model: sonnet, ...} JSON.
+  cat > "$TEST_DIR/router-$label.json" <<'ROUTER'
+{
+  "complexity": "NORMAL",
+  "rationale": "Small template tweak; routine wording — NORMAL."
+}
+ROUTER
+
+  # Three-item queue: classifier → router → proposer. Preserves existing
+  # rotator semantics (fallback-replay still works if callers exceed 3, but
+  # template tier only makes 3 claude calls in this flow).
+  write_claude_rotator "$label" \
+    "$TEST_DIR/classifier-$label.json" \
+    "$TEST_DIR/router-$label.json" \
+    "$TEST_DIR/diff-$label.patch"
+  activate_rotator "$label"
+
+  preseed_cache_for_scenario \
+    "$REPO_ROOT/tests/fixtures/pr-emitter/template-feedback.json" \
+    "$TEST_DIR/diff-$label.patch" \
+    "$label" \
+    "template"
+
+  export GH_BODY_SINK="$TEST_DIR/body-$label.md"
+  export GH_ARGS_MARKER="$TEST_DIR/gh-args-$label"
+
+  rc=0
+  PATH="$TEST_DIR/bin:$PATH" \
+  CO_EVOLVE_DRY_RUN=1 \
+  PEL_EVAL_REPORT="$REPO_ROOT/tests/fixtures/pr-emitter/template-feedback.json" \
+  bash "$REPO_ROOT/lab/pel/pr-emitter/pr-emitter.sh" \
+    --target "$template_target" \
+    --pr-branch "$SIM_BRANCH_PREFIX/L" \
+    --dry-run \
+    "Scenario L task" \
+    >"$TEST_DIR/stdout-$label" 2>"$TEST_DIR/stderr-$label" || rc=$?
+
+  deactivate_rotator "$label"
+
+  if [[ "$rc" -ne 0 ]]; then
+    echo "$label: expected exit 0 (router-fires); got $rc" >&2
+    echo "--- stderr ---" >&2; cat "$TEST_DIR/stderr-$label" >&2
+    exit 1
+  fi
+
+  # Primary assertion: the router's routing log must appear, proving the
+  # router consumed its queued response and ran to completion.
+  grep -qF 'router picked complexity=NORMAL model=sonnet' "$TEST_DIR/stderr-$label" \
+    || { echo "$label: stderr missing 'router picked complexity=NORMAL model=sonnet'" >&2; cat "$TEST_DIR/stderr-$label" >&2; exit 1; }
+
+  # Negative assertion: router-failure WARN must NOT appear (that would mean
+  # the queued response failed to reach the router, exposing a rotator bug).
+  if grep -qF 'router invocation failed' "$TEST_DIR/stderr-$label"; then
+    echo "$label: router fell back silently — queued router response never reached it" >&2
+    cat "$TEST_DIR/stderr-$label" >&2
+    exit 1
+  fi
+
+  test -f "$GH_BODY_SINK" \
+    || { echo "$label: body not captured" >&2; exit 1; }
+  grep -qE '^## PEL Mutation: template tier' "$GH_BODY_SINK" \
+    || { echo "$label: body missing template heading" >&2; cat "$GH_BODY_SINK" >&2; exit 1; }
+) && pass "Scenario L (I-3 router-fires — NORMAL/sonnet log line present)" \
+  || fail "Scenario L (I-3 router-fires)"
 clear_cache
 
 # ---------------------------------------------------------------------------
