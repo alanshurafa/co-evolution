@@ -357,13 +357,13 @@ To unblock, choose ONE of:
 fi
 
 # PEL_FEEDBACK is the router-visible alias for PEL_EVAL_REPORT. Set it here
-# (right after Section C resolves the path) so Section C.5 can pass it to the
-# router — fixes the bug where Section C.5 used to run before PEL_FEEDBACK
+# (right after Section C resolves the path) so Section D.0 can pass it to the
+# router — fixes the bug where Section D.0 used to run before PEL_FEEDBACK
 # was bound, causing the router to fail silently on every real invocation.
 export PEL_FEEDBACK="$PEL_EVAL_REPORT"
 
 # ---------------------------------------------------------------------------
-# Section C.5: Adaptive router (v1.3 — picks complexity tier + model).
+# Section D.0: Adaptive router (v1.3 — picks complexity tier + model).
 # Runs BETWEEN Section C (eval-report resolution) and Section D (proposer
 # dispatch). Skipped entirely if PEL_NO_ADAPTIVE=1. Best-effort: router
 # failure or missing/non-JSON output falls back to current hardcoded behavior
@@ -386,6 +386,10 @@ if [[ "${PEL_NO_ADAPTIVE:-0}" != "1" ]]; then
     chosen_model=$(printf '%s' "$router_json" | jq -r '.model')
     chosen_complexity=$(printf '%s' "$router_json" | jq -r '.complexity')
     fallback_model=$(printf '%s' "$router_json" | jq -r '.fallback_model')
+    # I-1: thinking_budget end-to-end. Router emits "harder" on COMPLEX; null
+    # otherwise. Proposer adapter prompt-injects "Think harder before
+    # responding." when THINKING_BUDGET=harder (no claude CLI flag dep).
+    thinking_budget=$(printf '%s' "$router_json" | jq -r '.thinking_budget // "null"')
 
     # Export PROPOSER_MODEL so the proposer adapter picks it up.
     case "$resolved_tier" in
@@ -394,8 +398,13 @@ if [[ "${PEL_NO_ADAPTIVE:-0}" != "1" ]]; then
       policy)   ;;  # policy uses Haiku — router decision N/A but logged
     esac
     export FALLBACK_MODEL="$fallback_model"
+    if [[ "$thinking_budget" != "null" && -n "$thinking_budget" ]]; then
+      export THINKING_BUDGET="$thinking_budget"
+    else
+      unset THINKING_BUDGET 2>/dev/null || true
+    fi
 
-    log_stderr "INFO: router picked complexity=$chosen_complexity model=$chosen_model"
+    log_stderr "INFO: router picked complexity=$chosen_complexity model=$chosen_model${THINKING_BUDGET:+ thinking=$THINKING_BUDGET}"
   else
     router_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
     ROUTER_DURATION_MS=$((router_end_ms - router_start_ms))
@@ -872,8 +881,10 @@ log_stderr "INFO: PR drafted: $pr_url"
   mkdir -p "$telemetry_dir" 2>/dev/null || true
   telemetry_file="$telemetry_dir/router-history.jsonl"
 
-  fallback_fired="false"
-  # Future: detect fallback fire from claude -p stderr signal; for now record false.
+  # I-2: fallback_fired is exported by proposer adapters when they detect
+  # the claude --fallback-model signature in stderr. Default false if the
+  # proposer adapter didn't set it (e.g., policy tier uses Haiku + no fallback).
+  fallback_fired="${FALLBACK_FIRED:-false}"
 
   # Compute total PEL duration from the start marker set in Section A.0.
   pel_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
