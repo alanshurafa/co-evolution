@@ -1,20 +1,30 @@
 ---
 name: dev-review
 description: >
-  Automated plan-bounce-execute workflow between Claude Code (Opus) and Codex CLI.
-  One AI composes a plan, it bounces between agents with [CONTESTED]/[CLARIFY]
-  markers until refined, then the designated agent executes the code.
+  Code-focused plan-bounce-execute workflow between Claude Code (Opus) and
+  Codex CLI. Use when the user wants repo files changed, a bug fixed, a feature
+  implemented, or a code plan verified before execution. One AI composes a
+  plan, it bounces between agents with [CONTESTED]/[CLARIFY] markers until
+  refined, then the designated agent executes the code.
   Replaces manual copy-paste between Claude Code and Codex desktops.
-  Triggers on "dev review", "dev-review", "plan bounce", "bounce between agents",
-  "have codex review", "cross-AI", "developer reviewer loop", "compose and review".
+  Triggers on "dev review", "dev-review", "code review loop",
+  "plan then execute", "have codex implement", "have codex review this diff",
+  "developer reviewer loop", "compose execute verify", and explicit /dev-review
+  requests. Generic co-evolution, bounce, cross-AI refinement, document
+  refinement, and stress-test requests should use /co-evolution instead.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, EnterWorktree, ExitWorktree
 ---
 
 # /dev-review - Plan-Bounce-Execute Workflow
 
-Automates the workflow of composing a plan with one AI, bouncing it between agents
-for refinement using [CONTESTED]/[CLARIFY] markers, then having one agent execute
-the final plan into code. Replaces manual copy-paste between Claude Code and Codex.
+Automates the workflow of composing a code plan with one AI, bouncing it between
+agents for refinement using [CONTESTED]/[CLARIFY] markers, then having one agent
+execute the final plan into code. Replaces manual copy-paste between Claude Code
+and Codex.
+
+Use `/co-evolution` for general questions, ideas, arguments, prompt refinement,
+or document bounces. Use `/dev-review` only when the intended deliverable is a
+repo change or code-focused verification workflow.
 
 When `--live` is enabled on Windows, each Codex pass runs in a visible PowerShell
 window so the user can watch progress in real time. The handoff contract stays
