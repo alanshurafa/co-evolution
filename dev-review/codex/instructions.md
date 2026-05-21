@@ -99,6 +99,7 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 - Codex code runtime: `dev-review/codex/dev-review.sh`
 - Codex router doc: `dev-review/codex/instructions.md` (this file)
 - Legacy document bouncer: `agent-bouncer/agent-bouncer.sh`
-- Claude Code skill surface: `skills/dev-review/`
+- Default Claude Code skill surface: `skills/co-evolution/`
+- Code-focused Claude Code skill surface: `skills/dev-review/`
 - Shared library: `lib/co-evolution.sh`
 - Co-evolve templates: `templates/co-evolve/`

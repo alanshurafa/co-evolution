@@ -13,6 +13,9 @@ Full spec: [`BOUNCE-PROTOCOL.md`](BOUNCE-PROTOCOL.md). Reference implementation:
 
 ## How to interact with this repo
 
+- If you are invoked via `/co-evolution` or `bash co-evolve-bouncer.sh`, you are
+  in the general-purpose co-evolution workflow for questions, drafts, plans,
+  specs, arguments, and markdown refinement
 - If you are invoked via `/dev-review` (Claude Code) or `bash dev-review/codex/dev-review.sh` (Codex), you are inside the bounce pipeline — your role (reviewer / composer) and pass number are passed to you in the prompt template
 - If you are invoked via `bash agent-bouncer/agent-bouncer.sh <doc>`, you are bouncing a single markdown document — same protocol applies
 - If you are exploring the repo directly without an explicit role, treat the protocol section above as orientation, then read the GSD-managed sections below for project meta

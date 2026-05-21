@@ -1,21 +1,95 @@
 # Co-Evolution
 
-Tools for structured iterative refinement between AI agents and Humans. Documents bounce back and forth between agents using disagreement markers until they converge - producing tighter, more precise output than any single agent would alone. Humans can opt in to be a part of the co-evolution if they choose.
+Tools for structured iterative refinement between AI agents and humans. Documents
+bounce back and forth between agents using disagreement markers until they
+converge, producing tighter and more precise output than any single agent would
+alone.
 
-## What's in this repo
+## Default Usage
+
+Start with the general Co-Evolution runner unless the task specifically needs
+code execution:
+
+```bash
+bash ./co-evolve-bouncer.sh --vanilla "stress test this idea"
+```
+
+For an existing markdown document:
+
+```bash
+bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
+```
+
+Use `dev-review` only when you want a code-focused compose -> bounce -> execute
+-> verify workflow.
+
+## Install On macOS/Linux
+
+From the cloned repo:
+
+```bash
+mkdir -p ~/.claude/skills/co-evolution ~/.local/bin
+cp -R skills/co-evolution/* ~/.claude/skills/co-evolution/
+
+cat > ~/.local/bin/co-evolve <<EOF
+#!/usr/bin/env bash
+cd "$PWD" || exit 1
+exec bash ./co-evolve-bouncer.sh "\$@"
+EOF
+chmod +x ~/.local/bin/co-evolve
+```
+
+Make sure `~/.local/bin` is on `PATH`. After that, the default command is:
+
+```bash
+co-evolve --vanilla "what should I do next?"
+```
+
+Optional code workflow:
+
+```bash
+mkdir -p ~/.claude/skills/dev-review
+cp -R skills/dev-review/* ~/.claude/skills/dev-review/
+```
+
+## What's In This Repo
+
+### [Co-Evolution Skill](skills/co-evolution/)
+
+`/co-evolution` is the default Claude Code skill for general questions, ideas,
+drafts, markdown files, plans, specs, and arguments. It routes to
+`co-evolve-bouncer.sh` and does not execute repo changes.
+
+```text
+/co-evolution Stress test this launch plan
+```
+
+### [Co-Evolve Bouncer](co-evolve-bouncer.sh)
+
+The primary standalone runner. It can compose from a question, bounce an
+existing document, or run staged critique -> defend -> tighten passes.
+
+```bash
+bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this argument?"
+bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
+```
 
 ### [Agent Bouncer](agent-bouncer/)
 
-A standalone bash script that bounces any markdown document between two agents. Agent-agnostic — ships with Claude and Codex adapters, add new agents by writing one function. Runs from any terminal.
+A standalone bash script that bounces any markdown document between two agents.
+Agent-agnostic: ships with Claude and Codex adapters, and new agents can be
+added by writing one function. Runs from any terminal.
 
 ```bash
 # Pass any document you want refined
-./agent-bouncer/agent-bouncer.sh your-document.md
+bash ./agent-bouncer/agent-bouncer.sh your-document.md
 ```
 
 ### [Codex Runtime](dev-review/codex/)
 
-A standalone Bash runtime for the full `dev-review` compose -> bounce -> execute -> optional verify workflow. Use it when the task is a real repo change and you want a bounced plan, an execution trail, or a verifier pass outside Claude Code.
+A standalone Bash runtime for the full `dev-review` compose -> bounce -> execute
+-> optional verify workflow. Use it when the task is a real repo change and you
+want a bounced plan, an execution trail, or a verifier pass outside Claude Code.
 
 ```bash
 # Produce a plan and stop
@@ -25,40 +99,55 @@ bash dev-review/codex/dev-review.sh --plan-only "Add docs for the Codex runtime"
 bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-and-routing/04-01-PLAN.md
 ```
 
-Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage details and [dev-review/codex/instructions.md](dev-review/codex/instructions.md) when you want Codex to route between the repo entrypoints automatically.
+Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage
+details and [dev-review/codex/instructions.md](dev-review/codex/instructions.md)
+when you want Codex to route between the repo entrypoints automatically.
 
-### [Claude Code Skill](skills/dev-review/)
+### [Dev-Review Skill](skills/dev-review/)
 
-`/dev-review` - a Claude Code skill that wraps the bounce protocol in a full compose-bounce-execute-verify workflow. Use it inside Claude Code for end-to-end plan refinement and code generation.
+`/dev-review` is a Claude Code skill that wraps the bounce protocol in a
+code-focused compose-bounce-execute-verify workflow. Use it inside Claude Code
+when the intended deliverable is a repo change, not a general answer or document
+refinement.
 
 ### [Lab](lab/)
 
-First-class beta channel for experimental features that could break the core runner if shipped prematurely. Opt-in only — users who never pass `--lab <mode>` see zero behavior change. See [`lab/README.md`](lab/README.md) for the boundary conventions, graduation criteria, anti-criteria, and sandbox guarantee.
+First-class beta channel for experimental features that could break the core
+runner if shipped prematurely. Opt-in only: users who never pass `--lab <mode>`
+see zero behavior change. See [lab/README.md](lab/README.md) for the boundary
+conventions, graduation criteria, anti-criteria, and sandbox guarantee.
 
 ```bash
-# Invoke a lab mode (parser wired in Phase 3 Plan 02)
+# Invoke a lab mode
 co-evolve --lab pel-proposer "task"
 bash dev-review/codex/dev-review.sh --lab pel-proposer "task"
 ```
 
-Unknown modes fail fast with a list of available modes — no silent fallthrough.
+Unknown modes fail fast with a list of available modes. There is no silent
+fallthrough.
 
-### Picking the right entrypoint
+### Picking The Right Entrypoint
 
 | Task shape | Tool |
 |------------|------|
+| General question, idea, strategy, draft, or argument | `co-evolve-bouncer.sh` |
+| Existing markdown document needs refinement | `co-evolve-bouncer.sh --bounce-only` |
 | Small, low-risk repo edit in 1-2 files | Direct execution |
-| Prompt, plan, spec, or other markdown refinement | `agent-bouncer/agent-bouncer.sh` |
 | Multi-file code change, medium/high risk, or plan/verify workflow | `dev-review/codex/dev-review.sh` |
-| Same pipeline inside Claude Code | `skills/dev-review/` |
+| General co-evolution inside Claude Code | `skills/co-evolution/` |
+| Code pipeline inside Claude Code | `skills/dev-review/` |
 
 ### The Bounce Protocol
 
-The shared foundation. Two markers - `[CONTESTED]` and `[CLARIFY]` - coordinate structured disagreement between agents. Both auto-expire after 2 passes, guaranteeing convergence. The protocol is customizable: swap in domain-specific markers, adjust convergence rules, change role lenses.
+The shared foundation. Two markers - `[CONTESTED]` and `[CLARIFY]` - coordinate
+structured disagreement between agents. Both auto-expire after 2 passes,
+guaranteeing convergence. The protocol is customizable: swap in domain-specific
+markers, adjust convergence rules, change role lenses.
 
 ## Status
 
-Early development. The Agent Bouncer, Claude Code skill, and standalone Codex runtime are functional. Next steps:
+Early development. The Co-Evolution skill, Co-Evolve Bouncer, Agent Bouncer,
+Dev-Review skill, and standalone Codex runtime are functional. Next steps:
 
 - Additional agent adapters (Gemini CLI, Ollama, direct API calls)
 - Standalone bounce protocol spec
