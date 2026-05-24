@@ -29,7 +29,13 @@ document, or run staged critique -> defend -> tighten passes.
 bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this argument?"
 bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
 bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
+bash ./co-evolve-bouncer.sh --vanilla --single-model "Stress test this" # both roles on claude
 ```
+
+`--single-model [claude|codex]` pins both roles onto one agent and prepends a
+persona-discipline preface (`templates/co-evolve/single-model-preface.md`) that
+asks the model to deliberately diverge from its own prior turn. Use when only
+one model is available, or to A/B against cross-model runs.
 
 ### Agent Bouncer (`agent-bouncer/`)
 

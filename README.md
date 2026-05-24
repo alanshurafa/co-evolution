@@ -74,6 +74,19 @@ bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this arg
 bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
 ```
 
+When only one agent is available — or to A/B against a cross-model run — use
+`--single-model` to pin both reviewer and composer onto the same agent. The
+runner injects a persona-discipline preface that asks the model to deliberately
+read against its own prior turn rather than nodding along.
+
+```bash
+bash ./co-evolve-bouncer.sh --vanilla --single-model "Stress test this argument"
+bash ./co-evolve-bouncer.sh --vanilla --single-model codex --chain "Ship plan?"
+```
+
+Expect shallower diversity than cross-model bounces (shared weights share
+blindspots), but most runs still surface 1-2 real objections in the first pass.
+
 ### [Agent Bouncer](agent-bouncer/)
 
 A standalone bash script that bounces any markdown document between two agents.

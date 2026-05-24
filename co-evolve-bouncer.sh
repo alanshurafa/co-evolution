@@ -15,6 +15,8 @@ CHAIN=false
 MAX_BOUNCES=2
 AGENT_A="claude"
 AGENT_B="codex"
+SINGLE_MODEL=false
+SINGLE_MODEL_AGENT=""
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
 TASK=""
@@ -37,11 +39,13 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 TEMPLATE_DIR="$SCRIPT_DIR/templates/co-evolve"
 PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
+SINGLE_MODEL_PREFACE="$TEMPLATE_DIR/single-model-preface.md"
 
 # Validate templates exist
 for _tmpl in "$TEMPLATE_DIR/role-reviewer-light.md" "$TEMPLATE_DIR/role-composer-light.md" \
              "$TEMPLATE_DIR/chain-critique.md" "$TEMPLATE_DIR/chain-defend.md" \
-             "$TEMPLATE_DIR/chain-tighten.md" "$PROTOCOL_TEMPLATE"; do
+             "$TEMPLATE_DIR/chain-tighten.md" "$SINGLE_MODEL_PREFACE" \
+             "$PROTOCOL_TEMPLATE"; do
   [[ -f "$_tmpl" ]] || die "Missing template: $_tmpl"
 done
 
@@ -64,6 +68,11 @@ Options:
   --chain            Use staged passes: critique -> defend -> tighten
   --bounces N        Max bounce passes (default: 2, ignored with --chain)
   --agents A,B       Agent pair (default: claude,codex)
+  --single-model[=AGENT]
+                     Force both roles onto the same agent (default: claude).
+                     Adds persona-discipline preface to compensate for shared
+                     weights. Useful when only one model is available, or to
+                     A/B against cross-model runs. Overrides --agents.
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
@@ -106,6 +115,36 @@ while [[ $# -gt 0 ]]; do
       [[ "$2" == *","*","* ]] && die "--agents requires exactly two agents (e.g., claude,codex)"
       [[ -z "$AGENT_A" || -z "$AGENT_B" ]] && die "--agents requires exactly two agents separated by comma (e.g., claude,codex)"
       shift 2
+      ;;
+    --single-model)
+      SINGLE_MODEL=true
+      # Optional positional agent: --single-model codex. If next arg looks like
+      # a flag or is absent, fall back to the default ("claude").
+      if [[ $# -ge 2 && -n "${2:-}" && "${2:0:1}" != "-" ]]; then
+        SINGLE_MODEL_AGENT="$2"
+        shift 2
+      else
+        SINGLE_MODEL_AGENT="claude"
+        shift
+      fi
+      case "$SINGLE_MODEL_AGENT" in
+        claude|codex) ;;
+        *) die "--single-model agent must be claude or codex (got: $SINGLE_MODEL_AGENT)" ;;
+      esac
+      AGENT_A="$SINGLE_MODEL_AGENT"
+      AGENT_B="$SINGLE_MODEL_AGENT"
+      ;;
+    --single-model=*)
+      SINGLE_MODEL=true
+      SINGLE_MODEL_AGENT="${1#--single-model=}"
+      [[ -n "$SINGLE_MODEL_AGENT" ]] || die "--single-model= requires an agent name"
+      case "$SINGLE_MODEL_AGENT" in
+        claude|codex) ;;
+        *) die "--single-model agent must be claude or codex (got: $SINGLE_MODEL_AGENT)" ;;
+      esac
+      AGENT_A="$SINGLE_MODEL_AGENT"
+      AGENT_B="$SINGLE_MODEL_AGENT"
+      shift
       ;;
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
     --bounce-only) BOUNCE_ONLY=true; shift ;;
@@ -322,34 +361,45 @@ $(cat "$CONTEXT_FILE")
 fi
 
 # --- Role Preamble Generation ---
-build_reviewer_preamble() {
-  if [[ -n "$LENS" ]]; then
-    echo "You are the ${LENS} reviewing this work. Be adversarial from that perspective. Every critique must include a concrete alternative."
-  elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
-    cat "$TEMPLATE_DIR/role-reviewer-light.md"
+# Prepends the single-model persona-discipline preface when --single-model
+# is active. No-op otherwise (preserves cross-model byte-parity).
+maybe_prepend_single_model_preface() {
+  local body="$1"
+  if [[ "$SINGLE_MODEL" == "true" ]]; then
+    printf '%s\n%s' "$(cat "$SINGLE_MODEL_PREFACE")" "$body"
   else
-    local preamble
+    printf '%s' "$body"
+  fi
+}
+
+build_reviewer_preamble() {
+  local preamble
+  if [[ -n "$LENS" ]]; then
+    preamble="You are the ${LENS} reviewing this work. Be adversarial from that perspective. Every critique must include a concrete alternative."
+  elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
+    preamble=$(cat "$TEMPLATE_DIR/role-reviewer-light.md")
+  else
     preamble=$(cat "$TEMPLATE_DIR/role-reviewer-light.md")
     if [[ -n "$AUDIENCE" && "$AUDIENCE" != "general" && "$AUDIENCE" != "auto" ]]; then
       preamble="${preamble}Evaluate this as if you are a ${AUDIENCE} reading it. What would they find unconvincing, unclear, or missing?"
     fi
-    echo "$preamble"
   fi
+  maybe_prepend_single_model_preface "$preamble"
 }
 
 build_composer_preamble() {
+  local preamble
   if [[ -n "$LENS" ]]; then
-    echo "Resolve all critiques from the ${LENS} perspective. Strengthen weak points. Make it bulletproof."
+    preamble="Resolve all critiques from the ${LENS} perspective. Strengthen weak points. Make it bulletproof."
   elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
-    cat "$TEMPLATE_DIR/role-composer-light.md"
+    preamble=$(cat "$TEMPLATE_DIR/role-composer-light.md")
   else
-    local preamble
     preamble=$(cat "$TEMPLATE_DIR/role-composer-light.md")
     if [[ -n "${OUTPUT_TYPE:-}" && "$OUTPUT_TYPE" != "auto" ]]; then
       preamble="${preamble}The output should be a ${OUTPUT_TYPE}. Shape it accordingly."
     fi
-    echo "$preamble"
   fi
+  maybe_prepend_single_model_preface "$preamble"
 }
 
 # --- Agent Invocation Helper ---
@@ -446,6 +496,7 @@ run_bounce_phase() {
         esac
         role="critique"
         [[ "$pass" == "3" ]] && role="tighten"
+        role_preamble=$(maybe_prepend_single_model_preface "$role_preamble")
       else
         role_preamble=$(build_reviewer_preamble)
         role="reviewer"
@@ -455,6 +506,7 @@ run_bounce_phase() {
       if [[ "$CHAIN" == "true" ]]; then
         role_preamble=$(cat "$TEMPLATE_DIR/chain-defend.md")
         role="defend"
+        role_preamble=$(maybe_prepend_single_model_preface "$role_preamble")
       else
         role_preamble=$(build_composer_preamble)
         role="composer"
@@ -554,6 +606,9 @@ log " Input:     $INPUT_TYPE"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
+if [[ "$SINGLE_MODEL" == "true" ]]; then
+  log " Single:    yes (both roles on $SINGLE_MODEL_AGENT, persona-discipline preface enabled)"
+fi
 if [[ "$CHAIN" == "true" ]]; then
   log " Mode:      chain (critique -> defend -> tighten)"
 else
