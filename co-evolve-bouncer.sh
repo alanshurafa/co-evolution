@@ -17,6 +17,12 @@ AGENT_A="claude"
 AGENT_B="codex"
 SINGLE_MODEL=false
 SINGLE_MODEL_AGENT=""
+# Persona-discipline preface — opt-in. Default off because empirical A/B on a
+# dense technical document showed the preface suppressed the model's natural
+# investigatory impulse (raised abstract objections instead of concrete,
+# code-grounded ones). Still useful when compose-then-bouncing your own draft;
+# enable with --persona-discipline.
+PERSONA_DISCIPLINE=false
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
 TASK=""
@@ -70,9 +76,17 @@ Options:
   --agents A,B       Agent pair (default: claude,codex)
   --single-model[=AGENT]
                      Force both roles onto the same agent (default: claude).
-                     Adds persona-discipline preface to compensate for shared
-                     weights. Useful when only one model is available, or to
-                     A/B against cross-model runs. Overrides --agents.
+                     Bare two-role mode by default (no preface) — empirical A/B
+                     showed this preserves the model's natural investigatory
+                     impulse on dense technical docs. Overrides --agents.
+                     Add --persona-discipline to enable the divergence preface.
+  --persona-discipline
+                     Prepend a persona-discipline preface that asks the model
+                     to deliberately diverge from its own prior turn. Useful
+                     when compose-then-bouncing your own draft (where there
+                     IS a shared-author bias to fight). May hurt on bounce-only
+                     of external docs — see notesforhumans.md for the A/B data.
+                     Can be used with or without --single-model.
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
@@ -144,6 +158,10 @@ while [[ $# -gt 0 ]]; do
       esac
       AGENT_A="$SINGLE_MODEL_AGENT"
       AGENT_B="$SINGLE_MODEL_AGENT"
+      shift
+      ;;
+    --persona-discipline)
+      PERSONA_DISCIPLINE=true
       shift
       ;;
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
@@ -361,11 +379,15 @@ $(cat "$CONTEXT_FILE")
 fi
 
 # --- Role Preamble Generation ---
-# Prepends the single-model persona-discipline preface when --single-model
-# is active. No-op otherwise (preserves cross-model byte-parity).
+# Prepends the persona-discipline preface when --persona-discipline is set.
+# Decoupled from --single-model after a 2026-05-24 A/B test on a dense
+# technical document showed the preface SUPPRESSED concrete code-grounded
+# critique in favor of abstract methodological objections — opposite of what
+# was intended. Kept available as opt-in for compose-then-bounce-own-draft
+# flows, where the prior-turn divergence framing actually applies.
 maybe_prepend_single_model_preface() {
   local body="$1"
-  if [[ "$SINGLE_MODEL" == "true" ]]; then
+  if [[ "$PERSONA_DISCIPLINE" == "true" ]]; then
     printf '%s\n%s' "$(cat "$SINGLE_MODEL_PREFACE")" "$body"
   else
     printf '%s' "$body"
@@ -607,7 +629,10 @@ log " Task:      $(echo "$TASK" | head -c 80)"
 log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
 if [[ "$SINGLE_MODEL" == "true" ]]; then
-  log " Single:    yes (both roles on $SINGLE_MODEL_AGENT, persona-discipline preface enabled)"
+  log " Single:    yes (both roles on $SINGLE_MODEL_AGENT, bare two-role mode)"
+fi
+if [[ "$PERSONA_DISCIPLINE" == "true" ]]; then
+  log " Persona:   discipline preface enabled (opt-in)"
 fi
 if [[ "$CHAIN" == "true" ]]; then
   log " Mode:      chain (critique -> defend -> tighten)"

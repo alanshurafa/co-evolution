@@ -13,12 +13,15 @@
 #   D: --single-model=opus rejected with a clear error (allow-list guard).
 #   E: When --single-model is NOT set, the banner has no "Single:" line
 #      (byte-parity invariant for default cross-model runs).
-#   F: The persona-discipline preface is prepended to the role preamble
-#      when --single-model is active (proves the preamble path actually
-#      wires the preface in, not just the banner).
+#   F: --single-model alone does NOT prepend the persona-discipline preface
+#      (post-2026-05-24 A/B finding: bare two-role mode is the empirical
+#      winner on dense technical docs; preface decoupled into --persona-discipline).
+#   G: --persona-discipline prepends the preface (proves the opt-in wiring
+#      actually reaches the role preamble — covers both --single-model
+#      and standalone --persona-discipline cases).
 #
-# Final line on success: `6/6 scenarios passed`.
-# Exit 0 iff all 6 scenarios pass; exit 1 otherwise.
+# Final line on success: `7/7 scenarios passed`.
+# Exit 0 iff all 7 scenarios pass; exit 1 otherwise.
 
 set -euo pipefail
 
@@ -153,10 +156,17 @@ TOTAL=$((TOTAL + 1))
     || { echo "B: bouncer exited non-zero; out: $out" >&2; exit 1; }
   echo "$out" | grep -qE "Single:[[:space:]]+yes \(both roles on claude" \
     || { echo "B: missing 'Single: yes (... claude' banner; out: $out" >&2; exit 1; }
+  echo "$out" | grep -qF "bare two-role mode" \
+    || { echo "B: banner missing 'bare two-role mode' phrase; out: $out" >&2; exit 1; }
   echo "$out" | grep -qE "Compose:[[:space:]]+claude" \
     || { echo "B: compose agent not pinned to claude; out: $out" >&2; exit 1; }
   echo "$out" | grep -qE "Bounce:[[:space:]]+claude / claude" \
     || { echo "B: bounce pair not pinned to claude/claude; out: $out" >&2; exit 1; }
+  # Bare --single-model must NOT enable the preface (default-off post-2026-05-24).
+  if echo "$out" | grep -qE "Persona:[[:space:]]+discipline preface enabled"; then
+    echo "B: bare --single-model unexpectedly enabled the persona-discipline preface" >&2
+    exit 1
+  fi
 ) && pass "Scenario B (bare --single-model defaults to claude)" \
   || fail "Scenario B (bare --single-model)"
 
@@ -200,14 +210,15 @@ TOTAL=$((TOTAL + 1))
   || fail "Scenario E (default banner clean)"
 
 # ---------------------------------------------------------------------------
-# Scenario F: single-model preface text appears in the captured prompt
+# Scenario F: --single-model alone does NOT prepend the preface (default-off)
 # ---------------------------------------------------------------------------
-# Stubbed invoke_* copies the prompt file alongside as .captured. Scan all
-# captured prompts under the most-recent run dir for the preface header.
+# Post-2026-05-24 finding: bare two-role mode is the empirical winner on
+# dense docs. The preface MUST NOT leak into prompts unless --persona-discipline
+# is explicitly set. Scans captured prompts for absence of the preface header.
 # ---------------------------------------------------------------------------
 TOTAL=$((TOTAL + 1))
 (
-  out=$(run_bouncer --vanilla --single-model --bounces 1 "preface wiring smoke" 2>&1) \
+  out=$(run_bouncer --vanilla --single-model --bounces 1 "default-off preface smoke" 2>&1) \
     || { echo "F: bouncer exited non-zero; out: $out" >&2; exit 1; }
 
   run_dir=$(echo "$out" | grep -E "Run dir:[[:space:]]" | tail -1 | sed -E 's/.*Run dir:[[:space:]]+//')
@@ -218,12 +229,42 @@ TOTAL=$((TOTAL + 1))
   [[ -n "$captured" ]] \
     || { echo "F: no .captured prompt files in $run_dir" >&2; exit 1; }
 
-  if ! grep -lF "SINGLE-MODEL PERSONA DISCIPLINE" $captured >/dev/null 2>&1; then
-    echo "F: preface header missing from all captured prompts in $run_dir" >&2
+  if grep -lF "SINGLE-MODEL PERSONA DISCIPLINE" $captured >/dev/null 2>&1; then
+    echo "F: preface header leaked into prompts without --persona-discipline flag" >&2
     exit 1
   fi
-) && pass "Scenario F (single-model preface wired into role preamble)" \
-  || fail "Scenario F (preface wiring)"
+) && pass "Scenario F (bare --single-model does NOT prepend preface — default-off)" \
+  || fail "Scenario F (preface default-off)"
+
+# ---------------------------------------------------------------------------
+# Scenario G: --persona-discipline prepends the preface (opt-in wiring)
+# ---------------------------------------------------------------------------
+# Combined with --single-model, the flag MUST cause the preface header to
+# appear in captured prompts AND the banner MUST show the opt-in line.
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+(
+  out=$(run_bouncer --vanilla --single-model --persona-discipline --bounces 1 \
+        "persona-discipline opt-in smoke" 2>&1) \
+    || { echo "G: bouncer exited non-zero; out: $out" >&2; exit 1; }
+
+  echo "$out" | grep -qE "Persona:[[:space:]]+discipline preface enabled" \
+    || { echo "G: banner missing 'Persona: discipline preface enabled' line; out: $out" >&2; exit 1; }
+
+  run_dir=$(echo "$out" | grep -E "Run dir:[[:space:]]" | tail -1 | sed -E 's/.*Run dir:[[:space:]]+//')
+  [[ -n "$run_dir" && -d "$run_dir" ]] \
+    || { echo "G: could not locate run dir from banner; out: $out" >&2; exit 1; }
+
+  captured=$(find "$run_dir" -maxdepth 1 -name '*.captured' 2>/dev/null)
+  [[ -n "$captured" ]] \
+    || { echo "G: no .captured prompt files in $run_dir" >&2; exit 1; }
+
+  if ! grep -lF "SINGLE-MODEL PERSONA DISCIPLINE" $captured >/dev/null 2>&1; then
+    echo "G: preface header missing from all captured prompts in $run_dir" >&2
+    exit 1
+  fi
+) && pass "Scenario G (--persona-discipline opt-in prepends preface)" \
+  || fail "Scenario G (persona-discipline opt-in)"
 
 # ---------------------------------------------------------------------------
 echo

@@ -75,17 +75,30 @@ bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
 ```
 
 When only one agent is available — or to A/B against a cross-model run — use
-`--single-model` to pin both reviewer and composer onto the same agent. The
-runner injects a persona-discipline preface that asks the model to deliberately
-read against its own prior turn rather than nodding along.
+`--single-model` to pin both reviewer and composer onto the same agent. By
+default this is **bare two-role mode**: same model, two role prompts (composer
+and critic), nothing else. An A/B on a dense technical document (2026-05-24)
+showed this beats the persona-discipline variant — the model preserves its
+natural impulse to investigate the codebase and produces concrete, code-grounded
+critique instead of abstract methodological objections.
 
 ```bash
 bash ./co-evolve-bouncer.sh --vanilla --single-model "Stress test this argument"
 bash ./co-evolve-bouncer.sh --vanilla --single-model codex --chain "Ship plan?"
 ```
 
+If you want the divergence preface — which asks the model to deliberately read
+against its own prior turn — enable it with `--persona-discipline`. This pairs
+naturally with compose-then-bounce of your own draft, where there *is* a
+shared-author bias to fight:
+
+```bash
+bash ./co-evolve-bouncer.sh --vanilla --single-model --persona-discipline "..."
+```
+
 Expect shallower diversity than cross-model bounces (shared weights share
-blindspots), but most runs still surface 1-2 real objections in the first pass.
+blindspots), but most single-model runs still surface 1-2 real objections in
+the first pass.
 
 ### [Agent Bouncer](agent-bouncer/)
 
