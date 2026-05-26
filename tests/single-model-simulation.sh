@@ -19,9 +19,16 @@
 #   G: --persona-discipline prepends the preface (proves the opt-in wiring
 #      actually reaches the role preamble — covers both --single-model
 #      and standalone --persona-discipline cases).
+#   H: When a cross-vendor partner agent fails (empty output on retry),
+#      the bouncer exits 2, prints "INCOMPLETE", and emits a HINT pointing
+#      the user at --single-model <working_agent>. Verifies the
+#      2026-05-25 smoke-test fix for silent partner-failure.
+#   I: When --single-model is active and the agent fails, the bouncer still
+#      exits 2 but does NOT emit the --single-model HINT (no useful escape
+#      hatch to suggest — the user is already in single-model mode).
 #
-# Final line on success: `7/7 scenarios passed`.
-# Exit 0 iff all 7 scenarios pass; exit 1 otherwise.
+# Final line on success: `9/9 scenarios passed`.
+# Exit 0 iff all 9 scenarios pass; exit 1 otherwise.
 
 set -euo pipefail
 
@@ -117,16 +124,58 @@ with deterministic content and zero network access.
 EOF
 }
 
+# Failure-injection knobs (read at stub-call time, so the test can set them):
+#   STUB_<AGENT>_FAILS=1         → fail unconditionally on every call
+#   STUB_<AGENT>_FAILS_AFTER=N   → succeed on calls 1..N, fail starting from N+1
+#                                  (lets the compose pass succeed while a later
+#                                  bounce pass fails — required by scenario I)
+# Per-run call counter is kept in $RUN_DIR/.stub-<agent>-count, which the
+# bouncer creates before the first invoke_* call.
+_stub_should_fail() {
+  local agent="$1" count="$2"
+  local fails_var="STUB_${agent}_FAILS"
+  local after_var="STUB_${agent}_FAILS_AFTER"
+  if [[ "${!fails_var:-0}" == "1" ]]; then
+    return 0
+  fi
+  if [[ -n "${!after_var:-}" ]] && (( count > ${!after_var} )); then
+    return 0
+  fi
+  return 1
+}
+
 invoke_claude() {
   local prompt_file="$1"; local output_file="$2"; local stderr_file="$3"
+  local count_file="${RUN_DIR:-/tmp}/.stub-claude-count"
+  local count=0
+  [[ -f "$count_file" ]] && count=$(cat "$count_file")
+  count=$((count + 1))
+  echo "$count" > "$count_file"
+
+  if _stub_should_fail CLAUDE "$count"; then
+    : > "$output_file"
+    echo "stub: claude forced to fail (call #$count)" > "$stderr_file"
+    return 0
+  fi
   _canned_output > "$output_file"
   : > "$stderr_file"
-  # Snapshot prompt so scenario F can grep it.
+  # Snapshot prompt so preface-wiring scenarios can grep it.
   cp "$prompt_file" "${prompt_file}.captured" 2>/dev/null || true
 }
 
 invoke_codex() {
   local prompt_file="$1"; local output_file="$2"; local stderr_file="$3"
+  local count_file="${RUN_DIR:-/tmp}/.stub-codex-count"
+  local count=0
+  [[ -f "$count_file" ]] && count=$(cat "$count_file")
+  count=$((count + 1))
+  echo "$count" > "$count_file"
+
+  if _stub_should_fail CODEX "$count"; then
+    : > "$output_file"
+    echo "stub: codex forced to fail (call #$count)" > "$stderr_file"
+    return 0
+  fi
   _canned_output > "$output_file"
   : > "$stderr_file"
   cp "$prompt_file" "${prompt_file}.captured" 2>/dev/null || true
@@ -265,6 +314,69 @@ TOTAL=$((TOTAL + 1))
   fi
 ) && pass "Scenario G (--persona-discipline opt-in prepends preface)" \
   || fail "Scenario G (persona-discipline opt-in)"
+
+# ---------------------------------------------------------------------------
+# Scenario H: cross-vendor partner failure → exit 2 + INCOMPLETE banner + HINT
+# ---------------------------------------------------------------------------
+# Use --chain so pass 2 always runs (no early convergence on marker-free stub
+# output). Pass 2 in chain mode is the "defend" pass on AGENT_B (codex).
+# The bouncer must:
+#   - exit code 2 (not 0)
+#   - log "CO-EVOLVE INCOMPLETE"
+#   - emit "HINT:" line suggesting --single-model with the working agent (claude)
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+(
+  set +e
+  out=$(STUB_CODEX_FAILS=1 run_bouncer --vanilla --chain \
+        --agents claude,codex "cross-vendor failure smoke" 2>&1)
+  exit_code=$?
+  set -e
+
+  if [[ "$exit_code" != "2" ]]; then
+    echo "H: expected exit 2, got $exit_code" >&2
+    echo "--- out ---" >&2; echo "$out" >&2
+    exit 1
+  fi
+  echo "$out" | grep -qF "CO-EVOLVE INCOMPLETE" \
+    || { echo "H: missing INCOMPLETE banner; out: $out" >&2; exit 1; }
+  echo "$out" | grep -qF "HINT:" \
+    || { echo "H: missing HINT line; out: $out" >&2; exit 1; }
+  echo "$out" | grep -qF -- "--single-model claude" \
+    || { echo "H: hint doesn't suggest '--single-model claude'; out: $out" >&2; exit 1; }
+) && pass "Scenario H (cross-vendor failure exits 2 with HINT)" \
+  || fail "Scenario H (cross-vendor failure)"
+
+# ---------------------------------------------------------------------------
+# Scenario I: --single-model + agent failure → exit 2 but NO HINT
+# ---------------------------------------------------------------------------
+# Use --chain (3 passes) + STUB_CLAUDE_FAILS_AFTER=2 so the first two claude
+# calls (compose + pass 1 critique) succeed and the third (pass 2 defend)
+# fails. This isolates the bounce-failure path from the compose-failure path
+# (which exits 1, not 2). User already opted into single-model — no useful
+# escape hatch — so HINT line must be absent.
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+(
+  set +e
+  out=$(STUB_CLAUDE_FAILS_AFTER=2 run_bouncer --vanilla --single-model claude --chain \
+        "single-model failure smoke" 2>&1)
+  exit_code=$?
+  set -e
+
+  if [[ "$exit_code" != "2" ]]; then
+    echo "I: expected exit 2, got $exit_code" >&2
+    echo "--- out ---" >&2; echo "$out" >&2
+    exit 1
+  fi
+  echo "$out" | grep -qF "CO-EVOLVE INCOMPLETE" \
+    || { echo "I: missing INCOMPLETE banner; out: $out" >&2; exit 1; }
+  if echo "$out" | grep -qF "HINT:"; then
+    echo "I: HINT leaked despite --single-model mode; out: $out" >&2
+    exit 1
+  fi
+) && pass "Scenario I (single-model failure exits 2 without HINT)" \
+  || fail "Scenario I (single-model failure)"
 
 # ---------------------------------------------------------------------------
 echo

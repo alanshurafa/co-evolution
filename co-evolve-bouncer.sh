@@ -23,6 +23,10 @@ SINGLE_MODEL_AGENT=""
 # code-grounded ones). Still useful when compose-then-bouncing your own draft;
 # enable with --persona-discipline.
 PERSONA_DISCIPLINE=false
+# Set true by the bounce loop when an agent returns empty output after retry.
+# Causes the script to exit 2 and emit a HINT pointing at --single-model.
+BOUNCE_FAILED=false
+FAILED_AGENT=""
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
 TASK=""
@@ -573,6 +577,8 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     if [[ ! -s "$output_file" ]]; then
       log " ERROR: ${current_agent} returned empty output on retry. Stopping."
+      BOUNCE_FAILED=true
+      FAILED_AGENT="$current_agent"
       break
     fi
 
@@ -669,14 +675,42 @@ if [[ -n "$OUTPUT_FILE" ]]; then
 fi
 
 log "============================================"
-log " CO-EVOLVE COMPLETE"
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  log " CO-EVOLVE INCOMPLETE (bounce aborted)"
+else
+  log " CO-EVOLVE COMPLETE"
+fi
 log "============================================"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Run dir:   $RUN_DIR"
 log " Final:     $FINAL_FILE"
 log "============================================"
 
+# Cross-vendor failure UX: emit a loud WARNING + actionable HINT pointing at
+# --single-model with whichever agent did NOT fail. Suppress the hint when the
+# user is already in single-model mode (no useful escape hatch to suggest).
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  log ""
+  log "WARNING: bounce ended early because ${FAILED_AGENT} returned empty output."
+  log "         The output may contain unresolved [CONTESTED]/[CLARIFY] markers."
+  if [[ "$SINGLE_MODEL" == "false" ]]; then
+    if [[ "$FAILED_AGENT" == "$AGENT_A" ]]; then
+      working_agent="$AGENT_B"
+    else
+      working_agent="$AGENT_A"
+    fi
+    log ""
+    log "HINT: if ${FAILED_AGENT} isn't installed or available, retry with:"
+    log "        --single-model ${working_agent}"
+    log "      (uses ${working_agent} for both roles; cross-vendor diversity reduced)"
+  fi
+fi
+
 # Print clean result to stdout unless output was redirected to file
 if [[ -z "$OUTPUT_FILE" ]]; then
   cat "$FINAL_FILE"
+fi
+
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  exit 2
 fi
