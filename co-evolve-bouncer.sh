@@ -15,6 +15,18 @@ CHAIN=false
 MAX_BOUNCES=2
 AGENT_A="claude"
 AGENT_B="codex"
+SINGLE_MODEL=false
+SINGLE_MODEL_AGENT=""
+# Persona-discipline preface — opt-in. Default off because empirical A/B on a
+# dense technical document showed the preface suppressed the model's natural
+# investigatory impulse (raised abstract objections instead of concrete,
+# code-grounded ones). Still useful when compose-then-bouncing your own draft;
+# enable with --persona-discipline.
+PERSONA_DISCIPLINE=false
+# Set true by the bounce loop when an agent returns empty output after retry.
+# Causes the script to exit 2 and emit a HINT pointing at --single-model.
+BOUNCE_FAILED=false
+FAILED_AGENT=""
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
 TASK=""
@@ -37,11 +49,13 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 TEMPLATE_DIR="$SCRIPT_DIR/templates/co-evolve"
 PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
+SINGLE_MODEL_PREFACE="$TEMPLATE_DIR/single-model-preface.md"
 
 # Validate templates exist
 for _tmpl in "$TEMPLATE_DIR/role-reviewer-light.md" "$TEMPLATE_DIR/role-composer-light.md" \
              "$TEMPLATE_DIR/chain-critique.md" "$TEMPLATE_DIR/chain-defend.md" \
-             "$TEMPLATE_DIR/chain-tighten.md" "$PROTOCOL_TEMPLATE"; do
+             "$TEMPLATE_DIR/chain-tighten.md" "$SINGLE_MODEL_PREFACE" \
+             "$PROTOCOL_TEMPLATE"; do
   [[ -f "$_tmpl" ]] || die "Missing template: $_tmpl"
 done
 
@@ -64,6 +78,19 @@ Options:
   --chain            Use staged passes: critique -> defend -> tighten
   --bounces N        Max bounce passes (default: 2, ignored with --chain)
   --agents A,B       Agent pair (default: claude,codex)
+  --single-model[=AGENT]
+                     Force both roles onto the same agent (default: claude).
+                     Bare two-role mode by default (no preface) — empirical A/B
+                     showed this preserves the model's natural investigatory
+                     impulse on dense technical docs. Overrides --agents.
+                     Add --persona-discipline to enable the divergence preface.
+  --persona-discipline
+                     Prepend a persona-discipline preface that asks the model
+                     to deliberately diverge from its own prior turn. Useful
+                     when compose-then-bouncing your own draft (where there
+                     IS a shared-author bias to fight). May hurt on bounce-only
+                     of external docs — see notesforhumans.md for the A/B data.
+                     Can be used with or without --single-model.
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
@@ -106,6 +133,40 @@ while [[ $# -gt 0 ]]; do
       [[ "$2" == *","*","* ]] && die "--agents requires exactly two agents (e.g., claude,codex)"
       [[ -z "$AGENT_A" || -z "$AGENT_B" ]] && die "--agents requires exactly two agents separated by comma (e.g., claude,codex)"
       shift 2
+      ;;
+    --single-model)
+      SINGLE_MODEL=true
+      # Optional positional agent: --single-model codex. If next arg looks like
+      # a flag or is absent, fall back to the default ("claude").
+      if [[ $# -ge 2 && -n "${2:-}" && "${2:0:1}" != "-" ]]; then
+        SINGLE_MODEL_AGENT="$2"
+        shift 2
+      else
+        SINGLE_MODEL_AGENT="claude"
+        shift
+      fi
+      case "$SINGLE_MODEL_AGENT" in
+        claude|codex) ;;
+        *) die "--single-model agent must be claude or codex (got: $SINGLE_MODEL_AGENT)" ;;
+      esac
+      AGENT_A="$SINGLE_MODEL_AGENT"
+      AGENT_B="$SINGLE_MODEL_AGENT"
+      ;;
+    --single-model=*)
+      SINGLE_MODEL=true
+      SINGLE_MODEL_AGENT="${1#--single-model=}"
+      [[ -n "$SINGLE_MODEL_AGENT" ]] || die "--single-model= requires an agent name"
+      case "$SINGLE_MODEL_AGENT" in
+        claude|codex) ;;
+        *) die "--single-model agent must be claude or codex (got: $SINGLE_MODEL_AGENT)" ;;
+      esac
+      AGENT_A="$SINGLE_MODEL_AGENT"
+      AGENT_B="$SINGLE_MODEL_AGENT"
+      shift
+      ;;
+    --persona-discipline)
+      PERSONA_DISCIPLINE=true
+      shift
       ;;
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
     --bounce-only) BOUNCE_ONLY=true; shift ;;
@@ -322,34 +383,49 @@ $(cat "$CONTEXT_FILE")
 fi
 
 # --- Role Preamble Generation ---
-build_reviewer_preamble() {
-  if [[ -n "$LENS" ]]; then
-    echo "You are the ${LENS} reviewing this work. Be adversarial from that perspective. Every critique must include a concrete alternative."
-  elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
-    cat "$TEMPLATE_DIR/role-reviewer-light.md"
+# Prepends the persona-discipline preface when --persona-discipline is set.
+# Decoupled from --single-model after a 2026-05-24 A/B test on a dense
+# technical document showed the preface SUPPRESSED concrete code-grounded
+# critique in favor of abstract methodological objections — opposite of what
+# was intended. Kept available as opt-in for compose-then-bounce-own-draft
+# flows, where the prior-turn divergence framing actually applies.
+maybe_prepend_single_model_preface() {
+  local body="$1"
+  if [[ "$PERSONA_DISCIPLINE" == "true" ]]; then
+    printf '%s\n%s' "$(cat "$SINGLE_MODEL_PREFACE")" "$body"
   else
-    local preamble
+    printf '%s' "$body"
+  fi
+}
+
+build_reviewer_preamble() {
+  local preamble
+  if [[ -n "$LENS" ]]; then
+    preamble="You are the ${LENS} reviewing this work. Be adversarial from that perspective. Every critique must include a concrete alternative."
+  elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
+    preamble=$(cat "$TEMPLATE_DIR/role-reviewer-light.md")
+  else
     preamble=$(cat "$TEMPLATE_DIR/role-reviewer-light.md")
     if [[ -n "$AUDIENCE" && "$AUDIENCE" != "general" && "$AUDIENCE" != "auto" ]]; then
       preamble="${preamble}Evaluate this as if you are a ${AUDIENCE} reading it. What would they find unconvincing, unclear, or missing?"
     fi
-    echo "$preamble"
   fi
+  maybe_prepend_single_model_preface "$preamble"
 }
 
 build_composer_preamble() {
+  local preamble
   if [[ -n "$LENS" ]]; then
-    echo "Resolve all critiques from the ${LENS} perspective. Strengthen weak points. Make it bulletproof."
+    preamble="Resolve all critiques from the ${LENS} perspective. Strengthen weak points. Make it bulletproof."
   elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
-    cat "$TEMPLATE_DIR/role-composer-light.md"
+    preamble=$(cat "$TEMPLATE_DIR/role-composer-light.md")
   else
-    local preamble
     preamble=$(cat "$TEMPLATE_DIR/role-composer-light.md")
     if [[ -n "${OUTPUT_TYPE:-}" && "$OUTPUT_TYPE" != "auto" ]]; then
       preamble="${preamble}The output should be a ${OUTPUT_TYPE}. Shape it accordingly."
     fi
-    echo "$preamble"
   fi
+  maybe_prepend_single_model_preface "$preamble"
 }
 
 # --- Agent Invocation Helper ---
@@ -446,6 +522,7 @@ run_bounce_phase() {
         esac
         role="critique"
         [[ "$pass" == "3" ]] && role="tighten"
+        role_preamble=$(maybe_prepend_single_model_preface "$role_preamble")
       else
         role_preamble=$(build_reviewer_preamble)
         role="reviewer"
@@ -455,6 +532,7 @@ run_bounce_phase() {
       if [[ "$CHAIN" == "true" ]]; then
         role_preamble=$(cat "$TEMPLATE_DIR/chain-defend.md")
         role="defend"
+        role_preamble=$(maybe_prepend_single_model_preface "$role_preamble")
       else
         role_preamble=$(build_composer_preamble)
         role="composer"
@@ -499,6 +577,8 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     if [[ ! -s "$output_file" ]]; then
       log " ERROR: ${current_agent} returned empty output on retry. Stopping."
+      BOUNCE_FAILED=true
+      FAILED_AGENT="$current_agent"
       break
     fi
 
@@ -554,6 +634,12 @@ log " Input:     $INPUT_TYPE"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
+if [[ "$SINGLE_MODEL" == "true" ]]; then
+  log " Single:    yes (both roles on $SINGLE_MODEL_AGENT, bare two-role mode)"
+fi
+if [[ "$PERSONA_DISCIPLINE" == "true" ]]; then
+  log " Persona:   discipline preface enabled (opt-in)"
+fi
 if [[ "$CHAIN" == "true" ]]; then
   log " Mode:      chain (critique -> defend -> tighten)"
 else
@@ -589,14 +675,42 @@ if [[ -n "$OUTPUT_FILE" ]]; then
 fi
 
 log "============================================"
-log " CO-EVOLVE COMPLETE"
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  log " CO-EVOLVE INCOMPLETE (bounce aborted)"
+else
+  log " CO-EVOLVE COMPLETE"
+fi
 log "============================================"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Run dir:   $RUN_DIR"
 log " Final:     $FINAL_FILE"
 log "============================================"
 
+# Cross-vendor failure UX: emit a loud WARNING + actionable HINT pointing at
+# --single-model with whichever agent did NOT fail. Suppress the hint when the
+# user is already in single-model mode (no useful escape hatch to suggest).
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  log ""
+  log "WARNING: bounce ended early because ${FAILED_AGENT} returned empty output."
+  log "         The output may contain unresolved [CONTESTED]/[CLARIFY] markers."
+  if [[ "$SINGLE_MODEL" == "false" ]]; then
+    if [[ "$FAILED_AGENT" == "$AGENT_A" ]]; then
+      working_agent="$AGENT_B"
+    else
+      working_agent="$AGENT_A"
+    fi
+    log ""
+    log "HINT: if ${FAILED_AGENT} isn't installed or available, retry with:"
+    log "        --single-model ${working_agent}"
+    log "      (uses ${working_agent} for both roles; cross-vendor diversity reduced)"
+  fi
+fi
+
 # Print clean result to stdout unless output was redirected to file
 if [[ -z "$OUTPUT_FILE" ]]; then
   cat "$FINAL_FILE"
+fi
+
+if [[ "$BOUNCE_FAILED" == "true" ]]; then
+  exit 2
 fi

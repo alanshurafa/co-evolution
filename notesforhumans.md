@@ -61,6 +61,42 @@ When Claude reviews and Codex composes (or vice versa), the disagreements are re
 
 The lesson: the protocol is agent-agnostic, but the value scales with cognitive diversity.
 
+## Same-Model A/B (2026-05-24)
+
+When cross-vendor isn't available, `--single-model` pins both roles to one
+agent. We A/B'd two variants of single-model on the same inputs:
+
+- **Bare two-role mode** — same model, just the composer and critic prompts.
+- **Persona-discipline preface** — bare mode plus a prepended instruction asking
+  the model to deliberately diverge from its own prior turn.
+
+Two test runs, both with Claude as the single model:
+
+| Input | Bare markers (pass 1) | Preface markers (pass 1) | Winner |
+|---|---|---|---|
+| Open prompt (~30 words, meta-question) | 4 | 7 | preface (more critique) |
+| Dense paper section (`04-pilot-data.md`, 1277 words) | **14** | 6 | **bare (much more critique, and code-grounded)** |
+
+On the dense doc the bare baseline produced devastating, codebase-grounded
+critique — caught that `runs/` is in `.gitignore` so the dataset is
+unreproducible, that the "final-pass enforcement check" referenced in the prose
+doesn't exist as code, that the marker-dynamics table has internal
+inconsistencies. The preface variant stayed at the abstract methodological
+level and missed all of these.
+
+The hypothesis: the preface tells the model to "read as if a stranger wrote it"
+and "suppress default voice," which pushes it into pure-text-critique mode and
+suppresses the natural impulse to investigate the codebase (the non-writable
+phase allows `Read`, just not `Edit`/`Bash`/`Glob`/`Grep`). On an open-ended
+prompt with nothing to verify, the nudge helps. On a dense technical document
+where verification is the highest-value behavior, the nudge actively hurts.
+
+The fix: bare two-role mode is the new default for `--single-model`. The
+preface still exists as opt-in via `--persona-discipline`, which we expect to
+remain useful for compose-then-bounce of your own draft (where shared-author
+bias actually applies). That case wasn't isolated in the A/B and is open
+research.
+
 ## What We Learned Building It
 
 **Codex edits files it can see.** When Codex runs with `--full-auto`, it has filesystem write access. If the prompt references a file path, Codex might edit that file directly — even when you've told it to write output elsewhere. The fix: never expose the plan file path to the agent. Embed the plan content inline in the prompt, pipe via stdin, and capture output to a separate file. The Agent Bouncer is the sole owner of the canonical plan.

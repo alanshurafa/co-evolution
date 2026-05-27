@@ -29,7 +29,19 @@ document, or run staged critique -> defend -> tighten passes.
 bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this argument?"
 bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
 bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
+bash ./co-evolve-bouncer.sh --vanilla --single-model "Stress test this" # both roles on claude
 ```
+
+`--single-model [claude|codex]` pins both roles onto one agent (bare two-role
+mode by default — empirical winner on dense technical docs per 2026-05-24 A/B).
+Use when only one model is available, or to A/B against cross-model runs.
+
+Add `--persona-discipline` to prepend the divergence preface
+(`templates/co-evolve/single-model-preface.md`) that asks the model to
+deliberately read against its own prior turn. Best paired with compose-then-
+bounce of your own draft, where the shared-author bias actually applies.
+On `--bounce-only` of external docs the preface tends to suppress the model's
+natural investigatory impulse — use bare mode there.
 
 ### Agent Bouncer (`agent-bouncer/`)
 
