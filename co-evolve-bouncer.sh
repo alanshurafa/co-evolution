@@ -64,6 +64,7 @@ Options:
   --chain            Use staged passes: critique -> defend -> tighten
   --bounces N        Max bounce passes (default: 2, ignored with --chain)
   --agents A,B       Agent pair (default: claude,codex)
+  --claude-model M   Override the Claude model (default: claude-opus-4-6; also via CLAUDE_MODEL env)
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
@@ -105,6 +106,11 @@ while [[ $# -gt 0 ]]; do
       AGENT_B="${AGENT_B%%,*}"
       [[ "$2" == *","*","* ]] && die "--agents requires exactly two agents (e.g., claude,codex)"
       [[ -z "$AGENT_A" || -z "$AGENT_B" ]] && die "--agents requires exactly two agents separated by comma (e.g., claude,codex)"
+      shift 2
+      ;;
+    --claude-model)
+      [[ $# -gt 1 ]] || die "--claude-model requires a value"
+      CLAUDE_MODEL="$2"
       shift 2
       ;;
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
