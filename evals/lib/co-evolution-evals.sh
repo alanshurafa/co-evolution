@@ -35,7 +35,8 @@ if ! declare -F die >/dev/null 2>&1; then
   die() {
     local message="${1:-Fatal error}"
     log "ERROR: $message"
-    exit 1
+    # F-6: honor an optional exit-code (2nd arg); default to 1 when omitted.
+    exit "${2:-1}"
   }
 fi
 
