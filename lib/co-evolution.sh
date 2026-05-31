@@ -34,6 +34,12 @@ LIVE_MODE_WARNING_LOGGED=false
 : "${DEV_REVIEW_BRANCH:=}"
 : "${DEV_REVIEW_WORKTREE:=}"
 
+# F-5a: Claude model override. CLAUDE_MODEL env var or --claude-model flag wins;
+# the default preserves the prior hardcoded value so behavior is unchanged unless
+# overridden. (CODEX_MODEL stays optional/unset by default -- invoke_codex only
+# appends -c model= when it is set.)
+: "${CLAUDE_MODEL:=claude-opus-4-6}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -363,9 +369,9 @@ invoke_claude() {
 
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
-    cmd=(cmd.exe /c claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
+    cmd=(claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
