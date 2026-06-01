@@ -93,21 +93,8 @@ Options:
 EOF
 }
 
-normalize_path_for_bash() {
-  local candidate="$1"
-
-  if [[ -z "$candidate" ]]; then
-    printf '%s' "$candidate"
-    return 0
-  fi
-
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v wslpath >/dev/null 2>&1 && [[ "$candidate" =~ ^[A-Za-z]:[\\/].* ]]; then
-    wslpath "$candidate"
-    return 0
-  fi
-
-  printf '%s' "$candidate"
-}
+# normalize_path_for_bash is provided by lib/co-evolution.sh (sourced above) and
+# is the single canonical cross-platform path helper. Do not redefine it here.
 
 normalize_agent() {
   case "$1" in

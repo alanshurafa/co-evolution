@@ -186,6 +186,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Normalize user-supplied filesystem paths after parsing. This lets WSL-backed
+# Bash runs accept Windows-style file arguments such as C:/Users/.../plan.md.
+[[ -n "$CONTEXT_FILE" ]] && CONTEXT_FILE=$(normalize_path_for_bash "$CONTEXT_FILE")
+[[ -n "$OUTPUT_FILE" ]] && OUTPUT_FILE=$(normalize_path_for_bash "$OUTPUT_FILE")
+TASK_AS_PATH=""
+[[ -n "$TASK" ]] && TASK_AS_PATH=$(normalize_path_for_bash "$TASK")
+
 # Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
 # (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
 # when LAB_MODE is empty, this block is a no-op and the rest of the script
@@ -228,8 +235,9 @@ elif [[ -n "$LAB_MODE" ]]; then
 fi
 
 # --- Input Detection ---
-if [[ -n "$TASK" && -f "$TASK" ]]; then
+if [[ -n "$TASK_AS_PATH" && -f "$TASK_AS_PATH" ]]; then
   INPUT_TYPE="file"
+  TASK="$TASK_AS_PATH"
   INPUT_CONTENT=$(cat "$TASK")
 elif [[ -n "$TASK" ]]; then
   INPUT_TYPE="string"
@@ -297,6 +305,7 @@ run_interview() {
 
 if [[ "$SKIP_INTERVIEW" == "false" ]]; then
   run_interview
+  [[ -n "$CONTEXT_FILE" ]] && CONTEXT_FILE=$(normalize_path_for_bash "$CONTEXT_FILE")
 fi
 
 # --- Context Enrichment ---
