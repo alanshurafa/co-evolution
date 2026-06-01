@@ -3,7 +3,7 @@
   "title": "ReviewVerdict",
   "description": "Structured code review verdict for the dev-review loop",
   "type": "object",
-  "required": ["verdict", "confidence", "summary", "issues", "scope_creep_detected", "iteration_notes"],
+  "required": ["verdict", "confidence", "summary", "issues"],
   "properties": {
     "verdict": {
       "type": "string",
@@ -24,7 +24,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["severity", "file", "line_range", "description", "suggestion"],
+        "required": ["severity", "description"],
         "properties": {
           "severity": {
             "type": "string",
@@ -47,8 +47,7 @@
             "type": "string",
             "description": "How to fix it"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "description": "List of issues found. Empty array if none."
     },
