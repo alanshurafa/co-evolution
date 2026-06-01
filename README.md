@@ -23,9 +23,20 @@ bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
 Use `dev-review` only when you want a code-focused compose -> bounce -> execute
 -> verify workflow.
 
-## Install On macOS/Linux
+## Installation
 
-From the cloned repo:
+The runtime is plain Bash, so Co-Evolution installs the same way on every
+platform. You need a Bash shell, `git`, and the agent CLIs the bouncer calls —
+`claude`, plus `codex` for the default cross-AI pass. `jq` and `yq` (mikefarah's
+Go build) are only needed if you run the eval harness under `evals/`.
+
+| Platform | Shell to run it in | Install git (+ optional jq/yq) |
+|----------|--------------------|--------------------------------|
+| macOS | Terminal | `brew install git jq yq` |
+| Linux | any terminal | `apt install git jq`, and `yq` from mikefarah |
+| Windows | Git Bash (ships with Git for Windows) or WSL | `scoop install git jq yq` |
+
+From the cloned repo, in that Bash shell, install the `co-evolve` command:
 
 ```bash
 mkdir -p ~/.claude/skills/co-evolution ~/.local/bin
@@ -39,7 +50,7 @@ EOF
 chmod +x ~/.local/bin/co-evolve
 ```
 
-Make sure `~/.local/bin` is on `PATH`. After that, the default command is:
+Make sure `~/.local/bin` is on your `PATH` — `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc` (use `~/.zshrc` on macOS). Then the default command is:
 
 ```bash
 co-evolve --vanilla "what should I do next?"
@@ -51,6 +62,17 @@ Optional code workflow:
 mkdir -p ~/.claude/skills/dev-review
 cp -R skills/dev-review/* ~/.claude/skills/dev-review/
 ```
+
+### Windows
+
+Run from Git Bash or WSL rather than PowerShell or CMD — the tool is a Bash
+program. Two cross-platform details are handled for you:
+
+- Shell scripts are pinned to LF line endings (via `.gitattributes`), so they run
+  correctly whatever your Git `autocrlf` setting is.
+- Path arguments are normalized: under WSL you can pass a Windows path such as
+  `C:\work\plan.md` and it is converted automatically; under Git Bash, use
+  forward slashes (`C:/work/plan.md`).
 
 ## What's In This Repo
 
@@ -147,7 +169,10 @@ markers, adjust convergence rules, change role lenses.
 ## Status
 
 Early development. The Co-Evolution skill, Co-Evolve Bouncer, Agent Bouncer,
-Dev-Review skill, and standalone Codex runtime are functional. Next steps:
+Dev-Review skill, and standalone Codex runtime are functional and run
+cross-platform on macOS, Linux, and Windows (Git Bash or WSL) — shell scripts
+are pinned to LF endings and Windows/WSL path arguments are normalized
+automatically. Next steps:
 
 - Additional agent adapters (Gemini CLI, Ollama, direct API calls)
 - Standalone bounce protocol spec

@@ -1,0 +1,6 @@
+# Line-ending policy for cross-platform consistency.
+#
+# Shell scripts are executed by bash on every supported platform — Git Bash on
+# Windows, WSL, macOS, and Linux. CRLF endings break the shebang line and
+# heredoc parsing, so .sh files are always stored and checked out with LF.
+*.sh text eol=lf

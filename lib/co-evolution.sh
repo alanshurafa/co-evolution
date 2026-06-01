@@ -155,6 +155,29 @@ is_windows_host() {
   return 0
 }
 
+# normalize_path_for_bash <path> -> path
+# Under WSL, convert Windows drive paths (C:/... or C:\...) into POSIX paths
+# before handing them to Bash filesystem checks. Script paths still need to be
+# valid before Bash starts; this helper is for arguments seen after startup.
+# On macOS, Linux, and Git Bash (no WSL), this is a safe pass-through — native
+# POSIX paths are returned unchanged and no conversion is attempted.
+normalize_path_for_bash() {
+  local candidate="${1:-}"
+
+  if [[ -z "$candidate" ]]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v wslpath >/dev/null 2>&1 && [[ "$candidate" =~ ^[A-Za-z]:[\\/].* ]]; then
+    wslpath "$candidate"
+    return 0
+  fi
+
+  printf '%s' "$candidate"
+  return 0
+}
+
 # RTUX-01: Launch a visible tail window for the given phase's stderr file.
 # No-op when LIVE_MODE is not "true". Always returns 0 — failures log a
 # warning but never block the main phase (must-not-break invariant).
