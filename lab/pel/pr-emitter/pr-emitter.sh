@@ -567,8 +567,9 @@ if [[ "$CANARY_FAILED_MODE" == "false" ]]; then
       ;;
     policy)
       policy_sandbox_path="$EMITTER_SANDBOX/$TARGET"
-      if ! command -v yq >/dev/null 2>&1; then
-        die "yq required for policy-tier mutation apply (install mikefarah/yq v4+)" 2
+      # F-1: require mikefarah/Go yq v4 (the python yq is not compatible).
+      if ! command -v yq >/dev/null 2>&1 || ! yq --version 2>&1 | grep -qi mikefarah; then
+        die "mikefarah/yq (Go yq v4+) required for policy-tier mutation apply; the python 'yq' is not compatible (install from https://github.com/mikefarah/yq)" 2
       fi
       # Iterate the mutations array, applying each key=new pair via yq -i.
       # Process substitution keeps the loop in the parent shell so `die` exits

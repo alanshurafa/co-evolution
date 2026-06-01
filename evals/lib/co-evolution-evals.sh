@@ -46,7 +46,9 @@ fi
 # ---------------------------------------------------------------------------
 
 ensure_yq() {
-  command -v yq >/dev/null 2>&1 || die "yq not found. Install mikefarah/yq: 'scoop install yq' (Windows), 'brew install yq' (macOS), 'apt install yq' (Linux go-install)."
+  # F-1: delegate to the shared guard in lib/co-evolution.sh (in scope at runtime
+  # via the eval-harness callers, which source both libs); rejects the python yq.
+  require_mikefarah_yq
 }
 
 ensure_jq() {

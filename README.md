@@ -23,6 +23,10 @@ bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
 Use `dev-review` only when you want a code-focused compose -> bounce -> execute
 -> verify workflow.
 
+## Prerequisites
+
+The core co-evolve flow needs only the `claude` and `codex` CLIs. The optional eval harness (`evals/`) and PEL lab (`lab/pel/`) also need the mikefarah/Go `yq` (v4+), not the Python `yq` from Debian/Ubuntu's `apt install yq`, which is incompatible. Those components fail fast if the wrong `yq` is on `PATH`.
+
 ## Installation
 
 The runtime is plain Bash, so Co-Evolution installs the same way on every
