@@ -17,6 +17,17 @@ die() {
   exit "${2:-1}"
 }
 
+# F-1: reject the wrong `yq`. The Debian/Ubuntu `apt install yq` ships the python
+# yq (kislyuk), which is NOT compatible with the mikefarah/Go yq v4 syntax this
+# project uses. mikefarah prints "mikefarah" in --version; the python yq does not.
+# Sites that cannot source this lib (the PEL components, by their self-containment
+# invariants) inline the same version check -- keep them in sync.
+require_mikefarah_yq() {
+  if ! command -v yq >/dev/null 2>&1 || ! yq --version 2>&1 | grep -qi mikefarah; then
+    die "mikefarah/yq (Go yq v4+) required; the python 'yq' is not compatible. Install: scoop install yq (Windows), brew install yq (macOS), or the binary from https://github.com/mikefarah/yq."
+  fi
+}
+
 # RNPT-05: Default per-phase timeout in seconds. Override via --timeout flag
 # or by exporting PHASE_TIMEOUT before running. Upstream hit a 1h 39min hang;
 # 1800s (30min) is generous enough for legitimate long phases, tight enough
