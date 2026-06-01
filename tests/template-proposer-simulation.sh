@@ -57,6 +57,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export REPO_ROOT
 
+# Run the suite from REPO_ROOT. proposer.sh resolves a relative PEL_TEMPLATE_PATH
+# with `realpath -m` (i.e. against the current directory) and its git-apply gate
+# also expects REPO_ROOT as the working dir. Without this cd the suite only passes
+# when invoked from its own checkout, so it fails from any other git worktree and
+# on a fresh CI runner. cd makes it invocation-portable.
+cd "$REPO_ROOT" || { echo "FATAL: cannot cd to REPO_ROOT: $REPO_ROOT" >&2; exit 1; }
+
 FAILURES=0
 TOTAL=0
 fail() { echo "FAIL: $1" >&2; FAILURES=$((FAILURES + 1)); }
