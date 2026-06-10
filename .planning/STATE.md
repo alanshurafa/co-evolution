@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Protocol Evolution Loop — Proposer Only
+milestone: v1.3
+milestone_name: Reliability, Measurement & Cross-Platform
 status: executing
-stopped_at: Completed Phase 08 Plan 03 (08-03-PLAN.md) — VERIFY-SC4.md release-gate tracker shipped; ROADMAP cross-referenced; Phase 8 ready for closure verification on SC-1/2/3/5 (SC-4 deferred to post-ship dogfood per D-01)
-last_updated: "2026-04-19T21:18:17.732Z"
-last_activity: 2026-04-19 -- Phase 08.1 planning complete
+stopped_at: v1.3 Phase 0 complete — 4 stranded remediation branches merged to master (F-1/F-2/F-5a/F-6/template-portability), LF storage policy landed, consolidated audit at docs/audits/2026-06-10-v13-audit.md
+last_updated: "2026-06-10T23:45:00.000Z"
+last_activity: 2026-06-10 -- v1.3 Phase 0 executed (first macOS-driven session; per-machine clone workflow)
 progress:
   total_phases: 8
   completed_phases: 8
@@ -25,14 +25,13 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 ## Current Position
 
-Phase: 08
-Plan: Not started
-Next: Phase 7 (Code-Tier Mutation Proposer) — requires discuss → plan → execute
-Status: Ready to execute
-Last activity: 2026-04-19 -- Phase 08.1 planning complete
-Working directory: `C:/Users/alan/Project/co-evolution-v12/` (branch `feat/v1.2-pel-proposer`)
+Milestone: v1.3 (see ROADMAP.md Active Milestone + docs/audits/2026-06-10-v13-audit.md)
+Phase: 0 complete; 0.5 (cross-platform) next
+Status: Executing
+Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
+Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 
-Progress: milestone v1.2 at 6/8 phases; 13/? plans (Phase 7-8 plan counts TBD)
+macOS baseline before v1.3 fixes: scorer-verification 11/14; code-proposer sim 1/16; pr-emitter sim 4/12; template-proposer sim 1/8; revise-loop sim aborts. Root causes: bash 3.2 (mapfile, source <(…)), BSD sed GNU-isms. Target after Phase 0.5: all green on macOS.
 
 ## Performance Metrics
 
