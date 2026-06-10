@@ -35,7 +35,8 @@ if ! declare -F die >/dev/null 2>&1; then
   die() {
     local message="${1:-Fatal error}"
     log "ERROR: $message"
-    exit 1
+    # F-6: honor an optional exit-code (2nd arg); default to 1 when omitted.
+    exit "${2:-1}"
   }
 fi
 
@@ -45,7 +46,9 @@ fi
 # ---------------------------------------------------------------------------
 
 ensure_yq() {
-  command -v yq >/dev/null 2>&1 || die "yq not found. Install mikefarah/yq: 'scoop install yq' (Windows), 'brew install yq' (macOS), 'apt install yq' (Linux go-install)."
+  # F-1: delegate to the shared guard in lib/co-evolution.sh (in scope at runtime
+  # via the eval-harness callers, which source both libs); rejects the python yq.
+  require_mikefarah_yq
 }
 
 ensure_jq() {

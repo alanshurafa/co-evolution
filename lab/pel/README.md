@@ -20,6 +20,10 @@ isolation, canary smoke-test, and diff budget + allowlist enforcement (see
 via `bash lab/pel/classifier/classifier.sh` for debugging and for the Phase 4
 Plan 02 simulation test.
 
+## Prerequisites
+
+The policy-tier proposer and PR emitter shell out to `yq` for YAML mutations. It must be the mikefarah/Go `yq` (v4+), not the Python `yq` that Debian/Ubuntu's `apt install yq` provides; the two are incompatible. PEL now fails fast if the wrong one is on `PATH`. Install with `scoop install yq` (Windows), `brew install yq` (macOS), or `go install github.com/mikefarah/yq/v4@latest`.
+
 ## Env-var contract (v1.2)
 
 Callers (future Phases 5-8 proposers) MUST `export` the PEL_* variables explicitly

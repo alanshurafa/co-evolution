@@ -13,7 +13,19 @@ log() {
 die() {
   local message="${1:-Fatal error}"
   log "ERROR: $message"
-  exit 1
+  # F-6: honor an optional exit-code (2nd arg); default to 1 when omitted.
+  exit "${2:-1}"
+}
+
+# F-1: reject the wrong `yq`. The Debian/Ubuntu `apt install yq` ships the python
+# yq (kislyuk), which is NOT compatible with the mikefarah/Go yq v4 syntax this
+# project uses. mikefarah prints "mikefarah" in --version; the python yq does not.
+# Sites that cannot source this lib (the PEL components, by their self-containment
+# invariants) inline the same version check -- keep them in sync.
+require_mikefarah_yq() {
+  if ! command -v yq >/dev/null 2>&1 || ! yq --version 2>&1 | grep -qi mikefarah; then
+    die "mikefarah/yq (Go yq v4+) required; the python 'yq' is not compatible. Install: scoop install yq (Windows), brew install yq (macOS), or the binary from https://github.com/mikefarah/yq."
+  fi
 }
 
 # RNPT-05: Default per-phase timeout in seconds. Override via --timeout flag
@@ -32,6 +44,12 @@ LIVE_MODE_WARNING_LOGGED=false
 # CLI flags --branch / --worktree override these; both non-empty = die.
 : "${DEV_REVIEW_BRANCH:=}"
 : "${DEV_REVIEW_WORKTREE:=}"
+
+# F-5a: Claude model override. CLAUDE_MODEL env var or --claude-model flag wins;
+# the default preserves the prior hardcoded value so behavior is unchanged unless
+# overridden. (CODEX_MODEL stays optional/unset by default -- invoke_codex only
+# appends -c model= when it is set.)
+: "${CLAUDE_MODEL:=claude-opus-4-6}"
 
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
@@ -385,9 +403,9 @@ invoke_claude() {
 
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
-    cmd=(cmd.exe /c claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model claude-opus-4-6 "${tool_flags[@]}")
+    cmd=(claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
