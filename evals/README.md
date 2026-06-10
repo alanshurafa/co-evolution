@@ -71,6 +71,8 @@ bash evals/tests/scorer-verification.sh
 
 Both are single-binary dependencies that Just Work on every supported platform.
 
+> Debian/Ubuntu's `apt install yq` installs the *Python* yq, which is not compatible with the mikefarah v4 syntax used here. The harness rejects it at startup with a clear message; install the mikefarah binary via the `go install` line above or from its releases page.
+
 ### Verification
 
 - **Tier 1 (golden-fixture regression):** `bash evals/tests/scorer-verification.sh` asserts the Bash scorer reproduces PS-produced `EXPECTED.json` outputs for all 10 fixture suites under `runners/codex-ps/evals/tests/fixtures/`.

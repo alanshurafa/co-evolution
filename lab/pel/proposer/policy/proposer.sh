@@ -41,8 +41,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 require_tools() {
   command -v jq >/dev/null 2>&1 \
     || { echo "ERROR: jq is required. Install: scoop install jq (Windows), brew install jq (macOS), apt install jq (Linux)." >&2; exit 2; }
-  command -v yq >/dev/null 2>&1 \
-    || { echo "ERROR: yq (mikefarah/Go yq v4+) is required. Install: scoop install yq (Windows), brew install yq (macOS), or see https://github.com/mikefarah/yq." >&2; exit 2; }
+  # F-1: reject the python yq (apt) -- require mikefarah/Go yq v4 by its --version.
+  if ! command -v yq >/dev/null 2>&1 || ! yq --version 2>&1 | grep -qi mikefarah; then
+    echo "ERROR: mikefarah/yq (Go yq v4+) is required; the python 'yq' is not compatible. Install: scoop install yq (Windows), brew install yq (macOS), or see https://github.com/mikefarah/yq." >&2
+    exit 2
+  fi
 }
 require_tools
 
