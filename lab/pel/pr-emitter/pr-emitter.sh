@@ -60,8 +60,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 # ---------------------------------------------------------------------------
 # Section A.0: PEL invocation start time (consumed by Section K telemetry).
 # Use ms-resolution if available; fall back to seconds*1000 for portability.
+# GNU date supports %3N; BSD date (macOS) emits a literal "3N" suffix while
+# still exiting 0, so the output must be validated as numeric — an `||`
+# fallback alone never fires.
 # ---------------------------------------------------------------------------
-PEL_START_MS=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+epoch_ms() {
+  local ms
+  ms=$(date +%s%3N 2>/dev/null)
+  if [[ "$ms" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$ms"
+  else
+    printf '%s\n' "$(($(date +%s) * 1000))"
+  fi
+}
+PEL_START_MS=$(epoch_ms)
 
 # ---------------------------------------------------------------------------
 # Inline helpers (D-07 self-containment — do NOT source lib/co-evolution.sh)
@@ -376,11 +388,11 @@ if [[ "${PEL_NO_ADAPTIVE:-0}" != "1" ]]; then
   export TARGET PEL_TIER="$resolved_tier" PEL_FLAVOR="$flavor"
 
   # Time the router call so telemetry has a real router_duration_ms value.
-  router_start_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+  router_start_ms=$(epoch_ms)
 
   router_json=""
   if router_json=$(bash "$REPO_ROOT/lab/pel/router/router.sh" 2>/dev/null) && [[ -n "$router_json" ]]; then
-    router_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+    router_end_ms=$(epoch_ms)
     ROUTER_DURATION_MS=$((router_end_ms - router_start_ms))
 
     chosen_model=$(printf '%s' "$router_json" | jq -r '.model')
@@ -406,7 +418,7 @@ if [[ "${PEL_NO_ADAPTIVE:-0}" != "1" ]]; then
 
     log_stderr "INFO: router picked complexity=$chosen_complexity model=$chosen_model${THINKING_BUDGET:+ thinking=$THINKING_BUDGET}"
   else
-    router_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+    router_end_ms=$(epoch_ms)
     ROUTER_DURATION_MS=$((router_end_ms - router_start_ms))
     log_stderr "WARN: router invocation failed; falling back to default model"
     chosen_complexity="UNKNOWN"
@@ -888,7 +900,7 @@ log_stderr "INFO: PR drafted: $pr_url"
   fallback_fired="${FALLBACK_FIRED:-false}"
 
   # Compute total PEL duration from the start marker set in Section A.0.
-  pel_end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+  pel_end_ms=$(epoch_ms)
   PEL_DURATION_MS=$((pel_end_ms - ${PEL_START_MS:-$pel_end_ms}))
 
   jq -n \

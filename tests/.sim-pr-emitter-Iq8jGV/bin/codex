@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+printf "codex-stub: response\n"
+exit 0

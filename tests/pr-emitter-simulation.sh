@@ -199,13 +199,19 @@ write_template_diff() {
   [[ -s "$dest" ]] || { echo "INTERNAL: write_template_diff produced empty diff for $repo_rel" >&2; exit 99; }
 }
 
+# Insert <inserted_line> before the FIRST line matching the awk ERE
+# <anchor_regex>. awk (patterns via ENVIRON, no -v escape processing) replaces
+# the previous GNU-sed `0,/pat/` script, which BSD sed (macOS) silently no-ops.
 write_code_diff() {
-  local dest="$1" repo_rel="$2" sed_script="$3"
+  local dest="$1" repo_rel="$2" anchor_regex="$3" inserted_line="$4"
   local abs="$REPO_ROOT/$repo_rel"
   local base; base=$(basename "$repo_rel")
   local orig="$TEST_DIR/orig-$base" mod="$TEST_DIR/mod-$base"
   tr -d '\r' < "$abs" > "$orig"
-  sed "$sed_script" "$orig" > "$mod"
+  STUB_ANCHOR="$anchor_regex" STUB_INSERT="$inserted_line" awk '
+    !done && $0 ~ ENVIRON["STUB_ANCHOR"] { print ENVIRON["STUB_INSERT"]; done = 1 }
+    { print }
+  ' "$orig" > "$mod"
   diff -u --label "a/$repo_rel" --label "b/$repo_rel" "$orig" "$mod" > "$dest" || true
   [[ -s "$dest" ]] || { echo "INTERNAL: write_code_diff produced empty diff for $repo_rel" >&2; exit 99; }
 }
@@ -441,7 +447,7 @@ TOTAL=$((TOTAL + 1))
   code_target=$(pick_code_target)
   # Build a valid, non-syntax-breaking diff (insert a comment line).
   write_code_diff "$TEST_DIR/diff-$label.patch" "$code_target" \
-    '0,/^#/s|^#|# scenario-C bias annotation\n#|'
+    '^#' '# scenario-C bias annotation'
   write_classifier_stub "bug-catcher" "code retry audit (scenario C)" "$TEST_DIR/classifier-$label.json"
 
   write_claude_rotator "$label" \
@@ -549,10 +555,14 @@ TOTAL=$((TOTAL + 1))
 (
   label="E"
   code_target="lib/co-evolution.sh"  # canary scenario 1 operates on this
-  # Minimal syntax-breaking mutation: insert an unmatched `{` on its own line.
-  write_code_diff "$TEST_DIR/diff-$label.patch" "$code_target" \
-    '1a\
-{'
+  # Minimal syntax-breaking mutation: insert an unmatched `{` on its own line
+  # after line 1. awk instead of `sed 1a\` — BSD sed's `a` text handling
+  # differs from GNU sed and breaks inside single-quoted scripts.
+  e_orig="$TEST_DIR/orig-E-co-evolution.sh" e_mod="$TEST_DIR/mod-E-co-evolution.sh"
+  tr -d '\r' < "$REPO_ROOT/$code_target" > "$e_orig"
+  awk 'NR == 1 { print; print "{"; next } { print }' "$e_orig" > "$e_mod"
+  diff -u --label "a/$code_target" --label "b/$code_target" "$e_orig" "$e_mod" > "$TEST_DIR/diff-$label.patch" || true
+  [[ -s "$TEST_DIR/diff-$label.patch" ]] || { echo "INTERNAL: scenario E produced empty diff" >&2; exit 99; }
   write_classifier_stub "bug-catcher" "canary-failed check (E)" "$TEST_DIR/classifier-$label.json"
 
   write_claude_rotator "$label" \

@@ -159,10 +159,12 @@ invoke_opus() {
     trap "rm -f \"$augmented_prompt\"" RETURN
   fi
 
+  # ${arr[@]+...} guard: bash 3.2 (stock macOS) under set -u treats expanding
+  # an empty array as an unbound-variable error.
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    cmd=(cmd.exe /c claude -p --output-format text --model "$model" "${fallback_args[@]}" "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text --model "$model" ${fallback_args[@]+"${fallback_args[@]}"} "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model "$model" "${fallback_args[@]}" "${tool_flags[@]}")
+    cmd=(claude -p --output-format text --model "$model" ${fallback_args[@]+"${fallback_args[@]}"} "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file"

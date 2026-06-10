@@ -509,7 +509,13 @@ normalize_json_artifact() {
     return 1
   }
 
-  mapfile -t lines < "$input_file"
+  # bash-3.2 portable (macOS /bin/bash has no mapfile). IFS= + -r preserves
+  # leading whitespace and backslashes; the || clause keeps a final line that
+  # lacks a trailing newline.
+  local _read_line
+  while IFS= read -r _read_line || [[ -n "$_read_line" ]]; do
+    lines+=("$_read_line")
+  done < "$input_file"
 
   for index in "${!lines[@]}"; do
     current_line="${lines[$index]%$'\r'}"
@@ -1078,23 +1084,56 @@ invoke_agent_with_timeout() {
     die "PHASE_TIMEOUT must be a positive integer (got: $effective_timeout)"
   fi
 
-  if ! command -v timeout >/dev/null 2>&1; then
-    log "WARNING: timeout(1) not found - invoke_agent_with_timeout degrading to direct dispatch"
+  # Portable timeout: GNU coreutils `timeout` (Linux, Git Bash), `gtimeout`
+  # (macOS with brew coreutils), then a perl-alarm wrapper (perl ships on
+  # stock macOS). Only with none of the three do we degrade to unbounded
+  # dispatch. The perl wrapper exits 124 on expiry to match timeout(1).
+  local timeout_runner=""
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_runner="timeout"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_runner="gtimeout"
+  elif command -v perl >/dev/null 2>&1; then
+    timeout_runner="perl"
+  else
+    log "WARNING: no timeout(1)/gtimeout/perl found - invoke_agent_with_timeout degrading to direct dispatch"
     invoke_agent "$agent" "$prompt_file" "$output_file" "$stderr_file" "$writable"
     LAST_INVOKE_EXIT_CODE=0
     return 0
   fi
 
+  _run_with_phase_timeout() {
+    local seconds="$1"
+    shift
+    case "$timeout_runner" in
+      timeout|gtimeout)
+        "$timeout_runner" --foreground "${seconds}s" "$@"
+        ;;
+      perl)
+        perl -e '
+          my $t = shift @ARGV;
+          my $pid = fork();
+          if (!defined $pid) { exit 125; }
+          if ($pid == 0) { exec @ARGV; exit 127; }
+          $SIG{ALRM} = sub { kill "TERM", $pid; waitpid($pid, 0); exit 124; };
+          alarm $t;
+          waitpid($pid, 0);
+          exit(($? >> 8) & 0xff);
+        ' "$seconds" "$@"
+        ;;
+    esac
+  }
+
   local exit_code=0
   case "$agent" in
     codex)
-      timeout --foreground "${effective_timeout}s" \
+      _run_with_phase_timeout "$effective_timeout" \
         bash -c 'source "$1"; invoke_codex "$2" "$3" "$4"' _ \
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" \
         || exit_code=$?
       ;;
     opus)
-      timeout --foreground "${effective_timeout}s" \
+      _run_with_phase_timeout "$effective_timeout" \
         bash -c 'source "$1"; invoke_claude "$2" "$3" "$4" "$5"' _ \
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" "$writable" \
         || exit_code=$?

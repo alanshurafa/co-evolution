@@ -129,19 +129,26 @@ if [[ ! -r "$PEL_CODE_FEEDBACK" ]]; then
 fi
 
 # --- Path resolver helper: portable realpath with python3 fallback ------------
-# GNU realpath -m exists on Linux + Git Bash; macOS ships BSD realpath (same
-# semantics for our use). python3 is a universal fallback per CLAUDE.md.
+# GNU realpath -m exists on Linux + Git Bash; macOS/BSD realpath has NO -m flag
+# (it errors and prints nothing, which under set -e kills the script silently).
+# So: try `realpath -m` and verify it produced output; otherwise fall through.
+# python3 is a universal fallback per CLAUDE.md. Keep in sync with the inline
+# copy in lab/pel/proposer/template/proposer.sh (self-containment invariant).
 resolve_path() {
   local p="$1"
+  local resolved=""
   if command -v realpath >/dev/null 2>&1; then
-    realpath -m "$p" 2>/dev/null
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p"
-  else
+    resolved=$(realpath -m "$p" 2>/dev/null) || resolved=""
+  fi
+  if [[ -z "$resolved" ]] && command -v python3 >/dev/null 2>&1; then
+    resolved=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p")
+  fi
+  if [[ -z "$resolved" ]]; then
     # Last-resort: cd + pwd (requires path to exist; our inputs must be
     # readable so this is OK in practice).
-    (cd "$(dirname "$p")" 2>/dev/null && printf "%s/%s\n" "$(pwd)" "$(basename "$p")")
+    resolved=$( (cd "$(dirname "$p")" 2>/dev/null && printf "%s/%s" "$(pwd)" "$(basename "$p")") )
   fi
+  printf '%s\n' "$resolved"
 }
 
 # --- T-07-05 path sandboxing: PEL_CODE_FEEDBACK must resolve inside REPO_ROOT -

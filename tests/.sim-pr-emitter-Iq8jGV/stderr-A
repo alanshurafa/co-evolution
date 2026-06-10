@@ -1,0 +1,13 @@
+INFO: resolved tier: template for target skills/dev-review/templates/bounce-prompt-portable.md
+INFO: --dry-run active — gh stubbed at /var/folders/20/vl4p6fsd2dsbf5r68611c6nc0000gn/T/co-evolve-dry-XXXXXX.V3bLxYkc2l/gh
+INFO: invoking classifier for tier=template target=skills/dev-review/templates/bounce-prompt-portable.md
+INFO: invoking Haiku (model: claude-haiku-4-5-20251001)
+INFO: classifier picked flavor=bug-catcher override=false
+INFO: invoking adaptive router for tier=template
+WARN: router invocation failed; falling back to default model
+INFO: invoking Opus proposer (model: claude-opus-4-7, flavor: bug-catcher)
+INFO: proposer exited rc=0 (tier=template)
+INFO: emitter sandbox created: /var/folders/20/vl4p6fsd2dsbf5r68611c6nc0000gn/T/pel-score-sandbox-XXXXXX.CDfREdS8nM
+INFO: scoring pipeline (before + after)
+INFO: eval cache hit: before (/Users/shurafa/co-evolution-v13/.co-evolve-cache/evals/287aeae79eb8fd680aa018e05bd99717c3003d99-db1ea8dcc947df6fc4a3a32e95d1cc25d96ad125-d37dff2d77f7-1d1bf012c822.json)
+INFO: eval cache hit: after (/Users/shurafa/co-evolution-v13/.co-evolve-cache/evals/287aeae79eb8fd680aa018e05bd99717c3003d99-db1ea8dcc947df6fc4a3a32e95d1cc25d96ad125-d37dff2d77f7-76e095857fff.json)

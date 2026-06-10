@@ -1,0 +1,6 @@
+{
+  "scored_at": "2026-04-19T10:00:00Z",
+  "runner": "stub",
+  "scenarios": [],
+  "aggregate": { "fitness": 0.5, "convergence": 0.6, "verify_accuracy": 0.55 }
+}
