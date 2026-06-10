@@ -20,6 +20,7 @@ experiments/prompt-refinement/
 # Temp working directories
 tmp-*/
 tmp/
+.tmp/
 
 # Phase 8 eval cache — gitignored per D-18
 .co-evolve-cache/
@@ -29,6 +30,10 @@ tmp/
 
 # Local project notes (decisions, plans, handoffs)
 .notes/
+
+# Personal inputs and planning reports — may contain personal data
+inputs/
+.planning/reports/
 
 # Claude Code user-local settings
 .claude/
