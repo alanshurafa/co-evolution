@@ -9,7 +9,26 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - [x] **v1.0 Unification Absorb** (shipped 2026-04-17) — Codex runtime foundation + absorbed private reference impl + eval harness + runner parity. 9 phases, 27 requirements closed. See [`milestones/v1.0-ROADMAP.md`](milestones/v1.0-ROADMAP.md) · [`milestones/v1.0-SUMMARY.md`](milestones/v1.0-SUMMARY.md) · [`milestones/v1.0-REQUIREMENTS.md`](milestones/v1.0-REQUIREMENTS.md)
 - [x] **v1.1 Polish & Ergonomics** (shipped 2026-04-17) — v1.0 code review fixes (WR-01/02/03) + runtime ergonomics (REVISE auto-loop, visible live mode, branch/worktree management). 4 phases, 6 requirements closed. PR [#2](https://github.com/alanshurafa/co-evolution/pull/2) · See [`milestones/v1.1-ROADMAP.md`](milestones/v1.1-ROADMAP.md) · [`milestones/v1.1-SUMMARY.md`](milestones/v1.1-SUMMARY.md) · [`milestones/v1.1-REQUIREMENTS.md`](milestones/v1.1-REQUIREMENTS.md)
 
-## Active Milestone: v1.2 Protocol Evolution Loop — Proposer Only (2026-04-17)
+## Active Milestone: v1.3 Reliability, Measurement & Cross-Platform (2026-06-10)
+
+**Goal:** Close the silent-failure reliability class, make the product's core
+claim (a bounced document is better than its input) measurable for the first
+time, and make the toolkit run identically on Windows (Git Bash), macOS, and
+Linux. Goal ordering: reliability → measurement → adoption → simplification,
+plus human observability (a non-expert can open a run and understand what
+happened). Full findings + phase map: `docs/audits/2026-06-10-v13-audit.md`.
+
+- [x] **Phase 0: Land the stranded remediation backlog** (2026-06-10) — merged 4 stranded branches (F-1 yq guard, F-2 schema canonicalization + drift test, F-5a CLAUDE_MODEL override, F-6 die exit codes, template-proposer worktree fix, bounce-quality rubric) + LF storage policy (`* text=auto`) + consolidated audit report.
+- [ ] **Phase 0.5: Cross-platform Mac+PC** — bash-3.2 compatibility (mapfile, `source <(…)`), BSD sed/GNU sed test fixes, `scripts/doctor.sh` preflight, portable timeout fallback, README prerequisites. Gate: full suite green on macOS.
+- [ ] **Phase 1: Reliability hardening** — R-1/R-2 auth-failure fail-fast, C-2/S-2 substitution-safe template fills, R-4 `delta_status:"unknown"`, R-3/R-7 label guard + entropy, S-1 marker-strip caveat. Test-first with high-fidelity CLI stubs.
+- [ ] **Phase 2: CI + aggregate runner** — `tests/run-all.sh` + GitHub Actions matrix (ubuntu/macos/windows). Closes F-3/F-4.
+- [ ] **Phase 3: Bounce instrumentation** — bounce-state/1.0 `state.json` from both bouncers + `evals/BOUNCE-RUNNER-CONTRACT.md`.
+- [ ] **Phase 4: Deterministic scorer + marker ledger** — `evals/score-bounce.sh` (4 rubric dimensions) + marker-fate ledger (resolved / deleted-with-section / expired / carried) + `evals/bounce-thresholds.yaml`.
+- [ ] **Phase 5: Human report + blind judge + calibration** — `evals/report-bounce.sh` (HUMAN-REPORT.md), `evals/judge-bounce.sh` (blind A/B, order-swapped trials), calibration batch over historical runs. Self-review demoted from verdict to input.
+- [ ] **Phase 6: Simplification + docs accuracy** — bounce-protocol single-sourcing + parity test, template lineage, agent-bouncer frozen-legacy, README corrections.
+- [ ] **Phase 7: Adoption seed** — npm/MCP distribution seed only; gated on Phase 5 calibration evidence. Likely v1.4.
+
+## Previous Milestone: v1.2 Protocol Evolution Loop — Proposer Only (2026-04-17; phases complete, SC-4 release gate open — see `.planning/VERIFY-SC4.md`)
 
 **Goal:** Ship PEL Option 1 — an LLM-powered proposer that generates protocol-mutation PRs for human review, using the eval harness as fitness signal. PEL machinery lives entirely in `lab/pel/`; the default runner (`co-evolve`, `dev-review`) is unchanged for users who never invoke `--lab pel-proposer`. Accepted mutations merge to master and upgrade the default runner transparently.
 
