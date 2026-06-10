@@ -1,6 +1,21 @@
 # Line-ending policy for cross-platform consistency.
 #
+# This repo is edited from Windows (Git Bash), macOS, and Linux — sometimes
+# against the same checkout over a network share. All text files are stored
+# with LF in the repository (`* text=auto` lets git normalize on commit), so
+# the same tree is byte-identical no matter which platform committed it.
+# Set `core.autocrlf=false` on every clone so working trees stay LF too;
+# modern Windows editors and Git Bash handle LF files fine.
+* text=auto
+
 # Shell scripts are executed by bash on every supported platform — Git Bash on
 # Windows, WSL, macOS, and Linux. CRLF endings break the shebang line and
 # heredoc parsing, so .sh files are always stored and checked out with LF.
 *.sh text eol=lf
+
+# JSON/YAML fixtures are hashed by the eval cache and byte-compared by
+# determinism tests — keep them LF on disk everywhere.
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
