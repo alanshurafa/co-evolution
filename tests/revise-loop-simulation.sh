@@ -82,8 +82,11 @@ JSON
 # ---- extract the real _run_revise_loop function from dev-review.sh ----
 # sed range anchors on the opening signature and the matching closing brace at
 # column 0. If the function layout changes, update both ends together.
-# shellcheck disable=SC1090
-source <(sed -n '/^_run_revise_loop() {/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh")
+# Extracted to a temp file rather than `source <(...)` — bash 3.2 (stock macOS)
+# silently sources nothing from a process substitution.
+sed -n '/^_run_revise_loop() {/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh" > "$TEST_DIR/_run_revise_loop.sh"
+# shellcheck disable=SC1090,SC1091
+source "$TEST_DIR/_run_revise_loop.sh"
 
 if ! declare -F _run_revise_loop >/dev/null; then
   echo "FAIL: _run_revise_loop not sourced — simulation cannot continue"
@@ -151,8 +154,11 @@ echo "S3 OK"
 # Scenario 4: Prompt byte-identity invariant
 # ------------------------------------------------------------------
 export TASK="smoke" RUN_DIR
-# shellcheck disable=SC1090
-source <(sed -n '/^build_reviewer_feedback_summary()/,/^}$/p; /^build_issues_list_markdown()/,/^}$/p; /^build_execution_prompt()/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh")
+# Temp file rather than `source <(...)` — bash 3.2 (stock macOS) silently
+# sources nothing from a process substitution.
+sed -n '/^build_reviewer_feedback_summary()/,/^}$/p; /^build_issues_list_markdown()/,/^}$/p; /^build_execution_prompt()/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh" > "$TEST_DIR/_prompt_builders.sh"
+# shellcheck disable=SC1090,SC1091
+source "$TEST_DIR/_prompt_builders.sh"
 
 out_a=$(build_execution_prompt codex "PLAN")
 out_b=$(build_execution_prompt codex "PLAN" "")

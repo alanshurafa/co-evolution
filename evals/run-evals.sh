@@ -114,7 +114,11 @@ log "Using runner: $RUNNER_PATH_ABS"
 # Case discovery (port run-evals.ps1:70-86, using glob + sort)
 # ---------------------------------------------------------------------------
 
-mapfile -t all_case_files < <(find "$CASES_DIR" -maxdepth 1 -name '*.yaml' ! -name 'defaults.yaml' -type f | sort)
+# bash-3.2 portable (macOS /bin/bash has no mapfile).
+all_case_files=()
+while IFS= read -r _case_file; do
+  [[ -n "$_case_file" ]] && all_case_files+=("$_case_file")
+done < <(find "$CASES_DIR" -maxdepth 1 -name '*.yaml' ! -name 'defaults.yaml' -type f | sort)
 (( ${#all_case_files[@]} > 0 )) || die "No case YAMLs found under $CASES_DIR"
 
 declare -a selected_case_files=()

@@ -1,0 +1,11 @@
+{
+  "flavor": "bug-catcher",
+  "rationale": "template weakness (scenario A)",
+  "override": false,
+  "model": "claude-haiku-4-5-20251001",
+  "inputs": {
+    "task": "stub-task",
+    "bounce_step": "unknown",
+    "phase_type": "unknown"
+  }
+}

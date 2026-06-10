@@ -142,12 +142,18 @@ chmod +x "$TEST_DIR/bin/claude"
 # stub above for proposer.sh's Opus adapter path.
 
 # ---------------------------------------------------------------------------
-# Helper: write_valid_stub_diff <dest_stub_file> <repo_rel_target_path> <sed_script>
+# Helper: write_valid_stub_diff <dest_stub_file> <repo_rel_target_path> \
+#                                <anchor_regex> <inserted_line>
 #
 # Same pattern as template-proposer-simulation.sh: copy real target file to
-# $TEST_DIR, normalize to LF (tr -d '\r'), apply sed modification, compute
-# diff -u with --label for correct a/ b/ headers. Produces self-consistent
-# diffs without hand-authored line numbers.
+# $TEST_DIR, normalize to LF (tr -d '\r'), insert <inserted_line> immediately
+# before the FIRST line matching the awk ERE <anchor_regex>, compute diff -u
+# with --label for correct a/ b/ headers. Produces self-consistent diffs
+# without hand-authored line numbers.
+#
+# awk (patterns passed via ENVIRON to avoid -v escape processing) replaces the
+# previous GNU-sed `0,/pat/s|…|…\n…|` script: BSD sed on macOS does not
+# support the `0,` address and silently produced an unmodified copy.
 #
 # Used for happy-path scenarios A-D. Edge-case scenarios E-I and adversarial
 # J-P hand-craft their stubs to inject specific structural violations.
@@ -155,7 +161,8 @@ chmod +x "$TEST_DIR/bin/claude"
 write_valid_stub_diff() {
   local dest="$1"
   local repo_rel="$2"
-  local sed_script="$3"
+  local anchor_regex="$3"
+  local inserted_line="$4"
   local abs="$REPO_ROOT/$repo_rel"
   local basename_rel
   basename_rel=$(basename "$repo_rel")
@@ -166,7 +173,10 @@ write_valid_stub_diff() {
   # git apply with --whitespace=nowarn handles the on-disk CRLF, but the diff
   # body itself must be LF-only for the hunk-count math to line up.
   tr -d '\r' < "$abs" > "$orig_copy"
-  sed "$sed_script" "$orig_copy" > "$mod_copy"
+  STUB_ANCHOR="$anchor_regex" STUB_INSERT="$inserted_line" awk '
+    !done && $0 ~ ENVIRON["STUB_ANCHOR"] { print ENVIRON["STUB_INSERT"]; done = 1 }
+    { print }
+  ' "$orig_copy" > "$mod_copy"
   diff -u --label "a/$repo_rel" --label "b/$repo_rel" "$orig_copy" "$mod_copy" > "$dest" || true
   if [[ ! -s "$dest" ]]; then
     echo "INTERNAL ERROR: write_valid_stub_diff produced an empty diff for $repo_rel" >&2
@@ -312,7 +322,7 @@ TOTAL=$((TOTAL + 1))
   # the diff is minimal — 2 added lines). Within 20-line budget.
   write_valid_stub_diff "$stub_file" \
     "lib/co-evolution.sh" \
-    '0,/^log() {/s|^log() {|# bug-catcher annotation: retry logic audit point\nlog() {|'
+    '^log\(\) \{' '# bug-catcher annotation: retry logic audit point'
 
   rm -f "$TEST_DIR/state-LAST.json"
   rc=0
@@ -368,7 +378,7 @@ TOTAL=$((TOTAL + 1))
   # sed: add a faster-converger comment near TIMESTAMP line (minimal edit).
   write_valid_stub_diff "$stub_file" \
     "dev-review/codex/dev-review.sh" \
-    '0,/^TIMESTAMP=/s|^TIMESTAMP=|# faster-converger annotation: timestamp for convergence budget tracking\nTIMESTAMP=|'
+    '^TIMESTAMP=' '# faster-converger annotation: timestamp for convergence budget tracking'
 
   rm -f "$TEST_DIR/state-LAST.json"
   rc=0
@@ -417,7 +427,7 @@ TOTAL=$((TOTAL + 1))
   # sed: add a blind-spot-surfacer comment near the TIMESTAMP line.
   write_valid_stub_diff "$stub_file" \
     "agent-bouncer/agent-bouncer.sh" \
-    '0,/^TIMESTAMP=/s|^TIMESTAMP=|# blind-spot-surfacer annotation: verdict JSON integrity audit point\nTIMESTAMP=|'
+    '^TIMESTAMP=' '# blind-spot-surfacer annotation: verdict JSON integrity audit point'
 
   rm -f "$TEST_DIR/state-LAST.json"
   rc=0
@@ -464,7 +474,7 @@ TOTAL=$((TOTAL + 1))
   # sed: annotate the validate_lab_mode function (different target than A's log()).
   write_valid_stub_diff "$stub_file" \
     "lib/co-evolution.sh" \
-    '0,/^validate_lab_mode() {/s|^validate_lab_mode() {|# general annotation: lab-routing validation entry point\nvalidate_lab_mode() {|'
+    '^validate_lab_mode\(\) \{' '# general annotation: lab-routing validation entry point'
 
   rm -f "$TEST_DIR/state-LAST.json"
   rc=0
@@ -640,7 +650,7 @@ TOTAL=$((TOTAL + 1))
   # Small innocuous mutation; LF-only diff via normal helper.
   write_valid_stub_diff "$stub_file" \
     "lib/co-evolution.sh" \
-    '0,/^die() {/s|^die() {|# edge-case G: CRLF-tolerance test\ndie() {|'
+    '^die\(\) \{' '# edge-case G: CRLF-tolerance test'
 
   rm -f "$TEST_DIR/state-LAST.json"
   rc=0

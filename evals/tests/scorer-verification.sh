@@ -369,8 +369,30 @@ STUB
   # Expected runtime <30s; the wrapper is belt-and-suspenders against runner
   # hang (e.g. stuck REVISE loop) — we own our own timeout rather than
   # inheriting CI's outer bound. Exit code 124 = timeout hit.
+  # Portable: stock macOS has no timeout(1) — fall back to gtimeout (brew
+  # coreutils), then a perl alarm wrapper (perl ships on macOS), then run
+  # unbounded as a last resort.
+  local -a t4_timeout_cmd=()
+  if command -v timeout >/dev/null 2>&1; then
+    t4_timeout_cmd=(timeout 120)
+  elif command -v gtimeout >/dev/null 2>&1; then
+    t4_timeout_cmd=(gtimeout 120)
+  elif command -v perl >/dev/null 2>&1; then
+    t4_timeout_cmd=(perl -e '
+      my $t = shift @ARGV;
+      my $pid = fork();
+      if (!defined $pid) { exit 125; }
+      if ($pid == 0) { exec @ARGV; exit 127; }
+      $SIG{ALRM} = sub { kill "TERM", $pid; waitpid($pid, 0); exit 124; };
+      alarm $t;
+      waitpid($pid, 0);
+      exit(($? >> 8) & 0xff);
+    ' 120)
+  fi
   local rc=0
-  PATH="$t4_dir/bin:$PATH" timeout 120 bash "$REPO_ROOT/evals/run-evals.sh" \
+  # ${arr[@]+...} guard: bash 3.2 under set -u treats expanding an empty
+  # array as an unbound-variable error.
+  PATH="$t4_dir/bin:$PATH" ${t4_timeout_cmd[@]+"${t4_timeout_cmd[@]}"} bash "$REPO_ROOT/evals/run-evals.sh" \
     --case 01-trivial-task \
     --runner-path "$REPO_ROOT/dev-review/codex/dev-review.sh" \
     > "$t4_dir/run-evals.stdout" 2> "$t4_dir/run-evals.stderr" || rc=$?
