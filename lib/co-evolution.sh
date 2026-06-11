@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# bash 5.2 enabled `patsub_replacement` by default: an unescaped `&` in the
+# REPLACEMENT of ${var//pat/repl} expands to the matched pattern, corrupting
+# any substituted document/task content containing `&`. Restore the literal
+# pre-5.2 semantics everywhere this file's substitutions run. (No-op on
+# older bash, hence the guard.)
+shopt -u patsub_replacement 2>/dev/null || true
+
 log() {
   local message="${1:-}"
 
