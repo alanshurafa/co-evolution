@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Distribution — npm + MCP
 status: executing
-stopped_at: v1.4 registered (2026-06-11) from triggered seed npm-mcp-distribution + spec docs/superpowers/specs/2026-04-19-mcp-server-design.md. Next: Phase 0 design reconciliation (D-01 wrap co-evolve-bouncer not frozen agent-bouncer). v1.3 archived to milestones/v1.3-SUMMARY.md; CI green 3-OS; Fable-5 judge 7/7 improved.
+stopped_at: v1.4 Phases 0-4 EXECUTED (2026-06-11). mcp/ package built + 4/4 hermetic smoke tests + stdio handshake verified; CI gains 3-OS mcp job; publish-mcp.yml ready. Remaining = Phase 5 (HUMAN: verify npm scope @alanshurafa, add NPM_TOKEN secret, git tag -> auto-publish, Claude Desktop round-trip) + Phase 6 post-ship registry/awesome-list.
 last_updated: "2026-06-10T23:45:00.000Z"
 last_activity: 2026-06-11 -- v1.4 milestone registered; v1.3 archived
 progress:
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 
 Milestone: v1.3 (see ROADMAP.md Active Milestone + docs/audits/2026-06-10-v13-audit.md)
 Milestone: v1.4 Distribution — npm + MCP
-Phase: 0 (design reconciliation) — not started
-Status: Registered, ready to execute. Human-gated items live in Phase 5 (npm scope + NPM_TOKEN + tag). v1.2 SC-4 gate still open (VERIFY-SC4.md).
+Phase: 0-4 complete; Phase 5 (publish) blocked on human items
+Status: npm scope verification + NPM_TOKEN secret + git tag are Alan's; everything else built and CI-gated. v1.2 SC-4 gate still open (VERIFY-SC4.md).
 Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
 Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 
