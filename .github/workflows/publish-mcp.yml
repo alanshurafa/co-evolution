@@ -1,0 +1,46 @@
+# Publish @alanshurafa/co-evolution-mcp to npm on every v* tag.
+# The npm package version is derived from the tag, so the vendored bouncer
+# and the published package can never drift (design spec §6).
+#
+# Requires the NPM_TOKEN repo secret (publish rights to the @alanshurafa
+# scope) — see spec §11a for the pre-publish checklist.
+name: publish-mcp
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Test (vendors + builds as a side effect)
+        run: cd mcp && npm ci && npm test
+
+      - name: Set package version from tag
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          # npm needs full semver; normalize two-part tags (v1.4 -> 1.4.0).
+          case "$tag" in
+            *.*.*) version="$tag" ;;
+            *.*)   version="$tag.0" ;;
+            *)     version="$tag.0.0" ;;
+          esac
+          cd mcp && npm version --no-git-tag-version "$version"
+          echo "publishing version $version"
+
+      - name: Publish
+        run: cd mcp && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

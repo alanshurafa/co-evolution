@@ -179,3 +179,7 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
+
+## npm / MCP distribution (v1.4)
+
+The bounce protocol is also distributed as an npm package: `@alanshurafa/co-evolution-mcp` (the [`mcp/`](mcp/) subdirectory) wraps `co-evolve-bouncer.sh` as an MCP server exposing one `co_evolve` tool for external clients (Claude Desktop, Cursor, Continue). The package vendors a snapshot of the bouncer at each git tag — when changing `co-evolve-bouncer.sh`, `lib/co-evolution.sh`, the co-evolve templates, or the receipts stack (`evals/score-bounce.sh`, `evals/report-bounce.sh`), remember the change ships externally on the next tag. The MCP smoke tests (`cd mcp && npm test`) run in CI on all three platforms.
