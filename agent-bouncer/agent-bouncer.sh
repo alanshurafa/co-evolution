@@ -25,7 +25,6 @@ PLAN_FILE="${1:?Usage: ./agent-bouncer.sh <plan-file> [max-bounces] [odd-agent] 
 MAX_BOUNCES="${2:-2}"
 ODD_AGENT="${3:-claude}"   # Agent for odd passes (reviewer by default)
 EVEN_AGENT="${4:-codex}"   # Agent for even passes (composer by default)
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -34,6 +33,9 @@ RUNS_DIR="${REPO_ROOT}/runs"
 WORKDIR="$(pwd)"
 
 source "${REPO_ROOT}/lib/co-evolution.sh"
+
+# R-7: timestamp + entropy — two runs in the same second must not share a dir.
+TIMESTAMP=$(generate_run_suffix)
 
 # Validate that requested agents have adapters
 for agent in "$ODD_AGENT" "$EVEN_AGENT"; do
@@ -44,26 +46,32 @@ for agent in "$ODD_AGENT" "$EVEN_AGENT"; do
 done
 
 # Generate a run name from the document content.
+# R-3: the LLM naming call is best-effort sugar — skip it entirely when the
+# codex CLI is absent, and fall back to a filename-derived label either way.
 RUN_NAME=""
-NAME_PROMPT="Read this document title and first paragraph. Output ONLY a 2-4 word kebab-case name describing what this document is about. No explanation, no quotes, just the name. Example: error-handling-plan
+CANDIDATE=""
+if command -v codex >/dev/null 2>&1; then
+  NAME_PROMPT="Read this document title and first paragraph. Output ONLY a 2-4 word kebab-case name describing what this document is about. No explanation, no quotes, just the name. Example: error-handling-plan
 
 $(head -20 "$PLAN_FILE")"
 
-NAME_PROMPT_FILE=$(mktemp)
-NAME_OUTPUT_FILE=$(mktemp)
-NAME_STDERR_FILE=$(mktemp)
-printf '%s' "$NAME_PROMPT" > "$NAME_PROMPT_FILE"
-invoke_codex "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
-CANDIDATE=$(tr -d '\r\n ' < "$NAME_OUTPUT_FILE" | head -c 60 || true)
-rm -f "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
+  NAME_PROMPT_FILE=$(mktemp)
+  NAME_OUTPUT_FILE=$(mktemp)
+  NAME_STDERR_FILE=$(mktemp)
+  printf '%s' "$NAME_PROMPT" > "$NAME_PROMPT_FILE"
+  invoke_codex "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
+  CANDIDATE=$(tr -d '\r\n ' < "$NAME_OUTPUT_FILE" | head -c 60 || true)
+  rm -f "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
+fi
 
 if [[ "$CANDIDATE" =~ ^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$ ]]; then
   RUN_LABEL="$CANDIDATE"
-  RUN_NAME="bouncer-${RUN_LABEL}-${TIMESTAMP}"
 else
-  RUN_LABEL="run"
-  RUN_NAME="bouncer-run-${TIMESTAMP}"
+  # Filename-derived fallback: "docs/launch plan.md" -> "launch-plan".
+  RUN_LABEL=$(basename "$PLAN_FILE" | sed 's/\.[^.]*$//' | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '-' | sed 's/^-//;s/-$//')
+  RUN_LABEL="${RUN_LABEL:-run}"
 fi
+RUN_NAME="bouncer-${RUN_LABEL}-${TIMESTAMP}"
 
 RUN_DIR="${RUNS_DIR}/${RUN_NAME}"
 mkdir -p "$RUN_DIR"
@@ -128,7 +136,9 @@ $(cat "$TEMPLATE_DIR/bounce-protocol.md")"
   STDERR_FILE="${RUN_DIR}/pass-${PASS}-stderr.log"
   RETRY_STDERR_FILE="${RUN_DIR}/pass-${PASS}-stderr-retry.log"
   "invoke_${AGENT_NAME}" "$PROMPT_FILE" "$OUTPUT_FILE" "$STDERR_FILE"
-  validate_output "$PLAN_FILE" "$OUTPUT_FILE" "$AGENT_NAME" "invoke_${AGENT_NAME}" "$PROMPT_FILE" "$RETRY_STDERR_FILE" || exit 1
+  # 8th arg (first-pass stderr) lets validate_output fail fast on
+  # CLI-missing / auth-failure instead of accepting error text (R-1/R-2).
+  validate_output "$PLAN_FILE" "$OUTPUT_FILE" "$AGENT_NAME" "invoke_${AGENT_NAME}" "$PROMPT_FILE" "$RETRY_STDERR_FILE" 30 "$STDERR_FILE" || exit 1
 
   cp "$OUTPUT_FILE" "${RUN_DIR}/pass-${PASS}-${ROLE}-${AGENT_NAME}-raw.md"
 

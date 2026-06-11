@@ -33,7 +33,8 @@ FLAVOR_OVERRIDE=""
 # v1.3-adaptive flags — default off so PEL behavior unchanged unless invoked.
 NO_ADAPTIVE=0
 COMPLEXITY_OVERRIDE=""
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+# R-7: timestamp + entropy — two runs in the same second must not share a dir.
+TIMESTAMP=$(generate_run_suffix)
 
 TEMPLATE_DIR="$SCRIPT_DIR/templates/co-evolve"
 PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
@@ -247,6 +248,12 @@ if [[ -n "$TASK_AS_PATH" && -f "$TASK_AS_PATH" ]]; then
   INPUT_CONTENT=$(cat "$TASK")
 elif [[ -n "$TASK" ]]; then
   INPUT_TYPE="string"
+  # S-1: a question/task string containing literal [CONTESTED]/[CLARIFY]
+  # tokens would inject live protocol markers into the loop and skew marker
+  # accounting. Strip them from string input; file input is NOT stripped —
+  # a document under bounce legitimately carries markers. (Marker hygiene
+  # only, not a prompt-injection defense.)
+  TASK=$(strip_protocol_markers "$TASK")
   INPUT_CONTENT="$TASK"
 elif [[ ! -t 0 ]]; then
   INPUT_TYPE="pipe"
@@ -407,10 +414,24 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 
   invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
 
+  # R-1/R-2: fail fast on CLI-missing / auth-failure (rc 2) instead of
+  # accepting the error text as a composed document or burning a retry.
+  local compose_artifact_rc=0
+  validate_agent_artifact "$compose_output_file" "$compose_stderr_file" "$AGENT_A" || compose_artifact_rc=$?
+  if (( compose_artifact_rc == 2 )); then
+    return 1
+  fi
+
   if [[ ! -s "$compose_output_file" ]] || (( $(wc -w < "$compose_output_file" | tr -d '\r\n ') < 10 )); then
     log " WARNING: compose returned empty or minimal output. Retrying once..."
     : > "$compose_output_file"
     invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_retry_stderr_file"
+
+    compose_artifact_rc=0
+    validate_agent_artifact "$compose_output_file" "$compose_retry_stderr_file" "$AGENT_A" || compose_artifact_rc=$?
+    if (( compose_artifact_rc == 2 )); then
+      return 1
+    fi
   fi
 
   if [[ ! -s "$compose_output_file" ]]; then
@@ -506,10 +527,24 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
 
-    # Validate output
+    # Validate output. R-1/R-2: rc 2 = CLI missing or unauthenticated — an
+    # auth-error page must never be copied into WORKING_FILE as the document,
+    # and a `break` here would let the run finalize as if it had converged.
+    local bounce_artifact_rc=0
+    validate_agent_artifact "$output_file" "$stderr_file" "$current_agent" || bounce_artifact_rc=$?
+    if (( bounce_artifact_rc == 2 )); then
+      die "bounce pass $pass aborted: ${current_agent} CLI failure (see message above)"
+    fi
+
     if [[ ! -s "$output_file" ]]; then
       log " WARNING: ${current_agent} returned empty output. Retrying..."
       invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+
+      bounce_artifact_rc=0
+      validate_agent_artifact "$output_file" "$stderr_file" "$current_agent" || bounce_artifact_rc=$?
+      if (( bounce_artifact_rc == 2 )); then
+        die "bounce pass $pass aborted: ${current_agent} CLI failure (see message above)"
+      fi
     fi
 
     if [[ ! -s "$output_file" ]]; then
