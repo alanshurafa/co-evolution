@@ -446,7 +446,9 @@ file_contains_auth_failure() {
 
   [[ -s "$file_path" ]] || return 1
 
-  grep -qiE 'Failed to authenticate|authentication_error|Not authenticated|Unauthorized|login required|Please run .* login' "$file_path"
+  # "Not logged in · Please run /login" is the claude CLI's current (2026-06)
+  # unauthenticated banner, observed live — the slash defeats 'run .* login'.
+  grep -qiE 'Failed to authenticate|authentication_error|Not authenticated|Not logged in|Unauthorized|login required|Please run .* login|Please run /login' "$file_path"
 }
 
 file_contains_error_payload() {
