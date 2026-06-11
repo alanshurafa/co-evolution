@@ -1,0 +1,58 @@
+# Thresholds for evals/score-bounce.sh — single source for every pass/fail
+# band in the bounce rubric (evals/BOUNCE-RUBRIC.md).
+#
+# These are the rubric's INITIAL ESTIMATES. Recalibrate on the first ~50
+# scored runs (Phase 5 calibration) before treating any band as a hard gate.
+schema: bounce-thresholds/1.0
+
+loop_execution:
+  # Expected pass count per mode; fewer passes = bypassed loop.
+  expected_passes:
+    compose: 2
+    bounce-only: 2
+    chain: 3
+    agent-bouncer: 2
+  # The final document must carry zero live markers.
+  final_markers_max: 0
+
+structural_preservation:
+  # H2/H3 headings of the baseline retained in the final document.
+  heading_retention_min: 0.90
+  # Headings that ever hosted a marker must ALL survive (deletion-convergence
+  # countermeasure).
+  marker_heading_retention_min: 1.0
+  # Anchors: numbers/units, comparison operators, `code` tokens, "quoted
+  # terms", requirement modals. Deleting or weakening these is how a bounce
+  # quietly destroys substance.
+  anchor_retention_min: 0.90
+
+scope_discipline:
+  bounce-only:
+    word_ratio_min: 0.55
+    word_ratio_max: 1.15
+    heading_ratio_min: 0.75
+    heading_ratio_max: 1.25
+  chain:
+    word_ratio_min: 0.55
+    word_ratio_max: 1.15
+    heading_ratio_min: 0.75
+    heading_ratio_max: 1.25
+  agent-bouncer:
+    word_ratio_min: 0.55
+    word_ratio_max: 1.15
+    heading_ratio_min: 0.75
+    heading_ratio_max: 1.25
+  compose:
+    word_ratio_min: 0.70
+    word_ratio_max: 1.30
+    heading_ratio_min: 0.70
+    heading_ratio_max: 1.50
+
+material_engagement:
+  # At least one pass must change >=3% of tokens (or >=25 tokens for short
+  # docs) — otherwise the loop rubber-stamped.
+  min_edit_ratio: 0.03
+  min_edit_tokens: 25
+  # No single pass may replace >60% of tokens unless structural preservation
+  # still passes (high edit + failed preservation = destructive churn).
+  max_replacement_ratio: 0.60

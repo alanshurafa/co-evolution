@@ -1,0 +1,8 @@
+{
+  "overall_pass": false,
+  "mode": "bounce-only",
+  "source": "state",
+  "pass_count": 2,
+  "ledger_fates": [],
+  "failing_checks_include": ["material_edit"]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "bounce-state/1.0",
+  "runner": "co-evolve-bouncer.sh",
+  "mode": "bounce-only",
+  "task": "fixture",
+  "input_type": "file",
+  "baseline_file": "original-input.md",
+  "final_file": "working.md",
+  "status": "complete",
+  "started_at": "2026-06-10T00:00:00Z",
+  "finished_at": "2026-06-10T00:03:00Z",
+  "passes": [
+    {
+      "pass": 1,
+      "role": "reviewer",
+      "agent": "claude",
+      "output_raw": "pass-1-reviewer-claude-raw.md",
+      "output_clean": "pass-1-clean.md",
+      "contested": 0,
+      "clarify": 0,
+      "total_markers": 0,
+      "word_count": 168
+    },
+    {
+      "pass": 2,
+      "role": "composer",
+      "agent": "codex",
+      "output_raw": "pass-2-composer-codex-raw.md",
+      "output_clean": "pass-2-clean.md",
+      "contested": 0,
+      "clarify": 0,
+      "total_markers": 0,
+      "word_count": 168
+    }
+  ]
+}
