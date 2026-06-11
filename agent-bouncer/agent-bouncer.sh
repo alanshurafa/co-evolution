@@ -203,6 +203,13 @@ cp "$PLAN_FILE" "${RUN_DIR}/${FINAL_NAME}"
 
 finalize_bounce_state "$STATE_FILE" "complete"
 
+# Post-run human report (no LLM cost). Opt out: AGENT_BOUNCER_NO_REPORT=1.
+# Best-effort: a reporting failure must never fail the run.
+if [[ -z "${AGENT_BOUNCER_NO_REPORT:-}" ]]; then
+  bash "$REPO_ROOT/evals/report-bounce.sh" --run-dir "$RUN_DIR" >/dev/null 2>&1 \
+    || log " WARNING: report generation failed (run is unaffected)."
+fi
+
 log "============================================"
 log " BOUNCE COMPLETE"
 log "============================================"
