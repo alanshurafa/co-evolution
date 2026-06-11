@@ -1,4 +1,11 @@
 # lab/pel/proposer/template/adapter.sh
+
+# bash 5.2 enabled `patsub_replacement` by default: an unescaped `&` in the
+# REPLACEMENT of ${var//pat/repl} expands to the matched pattern, corrupting
+# any substituted document/task content containing `&`. Restore the literal
+# pre-5.2 semantics everywhere this file's substitutions run. (No-op on
+# older bash, hence the guard.)
+shopt -u patsub_replacement 2>/dev/null || true
 # Co-Evolution PEL Template-Tier Mutation Proposer — Opus adapter (Phase 5 PEL-02).
 #
 # SELF-CONTAINED per D-05: zero import of the co-evolution runner helpers, the

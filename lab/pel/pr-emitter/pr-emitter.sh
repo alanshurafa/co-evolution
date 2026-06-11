@@ -53,6 +53,13 @@
 
 set -euo pipefail
 
+# bash 5.2 enabled `patsub_replacement` by default: an unescaped `&` in the
+# REPLACEMENT of ${var//pat/repl} expands to the matched pattern, corrupting
+# any substituted document/task content containing `&`. Restore the literal
+# pre-5.2 semantics everywhere this file's substitutions run. (No-op on
+# older bash, hence the guard.)
+shopt -u patsub_replacement 2>/dev/null || true
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # pr-emitter -> pel -> lab -> REPO_ROOT (3 levels)
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
