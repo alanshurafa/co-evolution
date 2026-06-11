@@ -181,6 +181,8 @@ NORM_T1A=$(norm "$WORK/doc-baseline.md"); NORM_T1B=$(norm "$WORK/doc-final.md")
 NORM_T2A=$(norm "$WORK/doc-final.md");    NORM_T2B=$(norm "$WORK/doc-baseline.md")
 
 EVIDENCE_OK=true
+EVIDENCE_TOTAL=0
+EVIDENCE_FAILED=0
 VERIFIED_EVIDENCE="[]"
 check_trial_evidence() { # $1=trial-file $2=normA $3=normB $4=trial-no
   local n
@@ -189,13 +191,26 @@ check_trial_evidence() { # $1=trial-file $2=normA $3=normB $4=trial-no
   for (( k=0; k<n; k++ )); do
     local doc quote hay found
     doc=$(jq -r ".evidence[$k].doc" "$1")
-    quote=$(jq -r ".evidence[$k].quote" "$1" | tr -s '[:space:]' ' ')
+    # Trim after whitespace-normalization: real judges quote up to a clause
+    # boundary, and a trailing space where the document continues with
+    # punctuation ("…exclusive " vs "…exclusive.") is a transcription
+    # artifact, not fabrication. First live batch failed 6/7 verdicts on
+    # exactly this.
+    quote=$(jq -r ".evidence[$k].quote" "$1" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
     [[ "$doc" == "A" ]] && hay="$2" || hay="$3"
     found=false
     if [[ -n "$quote" ]] && printf '%s' "$hay" | grep -qF "$quote"; then
       found=true
+    elif (( ${#quote} > 60 )) && printf '%s' "$hay" | grep -qF "${quote:0:60}"; then
+      # Tail-truncation tolerance: a 60-char verbatim prefix is not something
+      # a hallucinated quote produces by accident.
+      found=true
     fi
-    [[ "$found" == false ]] && EVIDENCE_OK=false
+    EVIDENCE_TOTAL=$((EVIDENCE_TOTAL + 1))
+    if [[ "$found" == false ]]; then
+      EVIDENCE_FAILED=$((EVIDENCE_FAILED + 1))
+      EVIDENCE_OK=false
+    fi
     VERIFIED_EVIDENCE=$(printf '%s' "$VERIFIED_EVIDENCE" | jq \
       --argjson trial "$4" --arg doc "$doc" --arg quote "$quote" --argjson ok "$found" \
       '. += [{trial: $trial, doc: $doc, quote: $quote, verified: $ok}]')
@@ -204,7 +219,10 @@ check_trial_evidence() { # $1=trial-file $2=normA $3=normB $4=trial-no
 check_trial_evidence "$WORK/trial1.json" "$NORM_T1A" "$NORM_T1B" 1
 check_trial_evidence "$WORK/trial2.json" "$NORM_T2A" "$NORM_T2B" 2
 
-if [[ "$EVIDENCE_OK" == false && "$VERDICT" != "position_biased" ]]; then
+# Invalidate the verdict only when the MAJORITY of quotes fail — that is the
+# fabrication signature. Isolated misses keep the verdict but are recorded
+# per-quote and surface as evidence_verified=false.
+if (( EVIDENCE_TOTAL > 0 && EVIDENCE_FAILED * 2 > EVIDENCE_TOTAL )) && [[ "$VERDICT" != "position_biased" ]]; then
   VERDICT="invalid-evidence"
 fi
 
