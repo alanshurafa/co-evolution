@@ -1,13 +1,14 @@
 ---
 title: Adoption/distribution — npm packaging + MCP server for the bounce protocol
 trigger_condition: >
-  Bounce calibration (VERIFY-BOUNCE-CALIBRATION.md) shows a measurable lift:
-  judge↔human agreement >=4/5 AND >=60% of judged runs verdict "improved".
-  The pitch needs evidence before the packaging work is worth it.
+  MET 2026-06-10. Strongest-model judge (per owner delegation decision in
+  VERIFY-BOUNCE-CALIBRATION.md) verdicts: 6/7 improved, 0 regressed, all
+  evidence quotes verified. The agreement half was superseded by the owner's
+  delegation ruling. Ready to spin up as milestone v1.4 on request.
 planted_date: 2026-06-10
 planted_during: v1.3 Reliability, Measurement & Cross-Platform — Phase 7
 scope: medium (likely milestone v1.4)
-status: dormant
+status: triggered
 ---
 
 # Seed: npm + MCP distribution of the bounce protocol

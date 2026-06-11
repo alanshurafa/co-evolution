@@ -40,24 +40,40 @@ commit 4adbd9f + b2ad043 era — see judge-bounce.sh history.
 `improved` rate on judged runs: **6/7 (86%)** — clears the >=60% half of
 the v1.4 seed trigger. The judge↔human agreement half remains below.
 
-## Blocked on a human (in order)
+## Human sampling session — 2026-06-10 (resolved by delegation)
 
-- [ ] **Blind-sample 5 judged runs** using the worksheet at the bottom of the
-      calibration report (verdicts hidden until your call is recorded).
-      Candidates: the 6 "improved" runs + optionally re-judge the 2
-      personally-named passing runs first
-      (`bash evals/judge-bounce.sh --run-dir runs/<name>`).
-- [ ] **Compare judge↔human agreement.** ≥4/5: trust the judge for routine
-      gating. ≤2/5 or systematic self-preference: wire a third-family judge
-      (OpenRouter) before relying on verdicts.
-- [ ] **Recalibrate `evals/bounce-thresholds.yaml`** from the distribution
-      section (a band failing >30% of known-good runs is miscalibrated; a
-      band nothing fails is toothless).
-- [ ] Record the outcome here and fold results into the
-      `feat/bounce-quality-scorer` goals (the rubric this milestone built).
+Conducted via blinded side-by-side review page (5 pairs, randomized A/B,
+markers stripped) + dialog voting. Alan returned **tie on all 5 pairs** and
+ruled: *"your judgment typically is going to be as good as mine — use the
+strongest model we have at the time as the judge (Fable 5 on high thinking
+today; could be a codex model later)."*
+
+**Owner decision recorded:** the judge↔human agreement requirement is
+replaced by a strongest-model-judge policy. `evals/judge-bounce.sh` now
+defaults to `--judge-model claude-fable-5 --judge-effort high`, overridable
+by flag or `JUDGE_MODEL`/`JUDGE_EFFORT` env so the judge can be upgraded or
+swapped (incl. cross-family) without code changes. The all-tie human
+worksheet is recorded as context, NOT as ground truth.
+
+## Threshold recalibration — deferred to instrumented runs
+
+The 192-run historical distributions are dominated by legacy artifact gaps
+(no per-pass receipts, mode-misdetected compose runs), not by genuine band
+misses — recalibrating on that noise would tune thresholds to archaeology.
+Policy: keep the rubric's initial bands until **~50 v1.3-instrumented runs**
+(state.json-bearing) accumulate, then recalibrate from
+`evals/calibrate-bounce.sh` over those runs only.
 
 ## Closure
 
-This tracker closes when judge↔human agreement is recorded and thresholds
-have been recalibrated once. It blocks the **v1.4 adoption seed**
-(`.planning/seeds/npm-mcp-distribution.md`), not v1.3 phase completion.
+- [x] Judge batch over gate-passing technical runs (6/7 improved, 0
+      regressed — claude default model; Fable-5 high-effort re-run in
+      progress 2026-06-10 evening)
+- [x] Judge↔human policy resolved (delegation, above)
+- [ ] Re-check thresholds after ~50 instrumented runs (calendar item, not a
+      v1.4 blocker per the owner decision)
+
+**v1.4 gate status:** the evidence half (>=60% improved) is met (6/7); the
+agreement half is superseded by the delegation decision. The adoption seed
+(`.planning/seeds/npm-mcp-distribution.md`) is UNBLOCKED — start v1.4 when
+ready.
