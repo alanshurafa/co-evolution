@@ -690,11 +690,15 @@ TOTAL=$((TOTAL + 1))
   # Hand-craft the stub diff with shell metacharacters on + lines. Use a
   # single-quoted heredoc (<<'EOF') so nothing in the body is expanded by
   # THIS test script — the bytes land verbatim in the stub file.
+  # Context lines mirror the CURRENT head of lib/co-evolution.sh (incl. the
+  # patsub_replacement guard added in v1.3) — hand-crafted hunks pin file
+  # content and must be updated when the target's head changes.
   cat > "$stub_file" <<'METACHARS_EOF'
 --- a/lib/co-evolution.sh
 +++ b/lib/co-evolution.sh
-@@ -1,5 +1,8 @@
- #!/usr/bin/env bash
+@@ -7,6 +7,9 @@
+ # older bash, hence the guard.)
+ shopt -u patsub_replacement 2>/dev/null || true
  
 +# shell-meta audit: $PATH expansion boundary
 +# heredoc marker in comment: <<'EOF'  globs: *.sh
