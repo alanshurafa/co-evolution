@@ -21,13 +21,32 @@ Machine layers are DONE; the items below need Alan.
     "baseline" was a one-line question — mode-aware baselines fix this going
     forward; treat legacy compose runs as unscoreable for scope discipline.
 
+## Judge batch — DONE (2026-06-10 evening, live claude CLI)
+
+CLI authenticated via `claude setup-token` (1-year token in the macOS
+keychain, exported by ~/.zshrc). Judged the 7 gate-passing technical runs
+(the 2 personally-named passing runs were left for Alan):
+
+| Verdict | Count |
+|---------|-------|
+| improved | 6 |
+| position_biased (no claim) | 1 |
+| regressed / tie / invalid-evidence | 0 |
+
+All evidence quotes verified verbatim. First batch surfaced a verifier bug
+(trailing-space quote rejection -> 6/7 false "invalid-evidence"); fixed in
+commit 4adbd9f + b2ad043 era — see judge-bounce.sh history.
+
+`improved` rate on judged runs: **6/7 (86%)** — clears the >=60% half of
+the v1.4 seed trigger. The judge↔human agreement half remains below.
+
 ## Blocked on a human (in order)
 
-- [ ] **Log in the claude CLI on the Mac** (`claude`, then `/login`). The
-      judge batch errored cleanly: "Not logged in". Then:
-      `bash evals/calibrate-bounce.sh --runs-dir runs/ --judge --max-judge 10`
 - [ ] **Blind-sample 5 judged runs** using the worksheet at the bottom of the
       calibration report (verdicts hidden until your call is recorded).
+      Candidates: the 6 "improved" runs + optionally re-judge the 2
+      personally-named passing runs first
+      (`bash evals/judge-bounce.sh --run-dir runs/<name>`).
 - [ ] **Compare judge↔human agreement.** ≥4/5: trust the judge for routine
       gating. ≤2/5 or systematic self-preference: wire a third-family judge
       (OpenRouter) before relying on verdicts.
