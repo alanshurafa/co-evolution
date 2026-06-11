@@ -120,6 +120,11 @@ PROMPT
   for attempt in 1 2; do
     : > "$raw_file"
     "$JUDGE_CMD" -p --output-format text < "$prompt_file" > "$raw_file" 2>"$WORK/trial-stderr.log" || true
+    # Auth failures are not retryable and not "unparseable" — name the fix.
+    if file_contains_auth_failure "$raw_file" || file_contains_auth_failure "$WORK/trial-stderr.log"; then
+      log "ERROR: judge CLI '$JUDGE_CMD' is not authenticated — run \`$JUDGE_CMD\` interactively to log in, then re-run."
+      return 1
+    fi
     # Accept raw JSON or JSON wrapped in a fence.
     if jq -e '.better and .confidence' "$raw_file" >/dev/null 2>&1; then
       cp "$raw_file" "$out"; return 0
@@ -135,12 +140,12 @@ PROMPT
 
 log "INFO: blind trial 1/2 (baseline=A, final=B)"
 if ! run_trial "$WORK/doc-baseline.md" "$WORK/doc-final.md" "$WORK/trial1.json"; then
-  log "ERROR: judge output unparseable after retry — no verdict."
+  log "ERROR: no verdict — judge trial failed (cause logged above)."
   exit 3
 fi
 log "INFO: blind trial 2/2 (final=A, baseline=B)"
 if ! run_trial "$WORK/doc-final.md" "$WORK/doc-baseline.md" "$WORK/trial2.json"; then
-  log "ERROR: judge output unparseable after retry — no verdict."
+  log "ERROR: no verdict — judge trial failed (cause logged above)."
   exit 3
 fi
 
