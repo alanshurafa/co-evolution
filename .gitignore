@@ -40,3 +40,6 @@ inputs/
 
 # Paper build outputs — pipeline is dormant; build/ is populated only when activated
 docs/paper/build/
+
+# Simulation scratch dirs left behind by killed test runs
+tests/.sim-*/
