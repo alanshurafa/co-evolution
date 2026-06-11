@@ -1,0 +1,45 @@
+{
+  "name": "@alanshurafa/co-evolution-mcp",
+  "version": "0.0.0-dev",
+  "description": "MCP server exposing the co-evolution bounce protocol: two AI agents iteratively refine a document through structured disagreement markers, with deterministic behavior scores and a human-readable report attached to every run.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "co-evolution-mcp": "dist/src/server.js"
+  },
+  "files": [
+    "dist/src",
+    "vendor",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build:vendor": "bash scripts/vendor.sh",
+    "build": "tsc",
+    "test": "npm run build:vendor && npm run build && node --test \"dist/tests/*.test.js\"",
+    "prepack": "npm run build:vendor && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alanshurafa/co-evolution.git",
+    "directory": "mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "codex",
+    "document-review",
+    "multi-agent"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

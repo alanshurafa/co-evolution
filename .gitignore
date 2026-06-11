@@ -43,3 +43,8 @@ docs/paper/build/
 
 # Simulation scratch dirs left behind by killed test runs
 tests/.sim-*/
+
+# MCP npm package build artifacts (v1.4)
+mcp/node_modules/
+mcp/dist/
+mcp/vendor/
