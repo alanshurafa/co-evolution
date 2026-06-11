@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Reliability, Measurement & Cross-Platform
+milestone: v1.4
+milestone_name: Distribution — npm + MCP
 status: executing
-stopped_at: v1.3 Phases 0-7 ALL EXECUTED (2026-06-10/11, autonomous Mac session). Remaining human items in .planning/VERIFY-BOUNCE-CALIBRATION.md (claude login -> judge batch -> blind sampling -> threshold recalibration). Master in the Mac clone ~/co-evolution-v13 holds 14 commits not yet on GitHub (no push credentials on the Mac) — push from the PC after pulling from the SMB repo.
+stopped_at: v1.4 registered (2026-06-11) from triggered seed npm-mcp-distribution + spec docs/superpowers/specs/2026-04-19-mcp-server-design.md. Next: Phase 0 design reconciliation (D-01 wrap co-evolve-bouncer not frozen agent-bouncer). v1.3 archived to milestones/v1.3-SUMMARY.md; CI green 3-OS; Fable-5 judge 7/7 improved.
 last_updated: "2026-06-10T23:45:00.000Z"
-last_activity: 2026-06-11 -- v1.3 complete; calibration over 192 runs: 17.6% deleted-with-section markers
+last_activity: 2026-06-11 -- v1.4 milestone registered; v1.3 archived
 progress:
   total_phases: 8
   completed_phases: 8
@@ -26,8 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 ## Current Position
 
 Milestone: v1.3 (see ROADMAP.md Active Milestone + docs/audits/2026-06-10-v13-audit.md)
-Phase: all 9 phases complete (0, 0.5, 1-7)
-Status: Milestone executed; human calibration loop open (VERIFY-BOUNCE-CALIBRATION.md); v1.2 SC-4 gate still open (VERIFY-SC4.md)
+Milestone: v1.4 Distribution — npm + MCP
+Phase: 0 (design reconciliation) — not started
+Status: Registered, ready to execute. Human-gated items live in Phase 5 (npm scope + NPM_TOKEN + tag). v1.2 SC-4 gate still open (VERIFY-SC4.md).
 Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
 Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 

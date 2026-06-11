@@ -8,25 +8,25 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 - [x] **v1.0 Unification Absorb** (shipped 2026-04-17) — Codex runtime foundation + absorbed private reference impl + eval harness + runner parity. 9 phases, 27 requirements closed. See [`milestones/v1.0-ROADMAP.md`](milestones/v1.0-ROADMAP.md) · [`milestones/v1.0-SUMMARY.md`](milestones/v1.0-SUMMARY.md) · [`milestones/v1.0-REQUIREMENTS.md`](milestones/v1.0-REQUIREMENTS.md)
 - [x] **v1.1 Polish & Ergonomics** (shipped 2026-04-17) — v1.0 code review fixes (WR-01/02/03) + runtime ergonomics (REVISE auto-loop, visible live mode, branch/worktree management). 4 phases, 6 requirements closed. PR [#2](https://github.com/alanshurafa/co-evolution/pull/2) · See [`milestones/v1.1-ROADMAP.md`](milestones/v1.1-ROADMAP.md) · [`milestones/v1.1-SUMMARY.md`](milestones/v1.1-SUMMARY.md) · [`milestones/v1.1-REQUIREMENTS.md`](milestones/v1.1-REQUIREMENTS.md)
+- [x] **v1.3 Reliability, Measurement & Cross-Platform** (shipped 2026-06-11) — stranded-fix landing, macOS/bash-3.2+5.2 portability with 3-OS CI, silent-failure hardening, and the bounce measurement stack (state.json, deterministic scorer + marker-fate ledger, blind judge, human report). Headline: 17.6% deletion-convergence measured; Fable-5 judge 7/7 improved. 9 phases. See [`milestones/v1.3-SUMMARY.md`](milestones/v1.3-SUMMARY.md) · audit at `docs/audits/2026-06-10-v13-audit.md`
 
-## Active Milestone: v1.3 Reliability, Measurement & Cross-Platform (2026-06-10)
+## Active Milestone: v1.4 Distribution — npm + MCP (2026-06-11)
 
-**Goal:** Close the silent-failure reliability class, make the product's core
-claim (a bounced document is better than its input) measurable for the first
-time, and make the toolkit run identically on Windows (Git Bash), macOS, and
-Linux. Goal ordering: reliability → measurement → adoption → simplification,
-plus human observability (a non-expert can open a run and understand what
-happened). Full findings + phase map: `docs/audits/2026-06-10-v13-audit.md`.
+**Goal:** Make the bounce protocol invocable without `git clone`: a Node/TS
+MCP server (`@alanshurafa/co-evolution-mcp`, one `co_evolve` tool) published
+to npm, installable into Claude Desktop / Cursor / Continue with one config
+stanza. Design basis: `docs/superpowers/specs/2026-04-19-mcp-server-design.md`
+(authored pre-v1.3 — Phase 0 reconciles it with v1.3 reality). Evidence gate
+was met 2026-06-10: Fable-5 judge 7/7 improved, 0 regressed
+(VERIFY-BOUNCE-CALIBRATION.md).
 
-- [x] **Phase 0: Land the stranded remediation backlog** (2026-06-10) — merged 4 stranded branches (F-1 yq guard, F-2 schema canonicalization + drift test, F-5a CLAUDE_MODEL override, F-6 die exit codes, template-proposer worktree fix, bounce-quality rubric) + LF storage policy (`* text=auto`) + consolidated audit report.
-- [x] **Phase 0.5: Cross-platform Mac+PC** (2026-06-10) — bash-3.2 compat (mapfile, `source <(…)`, empty-array set -u), BSD fixes (sed `0,/`, realpath -m, date %N, touch -t timezone), `scripts/doctor.sh`, timeout/gtimeout/perl fallback, README prerequisites. macOS: scorer 11/14→14/14; code-proposer 1/16→16/16; template 1/8→8/8; pr-emitter 4/12→12/12; revise-loop abort→PASS.
-- [x] **Phase 1: Reliability hardening** (2026-06-10) — validate_agent_artifact fail-fast (auth/CLI-missing rc 2) wired into both bouncers; C-2/S-2 reclassified FALSE POSITIVE (bash expansion is literal; pinned by tests); R-4 delta_status; R-3 label guard; R-7 run-suffix entropy; S-1 marker stripping. tests/reliability-simulation.sh 13/13 incl. e2e auth-abort.
-- [x] **Phase 2: CI + aggregate runner** (2026-06-10) — tests/run-all.sh (hermetic git config, --quick) + .github/workflows/ci.yml 3-OS matrix. Local full run 17/17 in 35s. Closes F-3/F-4. (First CI run happens on push to GitHub.)
-- [x] **Phase 3: Bounce instrumentation** (2026-06-10) — bounce-state/1.0 from both bouncers, EXIT-trap aborted status, plain pass-N-clean.md artifacts, BOUNCE-RUNNER-CONTRACT.md. tests/bounce-state-simulation.sh 5/5.
-- [x] **Phase 4: Deterministic scorer + marker ledger** (2026-06-10) — evals/score-bounce.sh + bounce-thresholds.yaml + marker-fate ledger; state-first with artifact fallback (works on historical runs). bounce-scorer-verification 7/7 (frozen fixtures + determinism).
-- [x] **Phase 5: Human report + blind judge + calibration** (2026-06-11) — 3-layer gate shipped; judge mechanically blocked without passing scores; evidence quotes grep-verified. Scorer batch over 192 historical runs: **17.6% of markers were deleted-with-section** (the milestone's headline number). Judge batch + human sampling blocked on `claude` login — tracker: `.planning/VERIFY-BOUNCE-CALIBRATION.md`.
-- [x] **Phase 6: Simplification + docs accuracy** (2026-06-11) — protocol-parity-simulation pins all 4 copies to canonical; agent-bouncer marked frozen-legacy; template lineage documented; TESTING.md refreshed for v1.3.
-- [x] **Phase 7: Adoption seed** (2026-06-11) — `.planning/seeds/npm-mcp-distribution.md` planted; trigger = calibration agreement >=4/5 AND >=60% improved verdicts.
+- [ ] **Phase 0: Design reconciliation** — amend the 2026-04 spec for the v1.3 world. D-01 (the big one): wrap `co-evolve-bouncer.sh --vanilla --bounce-only` instead of frozen-legacy `agent-bouncer.sh`, so every MCP call gets state.json + bounce-scores + HUMAN-REPORT for free (the "measurably improves" differentiator); vendoring then includes `lib/co-evolution.sh` + templates. D-02: tool output gains `scores_summary` + `report_path`. D-03: preflight reuses doctor.sh logic; codex required only when an agent arg selects it. Gate: spec addendum committed; decisions logged in PROJECT.md.
+- [ ] **Phase 1: Scaffold + preflight** — `mcp/` package (package.json, tsconfig, @modelcontextprotocol/sdk), `server.ts` registering `co_evolve` with schema validation, `preflight.ts`. Gate: `npm test` unit tier green; tsc clean.
+- [ ] **Phase 2: Bouncer bridge + progress** — `bouncer.ts` (spawn vendored runner, cwd-based runs_dir control, SIGTERM cleanup), `build:vendor` script, `progress.ts` (stderr → MCP progress). Gate: hermetic smoke test (PATH-stubbed CLIs) green: round-trip call returns output + artifacts + ≥1 progress notification.
+- [ ] **Phase 3: CI + release pipeline** — node smoke job added to ci.yml matrix; `publish-mcp.yml` (on v* tag: vendor → build → test → version-from-tag → npm publish). Gate: CI green incl. node job; publish workflow validated with dry-run.
+- [ ] **Phase 4: Install UX + repo surfaces** — mcp/README (install, client config snippets, tool reference, error table), root README entrypoint row, AGENTS.md note, .gitignore entries. Gate: fresh-eyes checklist.
+- [ ] **Phase 5: Publish (human-gated)** — verify npm scope `@alanshurafa`, add NPM_TOKEN secret, `git tag` (v1.4.0), confirm auto-publish, round-trip `co_evolve` from Claude Desktop on a real doc. Gate: spec success criteria 1–6.
+- [ ] **Phase 6 (post-ship): adoption surfaces** — MCP registry submission + awesome-MCP-list PR (~1 week after publish, per spec §11).
 
 ## Previous Milestone: v1.2 Protocol Evolution Loop — Proposer Only (2026-04-17; phases complete, SC-4 release gate open — see `.planning/VERIFY-SC4.md`)
 
