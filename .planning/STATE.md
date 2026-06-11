@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Reliability, Measurement & Cross-Platform
 status: executing
-stopped_at: v1.3 Phase 0 complete — 4 stranded remediation branches merged to master (F-1/F-2/F-5a/F-6/template-portability), LF storage policy landed, consolidated audit at docs/audits/2026-06-10-v13-audit.md
+stopped_at: v1.3 Phases 0-7 ALL EXECUTED (2026-06-10/11, autonomous Mac session). Remaining human items in .planning/VERIFY-BOUNCE-CALIBRATION.md (claude login -> judge batch -> blind sampling -> threshold recalibration). Master in the Mac clone ~/co-evolution-v13 holds 14 commits not yet on GitHub (no push credentials on the Mac) — push from the PC after pulling from the SMB repo.
 last_updated: "2026-06-10T23:45:00.000Z"
-last_activity: 2026-06-10 -- v1.3 Phase 0 executed (first macOS-driven session; per-machine clone workflow)
+last_activity: 2026-06-11 -- v1.3 complete; calibration over 192 runs: 17.6% deleted-with-section markers
 progress:
   total_phases: 8
   completed_phases: 8
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17 for v1.2 kickoff)
 ## Current Position
 
 Milestone: v1.3 (see ROADMAP.md Active Milestone + docs/audits/2026-06-10-v13-audit.md)
-Phase: 0 complete; 0.5 (cross-platform) next
-Status: Executing
+Phase: all 9 phases complete (0, 0.5, 1-7)
+Status: Milestone executed; human calibration loop open (VERIFY-BOUNCE-CALIBRATION.md); v1.2 SC-4 gate still open (VERIFY-SC4.md)
 Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
 Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 
