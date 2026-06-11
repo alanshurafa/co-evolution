@@ -175,6 +175,15 @@ fallthrough.
 | Multi-file code change, medium/high risk, or plan/verify workflow | `dev-review/codex/dev-review.sh` |
 | General co-evolution inside Claude Code | `skills/co-evolution/` |
 | Code pipeline inside Claude Code | `skills/dev-review/` |
+| External MCP client (Claude Desktop, Cursor, Continue) | `npm i -g @alanshurafa/co-evolution-mcp` |
+
+### [MCP Server](mcp/)
+
+The bounce protocol without `git clone`: `@alanshurafa/co-evolution-mcp`
+wraps the co-evolve bouncer as an MCP server with one `co_evolve` tool.
+External clients get the bounced document plus the v1.3 receipts — behavior
+scorecard, marker-fate ledger, human report — on every call. See
+[mcp/README.md](mcp/README.md) for install and client config.
 
 ### The Bounce Protocol
 

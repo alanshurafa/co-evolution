@@ -54,3 +54,19 @@ jobs:
       - name: Run full test suite
         shell: bash
         run: bash tests/run-all.sh
+
+  mcp:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: MCP package test (vendor + build + hermetic smoke)
+        shell: bash
+        run: cd mcp && npm ci && npm test
