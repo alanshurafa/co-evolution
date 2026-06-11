@@ -8,10 +8,13 @@ trigger_condition: >
 planted_date: 2026-06-10
 planted_during: v1.3 Reliability, Measurement & Cross-Platform — Phase 7
 scope: medium (likely milestone v1.4)
-status: triggered
+status: fulfilled
 ---
 
-# Seed: npm + MCP distribution of the bounce protocol
+# Seed (FULFILLED 2026-06-11): npm + MCP distribution of the bounce protocol
+
+Graduated to **milestone v1.4** — see ROADMAP.md Active Milestone. Retained
+as the trigger-evidence record.
 
 ## What
 
