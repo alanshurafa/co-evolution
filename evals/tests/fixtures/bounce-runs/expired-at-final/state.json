@@ -1,0 +1,47 @@
+{
+  "schema": "bounce-state/1.0",
+  "runner": "co-evolve-bouncer.sh",
+  "mode": "chain",
+  "task": "fixture",
+  "input_type": "file",
+  "baseline_file": "original-input.md",
+  "final_file": "working.md",
+  "status": "complete",
+  "started_at": "2026-06-10T00:00:00Z",
+  "finished_at": "2026-06-10T00:08:00Z",
+  "passes": [
+    {
+      "pass": 1,
+      "role": "critique",
+      "agent": "claude",
+      "output_raw": "pass-1-critique-claude-raw.md",
+      "output_clean": "pass-1-clean.md",
+      "contested": 1,
+      "clarify": 1,
+      "total_markers": 2,
+      "word_count": 196
+    },
+    {
+      "pass": 2,
+      "role": "defend",
+      "agent": "codex",
+      "output_raw": "pass-2-defend-codex-raw.md",
+      "output_clean": "pass-2-clean.md",
+      "contested": 1,
+      "clarify": 1,
+      "total_markers": 2,
+      "word_count": 196
+    },
+    {
+      "pass": 3,
+      "role": "tighten",
+      "agent": "claude",
+      "output_raw": "pass-3-tighten-claude-raw.md",
+      "output_clean": "pass-3-clean.md",
+      "contested": 0,
+      "clarify": 0,
+      "total_markers": 0,
+      "word_count": 198
+    }
+  ]
+}

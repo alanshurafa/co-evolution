@@ -1,0 +1,8 @@
+{
+  "overall_pass": true,
+  "mode": "bounce-only",
+  "source": "state",
+  "pass_count": 2,
+  "ledger_fates": ["resolved", "resolved"],
+  "dimensions_pass": {"loop_execution": true, "structural_preservation": true, "scope_discipline": true, "material_engagement": true}
+}
