@@ -13,6 +13,11 @@
 # that failed the behavior gate gets no quality claim and no judge spend.
 #
 #   bash evals/judge-bounce.sh --run-dir <dir> [--judge-cmd claude]
+#                               [--judge-model claude-fable-5] [--judge-effort high]
+#
+# Owner decision (2026-06-10): quality judgment is delegated to the strongest
+# available model at high effort — Fable 5 today; the flags/envs exist so the
+# judge can move (newer Claude, a codex model) without touching this script.
 #
 # Output: <run-dir>/judge-verdict.json (schema bounce-judge/1.0)
 # Exit: 0 verdict written (any verdict incl. tie/position_biased),
@@ -29,17 +34,29 @@ source "$REPO_ROOT/lib/co-evolution.sh"
 command -v jq >/dev/null 2>&1 || die "jq is required for judge-bounce.sh"
 
 RUN_DIR=""
-JUDGE_CMD="claude"
+JUDGE_CMD="${JUDGE_CMD:-claude}"
+JUDGE_MODEL="${JUDGE_MODEL:-claude-fable-5}"
+JUDGE_EFFORT="${JUDGE_EFFORT:-high}"
 OUTPUT_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --run-dir)   RUN_DIR="${2:?--run-dir needs a value}"; shift 2 ;;
-    --judge-cmd) JUDGE_CMD="${2:?--judge-cmd needs a value}"; shift 2 ;;
-    --output)    OUTPUT_FILE="${2:?--output needs a value}"; shift 2 ;;
+    --run-dir)      RUN_DIR="${2:?--run-dir needs a value}"; shift 2 ;;
+    --judge-cmd)    JUDGE_CMD="${2:?--judge-cmd needs a value}"; shift 2 ;;
+    --judge-model)  JUDGE_MODEL="${2:-}"; shift 2 ;;
+    --judge-effort) JUDGE_EFFORT="${2:-}"; shift 2 ;;
+    --output)       OUTPUT_FILE="${2:?--output needs a value}"; shift 2 ;;
     *) die "unknown flag: $1" ;;
   esac
 done
+
+# Model/effort flags only apply to the claude CLI; a future non-claude judge
+# (codex etc.) sets its own conventions via --judge-cmd and empty model.
+JUDGE_ARGS=()
+if [[ "$JUDGE_CMD" == "claude" ]]; then
+  [[ -n "$JUDGE_MODEL" ]] && JUDGE_ARGS+=(--model "$JUDGE_MODEL")
+  [[ -n "$JUDGE_EFFORT" ]] && JUDGE_ARGS+=(--effort "$JUDGE_EFFORT")
+fi
 
 [[ -n "$RUN_DIR" && -d "$RUN_DIR" ]] || die "--run-dir <existing dir> is required"
 [[ -z "$OUTPUT_FILE" ]] && OUTPUT_FILE="$RUN_DIR/judge-verdict.json"
@@ -119,7 +136,7 @@ PROMPT
   local attempt
   for attempt in 1 2; do
     : > "$raw_file"
-    "$JUDGE_CMD" -p --output-format text < "$prompt_file" > "$raw_file" 2>"$WORK/trial-stderr.log" || true
+    "$JUDGE_CMD" -p --output-format text ${JUDGE_ARGS[@]+"${JUDGE_ARGS[@]}"} < "$prompt_file" > "$raw_file" 2>"$WORK/trial-stderr.log" || true
     # Auth failures are not retryable and not "unparseable" — name the fix.
     if file_contains_auth_failure "$raw_file" || file_contains_auth_failure "$WORK/trial-stderr.log"; then
       log "ERROR: judge CLI '$JUDGE_CMD' is not authenticated — run \`$JUDGE_CMD\` interactively to log in, then re-run."
@@ -237,6 +254,8 @@ jq -S -n \
   --arg judged_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg run_dir "$(basename "$RUN_DIR")" \
   --arg judge_cmd "$JUDGE_CMD" \
+  --arg judge_model "${JUDGE_MODEL:-default}" \
+  --arg judge_effort "${JUDGE_EFFORT:-default}" \
   --arg verdict "$VERDICT" \
   --argjson self_preference_risk "$SELF_PREF" \
   --argjson evidence_verified "$([[ "$EVIDENCE_OK" == true ]] && echo true || echo false)" \
@@ -248,6 +267,8 @@ jq -S -n \
     judged_at: $judged_at,
     run_dir: $run_dir,
     judge_cmd: $judge_cmd,
+    judge_model: $judge_model,
+    judge_effort: $judge_effort,
     verdict: $verdict,
     self_preference_risk: $self_preference_risk,
     evidence_verified: $evidence_verified,
