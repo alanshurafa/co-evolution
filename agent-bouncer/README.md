@@ -1,6 +1,32 @@
 # Co-Evolution Agent Bouncer
 
+> **Status: frozen legacy.** This runner is kept working (it has tests and a
+> state.json contract) but gets no new features. New work happens in
+> [`co-evolve-bouncer.sh`](../co-evolve-bouncer.sh), the development target —
+> use it unless you specifically need this runner's positional-argument
+> interface. Note: agent-bouncer **overwrites the input file in place**;
+> co-evolve-bouncer never touches the input.
+
 A standalone bash script that bounces a document between two AI agents using structured disagreement markers until it converges.
+
+## Template lineage
+
+The role templates exist in two variants with a shared ancestry (audit A-04):
+
+- **Full** — [`templates/role-reviewer.md`](templates/role-reviewer.md) /
+  [`templates/role-composer.md`](templates/role-composer.md): the originals,
+  written for this runner. Verbose optimization lenses, used by agent-bouncer
+  and by dev-review's bounce step.
+- **Light** — [`../templates/co-evolve/role-reviewer-light.md`](../templates/co-evolve/role-reviewer-light.md) /
+  [`role-composer-light.md`](../templates/co-evolve/role-composer-light.md):
+  condensed derivatives created for co-evolve-bouncer's general document flow,
+  where the full lenses proved too code-review-flavored. Same marker
+  vocabulary, same convergence rules — different tone and length. They are
+  NOT kept in sync mechanically; treat them as siblings, not copies.
+
+Both variants are concatenated with the canonical
+[`templates/bounce-protocol.md`](templates/bounce-protocol.md), which IS
+mechanically pinned across all copies by `tests/protocol-parity-simulation.sh`.
 
 ## Quick Start
 
