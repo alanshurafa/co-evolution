@@ -457,6 +457,69 @@ file_contains_error_payload() {
   grep -qiE '^(Error|ERROR|fatal|Fatal):|^Internal Server Error$|^Bad Gateway$|^Service Unavailable$|rate limit exceeded|context deadline exceeded|timed out|connection (reset|refused)|ECONNREFUSED|ENOTFOUND|Traceback \(most recent call last\):' "$file_path"
 }
 
+# R-1/R-2 (v1.3 Phase 1): classify an agent invocation's outcome BEFORE the
+# output is accepted as a document. The invoke_* adapters deliberately
+# `|| true` their CLI calls, so a missing or unauthenticated CLI surfaces only
+# as text in the output/stderr captures — without this gate, an auth-error
+# page gets bounced as if it were the document.
+#
+# Returns:
+#   0  output looks like a real artifact — proceed
+#   1  output empty, no fatal signature — retryable
+#   2  fatal: CLI missing or unauthenticated — retrying cannot help; the
+#      caller must abort with the logged message
+validate_agent_artifact() {
+  local output_file="$1"
+  local stderr_file="$2"
+  local agent_name="${3:-agent}"
+  local words
+
+  # Fatal: auth-failure text IN THE OUTPUT. Real CLI auth errors are short;
+  # the <50-word ceiling keeps a long legitimate document that merely
+  # mentions "Unauthorized" from tripping the gate.
+  if file_contains_auth_failure "$output_file"; then
+    words=$(wc -w < "$output_file" | tr -d '\r\n ')
+    if (( words < 50 )); then
+      log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
+      return 2
+    fi
+  fi
+
+  [[ -s "$output_file" ]] && return 0
+
+  # Output empty — check stderr for a fatal cause before letting the caller
+  # burn a retry on a CLI that is not installed or not logged in.
+  if [[ -n "$stderr_file" && -s "$stderr_file" ]]; then
+    if grep -qiE 'command not found|No such file or directory' "$stderr_file"; then
+      log " ERROR: ${agent_name} CLI is not installed (command not found). Run \`bash scripts/doctor.sh\` to see what is missing."
+      return 2
+    fi
+    if file_contains_auth_failure "$stderr_file"; then
+      log " ERROR: ${agent_name} CLI is not authenticated. Run \`${agent_name}\` interactively to log in, then re-run."
+      return 2
+    fi
+  fi
+
+  return 1
+}
+
+# R-7 (v1.3 Phase 1): unique run-directory suffix. Timestamp alone collides
+# when two runs start in the same second (scripted batches, parallel CI);
+# 6 hex chars of entropy make that practically impossible. $RANDOM is 15-bit,
+# so two draws are combined.
+generate_run_suffix() {
+  printf '%s-%06x' "$(date +%Y%m%d-%H%M%S)" "$(( (RANDOM * 32768 + RANDOM) % 16777216 ))"
+}
+
+# S-1 (v1.3 Phase 1): remove protocol markers from TASK text before it is
+# embedded in a prompt. A task that contains literal [CONTESTED]/[CLARIFY]
+# tokens (e.g. a task ABOUT the protocol, or a hostile one) would otherwise
+# inject live markers into the bounce loop and skew marker accounting.
+# Documented caveat: this is marker hygiene, not a prompt-injection defense.
+strip_protocol_markers() {
+  printf '%s' "$1" | sed -e 's/\[CONTESTED[^]]*\]//g' -e 's/\[CLARIFY[^]]*\]//g'
+}
+
 validate_plan_artifact() {
   local file_path="$1"
   local minimum_words="${2:-60}"
@@ -736,13 +799,28 @@ validate_output() {
   local prompt_file="$5"
   local retry_stderr_file="$6"
   local threshold="${7:-30}"
+  local first_stderr_file="${8:-}"
   local input_words
   local output_words
+  local artifact_rc
+
+  # R-1/R-2: classify before accepting. rc 2 = fatal (CLI missing or
+  # unauthenticated) — retrying cannot help, abort with the logged message.
+  artifact_rc=0
+  validate_agent_artifact "$output_file" "$first_stderr_file" "$agent_name" || artifact_rc=$?
+  if (( artifact_rc == 2 )); then
+    return 1
+  fi
 
   if [[ ! -s "$output_file" ]]; then
     log " ERROR: ${agent_name} returned empty output. Retrying once..."
     "$retry_function" "$prompt_file" "$output_file" "$retry_stderr_file"
 
+    artifact_rc=0
+    validate_agent_artifact "$output_file" "$retry_stderr_file" "$agent_name" || artifact_rc=$?
+    if (( artifact_rc == 2 )); then
+      return 1
+    fi
     if [[ ! -s "$output_file" ]]; then
       log " ERROR: ${agent_name} returned empty output on retry. Aborting."
       return 1
@@ -905,13 +983,17 @@ compute_execute_delta() {
       ($b[0] // {}) as $B |
       ($c[0] // {}) as $C |
       {
+        delta_status: "computed",
         modified: [ ($B | keys[]) | select(($C[.] // null) != null and $C[.] != $B[.]) ] | sort,
         added:    [ ($C | keys[]) | select(($B[.] // null) == null) ] | sort,
         deleted:  [ ($B | keys[]) | select(($C[.] // null) == null) ] | sort
       }' > "$output"
   else
-    log "WARNING: jq unavailable — execute_delta fallback produces empty arrays"
-    printf '{"modified":[],"added":[],"deleted":[]}\n' > "$output"
+    # R-4 (v1.3 Phase 1): without jq the delta cannot be computed. The arrays
+    # stay empty for shape compatibility, but delta_status="unknown" stops
+    # downstream consumers from reading this as "no changes were made".
+    log "WARNING: jq unavailable — execute_delta cannot be computed; emitting delta_status=unknown"
+    printf '{"delta_status":"unknown","modified":[],"added":[],"deleted":[]}\n' > "$output"
   fi
 }
 
