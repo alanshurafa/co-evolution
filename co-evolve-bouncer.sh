@@ -32,6 +32,7 @@ AUTO_YES=false
 FLAVOR_OVERRIDE=""
 # v1.3-adaptive flags — default off so PEL behavior unchanged unless invoked.
 NO_ADAPTIVE=0
+NO_REPORT=0
 COMPLEXITY_OVERRIDE=""
 # R-7: timestamp + entropy — two runs in the same second must not share a dir.
 TIMESTAMP=$(generate_run_suffix)
@@ -78,6 +79,7 @@ Options:
   --yes              PEL-only: skip interactive preflight cost-estimate prompt
   --flavor NAME      PEL-only: override classifier (maps to PEL_FLAVOR_OVERRIDE)
   --no-adaptive      PEL-only: skip the adaptive router (force pre-router behavior — always Opus)
+  --no-report        Skip the post-run HUMAN-REPORT.md / bounce-scores.json generation
   --complexity TIER  PEL-only: force complexity (NORMAL|COMPLEX); skips Haiku router call
   --help             Show this help text
 USAGE
@@ -164,6 +166,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-adaptive)
       NO_ADAPTIVE=1
+      shift
+      ;;
+    --no-report)
+      NO_REPORT=1
       shift
       ;;
     --complexity)
@@ -667,6 +673,13 @@ fi
 run_bounce_phase
 
 finalize_bounce_state "$STATE_FILE" "complete"
+
+# Post-run human report (deterministic scorer + HUMAN-REPORT.md; no LLM
+# cost). Best-effort: a reporting failure must never fail the run.
+if (( NO_REPORT == 0 )); then
+  bash "$SCRIPT_DIR/evals/report-bounce.sh" --run-dir "$RUN_DIR" >/dev/null 2>&1 \
+    || log " WARNING: report generation failed (run is unaffected); run evals/report-bounce.sh --run-dir $RUN_DIR manually."
+fi
 
 # --- Output ---
 FINAL_FILE="$RUN_DIR/${RUN_LABEL}.md"
