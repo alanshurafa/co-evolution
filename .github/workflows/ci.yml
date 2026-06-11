@@ -1,0 +1,56 @@
+# CI for the co-evolution toolkit (v1.3 Phase 2; closes audit F-4).
+#
+# The matrix is the cross-platform contract: ubuntu (GNU userland, bash 5),
+# macos (BSD userland, stock bash 3.2 — the canary for every GNU-ism), and
+# windows (Git Bash/MINGW, the project's original home). All suites are
+# hermetic: agent CLIs are PATH-stubbed, no network, no LLM spend.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mikefarah yq
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          case "$(uname -s)" in
+            Linux)  asset=yq_linux_amd64 ;;
+            Darwin) asset=yq_darwin_arm64; [[ "$(uname -m)" == x86_64 ]] && asset=yq_darwin_amd64 ;;
+            MINGW*|MSYS*|CYGWIN*) asset=yq_windows_amd64.exe ;;
+            *) echo "unsupported runner OS"; exit 1 ;;
+          esac
+          dest="$HOME/.local/bin/yq"
+          [[ "$asset" == *.exe ]] && dest="$HOME/.local/bin/yq.exe"
+          curl -sSL -o "$dest" "https://github.com/mikefarah/yq/releases/latest/download/$asset"
+          chmod +x "$dest"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Doctor (diagnostic only — agent CLIs are stubbed in tests)
+        shell: bash
+        run: bash scripts/doctor.sh || true
+
+      - name: Show environment
+        shell: bash
+        run: |
+          bash --version | head -1
+          uname -a
+          yq --version
+          jq --version
+
+      - name: Run full test suite
+        shell: bash
+        run: bash tests/run-all.sh
