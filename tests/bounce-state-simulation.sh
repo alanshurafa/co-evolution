@@ -232,6 +232,26 @@ fi
 rm -rf "$s5_run_dir"
 
 # ---------------------------------------------------------------------------
+# Scenario 6: CO_EVOLVE_RUNS_DIR redirects run artifacts (v1.4 MCP enabler)
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+s6_doc="$TEST_DIR/s6-doc.md"
+cp "$DOC_SRC" "$s6_doc"
+s6_runs="$TEST_DIR/s6-runs"
+mkdir -p "$s6_runs"
+rc=0
+CO_EVOLVE_RUNS_DIR="$s6_runs" BOUNCE_STUB_COUNTER="$TEST_DIR/s6-count" PATH="$TEST_DIR/bin:$PATH" \
+  bash "$REPO_ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$s6_doc" \
+  > /dev/null 2>&1 || rc=$?
+s6_run_dir=$(ls -dt "$s6_runs"/co-evolve-* 2>/dev/null | head -1)
+if [[ "$rc" -eq 0 && -n "$s6_run_dir" && -f "$s6_run_dir/state.json" ]] \
+   && ! ls "$REPO_ROOT"/runs/co-evolve-*s6-doc* >/dev/null 2>&1; then
+  pass "S6: CO_EVOLVE_RUNS_DIR redirects artifacts away from the repo"
+else
+  fail "S6: rc=$rc run_dir=$s6_run_dir"
+fi
+
+# ---------------------------------------------------------------------------
 printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"
 if (( PASSED != TOTAL )); then
   printf ' (%d failed)\n' "$((TOTAL - PASSED))"
