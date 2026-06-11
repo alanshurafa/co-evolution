@@ -275,6 +275,37 @@ WORKING_FILE="$RUN_DIR/working.md"
 
 printf '%s' "$INPUT_CONTENT" > "$RUN_DIR/original-input.md"
 
+# --- Bounce state (bounce-state/1.0; see evals/BOUNCE-RUNNER-CONTRACT.md) ---
+STATE_FILE="$RUN_DIR/state.json"
+if [[ "$CHAIN" == "true" ]]; then
+  RUN_MODE="chain"
+elif [[ "$BOUNCE_ONLY" == "true" ]]; then
+  RUN_MODE="bounce-only"
+else
+  RUN_MODE="compose"
+fi
+# baseline_file is mode-aware: in compose mode the bounce loop's job is to
+# improve the composed draft, so that draft is the comparison baseline.
+BASELINE_FILE="original-input.md"
+[[ "$RUN_MODE" == "compose" ]] && BASELINE_FILE="compose-output.md"
+init_bounce_state "$STATE_FILE" "co-evolve-bouncer.sh" "$RUN_MODE" "$TASK" "$INPUT_TYPE" "$BASELINE_FILE" "working.md"
+
+# Any fatal exit (die, set -e, auth abort) marks the run aborted so the
+# scorer never issues a quality verdict for a half-finished run.
+_finalize_bounce_state_on_exit() {
+  local exit_code=$?
+  if [[ -f "$STATE_FILE" ]] && command -v jq >/dev/null 2>&1; then
+    if [[ "$(jq -r '.status' "$STATE_FILE" 2>/dev/null)" == "running" ]]; then
+      if (( exit_code == 0 )); then
+        finalize_bounce_state "$STATE_FILE" "complete"
+      else
+        finalize_bounce_state "$STATE_FILE" "aborted"
+      fi
+    fi
+  fi
+}
+trap _finalize_bounce_state_on_exit EXIT
+
 # --- Interview Phase ---
 run_interview() {
   log ""
@@ -470,7 +501,9 @@ run_bounce_phase() {
     prompt_file="$RUN_DIR/.bounce-pass-${pass}-prompt.md"
     output_file="$RUN_DIR/.bounce-pass-${pass}-output.md"
     stderr_file="$RUN_DIR/pass-${pass}-stderr.log"
-    clean_file="$RUN_DIR/.bounce-pass-${pass}-clean.md"
+    # Plain name (not dot-prefixed): dot-prefixed pass artifacts are invisible
+    # to ls and were repeatedly missed — see evals/BOUNCE-RUNNER-CONTRACT.md.
+    clean_file="$RUN_DIR/pass-${pass}-clean.md"
 
     # Determine agent and role
     if (( pass % 2 == 1 )); then
@@ -570,6 +603,10 @@ $(cat "$PROTOCOL_TEMPLATE")"
     log "--------------------------------------------"
     log ""
 
+    append_bounce_pass "$STATE_FILE" "$pass" "$role" "$current_agent" \
+      "pass-${pass}-${role}-${current_agent}-raw.md" "pass-${pass}-clean.md" \
+      "$contested" "$clarify" "$word_count"
+
     # Human check
     if [[ "$AUTO" == "false" ]]; then
       printf '\nPass %d complete. %d [CONTESTED], %d [CLARIFY] markers.\n' "$pass" "$contested" "$clarify" > /dev/tty
@@ -628,6 +665,8 @@ else
 fi
 
 run_bounce_phase
+
+finalize_bounce_state "$STATE_FILE" "complete"
 
 # --- Output ---
 FINAL_FILE="$RUN_DIR/${RUN_LABEL}.md"

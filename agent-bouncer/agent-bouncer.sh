@@ -85,8 +85,29 @@ cleanup() {
 trap cleanup EXIT
 
 cp "$PLAN_FILE" "${RUN_DIR}/original.md"
+# Contract name (evals/BOUNCE-RUNNER-CONTRACT.md); original.md kept for
+# back-compat with pre-v1.3 consumers.
+cp "$PLAN_FILE" "${RUN_DIR}/original-input.md"
 
 LOG_FILE="${RUN_DIR}/run.log"
+
+# --- Bounce state (bounce-state/1.0; see evals/BOUNCE-RUNNER-CONTRACT.md) ---
+STATE_FILE="${RUN_DIR}/state.json"
+init_bounce_state "$STATE_FILE" "agent-bouncer.sh" "agent-bouncer" "$PLAN_FILE" "file" "original-input.md" "${RUN_LABEL}.md"
+_finalize_bounce_state_on_exit() {
+  local exit_code=$?
+  if [[ -f "$STATE_FILE" ]] && command -v jq >/dev/null 2>&1; then
+    if [[ "$(jq -r '.status' "$STATE_FILE" 2>/dev/null)" == "running" ]]; then
+      if (( exit_code == 0 )); then
+        finalize_bounce_state "$STATE_FILE" "complete"
+      else
+        finalize_bounce_state "$STATE_FILE" "aborted"
+      fi
+    fi
+  fi
+  cleanup
+}
+trap _finalize_bounce_state_on_exit EXIT
 
 log "============================================"
 log " CO-EVOLUTION AGENT BOUNCER"
@@ -145,6 +166,9 @@ $(cat "$TEMPLATE_DIR/bounce-protocol.md")"
   strip_human_summary "$OUTPUT_FILE" "${OUTPUT_FILE}.clean"
   mv "${OUTPUT_FILE}.clean" "$OUTPUT_FILE"
 
+  # Plain per-pass clean artifact (contract name, matches co-evolve-bouncer).
+  cp "$OUTPUT_FILE" "${RUN_DIR}/pass-${PASS}-clean.md"
+
   cp "$OUTPUT_FILE" "$PLAN_FILE"
 
   CONTESTED=$(count_markers "$PLAN_FILE" "[CONTESTED]")
@@ -157,6 +181,10 @@ $(cat "$TEMPLATE_DIR/bounce-protocol.md")"
   log " Plan length:         $WORD_COUNT words"
   log "--------------------------------------------"
   log ""
+
+  append_bounce_pass "$STATE_FILE" "$PASS" "$ROLE" "$AGENT_NAME" \
+    "pass-${PASS}-${ROLE}-${AGENT_NAME}-raw.md" "pass-${PASS}-clean.md" \
+    "$CONTESTED" "$CLARIFY" "$WORD_COUNT"
 
   if (( TOTAL_MARKERS == 0 )); then
     log "Plan converged after $PASS passes (no open markers)."
@@ -172,6 +200,8 @@ done
 
 FINAL_NAME="${RUN_LABEL}.md"
 cp "$PLAN_FILE" "${RUN_DIR}/${FINAL_NAME}"
+
+finalize_bounce_state "$STATE_FILE" "complete"
 
 log "============================================"
 log " BOUNCE COMPLETE"

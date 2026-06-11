@@ -997,6 +997,109 @@ compute_execute_delta() {
   fi
 }
 
+# ---------------------------------------------------------------------------
+# v1.3 Phase 3: bounce-state/1.0 writers — the document bouncers' state.json.
+# Contract: evals/BOUNCE-RUNNER-CONTRACT.md. jq-backed; when jq is missing
+# they log once and write nothing (the bounce scorer's artifact-parsing
+# fallback covers that case — a hand-rolled partial JSON writer is worse
+# than an honest absence).
+# ---------------------------------------------------------------------------
+
+bounce_state_now_utc() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+init_bounce_state() {
+  local state_file="${1:?state file required}"
+  local runner="${2:?runner required}"
+  local mode="${3:?mode required}"
+  local task="${4:-}"
+  local input_type="${5:-}"
+  local baseline_file="${6:?baseline file required}"
+  local final_file="${7:?final file required}"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    log "WARNING: jq unavailable — bounce state.json will not be written (scorer falls back to artifact parsing)"
+    return 0
+  fi
+
+  jq -n \
+    --arg runner "$runner" \
+    --arg mode "$mode" \
+    --arg task "$task" \
+    --arg input_type "$input_type" \
+    --arg baseline "$baseline_file" \
+    --arg final "$final_file" \
+    --arg now "$(bounce_state_now_utc)" \
+    '{
+      schema: "bounce-state/1.0",
+      runner: $runner,
+      mode: $mode,
+      task: $task,
+      input_type: $input_type,
+      baseline_file: $baseline,
+      final_file: $final,
+      status: "running",
+      started_at: $now,
+      finished_at: null,
+      passes: []
+    }' > "$state_file"
+}
+
+append_bounce_pass() {
+  local state_file="${1:?state file required}"
+  local pass="${2:?pass number required}"
+  local role="${3:?role required}"
+  local agent="${4:?agent required}"
+  local raw_rel="${5:?raw artifact path required}"
+  local clean_rel="${6:?clean artifact path required}"
+  local contested="${7:?contested count required}"
+  local clarify="${8:?clarify count required}"
+  local word_count="${9:?word count required}"
+
+  command -v jq >/dev/null 2>&1 || return 0
+  [[ -f "$state_file" ]] || return 0
+
+  local tmp
+  tmp=$(mktemp)
+  jq \
+    --argjson pass "$pass" \
+    --arg role "$role" \
+    --arg agent "$agent" \
+    --arg raw "$raw_rel" \
+    --arg clean "$clean_rel" \
+    --argjson contested "$contested" \
+    --argjson clarify "$clarify" \
+    --argjson words "$word_count" \
+    '.passes += [{
+      pass: $pass,
+      role: $role,
+      agent: $agent,
+      output_raw: $raw,
+      output_clean: $clean,
+      contested: $contested,
+      clarify: $clarify,
+      total_markers: ($contested + $clarify),
+      word_count: $words
+    }]' "$state_file" > "$tmp" && mv "$tmp" "$state_file"
+}
+
+finalize_bounce_state() {
+  local state_file="${1:?state file required}"
+  local status="${2:?status required}"
+
+  command -v jq >/dev/null 2>&1 || return 0
+  [[ -f "$state_file" ]] || return 0
+
+  local tmp
+  tmp=$(mktemp)
+  jq \
+    --arg status "$status" \
+    --arg now "$(bounce_state_now_utc)" \
+    '.status = $status | .finished_at = $now' \
+    "$state_file" > "$tmp" && mv "$tmp" "$state_file"
+}
+
 # RNPT-04: Write the initial state.json skeleton for a run.
 # All phase arrays empty, all deltas empty, no verdict, started_at=now.
 init_state_json() {
