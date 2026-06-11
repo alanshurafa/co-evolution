@@ -19,14 +19,14 @@ plus human observability (a non-expert can open a run and understand what
 happened). Full findings + phase map: `docs/audits/2026-06-10-v13-audit.md`.
 
 - [x] **Phase 0: Land the stranded remediation backlog** (2026-06-10) — merged 4 stranded branches (F-1 yq guard, F-2 schema canonicalization + drift test, F-5a CLAUDE_MODEL override, F-6 die exit codes, template-proposer worktree fix, bounce-quality rubric) + LF storage policy (`* text=auto`) + consolidated audit report.
-- [ ] **Phase 0.5: Cross-platform Mac+PC** — bash-3.2 compatibility (mapfile, `source <(…)`), BSD sed/GNU sed test fixes, `scripts/doctor.sh` preflight, portable timeout fallback, README prerequisites. Gate: full suite green on macOS.
-- [ ] **Phase 1: Reliability hardening** — R-1/R-2 auth-failure fail-fast, C-2/S-2 substitution-safe template fills, R-4 `delta_status:"unknown"`, R-3/R-7 label guard + entropy, S-1 marker-strip caveat. Test-first with high-fidelity CLI stubs.
-- [ ] **Phase 2: CI + aggregate runner** — `tests/run-all.sh` + GitHub Actions matrix (ubuntu/macos/windows). Closes F-3/F-4.
-- [ ] **Phase 3: Bounce instrumentation** — bounce-state/1.0 `state.json` from both bouncers + `evals/BOUNCE-RUNNER-CONTRACT.md`.
-- [ ] **Phase 4: Deterministic scorer + marker ledger** — `evals/score-bounce.sh` (4 rubric dimensions) + marker-fate ledger (resolved / deleted-with-section / expired / carried) + `evals/bounce-thresholds.yaml`.
-- [ ] **Phase 5: Human report + blind judge + calibration** — `evals/report-bounce.sh` (HUMAN-REPORT.md), `evals/judge-bounce.sh` (blind A/B, order-swapped trials), calibration batch over historical runs. Self-review demoted from verdict to input.
-- [ ] **Phase 6: Simplification + docs accuracy** — bounce-protocol single-sourcing + parity test, template lineage, agent-bouncer frozen-legacy, README corrections.
-- [ ] **Phase 7: Adoption seed** — npm/MCP distribution seed only; gated on Phase 5 calibration evidence. Likely v1.4.
+- [x] **Phase 0.5: Cross-platform Mac+PC** (2026-06-10) — bash-3.2 compat (mapfile, `source <(…)`, empty-array set -u), BSD fixes (sed `0,/`, realpath -m, date %N, touch -t timezone), `scripts/doctor.sh`, timeout/gtimeout/perl fallback, README prerequisites. macOS: scorer 11/14→14/14; code-proposer 1/16→16/16; template 1/8→8/8; pr-emitter 4/12→12/12; revise-loop abort→PASS.
+- [x] **Phase 1: Reliability hardening** (2026-06-10) — validate_agent_artifact fail-fast (auth/CLI-missing rc 2) wired into both bouncers; C-2/S-2 reclassified FALSE POSITIVE (bash expansion is literal; pinned by tests); R-4 delta_status; R-3 label guard; R-7 run-suffix entropy; S-1 marker stripping. tests/reliability-simulation.sh 13/13 incl. e2e auth-abort.
+- [x] **Phase 2: CI + aggregate runner** (2026-06-10) — tests/run-all.sh (hermetic git config, --quick) + .github/workflows/ci.yml 3-OS matrix. Local full run 17/17 in 35s. Closes F-3/F-4. (First CI run happens on push to GitHub.)
+- [x] **Phase 3: Bounce instrumentation** (2026-06-10) — bounce-state/1.0 from both bouncers, EXIT-trap aborted status, plain pass-N-clean.md artifacts, BOUNCE-RUNNER-CONTRACT.md. tests/bounce-state-simulation.sh 5/5.
+- [x] **Phase 4: Deterministic scorer + marker ledger** (2026-06-10) — evals/score-bounce.sh + bounce-thresholds.yaml + marker-fate ledger; state-first with artifact fallback (works on historical runs). bounce-scorer-verification 7/7 (frozen fixtures + determinism).
+- [x] **Phase 5: Human report + blind judge + calibration** (2026-06-11) — 3-layer gate shipped; judge mechanically blocked without passing scores; evidence quotes grep-verified. Scorer batch over 192 historical runs: **17.6% of markers were deleted-with-section** (the milestone's headline number). Judge batch + human sampling blocked on `claude` login — tracker: `.planning/VERIFY-BOUNCE-CALIBRATION.md`.
+- [x] **Phase 6: Simplification + docs accuracy** (2026-06-11) — protocol-parity-simulation pins all 4 copies to canonical; agent-bouncer marked frozen-legacy; template lineage documented; TESTING.md refreshed for v1.3.
+- [x] **Phase 7: Adoption seed** (2026-06-11) — `.planning/seeds/npm-mcp-distribution.md` planted; trigger = calibration agreement >=4/5 AND >=60% improved verdicts.
 
 ## Previous Milestone: v1.2 Protocol Evolution Loop — Proposer Only (2026-04-17; phases complete, SC-4 release gate open — see `.planning/VERIFY-SC4.md`)
 
