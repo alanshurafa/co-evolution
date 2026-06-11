@@ -274,7 +274,11 @@ fi
 # --- Run Directory ---
 RUN_LABEL=$(echo "$TASK" | head -c 60 | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '-' | sed 's/^-//;s/-$//')
 RUN_LABEL="${RUN_LABEL:-co-evolve}"
-RUN_DIR="$SCRIPT_DIR/runs/co-evolve-${RUN_LABEL}-${TIMESTAMP}"
+# CO_EVOLVE_RUNS_DIR (v1.4): external embedders (the npm MCP server) redirect
+# run artifacts away from the script's own directory, which may live inside a
+# read-only global package install. Default unchanged.
+RUNS_ROOT="${CO_EVOLVE_RUNS_DIR:-$SCRIPT_DIR/runs}"
+RUN_DIR="$RUNS_ROOT/co-evolve-${RUN_LABEL}-${TIMESTAMP}"
 mkdir -p "$RUN_DIR"
 LOG_FILE="$RUN_DIR/run.log"
 WORKING_FILE="$RUN_DIR/working.md"
