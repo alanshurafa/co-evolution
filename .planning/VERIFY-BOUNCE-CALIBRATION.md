@@ -66,14 +66,19 @@ Policy: keep the rubric's initial bands until **~50 v1.3-instrumented runs**
 
 ## Closure
 
-- [x] Judge batch over gate-passing technical runs (6/7 improved, 0
-      regressed — claude default model; Fable-5 high-effort re-run in
-      progress 2026-06-10 evening)
+- [x] Judge batch over gate-passing technical runs. Default-model pass:
+      6/7 improved, 1 position_biased. **Fable-5 high-effort pass
+      (authoritative, per the delegation decision): 7/7 improved, 0
+      regressed** — the deeper judge stayed consistent across the order
+      swap on the run the default model flip-flopped on. 6/7 with every
+      evidence quote verified; 1 with an isolated quote miss (verdict kept
+      under the majority rule, flagged evidence_verified=false).
 - [x] Judge↔human policy resolved (delegation, above)
 - [ ] Re-check thresholds after ~50 instrumented runs (calendar item, not a
       v1.4 blocker per the owner decision)
 
-**v1.4 gate status:** the evidence half (>=60% improved) is met (6/7); the
+**v1.4 gate status:** the evidence half (>=60% improved) is met (7/7
+under the authoritative Fable-5 judge); the
 agreement half is superseded by the delegation decision. The adoption seed
 (`.planning/seeds/npm-mcp-distribution.md`) is UNBLOCKED — start v1.4 when
 ready.
