@@ -683,8 +683,11 @@ run_scorer_cached() {
   # unambiguously newer. The scorer's stdout still goes to $tmp_out (for error
   # diagnosis); the marker is only used as the -newer reference.
   marker=$(mktemp)
+  # touch -t interprets its stamp as LOCAL time — the date fallbacks must NOT
+  # use -u, or the marker lands hours in the future on any non-UTC machine and
+  # `find -newer` never matches (scorer output looks missing on macOS).
   touch -d '1 second ago' "$marker" 2>/dev/null \
-    || touch -t "$(date -u -v-1S +%Y%m%d%H%M.%S 2>/dev/null || date -u -d '1 second ago' +%Y%m%d%H%M.%S 2>/dev/null)" "$marker" 2>/dev/null \
+    || touch -t "$(date -v-1S +%Y%m%d%H%M.%S 2>/dev/null || date -d '1 second ago' +%Y%m%d%H%M.%S 2>/dev/null)" "$marker" 2>/dev/null \
     || true
   # Bug #5 fix: run-evals.sh exits 1 whenever ANY case robust-fails (see
   # evals/run-evals.sh:380-386). That's "scored successfully, some cases in

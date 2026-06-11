@@ -1,8 +1,0 @@
---- a/skills/dev-review/templates/bounce-prompt-portable.md
-+++ b/skills/dev-review/templates/bounce-prompt-portable.md
-@@ -1,4 +1,5 @@
- You are reviewing a plan that has been passed to you by another AI agent. This prompt will be used repeatedly as the plan bounces between agents. Each time you receive it, treat the plan below this instruction block as the CURRENT VERSION, not a draft, not a history, but the living document.
-+TEMPLATE BIAS COMMENT (bug-catcher, scenario A)
- 
- Fill in the bracketed fields before sending this prompt.
- 

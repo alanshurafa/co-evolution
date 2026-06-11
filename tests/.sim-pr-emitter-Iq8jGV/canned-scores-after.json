@@ -1,6 +1,0 @@
-{
-  "scored_at": "2026-04-19T10:00:01Z",
-  "runner": "stub",
-  "scenarios": [],
-  "aggregate": { "fitness": 0.7, "convergence": 0.8, "verify_accuracy": 0.75 }
-}

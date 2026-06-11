@@ -25,7 +25,20 @@ Use `dev-review` only when you want a code-focused compose -> bounce -> execute
 
 ## Prerequisites
 
-The core co-evolve flow needs only the `claude` and `codex` CLIs. The optional eval harness (`evals/`) and PEL lab (`lab/pel/`) also need the mikefarah/Go `yq` (v4+), not the Python `yq` from Debian/Ubuntu's `apt install yq`, which is incompatible. Those components fail fast if the wrong `yq` is on `PATH`.
+Check your machine in one command — it lists everything below with an
+OK / MISSING / OPTIONAL verdict per item:
+
+```bash
+bash scripts/doctor.sh
+```
+
+What the components need:
+
+- **Everywhere:** Bash (3.2+ works, including stock macOS `/bin/bash`; 4+ recommended), `git`, `jq`, `awk`, and the `claude` CLI — **logged in** (run `claude` once interactively; an unauthenticated CLI is the most common silent failure).
+- **Cross-AI passes and `dev-review` (default composer/executor):** the `codex` CLI. `co-evolve --vanilla` works without it.
+- **Eval harness (`evals/`) and PEL lab (`lab/pel/`):** the mikefarah/Go `yq` (v4+), **not** the Python `yq` from Debian/Ubuntu's `apt install yq`, which is incompatible. Those components fail fast if the wrong `yq` is on `PATH`. `xxd` is used for byte-level eval diagnostics.
+- **PEL PR emission:** the `gh` CLI (dry-run mode works without it).
+- **Per-phase timeouts:** `timeout(1)` from GNU coreutils. Stock macOS lacks it — `brew install coreutils` — but a built-in perl fallback keeps timeouts working without it.
 
 ## Installation
 
