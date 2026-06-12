@@ -58,6 +58,15 @@ LIVE_MODE_WARNING_LOGGED=false
 # appends -c model= when it is set.)
 : "${CLAUDE_MODEL:=claude-opus-4-6}"
 
+# v1.5: Per-seat reasoning-effort knobs. Both default empty = OFF, so invoke_*
+# omit the effort flag entirely and argv stays byte-identical to today (parity
+# invariant). When non-empty, invoke_claude appends `--effort "$CLAUDE_EFFORT"`
+# and invoke_codex appends `-c model_reasoning_effort=...`. `--effort high` is
+# proven headless in -p mode at evals/judge-bounce.sh:58 (built into JUDGE_ARGS,
+# consumed by the `"$JUDGE_CMD" -p ...` call at evals/judge-bounce.sh:139).
+: "${CLAUDE_EFFORT:=}"
+: "${CODEX_REASONING_EFFORT:=}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -408,11 +417,19 @@ invoke_claude() {
     tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
   fi
 
+  # v1.5: model + optional reasoning effort. CLAUDE_EFFORT defaults empty (OFF)
+  # so model_flags is exactly `--model "$CLAUDE_MODEL"` and argv is byte-identical
+  # to the prior single-flag form. The --effort element is appended only when set.
+  local -a model_flags=(--model "${CLAUDE_MODEL}")
+  if [[ -n "${CLAUDE_EFFORT:-}" ]]; then
+    model_flags+=(--effort "${CLAUDE_EFFORT}")
+  fi
+
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
-    cmd=(cmd.exe /c claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format text "${model_flags[@]}" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
+    cmd=(claude -p --output-format text "${model_flags[@]}" "${tool_flags[@]}")
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
@@ -439,10 +456,61 @@ invoke_codex() {
     cmd+=(-c "model=${CODEX_MODEL}")
   fi
 
+  # v1.5: optional reasoning effort. Defaults empty (OFF) → no -c append, so argv
+  # is byte-identical to today. Appended only when CODEX_REASONING_EFFORT is set.
+  if [[ -n "${CODEX_REASONING_EFFORT:-}" ]]; then
+    cmd+=(-c "model_reasoning_effort=${CODEX_REASONING_EFFORT}")
+  fi
+
   if [[ -n "${windows_output:-}" ]]; then
     cmd+=(-o "$windows_output")
   else
     cmd+=(-o "$output_file")
+  fi
+
+  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
+}
+
+# v1.5 (fixes B2): relocated verbatim from dev-review/codex/dev-review.sh so the
+# verify-phase `bash -c 'source lib/co-evolution.sh; invoke_codex_schema ...'`
+# child can actually find it (it was defined only in dev-review.sh → exit 127
+# whenever a timeout binary exists and verifier=codex). Behavior is identical to
+# the prior local copy (--output-schema / -o / --skip-git-repo-check / WSL path
+# handling), plus the same conditional model + reasoning-effort appends that
+# invoke_codex grew above — both default-off so argv is unchanged when unset.
+invoke_codex_schema() {
+  local prompt_file="$1"
+  local output_file="$2"
+  local stderr_file="$3"
+  local schema_file="$4"
+  local workdir="${WORKDIR:-$PWD}"
+  local -a cmd
+  local windows_workdir=""
+  local windows_output=""
+  local windows_schema=""
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    windows_workdir=$(wslpath -w "$workdir")
+    windows_output=$(wslpath -w "$output_file")
+    windows_schema=$(wslpath -w "$schema_file")
+    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+  else
+    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+  fi
+
+  if [[ -n "${CODEX_MODEL:-}" ]]; then
+    cmd+=(-c "model=${CODEX_MODEL}")
+  fi
+
+  # v1.5: optional reasoning effort. Defaults empty (OFF) → no -c append.
+  if [[ -n "${CODEX_REASONING_EFFORT:-}" ]]; then
+    cmd+=(-c "model_reasoning_effort=${CODEX_REASONING_EFFORT}")
+  fi
+
+  if [[ -n "$windows_schema" ]]; then
+    cmd+=(--output-schema "$windows_schema" -o "$windows_output")
+  else
+    cmd+=(--output-schema "$schema_file" -o "$output_file")
   fi
 
   "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
