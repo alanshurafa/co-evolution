@@ -1277,6 +1277,35 @@ write_state_phase() {
   fi
 }
 
+# v1.5: record the phase now STARTING (write_state_phase records completions).
+# Sets .current_phase = {name, started_at} and bumps .updated_at so a status
+# reader knows which phase the runner is in mid-run. The EOF block clears it
+# back to null. Single-writer discipline: called from the runner main flow only
+# — there is NO concurrent heartbeat loop, which would race write_state_field's
+# read-modify-write. Degrades silently (return 0) when jq is absent, matching
+# write_state_phase / write_state_field.
+begin_state_phase() {
+  local state_path="${1:?state path required}"
+  local phase_name="${2:?phase name required}"
+
+  if command -v jq >/dev/null 2>&1; then
+    local tmp now
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    tmp=$(mktemp)
+    # FIX-WR-02 idiom: clean up $tmp on jq failure so we don't leak files.
+    if jq --arg name "$phase_name" --arg now "$now" \
+       '.current_phase = {name: $name, started_at: $now} | .updated_at = $now' \
+       "$state_path" > "$tmp"; then
+      mv "$tmp" "$state_path"
+    else
+      rm -f "$tmp"
+      log "WARNING: jq failed in begin_state_phase ($phase_name) — state.json unchanged"
+    fi
+  else
+    log "WARNING: jq unavailable — begin_state_phase skipping ($phase_name)"
+  fi
+}
+
 # RNPT-04: Generic jq-path field setter. Supports string|number|bool|null|rawfile.
 # Usage: write_state_field state.json '.verify_verdict' string APPROVED
 #        write_state_field state.json '.execute_delta' rawfile path/to/delta.json
