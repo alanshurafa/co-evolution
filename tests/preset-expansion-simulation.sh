@@ -17,6 +17,9 @@
 #   f. --help mentions --preset.
 #   g. parity guard: a default run emits no --effort and no
 #      model_reasoning_effort anywhere.
+#   h. cross-agent leak guard: --verifier codex over the preset must NOT leak
+#      the claude verifier's fable@max into the codex verify argv (live HTTP 400
+#      on a ChatGPT account); seat_models.verifier falls back to default.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -390,6 +393,56 @@ else
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
 fi
 [[ -n "${g_run_dir:-}" && "$g_run_dir" != "$run_dir_before" ]] && rm -rf "$g_run_dir"
+
+# ===========================================================================
+# Scenario (h): cross-agent leak guard — --preset codex-build --verifier codex.
+# The preset fills VERIFIER_MODEL=fable / VERIFIER_EFFORT=max for its DEFAULT
+# claude verifier; --verifier codex flips that seat to codex. Without the guard
+# in apply_seat_env, the codex verify argv carried `-c model=fable` (→ live
+# HTTP 400: "The 'fable' model is not supported when using Codex with a ChatGPT
+# account.") and `-c model_reasoning_effort=max` (off codex's xhigh scale).
+# Assert the codex verify argv carries NEITHER, and state.json seat_models
+# .verifier reports the fallback (codex:(default)@(default)), not codex:fable@max.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo h)
+codex_log="$TEST_DIR/h_codex.log"; claude_log="$TEST_DIR/h_claude.log"
+: > "$codex_log"; : > "$claude_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --preset codex-build --verifier codex --skip-plan --plan "$PLAN_FIXTURE" \
+    --workdir "$repo" --timeout 60 -- "preset codex-verifier leak guard probe"
+) >"$TEST_DIR/h.out" 2>&1 || true
+h_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+# The verify invocation is the codex argv line carrying --output-schema.
+h_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
+h_ok=true
+# No leaked fable model and no off-scale max effort in the codex verify argv.
+if printf '%s' "$h_verify_argv" | grep -Eq -- '-c model=fable'; then h_ok=false; fi
+if printf '%s' "$h_verify_argv" | grep -Eq -- 'model_reasoning_effort=max'; then h_ok=false; fi
+# Sanity: the codex verify invocation actually happened (so the asserts are real).
+if [[ -z "$h_verify_argv" ]]; then h_ok=false; fi
+# state.json must report the fallback seat, not the leaked fable@max pair.
+if [[ -n "$h_run_dir" && "$h_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.verifier == "codex:(default)@(default)"' "$h_run_dir/state.json" >/dev/null 2>&1; then
+    h_ok=false
+  fi
+else
+  h_ok=false
+fi
+if [[ "$h_ok" == true ]]; then
+  pass "preset codex-build --verifier codex: no fable/max leak into codex verify argv; seat falls back to default"
+else
+  fail "cross-agent leak guard failed (run dir: ${h_run_dir:-<none>})"
+  { echo "--- codex verify argv ---"; printf '%s\n' "$h_verify_argv"
+    [[ -n "${h_run_dir:-}" && -f "$h_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$h_run_dir/state.json"; }
+  } >&2
+fi
+[[ -n "${h_run_dir:-}" && "$h_run_dir" != "$run_dir_before" ]] && rm -rf "$h_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))
