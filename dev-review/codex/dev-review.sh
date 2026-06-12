@@ -1033,6 +1033,22 @@ cleanup_runtime_artifacts() {
   find "$RUN_DIR" -maxdepth 1 -type f -name '.*' -delete 2>/dev/null || true
 }
 
+# v1.5 Phase 4: token-usage aggregation, gated on CO_EVOLVE_TOKEN_CAPTURE=1.
+# When the flag is unset/off this is a no-op and state.json never grows a
+# `tokens` key (byte-parity). Called just BEFORE cleanup_runtime_artifacts in
+# both terminal paths (plan-only early exit and normal EOF). collect_token_usage
+# reads the *.usage.json sidecars + per-phase stderr logs and writes one
+# state.json.tokens block; we then remove the transient sidecars/envelopes since
+# state.json is the durable record (some sidecars — execute-output.md.usage.json,
+# verdict.json.usage.json — have no leading dot, so cleanup_runtime_artifacts
+# would not sweep them).
+maybe_collect_token_usage() {
+  [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]] || return 0
+  collect_token_usage "$RUN_DIR" "$STATE_JSON"
+  find "$RUN_DIR" -maxdepth 1 -type f \
+    \( -name '*.usage.json' -o -name '*.envelope.json' \) -delete 2>/dev/null || true
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --preset)
@@ -1498,6 +1514,9 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   # v1.5 Phase 3: plan-only runs also reach a clean terminal — clear the in-flight
   # phase so a status reader does not see a stale compose/bounce as "still running".
   write_state_field "$STATE_JSON" ".current_phase" "null"
+  # v1.5 Phase 4: aggregate token usage (no-op unless CO_EVOLVE_TOKEN_CAPTURE=1)
+  # BEFORE cleanup sweeps the dot-prefixed sidecars.
+  maybe_collect_token_usage
   cleanup_runtime_artifacts
   if [[ "${PLAN_EXIT:-0}" -eq 2 ]]; then
     exit 2
@@ -1678,6 +1697,10 @@ if command -v jq >/dev/null 2>&1; then
   unset _tmp_history
 fi
 unset _run_status _run_end_ts
+
+# v1.5 Phase 4: aggregate token usage (no-op unless CO_EVOLVE_TOKEN_CAPTURE=1)
+# BEFORE cleanup sweeps the dot-prefixed sidecars.
+maybe_collect_token_usage
 
 cleanup_runtime_artifacts
 
