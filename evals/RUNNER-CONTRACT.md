@@ -6,7 +6,7 @@ owners:
   - dev-review/codex/dev-review.sh (runner)
   - evals/score-run.sh (scorer)
   - evals/tests/fake-runner.sh (reference implementation)
-updated: 2026-04-19
+updated: 2026-06-12
 ---
 
 # Runner ↔ scorer contract
@@ -44,6 +44,11 @@ historical fixture corpus under `runners/codex-ps/evals/tests/fixtures/**`.
 | `history` | array\<`{phase,status,detail,timestamp}`\> | yes | runner (per phase) | `score-run.sh:338` | Canonical bounce-trace array. Convergence needs ≥1 entry with `phase` matching `^bounce-[0-9]+$` when bounces were expected. |
 | `mode` | string | no | runner (optional tag) | — | Fake-runner sets `"fake-runner"`; real runner may set `"real"` or omit. Runner-owned metadata — NOT written by the shared `init_state_json` library. |
 | `seat_models` | object `{composer, executor, verifier}` (each string `agent:model@effort`) | no | `dev-review.sh` (post-init) | — | v1.5 observability: what each seat resolved to under the per-seat env layer (e.g. `"claude:claude-fable-5@high"`, `"codex:(default)@xhigh"`). Runner-owned metadata — NOT written by the shared `init_state_json` library; scorer ignores it. |
+| `current_phase` | object `{name, started_at}` \| null | no | `dev-review.sh` (`begin_state_phase` at each phase start; null at EOF) | — | v1.5 additions — observability. The phase the runner is currently in; `name` matches the `phases[]`/`history[]` phase name (`compose`, `bounce-NN`, `execute[-N]`, `verify[-N]`). Set at phase **start**, cleared to null at EOF (incl. plan-only). A non-null value on a non-terminal run means the runner is in that phase or died there. Read by `dev-review-status.sh`; scorer ignores it. |
+| `runner_pid` | number | no | `dev-review.sh` (post-init, once) | — | v1.5 additions — observability. The runner process's PID (`$$`). A status reader probes liveness via `kill -0`. Runner-owned; scorer ignores it. |
+| `pre_execute_sha` | string (40-hex) \| null | no | `dev-review.sh` (execute phase, before executor) | — | v1.5 additions — observability. Workdir `git rev-parse HEAD` captured just before the executor runs; null when non-git/detached. Scorer ignores it. |
+| `post_execute_sha` | string (40-hex) \| null | no | `dev-review.sh` (execute phase, after change detection) | — | v1.5 additions — observability. Workdir HEAD just after change detection; `pre != post` means the executor committed. Null when non-git/detached. Scorer ignores it. |
+| `orchestration` | object `{parent_run_id}` | no | `dev-review.sh` (post-init, only when `--parent-run` passed) | — | v1.5 additions — lineage. Records the orchestrator's parent run id for re-kicks (re-kicks always get a fresh run dir; no `--resume`). Omitted entirely for standalone runs. Runner-owned; scorer ignores it. |
 
 ### Legacy alias: `phases` → `history`
 

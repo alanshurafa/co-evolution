@@ -67,6 +67,9 @@ FLAVOR_OVERRIDE=""
 # (byte-parity invariant SC-5 / D-06). Harness-side passes an absolute path rooted under
 # the eval fixture's .co-evolution/runs/ subtree.
 RUN_DIR_OVERRIDE=""
+# v1.5 Phase 3: lineage token for orchestrated re-kicks. Empty = standalone run
+# (byte-parity: .orchestration is omitted). Validated as a safe fs-ish token.
+PARENT_RUN_ID=""
 
 usage() {
   cat <<'EOF'
@@ -94,6 +97,7 @@ Options:
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
+  --parent-run RUN_ID      Lineage tag: record the orchestrator's parent run id in state.orchestration.parent_run_id (re-kicks always get a fresh run dir; no behavior change)
   --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
   --target FILE            PEL-only: file to mutate (used with --lab pel-proposer; must be repo-relative forward-slash path, e.g. lib/co-evolution.sh — NOT absolute or WSL/Windows-style)
   --tier TIER              PEL-only: override tier auto-detect (template|policy|code)
@@ -597,6 +601,8 @@ Output ONLY the plan document. No preamble."
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
   # RTUX-01: Launch a live-tail window before the agent call (no-op unless --live).
   maybe_launch_live_window "compose" "$compose_stderr_file"
+  # v1.5 Phase 3: mark the compose phase as STARTING (status reader heartbeat).
+  begin_state_phase "$STATE_JSON" "compose"
   # v1.5: layer the composer seat's model/effort (no-op when no per-seat env set).
   apply_seat_env composer "$COMPOSER"
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
@@ -689,6 +695,9 @@ run_bounce_phase() {
     # so state.json records which pass hit the timeout.
     # RTUX-01: Per-pass live-tail window (bounce-01, bounce-02, ...) when --live.
     maybe_launch_live_window "bounce-${pass_padded}" "$stderr_file"
+    # v1.5 Phase 3: mark this bounce pass as STARTING (matches the bounce-NN
+    # name write_state_phase records on completion).
+    begin_state_phase "$STATE_JSON" "bounce-${pass_padded}"
     # v1.5: composer turns get the composer seat's model/effort; reviewer (the
     # bounce counterparty) turns use globals only (the `bounce` seat is a no-op
     # arm in apply_seat_env). No-op overall when no per-seat env is set.
@@ -775,6 +784,17 @@ run_execute_phase() {
     PRE_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
   fi
 
+  # v1.5 Phase 3: record the workdir HEAD just before the executor runs so a
+  # reviewer can pin the exact pre-change commit. Non-git / detached / failed
+  # rev-parse yields an empty PRE_EXECUTE_SHA → write null (never die).
+  if [[ -n "${STATE_JSON:-}" ]]; then
+    if [[ -n "$PRE_EXECUTE_SHA" ]]; then
+      write_state_field "$STATE_JSON" ".pre_execute_sha" "string" "$PRE_EXECUTE_SHA"
+    else
+      write_state_field "$STATE_JSON" ".pre_execute_sha" "null"
+    fi
+  fi
+
   # RNPT-03: Capture pre-execute baseline hash of every workdir file.
   # Delta computed post-execute and written into state.json.
   if [[ -n "${STATE_JSON:-}" && -n "${BASELINE_HASHES_JSON:-}" ]]; then
@@ -822,6 +842,17 @@ run_execute_phase() {
   if [[ "$IN_GIT" == "true" ]]; then
     POST_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
     status_output=$(git -C "$WORKDIR" status --short)
+
+    # v1.5 Phase 3: record the workdir HEAD just after change detection so a
+    # reviewer can see whether the executor committed (pre != post) or left the
+    # tree dirty (pre == post). Empty rev-parse → null (never die).
+    if [[ -n "${STATE_JSON:-}" ]]; then
+      if [[ -n "$POST_EXECUTE_SHA" ]]; then
+        write_state_field "$STATE_JSON" ".post_execute_sha" "string" "$POST_EXECUTE_SHA"
+      else
+        write_state_field "$STATE_JSON" ".post_execute_sha" "null"
+      fi
+    fi
 
     # RNPT-03: Post-execute delta (runs regardless of "no changes" branch below
     # so Phase 8 scorer sees an empty delta rather than a missing field).
@@ -1110,6 +1141,19 @@ while [[ $# -gt 0 ]]; do
       WORKTREE_SPEC="$2"
       shift 2
       ;;
+    --parent-run)
+      # v1.5 Phase 3: orchestration lineage. Validate as a safe filesystem-ish
+      # token (alnum, _, -, .) so a malicious id can't traverse paths or inject
+      # shell-meta when echoed downstream (mirrors validate_lab_mode's posture,
+      # plus '.' since run ids carry dotted timestamps). Lineage only — no
+      # behavior change beyond the state.orchestration.parent_run_id write.
+      [[ $# -gt 1 ]] || die "--parent-run requires a value"
+      if ! [[ "$2" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "${#2}" -gt 128 ]]; then
+        die "--parent-run must be a safe token [A-Za-z0-9._-]{1,128} (got: $2)"
+      fi
+      PARENT_RUN_ID="$2"
+      shift 2
+      ;;
     --lab)
       # Phase 3 LAB-01: opt-in routing to lab/<MODE>/entry.sh.
       # Arm sits BEFORE the `--` argv-terminator so args after `--` remain
@@ -1361,6 +1405,17 @@ EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
 RUN_ID="dev-review-${TIMESTAMP}"
 init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
 
+# v1.5 Phase 3: observability — record the runner's PID once so a status reader
+# can probe liveness via `kill -0`. Written as a number (jq accepts $$ verbatim).
+write_state_field "$STATE_JSON" ".runner_pid" "number" "$$"
+
+# v1.5 Phase 3: lineage — when this run was re-kicked by an orchestrator under a
+# parent run, record the parent's id (validated at parse time). Lineage only;
+# no other behavior. Omitted (left absent) when --parent-run was not passed.
+if [[ -n "$PARENT_RUN_ID" ]]; then
+  write_state_field "$STATE_JSON" ".orchestration.parent_run_id" "string" "$PARENT_RUN_ID"
+fi
+
 # v1.5: resolve the verifier seat and per-seat model/effort descriptors for the
 # banner + observability fields. _VERIFIER_SEAT reflects --verifier / executor
 # derivation (select_verifier); the seat strings reflect whatever the seats
@@ -1440,6 +1495,9 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   # RNPT-04: record completion even on plan-only exit so Phase 8 eval sees a
   # terminated run rather than one that looks crashed mid-phase.
   write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  # v1.5 Phase 3: plan-only runs also reach a clean terminal — clear the in-flight
+  # phase so a status reader does not see a stale compose/bounce as "still running".
+  write_state_field "$STATE_JSON" ".current_phase" "null"
   cleanup_runtime_artifacts
   if [[ "${PLAN_EXIT:-0}" -eq 2 ]]; then
     exit 2
@@ -1531,6 +1589,9 @@ _run_revise_loop() {
 
     _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     EXECUTE_EXIT=0
+    # v1.5 Phase 3: mark execute (or execute-N on a revise pass) as STARTING,
+    # using the same name write_state_phase records on completion below.
+    begin_state_phase "$STATE_JSON" "$exec_name"
     run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
     _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
@@ -1545,6 +1606,8 @@ _run_revise_loop() {
     VERIFY_EXIT=0
     # Clear prior verdict globals so a hung/empty verify pass can't leak them.
     unset VERDICT CONFIDENCE SUMMARY
+    # v1.5 Phase 3: mark verify (or verify-N on a revise pass) as STARTING.
+    begin_state_phase "$STATE_JSON" "$verify_name"
     run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
     _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
@@ -1595,6 +1658,10 @@ write_state_field "$STATE_JSON" ".status"       "string" "$_run_status"
 write_state_field "$STATE_JSON" ".completed_at" "string" "$_run_end_ts"
 # Phase 8.1 WR-02 supporting: .updated_at feeds Cost dimension (score-run.sh:261).
 write_state_field "$STATE_JSON" ".updated_at"   "string" "$_run_end_ts"
+# v1.5 Phase 3: the run reached EOF — no phase is in flight. The status reader
+# treats a non-null .current_phase on a non-terminal run as "still in <phase>";
+# clearing it here is the in-band "phases done" signal.
+write_state_field "$STATE_JSON" ".current_phase" "null"
 
 # Phase 8.1 / D-01: mirror phases[] into history[] (canonical contract name).
 # Field-rename transition posture — phases[] stays as legacy alias for one
