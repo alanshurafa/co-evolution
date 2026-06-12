@@ -1367,6 +1367,28 @@ apply_seat_env() {
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
     *) : ;;  # bounce counterparty: globals only
   esac
+  # v1.5 cross-agent leak guard. A seat's model+effort is ONE override pair
+  # configured for a specific agent kind (e.g. the codex-build preset fills
+  # VERIFIER_MODEL=fable / VERIFIER_EFFORT=max for its DEFAULT claude verifier).
+  # When --verifier codex flips that same seat to codex, the pair is now wrong:
+  # exporting CODEX_MODEL=fable makes codex/ChatGPT reject the run with
+  #   HTTP 400: The 'fable' model is not supported when using Codex with a
+  #   ChatGPT account.
+  # and CODEX_REASONING_EFFORT=max is off codex's scale (it ends at xhigh).
+  # The two halves are coupled: a model picked for the wrong kind means the
+  # effort was too — so drop the WHOLE pair (not just the model) and fall back
+  # to that agent's base values (CODEX_MODEL_BASE/CODEX_EFFORT_BASE = the user's
+  # codex config defaults, which is exactly right for the degrade path). Symmetric
+  # on the claude arm so a codex-shaped override never reaches a claude seat.
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in
+      fable|claude-*) model=""; effort="" ;;
+    esac
+  else
+    case "$model" in
+      gpt-*|codex*) model=""; effort="" ;;
+    esac
+  fi
   if [[ "$agent" == "codex" ]]; then
     export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
     export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
@@ -1389,6 +1411,18 @@ resolve_seat_model_string() {
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
     *) : ;;
   esac
+  # v1.5: mirror apply_seat_env's cross-agent leak guard (drop the wrong-kind
+  # model+effort pair as a unit) so the banner / state.json seat_models report
+  # what actually runs — e.g. codex:(default)@(default), not codex:fable@max.
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in
+      fable|claude-*) model=""; effort="" ;;
+    esac
+  else
+    case "$model" in
+      gpt-*|codex*) model=""; effort="" ;;
+    esac
+  fi
   if [[ "$agent" == "codex" ]]; then
     model_str="${model:-$CODEX_MODEL_BASE}"
     effort_str="${effort:-$CODEX_EFFORT_BASE}"
