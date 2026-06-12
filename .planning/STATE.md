@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Distribution — npm + MCP
+milestone: v1.5
+milestone_name: Build with Codex — model ladder + orchestrated execution
 status: executing
-stopped_at: v1.4 Phases 0-4 EXECUTED (2026-06-11). mcp/ package built + 4/4 hermetic smoke tests + stdio handshake verified; CI gains 3-OS mcp job; publish-mcp.yml ready. Remaining = Phase 5 (HUMAN: verify npm scope @alanshurafa, add NPM_TOKEN secret, git tag -> auto-publish, Claude Desktop round-trip) + Phase 6 post-ship registry/awesome-list.
-last_updated: "2026-06-10T23:45:00.000Z"
-last_activity: 2026-06-11 -- v1.4 milestone registered; v1.3 archived
+stopped_at: v1.5 Phase 0 IN PROGRESS (2026-06-12). Codex symlink created, smoke pass, claude -p envelope pinned, plugin installed. v1.4 Phase 5 BLOCKED ON HUMAN (npm scope + NPM_TOKEN + git tag) — running in parallel, untouched.
+last_updated: "2026-06-12T12:28:00.000Z"
+last_activity: 2026-06-12 -- v1.5 milestone registered; Phase 0 executing
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 17
-  completed_plans: 18
-  percent: 100
+  total_phases: 7
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -30,6 +30,11 @@ Milestone: v1.4 Distribution — npm + MCP
 Phase: 0-4 complete; Phase 5 (publish) blocked on human items
 Status: npm scope verification + NPM_TOKEN secret + git tag are Alan's; everything else built and CI-gated. v1.2 SC-4 gate still open (VERIFY-SC4.md).
 Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
+
+Milestone: v1.5 Build with Codex — model ladder + orchestrated execution
+Phase: 0 (env + research) in progress
+Status: codex symlink created + smoke pass; claude -p envelope pinned; codex plugin installed (openai-codex marketplace, v1.0.4); Phase 0 research notes filed. Branch: feat/v1.5-codex-build.
+Last activity: 2026-06-12 -- Phase 0 start; design file committed at .planning/v1.5-DESIGN.md
 Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 
 macOS baseline before v1.3 fixes: scorer-verification 11/14; code-proposer sim 1/16; pr-emitter sim 4/12; template-proposer sim 1/8; revise-loop sim aborts. Root causes: bash 3.2 (mapfile, source <(…)), BSD sed GNU-isms. Target after Phase 0.5: all green on macOS.
