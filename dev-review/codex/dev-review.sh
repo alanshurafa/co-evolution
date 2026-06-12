@@ -30,6 +30,10 @@ WORKTREE_SPEC="${DEV_REVIEW_WORKTREE:-}"
 # v1.5: explicit verifier seat override. Empty = derive from executor via the
 # existing select_verifier logic (byte-parity default). Env default + --verifier flag.
 VERIFIER_OVERRIDE="${DEV_REVIEW_VERIFIER:-}"
+# v1.5: named seat preset (e.g. codex-build). Empty = no preset (byte-parity
+# default). Applied in-parser so AFTER-preset flags win (last-wins) and model/
+# effort values fill-if-empty so pre-set env vars win. See apply_preset().
+PRESET=""
 BRANCH_CREATED=""
 WORKTREE_PATH=""
 WORKDIR="$(pwd)"
@@ -80,6 +84,10 @@ Options:
   --model MODEL            Override Codex model
   --verifier AGENT         Force the verify-phase agent (codex|opus|claude); default derives from --executor
   --claude-model MODEL     Override Claude model (alias: fable -> claude-fable-5; else passthrough)
+  --preset NAME            Expand a named seat preset (available: codex-build).
+                           codex-build = Fable plans (high) + Codex executes (xhigh) + Fable reviews (max),
+                           --verify on, bounces 2, revise-loop 1. Precedence: flags placed AFTER --preset
+                           override it (last-wins); pre-set model/effort env vars win over the preset.
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
@@ -123,6 +131,26 @@ resolve_claude_model_alias() {
   case "$1" in
     fable) echo "claude-fable-5" ;;
     *)     echo "$1" ;;
+  esac
+}
+
+# v1.5: expand a named seat preset into the underlying seat/model/effort knobs.
+# Called from the --preset parser arm. Two precedence rules, both deliberate:
+#   - seat/structural knobs (COMPOSER, EXECUTOR, VERIFIER_OVERRIDE, VERIFY,
+#     BOUNCES, REVISE_LOOP_MAX) are set hard, so flags placed AFTER --preset
+#     override them via last-wins parsing.
+#   - model/effort knobs use fill-if-empty (`: "${VAR:=…}"`) so a value already
+#     present in the environment (e.g. COMPOSER_EFFORT=low) wins over the preset.
+apply_preset() {
+  case "$1" in
+    codex-build)   # "build with codex": Fable plans/reviews, Codex executes.
+      COMPOSER="opus"; EXECUTOR="codex"; VERIFIER_OVERRIDE="opus"
+      VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      : "${COMPOSER_MODEL:=fable}";  : "${COMPOSER_EFFORT:=high}"
+      : "${VERIFIER_MODEL:=fable}";  : "${VERIFIER_EFFORT:=max}"
+      : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
+      ;;
+    *) die "Unknown preset: $1 (available: codex-build)" ;;
   esac
 }
 
@@ -927,15 +955,30 @@ run_verify_phase() {
     return 2
   fi
 
-  verdict_data=$(normalize_json_artifact "$verdict_file" "$normalized_verdict_file") || {
-    log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
-    return 2
-  }
+  if ! verdict_data=$(normalize_json_artifact "$verdict_file" "$normalized_verdict_file"); then
+    # v1.5: claude verifiers (no --output-schema) sometimes wrap the verdict in
+    # prose, which normalize_json_artifact rejects. Try a brace-block extraction
+    # (same idiom as evals/judge-bounce.sh:149) before giving up. codex verdicts
+    # come from --output-schema and never hit this branch (they normalize clean).
+    sed -n '/^{/,/^}/p' "$verdict_file" > "$normalized_verdict_file"
+    if [[ ! -s "$normalized_verdict_file" ]]; then
+      log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
+      return 2
+    fi
+  fi
 
   verdict_data=$(validate_review_verdict "$normalized_verdict_file") || {
     log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
     return 2
   }
+
+  # v1.5: persist the normalized verdict back to the contract path so downstream
+  # consumers (evals/score-run.sh jq-parses verdict.json raw; mapping unparseable
+  # -> FAIL) read clean JSON. Byte-no-op for codex --output-schema verdicts, which
+  # are already clean. The dot-prefixed .verdict-normalized.json copy stays for the
+  # revise-loop read; cleanup_runtime_artifacts sweeps it but verdict.json (plain
+  # path, no leading dot) survives as the contract artifact.
+  cp "$normalized_verdict_file" "$verdict_file"
 
   eval "$verdict_data"
 
@@ -961,6 +1004,15 @@ cleanup_runtime_artifacts() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --preset)
+      # v1.5: expand a named seat preset. Applied in-parser so flags placed
+      # AFTER --preset override it (last-wins) and pre-set model/effort env vars
+      # win over the preset's fill-if-empty defaults. See apply_preset().
+      [[ $# -gt 1 ]] || die "--preset requires a value"
+      PRESET="$2"
+      apply_preset "$2"
+      shift 2
+      ;;
     --composer)
       [[ $# -gt 1 ]] || die "--composer requires a value"
       COMPOSER=$(normalize_agent "$2") || die "Unsupported composer: $2"
@@ -1264,6 +1316,29 @@ apply_seat_env() {
   fi
 }
 
+# v1.5: resolve a seat's "agent:model@effort" descriptor using the SAME model/
+# effort precedence apply_seat_env uses, but without mutating the exported env.
+# Feeds the startup banner and the optional state.json seat_models fields.
+# model defaults to "(default)" when unpinned (codex's executor seat under the
+# codex-build preset); effort defaults to "(default)" when no effort is set.
+resolve_seat_model_string() {
+  local seat="$1" agent="$2" model="" effort="" model_str="" effort_str=""
+  case "$seat" in
+    composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
+    executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
+    verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    *) : ;;
+  esac
+  if [[ "$agent" == "codex" ]]; then
+    model_str="${model:-$CODEX_MODEL_BASE}"
+    effort_str="${effort:-$CODEX_EFFORT_BASE}"
+  else
+    model_str="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+    effort_str="${effort:-$CLAUDE_EFFORT_BASE}"
+  fi
+  printf '%s:%s@%s' "$agent" "${model_str:-(default)}" "${effort_str:-(default)}"
+}
+
 # Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
 if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
   RUN_DIR="$RUN_DIR_OVERRIDE"
@@ -1286,12 +1361,30 @@ EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
 RUN_ID="dev-review-${TIMESTAMP}"
 init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
 
+# v1.5: resolve the verifier seat and per-seat model/effort descriptors for the
+# banner + observability fields. _VERIFIER_SEAT reflects --verifier / executor
+# derivation (select_verifier); the seat strings reflect whatever the seats
+# resolve to under the per-seat env layer (apply_seat_env precedence).
+_VERIFIER_SEAT=$(select_verifier)
+_SEAT_COMPOSER=$(resolve_seat_model_string composer "$COMPOSER")
+_SEAT_EXECUTOR=$(resolve_seat_model_string executor "$EXECUTOR")
+_SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
+
+# v1.5: optional seat_models observability — records what each seat resolves to.
+# Unconditional + additive (no existing sim asserts an exact state.json key set,
+# so this does not break shape); cheap, and reflects the actual resolved seats.
+write_state_field "$STATE_JSON" ".seat_models.composer" "string" "$_SEAT_COMPOSER"
+write_state_field "$STATE_JSON" ".seat_models.executor" "string" "$_SEAT_EXECUTOR"
+write_state_field "$STATE_JSON" ".seat_models.verifier" "string" "$_SEAT_VERIFIER"
+
 log "============================================"
 log " DEV-REVIEW SESSION"
 log "============================================"
 log " Task:      $TASK"
+log " Preset:    ${PRESET:-<none>}"
 log " Composer:  $COMPOSER"
 log " Executor:  $EXECUTOR"
+log " Verifier:  $_VERIFIER_SEAT"
 log " Bounces:   $BOUNCES"
 log " Verify:    $VERIFY"
 log " Workdir:   $WORKDIR"
@@ -1300,6 +1393,9 @@ log " Timeout:   ${PHASE_TIMEOUT}s per phase"
 log " Live mode: $LIVE_MODE"
 log " Branch:    ${BRANCH_SPEC:-<empty>}"
 log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
+log " Composer model: $_SEAT_COMPOSER"
+log " Executor model: $_SEAT_EXECUTOR"
+log " Verifier model: $_SEAT_VERIFIER"
 log "============================================"
 log ""
 
