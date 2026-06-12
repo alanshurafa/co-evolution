@@ -26,6 +26,14 @@ Use `/co-evolution` for general questions, ideas, arguments, prompt refinement,
 or document bounces. Use `/dev-review` only when the intended deliverable is a
 repo change or code-focused verification workflow.
 
+For the **detached** flavor — the session plans and reviews while Codex executes
+in the background and the session is woken at gates instead of babysitting — use
+`/codex-build` (`skills/codex-build/`). It kicks the standalone runner with
+`--preset codex-build` (Fable plans at `high`, Codex executes at `xhigh`, Fable
+reviews at `max`; `--verify` on, bounces `2`, revise-loop `1`) and applies a
+schema-bound ACCEPT / REVISE / ESCALATE gate. `/dev-review` is the interactive
+single-session loop; `/codex-build` is the same pipeline run detached.
+
 When `--live` is enabled on Windows, each Codex pass runs in a visible PowerShell
 window so the user can watch progress in real time. The handoff contract stays
 file-based: prompts are written to disk, Codex writes the final message to disk,
@@ -169,6 +177,28 @@ the warning from Step 2 is enough; still render the banner as `Live: no`.
 
 ### Initialize the plan document:
 Create `/tmp/dev-review-plan-{timestamp}.md` - this is the living document that bounces.
+
+### Build the shared Codex argument block: `CODEX_ARGS`
+
+`--model` and the per-seat effort knob are parsed but must actually reach
+`codex exec`. Build a `CODEX_ARGS` array ONCE here and splice it into every
+headless `codex exec` invocation (compose, bounce, execute, verify). Codex takes
+model and reasoning-effort as `-c key=value` overrides, not as named flags:
+
+```bash
+CODEX_ARGS=()
+[ -n "$CODEX_MODEL" ] && CODEX_ARGS+=( -c "model=$CODEX_MODEL" )
+[ -n "${CODEX_EFFORT:-}" ] && CODEX_ARGS+=( -c "model_reasoning_effort=$CODEX_EFFORT" )
+```
+
+`$CODEX_MODEL` comes from `--model`; `$CODEX_EFFORT` (if your invocation sets it)
+maps to the executor's reasoning effort, mirroring the standalone runner's
+`-c model_reasoning_effort=` wiring. When both are empty, `CODEX_ARGS` is empty
+and the codex commands are byte-identical to today's — Codex falls back to its
+own `~/.codex/config.toml` defaults.
+
+Splice it into each headless codex command with `"${CODEX_ARGS[@]}"`, e.g.
+`codex exec --full-auto "${CODEX_ARGS[@]}" -C "$(pwd)" -o <out>`.
 
 ### Shared helper: `launch_codex_live`
 
@@ -329,7 +359,7 @@ launch_codex_live "Codex - Compose" "exec" \
 If `$LIVE_ACTIVE=false`, keep the existing headless behavior:
 
 ```bash
-printf '%s' "$COMPOSE_PROMPT" | codex exec --full-auto -C "$(pwd)" -o /tmp/dev-review-plan-{timestamp}.md
+printf '%s' "$COMPOSE_PROMPT" | codex exec --full-auto "${CODEX_ARGS[@]}" -C "$(pwd)" -o /tmp/dev-review-plan-{timestamp}.md
 ```
 
 **Important:** Always pipe plan content through stdin or embed it in the prompt file.
@@ -421,7 +451,7 @@ cp /tmp/dev-review-bounce-output-{timestamp}-{N}.md /tmp/dev-review-plan-{timest
 If `$LIVE_ACTIVE=false`, keep the existing headless behavior:
 
 ```bash
-printf '%s' "$(cat /tmp/dev-review-bounce-prompt.md)" | codex exec --full-auto -C "$(pwd)" -o /tmp/dev-review-bounce-output-{timestamp}-{N}.md
+printf '%s' "$(cat /tmp/dev-review-bounce-prompt.md)" | codex exec --full-auto "${CODEX_ARGS[@]}" -C "$(pwd)" -o /tmp/dev-review-bounce-output-{timestamp}-{N}.md
 # Orchestrator overwrites canonical plan with Codex's output
 cp /tmp/dev-review-bounce-output-{timestamp}-{N}.md /tmp/dev-review-plan-{timestamp}.md
 ```
@@ -582,7 +612,7 @@ launch_codex_live "Codex - Execute" "exec" \
 If `$LIVE_ACTIVE=false`, keep the existing headless behavior:
 
 ```bash
-codex exec --full-auto -C "$(pwd)" < /tmp/dev-review-exec-prompt.md > /tmp/dev-review-exec-output.md 2>&1
+codex exec --full-auto "${CODEX_ARGS[@]}" -C "$(pwd)" < /tmp/dev-review-exec-prompt.md > /tmp/dev-review-exec-output.md 2>&1
 ```
 
 After execution, verify changes:
@@ -631,6 +661,8 @@ Pass 1: `codex review --uncommitted` (if available, skip if not)
 - If `$LIVE_ACTIVE=false`, keep the current headless `codex review` behavior.
 
 Pass 2: `codex exec --output-schema` with the review prompt
+- Headless: splice `"${CODEX_ARGS[@]}"` in too, e.g.
+  `codex exec --full-auto "${CODEX_ARGS[@]}" --output-schema <schema> -C "$(pwd)" -o /tmp/dev-review-verdict.json < /tmp/dev-review-review-prompt.md`
 - If `$LIVE_ACTIVE=true`, use `launch_codex_live` with title `Codex - Verify`,
   mode `exec-schema`, prompt `/tmp/dev-review-review-prompt.md`, output
   `/tmp/dev-review-verdict.json`, and schema path
@@ -745,6 +777,11 @@ Dev-review is integrated into GSD workflows:
 - **`--live` is launch-mode only**: It does not change the artifact contract.
   Prompts still come from temp files, and the final Codex message still lands in
   the same output file before Claude Code continues.
+- **`--live` ignores model/effort overrides** (documented v1 limitation): the
+  visible-window launcher (`launch_codex_live`) does not splice `CODEX_ARGS`, so
+  `--model` / the reasoning-effort knob have no effect on live Codex passes.
+  Those overrides apply only on the headless path. Use headless mode when a
+  pinned Codex model or effort matters.
 - **`--live` is Windows-only in the first release**: On non-Windows platforms,
   warn once and continue headless.
 - **Live windows auto-close after a short read delay**: The wrapper waits 5 seconds
