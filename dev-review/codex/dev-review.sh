@@ -27,6 +27,9 @@ LIVE_MODE="${LIVE_MODE:-false}"
 # exclusive — both non-empty after parsing = die. Default empty = Phase 3 byte-parity.
 BRANCH_SPEC="${DEV_REVIEW_BRANCH:-}"
 WORKTREE_SPEC="${DEV_REVIEW_WORKTREE:-}"
+# v1.5: explicit verifier seat override. Empty = derive from executor via the
+# existing select_verifier logic (byte-parity default). Env default + --verifier flag.
+VERIFIER_OVERRIDE="${DEV_REVIEW_VERIFIER:-}"
 BRANCH_CREATED=""
 WORKTREE_PATH=""
 WORKDIR="$(pwd)"
@@ -75,6 +78,8 @@ Options:
   --skip-plan              Skip compose+bounce and execute an existing plan
   --plan FILE              Existing plan file to use with --skip-plan
   --model MODEL            Override Codex model
+  --verifier AGENT         Force the verify-phase agent (codex|opus|claude); default derives from --executor
+  --claude-model MODEL     Override Claude model (alias: fable -> claude-fable-5; else passthrough)
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
@@ -107,6 +112,17 @@ normalize_agent() {
     *)
       return 1
       ;;
+  esac
+}
+
+# v1.5: resolve a friendly Claude model alias to its CLI model id. Only `fable`
+# is aliased today (→ claude-fable-5); anything else passes through verbatim so
+# explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty value are
+# untouched. Used by the --claude-model flag and the per-seat env layer.
+resolve_claude_model_alias() {
+  case "$1" in
+    fable) echo "claude-fable-5" ;;
+    *)     echo "$1" ;;
   esac
 }
 
@@ -169,6 +185,12 @@ require_agent_cli() {
 }
 
 select_verifier() {
+  # v1.5: an explicit --verifier / DEV_REVIEW_VERIFIER override wins; otherwise
+  # derive the opposite-of-executor default (byte-parity when unset).
+  if [[ -n "${VERIFIER_OVERRIDE:-}" ]]; then
+    echo "$VERIFIER_OVERRIDE"
+    return 0
+  fi
   if [[ "$EXECUTOR" == "codex" ]]; then
     echo "opus"
   else
@@ -214,6 +236,14 @@ ensure_codex_compatible_workdir() {
     needs_codex="true"
   fi
 
+  # v1.5: with --verifier codex (or executor=opus default) the verify phase runs
+  # codex too, so its workdir must satisfy the same WSL constraint. Only matters
+  # when verification is requested. Byte-parity holds: default executor=codex →
+  # verifier=opus → this branch is a no-op.
+  if [[ "$VERIFY" == "true" && "$(select_verifier)" == "codex" ]]; then
+    needs_codex="true"
+  fi
+
   if [[ "$needs_codex" != "true" ]]; then
     return 0
   fi
@@ -226,38 +256,12 @@ ensure_codex_compatible_workdir() {
   fi
 }
 
-invoke_codex_schema() {
-  local prompt_file="$1"
-  local output_file="$2"
-  local stderr_file="$3"
-  local schema_file="$4"
-  local workdir="${WORKDIR:-$PWD}"
-  local -a cmd
-  local windows_workdir=""
-  local windows_output=""
-  local windows_schema=""
-
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
-    windows_workdir=$(wslpath -w "$workdir")
-    windows_output=$(wslpath -w "$output_file")
-    windows_schema=$(wslpath -w "$schema_file")
-    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
-  else
-    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
-  fi
-
-  if [[ -n "${CODEX_MODEL:-}" ]]; then
-    cmd+=(-c "model=${CODEX_MODEL}")
-  fi
-
-  if [[ -n "$windows_schema" ]]; then
-    cmd+=(--output-schema "$windows_schema" -o "$windows_output")
-  else
-    cmd+=(--output-schema "$schema_file" -o "$output_file")
-  fi
-
-  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
-}
+# v1.5 (fixes B2): invoke_codex_schema now lives in lib/co-evolution.sh (sourced
+# at the top of this script). It was previously defined here, but the verify
+# phase dispatches it inside a `bash -c 'source lib/co-evolution.sh; invoke_...'`
+# child that can only see lib-defined functions — so the local copy was invisible
+# there (exit 127 when a timeout binary exists and verifier=codex). Moved to lib
+# so both the timeout child and the no-timeout fallback resolve the same function.
 
 write_text_file() {
   local output_path="$1"
@@ -565,6 +569,8 @@ Output ONLY the plan document. No preamble."
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
   # RTUX-01: Launch a live-tail window before the agent call (no-op unless --live).
   maybe_launch_live_window "compose" "$compose_stderr_file"
+  # v1.5: layer the composer seat's model/effort (no-op when no per-seat env set).
+  apply_seat_env composer "$COMPOSER"
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
   abort_on_timeout "compose" "$phase_start"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
@@ -655,6 +661,14 @@ run_bounce_phase() {
     # so state.json records which pass hit the timeout.
     # RTUX-01: Per-pass live-tail window (bounce-01, bounce-02, ...) when --live.
     maybe_launch_live_window "bounce-${pass_padded}" "$stderr_file"
+    # v1.5: composer turns get the composer seat's model/effort; reviewer (the
+    # bounce counterparty) turns use globals only (the `bounce` seat is a no-op
+    # arm in apply_seat_env). No-op overall when no per-seat env is set.
+    if [[ "$role" == "composer" ]]; then
+      apply_seat_env composer "$current_agent"
+    else
+      apply_seat_env bounce "$current_agent"
+    fi
     invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
     abort_on_timeout "bounce-${pass_padded}" "$bounce_pass_start"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
@@ -751,6 +765,10 @@ run_execute_phase() {
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
   # RTUX-01: Live-tail window for execute phase (no-op unless --live).
   maybe_launch_live_window "execute" "$execute_stderr_file"
+  # v1.5: layer the executor seat's model/effort. The in-phase empty-output retry
+  # below inherits these exported values (no second apply needed). No-op when no
+  # per-seat env is set.
+  apply_seat_env executor "$EXECUTOR"
   invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
   abort_on_timeout "execute" "$phase_start"
 
@@ -857,6 +875,10 @@ run_verify_phase() {
   fi
 
   verifier=$(select_verifier)
+  # v1.5: layer the verifier seat's model/effort, AFTER the verifier agent is
+  # resolved (the seat env keys off the agent type). Covers both the codex-schema
+  # and opus branches below. No-op when no per-seat env is set.
+  apply_seat_env verifier "$verifier"
 
   plan_content=$(cat "$PLAN_PATH")
   diff_content=$(cat "$diff_file")
@@ -973,7 +995,23 @@ while [[ $# -gt 0 ]]; do
       ;;
     --model)
       [[ $# -gt 1 ]] || die "--model requires a value"
-      CODEX_MODEL="$2"
+      # v1.5 (fixes B1): export so the `bash -c` child inside
+      # invoke_agent_with_timeout inherits it (mirrors the --timeout arm). Without
+      # export, CODEX_MODEL never reached invoke_codex in the dispatched child.
+      export CODEX_MODEL="$2"
+      shift 2
+      ;;
+    --verifier)
+      [[ $# -gt 1 ]] || die "--verifier requires a value"
+      # v1.5: normalize so `claude` maps to the opus seat name the rest of the
+      # script uses; reject anything normalize_agent doesn't accept.
+      VERIFIER_OVERRIDE=$(normalize_agent "$2") || die "Unsupported verifier: $2"
+      shift 2
+      ;;
+    --claude-model)
+      [[ $# -gt 1 ]] || die "--claude-model requires a value"
+      # v1.5: resolve friendly alias (fable -> claude-fable-5) else passthrough.
+      CLAUDE_MODEL=$(resolve_claude_model_alias "$2")
       shift 2
       ;;
     --workdir)
@@ -1147,6 +1185,12 @@ if [[ -n "$PLAN_SOURCE" ]]; then
 fi
 
 WORKDIR="$(cd "$WORKDIR" && pwd)"
+# v1.5 (fixes B3): export WORKDIR so the `bash -c` child inside
+# invoke_agent_with_timeout (and the verify-codex `bash -c` block) inherits it;
+# otherwise ${WORKDIR:-$PWD} in invoke_claude/invoke_codex falls back to the
+# child's launch cwd. The export attribute persists across the later worktree-mode
+# reassignment of WORKDIR (~line 1300), so the worktree path is exported too.
+export WORKDIR
 
 if [[ "$SKIP_PLAN" == "true" && -z "$PLAN_SOURCE" ]]; then
   die "--skip-plan requires --plan FILE"
@@ -1191,6 +1235,34 @@ fi
 ensure_codex_compatible_workdir
 
 require_selected_agent_clis
+
+# v1.5 per-seat env layer. Snapshot the post-parse base model/effort values (set
+# by globals / --model / --claude-model / CLAUDE_EFFORT / CODEX_REASONING_EFFORT),
+# then apply_seat_env layers an optional per-seat override before each invocation.
+# Byte-parity: with no COMPOSER_/EXECUTOR_/VERIFIER_ envs set, every seat resolves
+# to its base, so exported CLAUDE_MODEL/CLAUDE_EFFORT/CODEX_MODEL/CODEX_REASONING_EFFORT
+# match what the unlayered globals already were — argv is unchanged.
+CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
+CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
+
+# Export is load-bearing: invoke_agent_with_timeout crosses a `timeout bash -c`
+# process boundary; only exported values survive it.
+apply_seat_env() {
+  local seat="$1" agent="$2" model="" effort=""
+  case "$seat" in
+    composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
+    executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
+    verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    *) : ;;  # bounce counterparty: globals only
+  esac
+  if [[ "$agent" == "codex" ]]; then
+    export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
+    export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
+  else
+    export CLAUDE_MODEL="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+    export CLAUDE_EFFORT="${effort:-$CLAUDE_EFFORT_BASE}"
+  fi
+}
 
 # Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
 if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
