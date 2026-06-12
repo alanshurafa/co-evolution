@@ -1,6 +1,6 @@
 ---
 title: Runner ↔ scorer contract
-version: 1.0
+version: 1.1
 status: locked
 owners:
   - dev-review/codex/dev-review.sh (runner)
@@ -43,6 +43,7 @@ historical fixture corpus under `runners/codex-ps/evals/tests/fixtures/**`.
 | `verify_verdict` | string \| null | nullable | runner (post-verify) | `score-run.sh:498` | Verify-phase verdict — `APPROVED` / `REVISE` / null |
 | `history` | array\<`{phase,status,detail,timestamp}`\> | yes | runner (per phase) | `score-run.sh:338` | Canonical bounce-trace array. Convergence needs ≥1 entry with `phase` matching `^bounce-[0-9]+$` when bounces were expected. |
 | `mode` | string | no | runner (optional tag) | — | Fake-runner sets `"fake-runner"`; real runner may set `"real"` or omit. Runner-owned metadata — NOT written by the shared `init_state_json` library. |
+| `seat_models` | object `{composer, executor, verifier}` (each string `agent:model@effort`) | no | `dev-review.sh` (post-init) | — | v1.5 observability: what each seat resolved to under the per-seat env layer (e.g. `"claude:claude-fable-5@high"`, `"codex:(default)@xhigh"`). Runner-owned metadata — NOT written by the shared `init_state_json` library; scorer ignores it. |
 
 ### Legacy alias: `phases` → `history`
 
