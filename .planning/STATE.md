@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Build with Codex — model ladder + orchestrated execution
 status: executing
-stopped_at: v1.5 Phase 0 IN PROGRESS (2026-06-12). Codex symlink created, smoke pass, claude -p envelope pinned, plugin installed. v1.4 Phase 5 BLOCKED ON HUMAN (npm scope + NPM_TOKEN + git tag) — running in parallel, untouched.
-last_updated: "2026-06-12T12:28:00.000Z"
-last_activity: 2026-06-12 -- v1.5 milestone registered; Phase 0 executing
+stopped_at: v1.5 Phases 0-5 EXECUTED (b672145..30a9a00). Phase 6 PARTIAL (2026-06-12) — MCP vendor parity green; codex-verifier degrade path now FULLY GREEN end-to-end: model-leak fix + review-verdict.json schema 400 fix both landed, first real /codex-build ACCEPT produced (subtract-helper task, exit 0, APPROVED conf 96, verify tokens captured). Remaining Phase 6: claude /login (human, for full-ladder + non-zero claude_* tokens), REVISE→ACCEPT row, interactive baseline. v1.4 Phase 5 BLOCKED ON HUMAN (npm scope + NPM_TOKEN + git tag) — running in parallel, untouched.
+last_updated: "2026-06-12T17:43:00.000Z"
+last_activity: 2026-06-12 -- v1.5 Phase 6: review-verdict.json schema 400 fixed; codex-verifier degrade path E2E green (first ACCEPT)
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 6
   total_plans: 0
   completed_plans: 0
-  percent: 0
+  percent: 86
 ---
 
 # Project State
@@ -32,10 +32,16 @@ Status: npm scope verification + NPM_TOKEN secret + git tag are Alan's; everythi
 Last activity: 2026-06-10 -- Phase 0 merges + LF policy + audit report
 
 Milestone: v1.5 Build with Codex — model ladder + orchestrated execution
-Phase: 0 (env + research) in progress
-Status: codex symlink created + smoke pass; claude -p envelope pinned; codex plugin installed (openai-codex marketplace, v1.0.4); Phase 0 research notes filed. Branch: feat/v1.5-codex-build.
-Last activity: 2026-06-12 -- Phase 0 start; design file committed at .planning/v1.5-DESIGN.md
-Working directories: `~/co-evolution-v13/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
+Phase: 0-5 EXECUTED; Phase 6 (dogfood + evidence) PARTIAL
+Status: Phases 0-5 shipped on feat/v1.5-codex-build (b672145 Phase 0 env + research · fb6862a Phase 1 seats + B1/B2/B3 fixes · ffe765f Phase 2 verifier hardening + preset · 13c2bee Phase 3 observability + status reader · fb965ad Phase 4 token capture · 30a9a00 Phase 5 /codex-build skill + docs). Phase 6 partial — see below.
+Phase 6 progress (2026-06-12):
+  - MCP vendor parity GREEN: `bash mcp/scripts/vendor.sh` clean; `(cd mcp && npm test)` 4/4 pass. `mcp/vendor/` is gitignored (generated-at-publish via `npm run build:vendor`, NOT checked in) — Phase 1/3/4 lib changes were additive and broke nothing.
+  - First real `/codex-build` dogfood (slugify task, scratch repo under $TMPDIR, `--verifier codex` degrade since headless claude is logged out): execute phase SUCCEEDED (slugify landed, all 4 scratch tests pass), but verify phase ERRORED → runner exit 2, `verdict_present: false`, ESCALATE. codex_total_tokens=21497 (token capture works); claude_* totals=0 (ladder not exercised on the degrade path). One re-kick (`--parent-run`, lineage recorded) hit the same error. NO ACCEPT data point yet.
+  - Real bug found AND FIXED (2026-06-12): the documented `--verifier codex` degrade leaked the preset's `VERIFIER_MODEL=fable` into the codex seat (`apply_seat_env`, dev-review.sh:1370-1372) → codex on a ChatGPT account returned HTTP 400 "The 'fable' model is not supported". Fix = cross-agent leak guard in `apply_seat_env` + `resolve_seat_model_string` (drop a wrong-kind model+effort pair as a unit; codex seat falls back to `codex:(default)@(default)`). Sim scenario (h) added (preset-expansion-simulation.sh now 8/8; run-all 25/25 green). Re-run proof: fable 400 GONE, execute SUCCEEDED, scratch run-tests ALL PASS, codex_total_tokens=17237, wall 54s — BUT verdict still null: the verify seat now hit a SEPARATE, pre-existing schema 400 (`invalid_json_schema`: nested `issues.items` missing `additionalProperties:false` in skills/dev-review/schemas/review-verdict.json). Seat fix proven; degrade path was blocked one layer deeper by the schema bug. Detail in .planning/research/2026-06-12-token-evidence.md.
+  - Schema 400 FIXED (2026-06-12): OpenAI strict structured-output requires `additionalProperties:false` + a `required` list covering EVERY property on EVERY object node. `issues.items` was missing both; top-level `required` omitted `scope_creep_detected`/`iteration_notes`. Tightened all THREE canonical copies identically (schemas/, runners/codex-ps/schemas/, skills/dev-review/schemas/) so the drift guard stays green; shell `validate_review_verdict` is unaffected (stays loose, independent of this file). DEGRADE-PATH E2E NOW GREEN: real /codex-build (subtract-helper task, scratch repo under $TMPDIR, `--verifier codex`, --branch auto) → exit 0, verify OK, **verdict APPROVED conf 96**, verdict.json complete (all 6 strict fields), tokens execute=30606 verify=14485 codex_total=45091, wall 59s, scratch run-tests ALL 4 PASS. First full ACCEPT-path evidence row (degrade path). run-all 25/25 green. First ACCEPT data point logged in .planning/research/2026-06-12-token-evidence.md.
+  - Remaining Phase 6 (HUMAN + follow-up): `claude /login` on this Mac (unblocks full ladder + non-zero claude_* tokens; degrade-path claude_* are 0 by design); REVISE→ACCEPT row still owed (ESCALATE + ACCEPT now evidenced); an interactive `/dev-review` baseline for the 50%-claim denominator.
+Last activity: 2026-06-12 -- Phase 6: schema 400 fixed (3 copies); degrade-path E2E green, first ACCEPT (.planning/research/2026-06-12-token-evidence.md)
+Working directories: `~/Project/co-evolution/` on the Mac (per-machine clone; SMB checkout `/Volumes/Project/co-evolution` is sync-only), `C:/Users/alan/Project/co-evolution-*` on the PC
 
 macOS baseline before v1.3 fixes: scorer-verification 11/14; code-proposer sim 1/16; pr-emitter sim 4/12; template-proposer sim 1/8; revise-loop sim aborts. Root causes: bash 3.2 (mapfile, source <(…)), BSD sed GNU-isms. Target after Phase 0.5: all green on macOS.
 
