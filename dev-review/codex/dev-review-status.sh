@@ -275,7 +275,7 @@ if [[ "$JSON" == true ]]; then
     --arg execute_stderr_tail "$exec_tail" \
     --arg assess "$ASSESS" \
     --argjson exit_code "$EXIT_CODE" \
-    --slurpfile phases <(jq '.phases // []' "$STATE") \
+    --argjson phases "$(jq -c '.phases // []' "$STATE")" \
     '{
       run_id: $run_id,
       run_dir: $run_dir,
@@ -296,7 +296,7 @@ if [[ "$JSON" == true ]]; then
       pre_execute_sha: (if $pre_sha == "" then null else $pre_sha end),
       post_execute_sha: (if $post_sha == "" then null else $post_sha end),
       marker_counts: {contested: $contested, clarify: $clarify},
-      phases: $phases[0],
+      phases: $phases,
       diffstat_tail: $diffstat_tail,
       execute_stderr_tail: $execute_stderr_tail,
       assess: $assess,
