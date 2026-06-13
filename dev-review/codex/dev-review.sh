@@ -86,9 +86,9 @@ Options:
   --plan FILE              Existing plan file to use with --skip-plan
   --model MODEL            Override Codex model
   --verifier AGENT         Force the verify-phase agent (codex|opus|claude); default derives from --executor
-  --claude-model MODEL     Override Claude model (alias: fable -> claude-fable-5; else passthrough)
+  --claude-model MODEL     Override Claude model (aliases: best/opus -> claude-opus-4-8, fable -> claude-fable-5; else passthrough)
   --preset NAME            Expand a named seat preset (available: codex-build).
-                           codex-build = Fable plans (high) + Codex executes (xhigh) + Fable reviews (max),
+                           codex-build = best (currently Opus) plans (high) + Codex executes (xhigh) + best reviews (max),
                            --verify on, bounces 2, revise-loop 1. Precedence: flags placed AFTER --preset
                            override it (last-wins); pre-set model/effort env vars win over the preset.
   --workdir DIR            Working directory (default: current directory)
@@ -127,13 +127,17 @@ normalize_agent() {
   esac
 }
 
-# v1.5: resolve a friendly Claude model alias to its CLI model id. Only `fable`
-# is aliased today (→ claude-fable-5); anything else passes through verbatim so
-# explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty value are
-# untouched. Used by the --claude-model flag and the per-seat env layer.
+# v1.5: resolve a friendly Claude model alias to its CLI model id. `best` and
+# `opus` resolve to the current Opus line (claude-opus-4-8); `fable` is retained
+# for back-compat only (currently unreachable). Anything else passes through
+# verbatim so explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty
+# value are untouched. Used by the --claude-model flag and the per-seat env layer.
+# Bumping the Claude default to a new model = edit the `best` arm here, one place.
 resolve_claude_model_alias() {
   case "$1" in
-    fable) echo "claude-fable-5" ;;
+    best)  echo "claude-opus-4-8" ;;   # strongest supported Claude default for the preset
+    opus)  echo "claude-opus-4-8" ;;   # current Opus-line model
+    fable) echo "claude-fable-5" ;;    # retained for back-compat; currently unreachable, do not default to it
     *)     echo "$1" ;;
   esac
 }
@@ -147,11 +151,11 @@ resolve_claude_model_alias() {
 #     present in the environment (e.g. COMPOSER_EFFORT=low) wins over the preset.
 apply_preset() {
   case "$1" in
-    codex-build)   # "build with codex": Fable plans/reviews, Codex executes.
+    codex-build)   # "build with codex": best Claude seats plan/review, Codex executes.
       COMPOSER="opus"; EXECUTOR="codex"; VERIFIER_OVERRIDE="opus"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
-      : "${COMPOSER_MODEL:=fable}";  : "${COMPOSER_EFFORT:=high}"
-      : "${VERIFIER_MODEL:=fable}";  : "${VERIFIER_EFFORT:=max}"
+      : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
+      : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
       : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
       ;;
     *) die "Unknown preset: $1 (available: codex-build)" ;;
@@ -1369,11 +1373,11 @@ apply_seat_env() {
   esac
   # v1.5 cross-agent leak guard. A seat's model+effort is ONE override pair
   # configured for a specific agent kind (e.g. the codex-build preset fills
-  # VERIFIER_MODEL=fable / VERIFIER_EFFORT=max for its DEFAULT claude verifier).
+  # VERIFIER_MODEL=best / VERIFIER_EFFORT=max for its DEFAULT claude verifier).
   # When --verifier codex flips that same seat to codex, the pair is now wrong:
-  # exporting CODEX_MODEL=fable makes codex/ChatGPT reject the run with
-  #   HTTP 400: The 'fable' model is not supported when using Codex with a
-  #   ChatGPT account.
+  # exporting CODEX_MODEL=best (a Claude alias) makes codex/ChatGPT reject the run
+  # with HTTP 400: e.g. "The 'fable' model is not supported when using Codex with
+  #   a ChatGPT account" — any Claude alias/id is off codex's menu.
   # and CODEX_REASONING_EFFORT=max is off codex's scale (it ends at xhigh).
   # The two halves are coupled: a model picked for the wrong kind means the
   # effort was too — so drop the WHOLE pair (not just the model) and fall back
@@ -1382,7 +1386,7 @@ apply_seat_env() {
   # on the claude arm so a codex-shaped override never reaches a claude seat.
   if [[ "$agent" == "codex" ]]; then
     case "$model" in
-      fable|claude-*) model=""; effort="" ;;
+      fable|best|opus|claude-*) model=""; effort="" ;;
     esac
   else
     case "$model" in
@@ -1416,7 +1420,7 @@ resolve_seat_model_string() {
   # what actually runs — e.g. codex:(default)@(default), not codex:fable@max.
   if [[ "$agent" == "codex" ]]; then
     case "$model" in
-      fable|claude-*) model=""; effort="" ;;
+      fable|best|opus|claude-*) model=""; effort="" ;;
     esac
   else
     case "$model" in

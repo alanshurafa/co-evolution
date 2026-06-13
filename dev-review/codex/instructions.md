@@ -18,7 +18,7 @@ Pick the lowest-ceremony path that still protects correctness. **Start with `co-
 | Existing approved plan should be executed as-is | `bash dev-review/codex/dev-review.sh --skip-plan --plan <file>` | Reuses the approved plan |
 | User wants a reviewed plan before any code changes | `bash co-evolve-bouncer.sh --vanilla "task"` or `dev-review.sh --plan-only` | Plan artifact only |
 | User wants a final review against the plan and diff | `bash dev-review/codex/dev-review.sh --verify <task>` | Runs verifier after execution |
-| Orchestrated / background build — plan and review in-session, Codex executes detached | `CO_EVOLVE_TOKEN_CAPTURE=1 bash dev-review/codex/dev-review.sh --preset codex-build --skip-plan --plan <file> --branch auto -- "<task>"` (kicked in the background; see `skills/codex-build/`) | Model-ladder ladder: Fable plans/reviews, Codex executes; session is not babysat |
+| Orchestrated / background build — plan and review in-session, Codex executes detached | `CO_EVOLVE_TOKEN_CAPTURE=1 bash dev-review/codex/dev-review.sh --preset codex-build --skip-plan --plan <file> --branch auto -- "<task>"` (kicked in the background; see `skills/codex-build/`) | Model-ladder ladder: best Claude (Opus) plans/reviews, Codex executes; session is not babysat |
 | Ad-hoc interactive delegation to Codex mid-session | OpenAI plugin `/codex:rescue --background` (see `skills/codex-build/` Transport B) | Quick delegation; review with the same verdict schema by hand, not via CI |
 
 ## Distinguish Coding From Everything Else

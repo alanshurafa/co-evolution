@@ -9,9 +9,9 @@
 # others, the docs lie. This gate greps the load-bearing seat tokens out of each
 # file and asserts they all agree on the same triple:
 #
-#   composer  = Fable, effort high
+#   composer  = best (currently Opus), effort high
 #   executor  = Codex, effort xhigh (model unpinned — CLI config rules)
-#   verifier  = Fable, effort max
+#   verifier  = best (currently Opus), effort max
 #   bounces   = 2
 #
 # Pattern: pure-grep assertions over the real files (no agents, no stubs). Each
@@ -70,12 +70,12 @@ assert_not_grep() {
 # These pin the literal knob assignments so a doc edit can be diffed against
 # the code, and a code edit that changes the triple breaks this gate too.
 # ===========================================================================
-assert_grep "runner: composer Fable seat (COMPOSER_MODEL:=fable)" \
-  "$RUNNER" 'COMPOSER_MODEL:=fable'
+assert_grep "runner: composer best seat (COMPOSER_MODEL:=best)" \
+  "$RUNNER" 'COMPOSER_MODEL:=best'
 assert_grep "runner: composer effort high (COMPOSER_EFFORT:=high)" \
   "$RUNNER" 'COMPOSER_EFFORT:=high'
-assert_grep "runner: verifier Fable seat (VERIFIER_MODEL:=fable)" \
-  "$RUNNER" 'VERIFIER_MODEL:=fable'
+assert_grep "runner: verifier best seat (VERIFIER_MODEL:=best)" \
+  "$RUNNER" 'VERIFIER_MODEL:=best'
 assert_grep "runner: verifier effort max (VERIFIER_EFFORT:=max)" \
   "$RUNNER" 'VERIFIER_EFFORT:=max'
 assert_grep "runner: executor effort xhigh (EXECUTOR_EFFORT:=xhigh)" \
@@ -96,12 +96,12 @@ fi
 # Tokens kept loose enough to survive prose rewording but tight enough to catch
 # a wrong seat (e.g. opus instead of Fable, high instead of xhigh on executor).
 # ===========================================================================
-assert_grep "codex-build skill: composer Fable at high" \
-  "$CODEX_BUILD_SKILL" 'composer = Fable \(high\)'
+assert_grep "codex-build skill: composer Opus at high" \
+  "$CODEX_BUILD_SKILL" 'composer = Opus \(high\)'
 assert_grep "codex-build skill: executor Codex at xhigh" \
   "$CODEX_BUILD_SKILL" 'executor = Codex \(xhigh'
-assert_grep "codex-build skill: verifier Fable at max" \
-  "$CODEX_BUILD_SKILL" 'verifier = Fable \(max\)'
+assert_grep "codex-build skill: verifier Opus at max" \
+  "$CODEX_BUILD_SKILL" 'verifier = Opus \(max\)'
 assert_grep "codex-build skill: bounces 2" \
   "$CODEX_BUILD_SKILL" 'bounces 2'
 assert_grep "codex-build skill: executor model unpinned (CLI config note)" \
@@ -110,8 +110,8 @@ assert_grep "codex-build skill: executor model unpinned (CLI config note)" \
 # ===========================================================================
 # Group 3: skills/dev-review/SKILL.md cross-references the same preset triple.
 # ===========================================================================
-assert_grep "dev-review skill: Fable plans at high" \
-  "$DEV_REVIEW_SKILL" 'Fable plans at .?high'
+assert_grep "dev-review skill: Opus plans at high" \
+  "$DEV_REVIEW_SKILL" 'Opus plans at .?high'
 assert_grep "dev-review skill: Codex executes at xhigh" \
   "$DEV_REVIEW_SKILL" 'Codex executes at .?xhigh'
 assert_grep "dev-review skill: reviews at max" \

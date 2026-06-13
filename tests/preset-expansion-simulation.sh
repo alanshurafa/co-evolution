@@ -3,12 +3,13 @@
 # Hermetic gate for v1.5 Phase 2: --preset codex-build + claude-verifier
 # verdict hardening (dev-review/codex/dev-review.sh).
 #
-# The codex-build preset expands to the post's ladder — Fable plans (high),
-# Codex executes (xhigh), Fable reviews (max) — behind one flag. This gate
-# pins:
-#   a. seat argv under the preset (composer claude --model claude-fable-5
-#      --effort high; executor codex -c model_reasoning_effort=xhigh and NO
-#      -c model=; verifier claude --effort max).
+# The codex-build preset expands to the post's ladder — best (currently Opus)
+# plans (high), Codex executes (xhigh), best reviews (max) — behind one flag.
+# This gate pins:
+#   a. seat argv under the preset (composer claude --model claude-opus-4-8
+#      [the `best` alias resolved] --effort high; executor codex
+#      -c model_reasoning_effort=xhigh and NO -c model=; verifier claude
+#      --effort max).
 #   b. claude-verifier verdict hardening: a verdict wrapped in markdown
 #      fences/prose lands in verdict.json jq-parseable (brace-block fallback).
 #   c. last-wins parsing: --verifier codex after --preset wins.
@@ -18,8 +19,10 @@
 #   g. parity guard: a default run emits no --effort and no
 #      model_reasoning_effort anywhere.
 #   h. cross-agent leak guard: --verifier codex over the preset must NOT leak
-#      the claude verifier's fable@max into the codex verify argv (live HTTP 400
+#      the claude verifier's best@max into the codex verify argv (live HTTP 400
 #      on a ChatGPT account); seat_models.verifier falls back to default.
+#   i. alias resolution: resolve_claude_model_alias maps best/opus ->
+#      claude-opus-4-8, keeps fable -> claude-fable-5, passes ids through.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -242,8 +245,8 @@ claude_log="$TEST_DIR/a_claude.log"; codex_log="$TEST_DIR/a_codex.log"
 ) >"$TEST_DIR/a.out" 2>&1 || true
 
 a_ok=true
-# composer = claude with the fable model alias resolved + high effort.
-if ! grep -Eq -- '--model claude-fable-5' "$claude_log"; then a_ok=false; fi
+# composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
+if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then a_ok=false; fi
 if ! grep -Eq -- '--effort high' "$claude_log"; then a_ok=false; fi
 # executor = codex with xhigh effort and NO pinned model.
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false; fi
@@ -251,7 +254,7 @@ if grep -Eq -- '-c model=' "$codex_log"; then a_ok=false; fi
 # verifier = claude with max effort.
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
 if [[ "$a_ok" == true ]]; then
-  pass "preset codex-build: composer fable/high, executor codex/xhigh (no model=), verifier claude/max"
+  pass "preset codex-build: composer best->opus/high, executor codex/xhigh (no model=), verifier claude/max"
 else
   fail "preset codex-build seat argv mismatch (claude_log + codex_log below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
@@ -396,13 +399,13 @@ fi
 
 # ===========================================================================
 # Scenario (h): cross-agent leak guard — --preset codex-build --verifier codex.
-# The preset fills VERIFIER_MODEL=fable / VERIFIER_EFFORT=max for its DEFAULT
+# The preset fills VERIFIER_MODEL=best / VERIFIER_EFFORT=max for its DEFAULT
 # claude verifier; --verifier codex flips that seat to codex. Without the guard
-# in apply_seat_env, the codex verify argv carried `-c model=fable` (→ live
-# HTTP 400: "The 'fable' model is not supported when using Codex with a ChatGPT
-# account.") and `-c model_reasoning_effort=max` (off codex's xhigh scale).
-# Assert the codex verify argv carries NEITHER, and state.json seat_models
-# .verifier reports the fallback (codex:(default)@(default)), not codex:fable@max.
+# in apply_seat_env, the codex verify argv would carry `-c model=best` (a Claude
+# alias codex/ChatGPT rejects with HTTP 400) and `-c model_reasoning_effort=max`
+# (off codex's xhigh scale). Assert the codex verify argv carries NEITHER the
+# `best` alias NOR its resolved id (claude-opus-4-8), and state.json seat_models
+# .verifier reports the fallback (codex:(default)@(default)), not codex:best@max.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo h)
@@ -421,8 +424,10 @@ h_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 # The verify invocation is the codex argv line carrying --output-schema.
 h_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 h_ok=true
-# No leaked fable model and no off-scale max effort in the codex verify argv.
-if printf '%s' "$h_verify_argv" | grep -Eq -- '-c model=fable'; then h_ok=false; fi
+# No leaked claude model (alias `best` or its resolved id) and no off-scale max
+# effort in the codex verify argv.
+if printf '%s' "$h_verify_argv" | grep -Eq -- '-c model=best'; then h_ok=false; fi
+if printf '%s' "$h_verify_argv" | grep -Eq -- '-c model=claude-opus-4-8'; then h_ok=false; fi
 if printf '%s' "$h_verify_argv" | grep -Eq -- 'model_reasoning_effort=max'; then h_ok=false; fi
 # Sanity: the codex verify invocation actually happened (so the asserts are real).
 if [[ -z "$h_verify_argv" ]]; then h_ok=false; fi
@@ -435,7 +440,7 @@ else
   h_ok=false
 fi
 if [[ "$h_ok" == true ]]; then
-  pass "preset codex-build --verifier codex: no fable/max leak into codex verify argv; seat falls back to default"
+  pass "preset codex-build --verifier codex: no best/opus or max leak into codex verify argv; seat falls back to default"
 else
   fail "cross-agent leak guard failed (run dir: ${h_run_dir:-<none>})"
   { echo "--- codex verify argv ---"; printf '%s\n' "$h_verify_argv"
@@ -443,6 +448,30 @@ else
   } >&2
 fi
 [[ -n "${h_run_dir:-}" && "$h_run_dir" != "$run_dir_before" ]] && rm -rf "$h_run_dir"
+
+# ===========================================================================
+# Scenario (i): alias resolution. Extract the real resolve_claude_model_alias
+# from the runner (sed range + source — bash 3.2 silently sources nothing from
+# a process substitution, so use a temp file; same discipline as
+# tests/revise-loop-simulation.sh). Assert the `best`/`opus` aliases resolve to
+# the current Opus id, `fable` stays mapped for back-compat, and an explicit id
+# passes through untouched.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+sed -n '/^resolve_claude_model_alias() {/,/^}$/p' "$RUNNER" > "$TEST_DIR/_alias.sh"
+# shellcheck disable=SC1090,SC1091
+source "$TEST_DIR/_alias.sh"
+i_ok=true
+if ! declare -F resolve_claude_model_alias >/dev/null; then i_ok=false; fi
+[[ "$(resolve_claude_model_alias best)"  == "claude-opus-4-8" ]] || i_ok=false
+[[ "$(resolve_claude_model_alias opus)"  == "claude-opus-4-8" ]] || i_ok=false
+[[ "$(resolve_claude_model_alias fable)" == "claude-fable-5"  ]] || i_ok=false
+[[ "$(resolve_claude_model_alias claude-opus-4-8[1m])" == "claude-opus-4-8[1m]" ]] || i_ok=false
+if [[ "$i_ok" == true ]]; then
+  pass "resolve_claude_model_alias: best/opus -> claude-opus-4-8, fable kept, ids passthrough"
+else
+  fail "alias resolution mismatch (best=$(resolve_claude_model_alias best 2>/dev/null), opus=$(resolve_claude_model_alias opus 2>/dev/null), fable=$(resolve_claude_model_alias fable 2>/dev/null))"
+fi
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))

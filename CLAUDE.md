@@ -64,7 +64,7 @@ bounce, and `--live` opens visible Windows terminals for Codex passes.
 
 ### Codex-Build Skill (`skills/codex-build/`)
 
-Detached orchestration skill: the session (typically Fable) plans and reviews,
+Detached orchestration skill: the session (typically Opus) plans and reviews,
 Codex executes in the background, and the session is woken at gates instead of
 babysitting. Kicks `dev-review.sh --preset codex-build` via a background task,
 ends the turn, then runs a schema-bound ACCEPT / REVISE / ESCALATE gate on wake.
