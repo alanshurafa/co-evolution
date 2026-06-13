@@ -2,7 +2,7 @@
 name: codex-build
 description: >
   Orchestrate Codex to BUILD code in the background while this Claude Code
-  session (typically Fable) plans and reviews — never babysitting. The session
+  session (typically Opus) plans and reviews — never babysitting. The session
   composes the implementation plan, kicks the dev-review runner detached via a
   background Bash task with --preset codex-build, ENDS ITS TURN, and is woken on
   exit to run a schema-bound review gate (ACCEPT / REVISE / ESCALATE, max 2
@@ -16,8 +16,9 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 
 # /codex-build - Detached Codex Execution with Gate-Based Review
 
-This is the **orchestration protocol** behind the "Fable plans, Codex executes,
-Fable reviews" model ladder. The session is the composer and the reviewer; Codex
+This is the **orchestration protocol** behind the "best Claude plans, Codex
+executes, best Claude reviews" model ladder. The session is the composer and the
+reviewer; Codex
 is the executor. The defining rule: **the session is NEVER kept busy while Codex
 grinds.** You kick the runner as a background task, end your turn, and the
 harness wakes you when it exits.
@@ -67,9 +68,9 @@ claude -p --output-format text --model claude-haiku-4-5-20251001 "ping" 2>&1 | h
   verify phase uses Codex's schema-bound review instead. Tell the user plainly:
   the in-session review gate (Step 4, which YOU run) is then the only Claude-side
   review of the diff, and to run `claude /login` in a terminal to restore the
-  full ladder (Fable verifier seat inside the runner).
+  full ladder (the claude verifier seat inside the runner).
 - Otherwise: the full ladder is available. Kick with the preset's default claude
-  verifier (Fable, max effort) — no `--verifier` override needed.
+  verifier (best/Opus, max effort) — no `--verifier` override needed.
 
 ### No other active run
 
@@ -184,15 +185,32 @@ CO_EVOLVE_TOKEN_CAPTURE=1 bash dev-review/codex/dev-review.sh \
 
 Fill the brackets from Step 1:
 - `--verifier codex` ONLY when the auth probe degraded (else omit — the preset's
-  Fable/max claude verifier is the default).
+  best/max claude verifier is the default).
 - `--branch auto` for a clean tree; `--worktree auto` for a dirty tree.
 - `--parent-run <id>` only on a REVISE re-kick (Step 4), to tag lineage.
 - `--timeout` defaults to 1800s; raise it for large tasks.
 
-The preset expands to: composer = Fable (high), executor = Codex (xhigh, model
-left to the CLI's config), verifier = Fable (max), `--verify` on, bounces 2,
-revise-loop 1. `CO_EVOLVE_TOKEN_CAPTURE=1` records per-phase tokens into
-`state.json` so you can report spend at the gate.
+The preset expands to: composer = Opus (high), executor = Codex (xhigh, model
+left to the CLI's config), verifier = Opus (max), `--verify` on, bounces 2,
+revise-loop 1. The two Claude seats default through the `best` alias (currently
+`claude-opus-4-8`), so a future model bump is a one-line edit in the runner's
+`resolve_claude_model_alias`. `CO_EVOLVE_TOKEN_CAPTURE=1` records per-phase tokens
+into `state.json` so you can report spend at the gate.
+
+**Optional — make the seats follow THIS session's model.** By default the plan and
+review seats run `best` (a strong model) regardless of what you're driving the
+session with. To instead pin them to a specific model — e.g. match the session
+you're in — prepend the seat env vars to the kick (fill-if-empty means they win
+over the preset):
+
+```bash
+COMPOSER_MODEL=claude-opus-4-8 VERIFIER_MODEL=claude-opus-4-8 \
+CO_EVOLVE_TOKEN_CAPTURE=1 bash dev-review/codex/dev-review.sh \
+  --preset codex-build --skip-plan --plan "$PLAN_FILE" -- "<task>"
+```
+
+Only the Claude seats follow this; Codex always executes. A weak model here means
+weak planning/review — keep these on a strong model.
 
 After kicking:
 1. Capture the run id. It is `dev-review-<timestamp>` and the run dir is
@@ -323,7 +341,7 @@ Write a concise human summary — do NOT auto-merge, do NOT silently retry:
 | Machine slept during the run | wake notification may have been dropped | Run the status script manually; do not assume the run failed |
 | `tokens` block missing from state.json | `CO_EVOLVE_TOKEN_CAPTURE=1` was not set, or `jq` is missing | Re-kick with the flag set; install `jq` for token capture |
 | Verify silently skipped | dirty tree kicked without `--worktree auto`, or run left untracked files | Re-kick on a clean tree with `--branch auto`, or `--worktree auto` |
-| `claude` verifier seat errors mid-run | headless shell not logged in | Re-kick with `--verifier codex`; run `claude /login` to restore the Fable seat |
+| `claude` verifier seat errors mid-run | headless shell not logged in | Re-kick with `--verifier codex`; run `claude /login` to restore the claude verifier seat |
 
 ---
 
@@ -362,13 +380,15 @@ carries CI.
 
 ## Notes
 
-- **Why detached, not babysat:** the post that inspired this (Fable plans, Codex
-  executes, Fable reviews) keeps a session supervising inline, burning cache
-  reads every turn. This skill kicks the runner via background Bash, ends the
-  turn, and gets woken on exit — the session pays only for plan + review gates.
+- **Why detached, not babysat:** the post that inspired this (strong model plans,
+  Codex executes, strong model reviews) keeps a session supervising inline,
+  burning cache reads every turn. This skill kicks the runner via background Bash,
+  ends the turn, and gets woken on exit — the session pays only for plan + review
+  gates.
 - **The preset is the single source of truth for the seats.** `codex-build`
-  expands to Fable/high · Codex/xhigh · Fable/max · verify on · bounces 2 ·
+  expands to best/high · Codex/xhigh · best/max · verify on · bounces 2 ·
   revise-loop 1, inside `dev-review/codex/dev-review.sh` (`apply_preset`). The
+  `best` alias resolves to the current Opus line. The
   preset triple is pinned by `tests/docs-sync-simulation.sh` so this doc and the
   runner cannot drift.
 - **Live-mode caveat:** `--live` codex windows ignore model/effort overrides

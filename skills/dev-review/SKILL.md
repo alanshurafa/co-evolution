@@ -29,7 +29,7 @@ repo change or code-focused verification workflow.
 For the **detached** flavor — the session plans and reviews while Codex executes
 in the background and the session is woken at gates instead of babysitting — use
 `/codex-build` (`skills/codex-build/`). It kicks the standalone runner with
-`--preset codex-build` (Fable plans at `high`, Codex executes at `xhigh`, Fable
+`--preset codex-build` (Opus plans at `high`, Codex executes at `xhigh`, Opus
 reviews at `max`; `--verify` on, bounces `2`, revise-loop `1`) and applies a
 schema-bound ACCEPT / REVISE / ESCALATE gate. `/dev-review` is the interactive
 single-session loop; `/codex-build` is the same pipeline run detached.
