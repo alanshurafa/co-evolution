@@ -5,6 +5,8 @@
 #
 # The codex-build preset expands to the post's ladder — best (currently Opus)
 # plans (high), Codex executes (xhigh), best reviews (max) — behind one flag.
+# The claude-build preset mirrors it: Codex plans/reviews (xhigh, model
+# unpinned), Claude executes (best/high).
 # This gate pins:
 #   a. seat argv under the preset (composer claude --model claude-opus-4-8
 #      [the `best` alias resolved] --effort high; executor codex
@@ -23,6 +25,9 @@
 #      on a ChatGPT account); seat_models.verifier falls back to default.
 #   i. alias resolution: resolve_claude_model_alias maps best/opus ->
 #      claude-opus-4-8, keeps fable -> claude-fable-5, passes ids through.
+#   j. --preset claude-build: composer=codex xhigh/no model, executor=claude
+#      best/high, verifier=codex xhigh/no model, with no codex model leaking
+#      into the claude executor argv.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -69,7 +74,9 @@ mkdir -p "$TEST_DIR/bin"
 # drain stdin via read-loop, then emit a phase-appropriate body. The verify
 # phase is detected by the review-prompt heading on stdin; for it the stub
 # emits a verdict whose JSON object lives at column 0 wrapped in prose + fences
-# (exercises the brace-block hardening fallback). All other phases emit a plan.
+# (exercises the brace-block hardening fallback). The Opus execute phase appends
+# to touched.txt when the runner grants a writable --add-dir. All other phases
+# emit a plan.
 cat > "$TEST_DIR/bin/claude" <<'STUB'
 #!/usr/bin/env bash
 for arg in "$@"; do
@@ -78,6 +85,13 @@ for arg in "$@"; do
   esac
 done
 [[ -n "${CLAUDE_ARGV_LOG:-}" ]] && printf '%s\n' "$*" >> "$CLAUDE_ARGV_LOG"
+workdir=""; prev=""
+for arg in "$@"; do
+  case "$prev" in
+    --add-dir) workdir="$arg" ;;
+  esac
+  prev="$arg"
+done
 # Drain stdin via read-loop (no SIGPIPE); capture it so we can detect the phase.
 stdin_capture=""
 while IFS= read -r _line; do stdin_capture+="$_line"$'\n'; done
@@ -100,6 +114,10 @@ Here is my assessment of the diff against the plan.
 That concludes the review.
 VERDICT
   exit 0
+fi
+if [[ "$stdin_capture" == *"Execution Instructions (Opus)"* \
+      && -n "$workdir" && -f "$workdir/touched.txt" ]]; then
+  printf 'claude-stub-change\n' >> "$workdir/touched.txt"
 fi
 # Compose / bounce phase: emit a minimal valid plan that clears the plan_quality
 # gate (validate_plan_artifact wants >= 60 words, >= 5 non-empty lines, >= 2
@@ -349,8 +367,8 @@ fi
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 e_out=$(bash "$RUNNER" --preset bogus -- "x" 2>&1 || true)
-if printf '%s' "$e_out" | grep -Eq 'Unknown preset: bogus'; then
-  pass "unknown preset dies with the unknown-preset message"
+if printf '%s' "$e_out" | grep -Eq 'Unknown preset: bogus \(available: codex-build, claude-build\)'; then
+  pass "unknown preset dies with the unknown-preset message and available presets"
 else
   fail "unknown preset did not produce the expected die message (got: $e_out)"
 fi
@@ -360,10 +378,12 @@ fi
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 help_out=$(bash "$RUNNER" --help 2>/dev/null || true)
-if printf '%s' "$help_out" | grep -Eq -- '--preset'; then
-  pass "--help mentions --preset"
+if printf '%s' "$help_out" | grep -Eq -- '--preset' \
+   && printf '%s' "$help_out" | grep -Eq -- 'codex-build, claude-build' \
+   && printf '%s' "$help_out" | grep -Eq -- 'claude-build = Codex plans'; then
+  pass "--help mentions --preset and both build presets"
 else
-  fail "--help does not mention --preset"
+  fail "--help does not mention --preset and both build presets"
 fi
 
 # ===========================================================================
@@ -472,6 +492,64 @@ if [[ "$i_ok" == true ]]; then
 else
   fail "alias resolution mismatch (best=$(resolve_claude_model_alias best 2>/dev/null), opus=$(resolve_claude_model_alias opus 2>/dev/null), fable=$(resolve_claude_model_alias fable 2>/dev/null))"
 fi
+
+# ===========================================================================
+# Scenario (j): --preset claude-build -> seat argv. This is the reverse ladder:
+# codex composes/reviews at xhigh with no pinned model; claude executes with
+# best resolved to the current Opus id and high effort. Also asserts the
+# symmetric leak guard direction: no codex-shaped model reaches the claude
+# executor argv.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo j)
+claude_log="$TEST_DIR/j_claude.log"; codex_log="$TEST_DIR/j_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --preset claude-build --workdir "$repo" --timeout 60 -- "preset claude-build seat argv probe"
+) >"$TEST_DIR/j.out" 2>&1 || true
+j_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+j_claude_execute_argv=$(grep -- '--permission-mode bypassPermissions' "$claude_log" || true)
+j_codex_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
+j_ok=true
+
+# Composer/verifier = codex with xhigh effort and no pinned model.
+if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then j_ok=false; fi
+if grep -Eq -- '-c model=' "$codex_log"; then j_ok=false; fi
+if [[ -z "$j_codex_verify_argv" ]]; then j_ok=false; fi
+if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model_reasoning_effort=xhigh'; then j_ok=false; fi
+
+# Executor = claude writable argv with best -> claude-opus-4-8 and effort high.
+if [[ -z "$j_claude_execute_argv" ]]; then j_ok=false; fi
+if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model claude-opus-4-8'; then j_ok=false; fi
+if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--effort high'; then j_ok=false; fi
+if printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model (gpt-|codex)'; then j_ok=false; fi
+
+if [[ -n "$j_run_dir" && "$j_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.composer == "codex:(default)@xhigh"
+              and .seat_models.executor == "opus:claude-opus-4-8@high"
+              and .seat_models.verifier == "codex:(default)@xhigh"' \
+       "$j_run_dir/state.json" >/dev/null 2>&1; then
+    j_ok=false
+  fi
+else
+  j_ok=false
+fi
+
+if [[ "$j_ok" == true ]]; then
+  pass "preset claude-build: composer codex/xhigh (no model), executor best->opus/high, verifier codex/xhigh (no model)"
+else
+  fail "preset claude-build seat argv mismatch (run dir: ${j_run_dir:-<none>})"
+  { echo "--- claude execute argv ---"; printf '%s\n' "$j_claude_execute_argv"
+    echo "--- codex argv ---"; cat "$codex_log"
+    [[ -n "${j_run_dir:-}" && -f "$j_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$j_run_dir/state.json"; }
+  } >&2
+fi
+[[ -n "${j_run_dir:-}" && "$j_run_dir" != "$run_dir_before" ]] && rm -rf "$j_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))
