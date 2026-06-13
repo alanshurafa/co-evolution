@@ -315,18 +315,36 @@ write_text_file() {
 
 agent_auth_failed() {
   local agent="$1"
-  shift
-  local file_path
-  local cli_name
+  local output_file="${2:-}"
+  local stderr_file="${3:-}"
+  local cli_name words
 
   cli_name=$(agent_cli_name "$agent")
 
-  for file_path in "$@"; do
-    if file_contains_auth_failure "$file_path"; then
+  # A genuine auth failure means the CLI bailed BEFORE doing work, so its banner
+  # is short and stands alone. Mirror validate_agent_artifact's discriminator so
+  # a substantial work product that merely echoes auth strings — e.g. plan text,
+  # or the auth-detection source itself — is never misread as an auth failure.
+  #
+  # (1) Auth banner IN THE OUTPUT, but only when the output is short (< 50
+  #     words). A long output that mentions "Unauthorized"/"Not logged in" is
+  #     real work, not the CLI's own banner.
+  if [[ -n "$output_file" ]] && file_contains_auth_failure "$output_file"; then
+    words=$(wc -w < "$output_file" | tr -d '\r\n ')
+    if (( words < 50 )); then
       log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
       return 0
     fi
-  done
+  fi
+
+  # (2) Auth banner in STDERR counts only when the agent produced NO output. A
+  #     non-empty work product means the CLI authenticated and ran; auth strings
+  #     in its (possibly huge) working log are echoed content, not the banner.
+  if [[ ! -s "$output_file" && -n "$stderr_file" && -s "$stderr_file" ]] \
+     && file_contains_auth_failure "$stderr_file"; then
+    log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
+    return 0
+  fi
 
   return 1
 }
