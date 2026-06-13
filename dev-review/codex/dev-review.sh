@@ -87,8 +87,9 @@ Options:
   --model MODEL            Override Codex model
   --verifier AGENT         Force the verify-phase agent (codex|opus|claude); default derives from --executor
   --claude-model MODEL     Override Claude model (aliases: best/opus -> claude-opus-4-8, fable -> claude-fable-5; else passthrough)
-  --preset NAME            Expand a named seat preset (available: codex-build).
+  --preset NAME            Expand a named seat preset (available: codex-build, claude-build).
                            codex-build = best (currently Opus) plans (high) + Codex executes (xhigh) + best reviews (max),
+                           claude-build = Codex plans (xhigh) + Claude executes (best/high) + Codex reviews (xhigh),
                            --verify on, bounces 2, revise-loop 1. Precedence: flags placed AFTER --preset
                            override it (last-wins); pre-set model/effort env vars win over the preset.
   --workdir DIR            Working directory (default: current directory)
@@ -158,7 +159,14 @@ apply_preset() {
       : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
       : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
       ;;
-    *) die "Unknown preset: $1 (available: codex-build)" ;;
+    claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
+      COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
+      VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
+      : "${COMPOSER_EFFORT:=xhigh}"   # codex plans; model left to the CLI's config (unpinned)
+      : "${VERIFIER_EFFORT:=xhigh}"   # codex reviews; model unpinned
+      ;;
+    *) die "Unknown preset: $1 (available: codex-build, claude-build)" ;;
   esac
 }
 
