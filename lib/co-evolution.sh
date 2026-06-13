@@ -58,6 +58,15 @@ LIVE_MODE_WARNING_LOGGED=false
 # appends -c model= when it is set.)
 : "${CLAUDE_MODEL:=claude-opus-4-6}"
 
+# v1.5: Per-seat reasoning-effort knobs. Both default empty = OFF, so invoke_*
+# omit the effort flag entirely and argv stays byte-identical to today (parity
+# invariant). When non-empty, invoke_claude appends `--effort "$CLAUDE_EFFORT"`
+# and invoke_codex appends `-c model_reasoning_effort=...`. `--effort high` is
+# proven headless in -p mode at evals/judge-bounce.sh:58 (built into JUDGE_ARGS,
+# consumed by the `"$JUDGE_CMD" -p ...` call at evals/judge-bounce.sh:139).
+: "${CLAUDE_EFFORT:=}"
+: "${CODEX_REASONING_EFFORT:=}"
+
 # RNPT-02: Authoritative list of phases that require write access to the workdir.
 # Phase code MUST NOT pass a hard-coded "true"/"false" to invoke_agent; it must
 # call `phase_is_writable "<phase-name>"` instead. To add a new writable phase
@@ -408,11 +417,69 @@ invoke_claude() {
     tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
   fi
 
+  # v1.5: model + optional reasoning effort. CLAUDE_EFFORT defaults empty (OFF)
+  # so model_flags is exactly `--model "$CLAUDE_MODEL"` and argv is byte-identical
+  # to the prior single-flag form. The --effort element is appended only when set.
+  local -a model_flags=(--model "${CLAUDE_MODEL}")
+  if [[ -n "${CLAUDE_EFFORT:-}" ]]; then
+    model_flags+=(--effort "${CLAUDE_EFFORT}")
+  fi
+
+  # v1.5 Phase 4: per-phase token capture, default OFF. Gated behind
+  # CO_EVOLVE_TOKEN_CAPTURE=1 AND jq present so the default path stays
+  # byte-identical (argv + artifacts). When ON we swap `--output-format text`
+  # for `--output-format json`: the JSON envelope (R1) carries `.usage` token
+  # counts, and `.result` holds the same text the text path would have emitted.
+  # PRTP-03 reminder: this is `--output-format json`, NOT `--output-schema`
+  # (the latter hangs claude -p on Windows). The gate keeps it default-off so
+  # the Windows precedent is respected unless an operator opts in.
+  local capture_json=false
+  if [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]] && command -v jq >/dev/null 2>&1; then
+    capture_json=true
+  fi
+
+  local output_format=text
+  [[ "$capture_json" == "true" ]] && output_format=json
+
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
-    cmd=(cmd.exe /c claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
+    cmd=(cmd.exe /c claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
   else
-    cmd=(claude -p --output-format text --model "${CLAUDE_MODEL}" "${tool_flags[@]}")
+    cmd=(claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
+  fi
+
+  if [[ "$capture_json" == "true" ]]; then
+    local envelope_file="${output_file}.envelope.json"
+    local usage_file="${output_file}.usage.json"
+    # The envelope is emitted on stdout even on failure (R1: is_error=true still
+    # carries a body, exit nonzero) — `|| true` matches the text path and we
+    # parse regardless. Capture stdout to the envelope, NOT the output file.
+    "${cmd[@]}" < "$prompt_file" > "$envelope_file" 2>"$stderr_file" || true
+    # Extract `.result` into the output file so the external contract is
+    # preserved: callers (validate_agent_artifact, file_contains_auth_failure)
+    # only ever read $output_file. On auth failure `.result` is the "Not logged
+    # in" banner, so the existing auth gate keeps working. If `.result` is empty
+    # or the envelope is unparseable, fall back to copying the raw envelope so
+    # validate_agent_artifact sees a non-empty file rather than a silent blank.
+    if jq -e 'has("result") and (.result | type == "string") and (.result | length > 0)' \
+         "$envelope_file" >/dev/null 2>&1; then
+      jq -r '.result // empty' "$envelope_file" > "$output_file"
+    else
+      cp "$envelope_file" "$output_file"
+    fi
+    # Usage sidecar (R1 fields). `// null` guards a malformed/partial envelope so
+    # the file is always valid JSON for collect_token_usage to slurp. Never
+    # fatal — token capture must not break a run.
+    jq '{
+          input_tokens: (.usage.input_tokens // null),
+          output_tokens: (.usage.output_tokens // null),
+          cache_read_input_tokens: (.usage.cache_read_input_tokens // null),
+          cache_creation_input_tokens: (.usage.cache_creation_input_tokens // null),
+          total_cost_usd: (.total_cost_usd // null),
+          source: "claude-json"
+        }' "$envelope_file" > "$usage_file" 2>/dev/null \
+      || printf '{"input_tokens":null,"output_tokens":null,"cache_read_input_tokens":null,"cache_creation_input_tokens":null,"total_cost_usd":null,"source":"claude-json"}\n' > "$usage_file"
+    return 0
   fi
 
   "${cmd[@]}" < "$prompt_file" > "$output_file" 2>"$stderr_file" || true
@@ -439,10 +506,61 @@ invoke_codex() {
     cmd+=(-c "model=${CODEX_MODEL}")
   fi
 
+  # v1.5: optional reasoning effort. Defaults empty (OFF) → no -c append, so argv
+  # is byte-identical to today. Appended only when CODEX_REASONING_EFFORT is set.
+  if [[ -n "${CODEX_REASONING_EFFORT:-}" ]]; then
+    cmd+=(-c "model_reasoning_effort=${CODEX_REASONING_EFFORT}")
+  fi
+
   if [[ -n "${windows_output:-}" ]]; then
     cmd+=(-o "$windows_output")
   else
     cmd+=(-o "$output_file")
+  fi
+
+  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
+}
+
+# v1.5 (fixes B2): relocated verbatim from dev-review/codex/dev-review.sh so the
+# verify-phase `bash -c 'source lib/co-evolution.sh; invoke_codex_schema ...'`
+# child can actually find it (it was defined only in dev-review.sh → exit 127
+# whenever a timeout binary exists and verifier=codex). Behavior is identical to
+# the prior local copy (--output-schema / -o / --skip-git-repo-check / WSL path
+# handling), plus the same conditional model + reasoning-effort appends that
+# invoke_codex grew above — both default-off so argv is unchanged when unset.
+invoke_codex_schema() {
+  local prompt_file="$1"
+  local output_file="$2"
+  local stderr_file="$3"
+  local schema_file="$4"
+  local workdir="${WORKDIR:-$PWD}"
+  local -a cmd
+  local windows_workdir=""
+  local windows_output=""
+  local windows_schema=""
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    windows_workdir=$(wslpath -w "$workdir")
+    windows_output=$(wslpath -w "$output_file")
+    windows_schema=$(wslpath -w "$schema_file")
+    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+  else
+    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+  fi
+
+  if [[ -n "${CODEX_MODEL:-}" ]]; then
+    cmd+=(-c "model=${CODEX_MODEL}")
+  fi
+
+  # v1.5: optional reasoning effort. Defaults empty (OFF) → no -c append.
+  if [[ -n "${CODEX_REASONING_EFFORT:-}" ]]; then
+    cmd+=(-c "model_reasoning_effort=${CODEX_REASONING_EFFORT}")
+  fi
+
+  if [[ -n "$windows_schema" ]]; then
+    cmd+=(--output-schema "$windows_schema" -o "$windows_output")
+  else
+    cmd+=(--output-schema "$schema_file" -o "$output_file")
   fi
 
   "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
@@ -1206,6 +1324,165 @@ write_state_phase() {
     fi
   else
     log "WARNING: jq unavailable — write_state_phase skipping ($phase_name)"
+  fi
+}
+
+# v1.5: record the phase now STARTING (write_state_phase records completions).
+# Sets .current_phase = {name, started_at} and bumps .updated_at so a status
+# reader knows which phase the runner is in mid-run. The EOF block clears it
+# back to null. Single-writer discipline: called from the runner main flow only
+# — there is NO concurrent heartbeat loop, which would race write_state_field's
+# read-modify-write. Degrades silently (return 0) when jq is absent, matching
+# write_state_phase / write_state_field.
+begin_state_phase() {
+  local state_path="${1:?state path required}"
+  local phase_name="${2:?phase name required}"
+
+  if command -v jq >/dev/null 2>&1; then
+    local tmp now
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    tmp=$(mktemp)
+    # FIX-WR-02 idiom: clean up $tmp on jq failure so we don't leak files.
+    if jq --arg name "$phase_name" --arg now "$now" \
+       '.current_phase = {name: $name, started_at: $now} | .updated_at = $now' \
+       "$state_path" > "$tmp"; then
+      mv "$tmp" "$state_path"
+    else
+      rm -f "$tmp"
+      log "WARNING: jq failed in begin_state_phase ($phase_name) — state.json unchanged"
+    fi
+  else
+    log "WARNING: jq unavailable — begin_state_phase skipping ($phase_name)"
+  fi
+}
+
+# v1.5 Phase 4: aggregate per-phase token usage into state.json. Called ONLY
+# when CO_EVOLVE_TOKEN_CAPTURE=1 (the runner gates the call), so when the flag
+# is off there is no `tokens` key at all — state.json stays byte-identical.
+#
+# Two evidence sources, both already on disk by the time this runs:
+#   1. Claude usage sidecars (`*.usage.json`, written by invoke_claude's gated
+#      JSON path). Mapped to a phase via the sidecar's base output filename:
+#        .compose-output.md.usage.json   -> compose
+#        .bounce-output-N.md.usage.json  -> bounce-NN (zero-padded)
+#        execute-output.md.usage.json    -> execute
+#        verdict.json.usage.json         -> verify
+#   2. Codex token line (R2) harvested read-only from per-phase stderr logs:
+#        compose-stderr.log   -> compose
+#        pass-N-stderr.log     -> bounce-NN
+#        execute-stderr.log    -> execute
+#        review-stderr.log     -> verify
+#      Format: the literal line `tokens used` immediately followed by a
+#      comma-formatted integer. awk grabs the next line and strips commas.
+#
+# Writes ONE `tokens` block: {phases:{<phase>:{…}}, totals:{…}} and bumps
+# .updated_at. Degrades silently when jq is unavailable. The caller removes the
+# transient sidecars afterward (state.json is the durable record).
+collect_token_usage() {
+  local run_dir="${1:?run_dir required}"
+  local state_json="${2:?state_json required}"
+
+  command -v jq >/dev/null 2>&1 || {
+    log "WARNING: jq unavailable — collect_token_usage skipping"
+    return 0
+  }
+  [[ -f "$state_json" ]] || return 0
+
+  # Build the phases object incrementally as a JSON string.
+  local phases_json='{}'
+  local tmp
+
+  # --- 1. Claude usage sidecars -------------------------------------------
+  # Two globs: the leading-dot one matches compose/bounce sidecars whose base
+  # output file is itself dot-prefixed (.compose-output.md.usage.json,
+  # .bounce-output-N.md.usage.json) — a plain *.usage.json glob skips dotfiles.
+  local sidecar base phase pass
+  for sidecar in "$run_dir"/*.usage.json "$run_dir"/.*.usage.json; do
+    [[ -e "$sidecar" ]] || continue          # no-glob guard
+    base=$(basename "$sidecar")
+    base="${base%.usage.json}"               # strip sidecar suffix -> output filename
+    case "$base" in
+      .compose-output.md) phase="compose" ;;
+      execute-output.md)  phase="execute" ;;
+      verdict.json)       phase="verify" ;;
+      .bounce-output-*.md)
+        pass="${base#.bounce-output-}"
+        pass="${pass%.md}"
+        if [[ "$pass" =~ ^[0-9]+$ ]]; then
+          printf -v phase 'bounce-%02d' "$pass"
+        else
+          phase="bounce-${pass}"
+        fi
+        ;;
+      *) phase="$base" ;;                     # unknown shape: key by raw base
+    esac
+    # Merge this sidecar's object under .<phase>. Tolerate a malformed sidecar.
+    if tmp=$(jq --arg p "$phase" --slurpfile s "$sidecar" \
+               '. + {($p): $s[0]}' <<<"$phases_json" 2>/dev/null); then
+      phases_json="$tmp"
+    fi
+  done
+
+  # --- 2. Codex stderr token lines ----------------------------------------
+  local stderr_log log_base codex_phase tokens_val
+  for stderr_log in "$run_dir"/compose-stderr.log "$run_dir"/execute-stderr.log \
+                    "$run_dir"/review-stderr.log "$run_dir"/pass-*-stderr.log; do
+    [[ -f "$stderr_log" ]] || continue
+    log_base=$(basename "$stderr_log")
+    case "$log_base" in
+      compose-stderr.log) codex_phase="compose" ;;
+      execute-stderr.log) codex_phase="execute" ;;
+      review-stderr.log)  codex_phase="verify" ;;
+      pass-*-stderr.log)
+        pass="${log_base#pass-}"
+        pass="${pass%-stderr.log}"
+        if [[ "$pass" =~ ^[0-9]+$ ]]; then
+          printf -v codex_phase 'bounce-%02d' "$pass"
+        else
+          codex_phase="bounce-${pass}"
+        fi
+        ;;
+      *) continue ;;
+    esac
+    # Skip the retry-stderr variants (pass-N-stderr-retry.log won't match the
+    # globs above; the primary logs are authoritative for the phase total).
+    tokens_val=$(awk '/^tokens used$/{getline; gsub(",",""); print; exit}' "$stderr_log" 2>/dev/null)
+    [[ "$tokens_val" =~ ^[0-9]+$ ]] || continue
+    # A claude sidecar already claimed this phase only if claude ran it; codex
+    # phases never have a sidecar, so this is collision-free in practice. If both
+    # somehow exist, the codex entry wins last (rare/diagnostic).
+    if tmp=$(jq --arg p "$codex_phase" --argjson t "$tokens_val" \
+               '. + {($p): {source: "codex-stderr", total_tokens: $t}}' \
+               <<<"$phases_json" 2>/dev/null); then
+      phases_json="$tmp"
+    fi
+  done
+
+  # --- 3. Totals + single write into state.json ----------------------------
+  # Totals sum across phases: claude fields from claude-json sidecars, codex
+  # tokens from codex-stderr entries. Nulls are treated as 0 in the sums.
+  local now
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  tmp=$(mktemp)
+  if jq --argjson phases "$phases_json" --arg now "$now" '
+        ($phases | to_entries) as $entries |
+        def num($x): ($x // 0);
+        {
+          phases: $phases,
+          totals: {
+            claude_input:      ([$entries[] | select(.value.source=="claude-json") | num(.value.input_tokens)] | add // 0),
+            claude_output:     ([$entries[] | select(.value.source=="claude-json") | num(.value.output_tokens)] | add // 0),
+            claude_cache_read: ([$entries[] | select(.value.source=="claude-json") | num(.value.cache_read_input_tokens)] | add // 0),
+            claude_cost_usd:   ([$entries[] | select(.value.source=="claude-json") | num(.value.total_cost_usd)] | add // 0),
+            codex_total_tokens:([$entries[] | select(.value.source=="codex-stderr") | num(.value.total_tokens)] | add // 0)
+          }
+        } as $tokens |
+        .tokens = $tokens | .updated_at = $now
+      ' "$state_json" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$state_json"
+  else
+    rm -f "$tmp"
+    log "WARNING: jq failed in collect_token_usage — state.json unchanged (no tokens block)"
   fi
 }
 

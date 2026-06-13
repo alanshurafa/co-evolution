@@ -173,6 +173,7 @@ fallthrough.
 | Existing markdown document needs refinement | `co-evolve-bouncer.sh --bounce-only` |
 | Small, low-risk repo edit in 1-2 files | Direct execution |
 | Multi-file code change, medium/high risk, or plan/verify workflow | `dev-review/codex/dev-review.sh` |
+| Codex builds in the background while the session plans and reviews | `skills/codex-build/` (`--preset codex-build`, detached) |
 | General co-evolution inside Claude Code | `skills/co-evolution/` |
 | Code pipeline inside Claude Code | `skills/dev-review/` |
 | External MCP client (Claude Desktop, Cursor, Continue) | `npm i -g @alanshurafa/co-evolution-mcp` |

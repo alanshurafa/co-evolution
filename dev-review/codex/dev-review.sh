@@ -27,6 +27,13 @@ LIVE_MODE="${LIVE_MODE:-false}"
 # exclusive — both non-empty after parsing = die. Default empty = Phase 3 byte-parity.
 BRANCH_SPEC="${DEV_REVIEW_BRANCH:-}"
 WORKTREE_SPEC="${DEV_REVIEW_WORKTREE:-}"
+# v1.5: explicit verifier seat override. Empty = derive from executor via the
+# existing select_verifier logic (byte-parity default). Env default + --verifier flag.
+VERIFIER_OVERRIDE="${DEV_REVIEW_VERIFIER:-}"
+# v1.5: named seat preset (e.g. codex-build). Empty = no preset (byte-parity
+# default). Applied in-parser so AFTER-preset flags win (last-wins) and model/
+# effort values fill-if-empty so pre-set env vars win. See apply_preset().
+PRESET=""
 BRANCH_CREATED=""
 WORKTREE_PATH=""
 WORKDIR="$(pwd)"
@@ -60,6 +67,9 @@ FLAVOR_OVERRIDE=""
 # (byte-parity invariant SC-5 / D-06). Harness-side passes an absolute path rooted under
 # the eval fixture's .co-evolution/runs/ subtree.
 RUN_DIR_OVERRIDE=""
+# v1.5 Phase 3: lineage token for orchestrated re-kicks. Empty = standalone run
+# (byte-parity: .orchestration is omitted). Validated as a safe fs-ish token.
+PARENT_RUN_ID=""
 
 usage() {
   cat <<'EOF'
@@ -75,12 +85,20 @@ Options:
   --skip-plan              Skip compose+bounce and execute an existing plan
   --plan FILE              Existing plan file to use with --skip-plan
   --model MODEL            Override Codex model
+  --verifier AGENT         Force the verify-phase agent (codex|opus|claude); default derives from --executor
+  --claude-model MODEL     Override Claude model (aliases: best/opus -> claude-opus-4-8, fable -> claude-fable-5; else passthrough)
+  --preset NAME            Expand a named seat preset (available: codex-build, claude-build).
+                           codex-build = best (currently Opus) plans (high) + Codex executes (xhigh) + best reviews (max),
+                           claude-build = Codex plans (xhigh) + Claude executes (best/high) + Codex reviews (xhigh),
+                           --verify on, bounces 2, revise-loop 1. Precedence: flags placed AFTER --preset
+                           override it (last-wins); pre-set model/effort env vars win over the preset.
   --workdir DIR            Working directory (default: current directory)
   --timeout SECONDS        Per-phase timeout in seconds (default: 1800)
   --revise-loop N          Auto-retry on REVISE verdict up to N extra passes (default: 0 = disabled)
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
+  --parent-run RUN_ID      Lineage tag: record the orchestrator's parent run id in state.orchestration.parent_run_id (re-kicks always get a fresh run dir; no behavior change)
   --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
   --target FILE            PEL-only: file to mutate (used with --lab pel-proposer; must be repo-relative forward-slash path, e.g. lib/co-evolution.sh — NOT absolute or WSL/Windows-style)
   --tier TIER              PEL-only: override tier auto-detect (template|policy|code)
@@ -107,6 +125,48 @@ normalize_agent() {
     *)
       return 1
       ;;
+  esac
+}
+
+# v1.5: resolve a friendly Claude model alias to its CLI model id. `best` and
+# `opus` resolve to the current Opus line (claude-opus-4-8); `fable` is retained
+# for back-compat only (currently unreachable). Anything else passes through
+# verbatim so explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty
+# value are untouched. Used by the --claude-model flag and the per-seat env layer.
+# Bumping the Claude default to a new model = edit the `best` arm here, one place.
+resolve_claude_model_alias() {
+  case "$1" in
+    best)  echo "claude-opus-4-8" ;;   # strongest supported Claude default for the preset
+    opus)  echo "claude-opus-4-8" ;;   # current Opus-line model
+    fable) echo "claude-fable-5" ;;    # retained for back-compat; currently unreachable, do not default to it
+    *)     echo "$1" ;;
+  esac
+}
+
+# v1.5: expand a named seat preset into the underlying seat/model/effort knobs.
+# Called from the --preset parser arm. Two precedence rules, both deliberate:
+#   - seat/structural knobs (COMPOSER, EXECUTOR, VERIFIER_OVERRIDE, VERIFY,
+#     BOUNCES, REVISE_LOOP_MAX) are set hard, so flags placed AFTER --preset
+#     override them via last-wins parsing.
+#   - model/effort knobs use fill-if-empty (`: "${VAR:=…}"`) so a value already
+#     present in the environment (e.g. COMPOSER_EFFORT=low) wins over the preset.
+apply_preset() {
+  case "$1" in
+    codex-build)   # "build with codex": best Claude seats plan/review, Codex executes.
+      COMPOSER="opus"; EXECUTOR="codex"; VERIFIER_OVERRIDE="opus"
+      VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
+      : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
+      : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
+      ;;
+    claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
+      COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
+      VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
+      : "${COMPOSER_EFFORT:=xhigh}"   # codex plans; model left to the CLI's config (unpinned)
+      : "${VERIFIER_EFFORT:=xhigh}"   # codex reviews; model unpinned
+      ;;
+    *) die "Unknown preset: $1 (available: codex-build, claude-build)" ;;
   esac
 }
 
@@ -169,6 +229,12 @@ require_agent_cli() {
 }
 
 select_verifier() {
+  # v1.5: an explicit --verifier / DEV_REVIEW_VERIFIER override wins; otherwise
+  # derive the opposite-of-executor default (byte-parity when unset).
+  if [[ -n "${VERIFIER_OVERRIDE:-}" ]]; then
+    echo "$VERIFIER_OVERRIDE"
+    return 0
+  fi
   if [[ "$EXECUTOR" == "codex" ]]; then
     echo "opus"
   else
@@ -214,6 +280,14 @@ ensure_codex_compatible_workdir() {
     needs_codex="true"
   fi
 
+  # v1.5: with --verifier codex (or executor=opus default) the verify phase runs
+  # codex too, so its workdir must satisfy the same WSL constraint. Only matters
+  # when verification is requested. Byte-parity holds: default executor=codex →
+  # verifier=opus → this branch is a no-op.
+  if [[ "$VERIFY" == "true" && "$(select_verifier)" == "codex" ]]; then
+    needs_codex="true"
+  fi
+
   if [[ "$needs_codex" != "true" ]]; then
     return 0
   fi
@@ -226,38 +300,12 @@ ensure_codex_compatible_workdir() {
   fi
 }
 
-invoke_codex_schema() {
-  local prompt_file="$1"
-  local output_file="$2"
-  local stderr_file="$3"
-  local schema_file="$4"
-  local workdir="${WORKDIR:-$PWD}"
-  local -a cmd
-  local windows_workdir=""
-  local windows_output=""
-  local windows_schema=""
-
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
-    windows_workdir=$(wslpath -w "$workdir")
-    windows_output=$(wslpath -w "$output_file")
-    windows_schema=$(wslpath -w "$schema_file")
-    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
-  else
-    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
-  fi
-
-  if [[ -n "${CODEX_MODEL:-}" ]]; then
-    cmd+=(-c "model=${CODEX_MODEL}")
-  fi
-
-  if [[ -n "$windows_schema" ]]; then
-    cmd+=(--output-schema "$windows_schema" -o "$windows_output")
-  else
-    cmd+=(--output-schema "$schema_file" -o "$output_file")
-  fi
-
-  "${cmd[@]}" < "$prompt_file" > /dev/null 2>"$stderr_file" || true
-}
+# v1.5 (fixes B2): invoke_codex_schema now lives in lib/co-evolution.sh (sourced
+# at the top of this script). It was previously defined here, but the verify
+# phase dispatches it inside a `bash -c 'source lib/co-evolution.sh; invoke_...'`
+# child that can only see lib-defined functions — so the local copy was invisible
+# there (exit 127 when a timeout binary exists and verifier=codex). Moved to lib
+# so both the timeout child and the no-timeout fallback resolve the same function.
 
 write_text_file() {
   local output_path="$1"
@@ -267,18 +315,36 @@ write_text_file() {
 
 agent_auth_failed() {
   local agent="$1"
-  shift
-  local file_path
-  local cli_name
+  local output_file="${2:-}"
+  local stderr_file="${3:-}"
+  local cli_name words
 
   cli_name=$(agent_cli_name "$agent")
 
-  for file_path in "$@"; do
-    if file_contains_auth_failure "$file_path"; then
+  # A genuine auth failure means the CLI bailed BEFORE doing work, so its banner
+  # is short and stands alone. Mirror validate_agent_artifact's discriminator so
+  # a substantial work product that merely echoes auth strings — e.g. plan text,
+  # or the auth-detection source itself — is never misread as an auth failure.
+  #
+  # (1) Auth banner IN THE OUTPUT, but only when the output is short (< 50
+  #     words). A long output that mentions "Unauthorized"/"Not logged in" is
+  #     real work, not the CLI's own banner.
+  if [[ -n "$output_file" ]] && file_contains_auth_failure "$output_file"; then
+    words=$(wc -w < "$output_file" | tr -d '\r\n ')
+    if (( words < 50 )); then
       log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
       return 0
     fi
-  done
+  fi
+
+  # (2) Auth banner in STDERR counts only when the agent produced NO output. A
+  #     non-empty work product means the CLI authenticated and ran; auth strings
+  #     in its (possibly huge) working log are echoed content, not the banner.
+  if [[ ! -s "$output_file" && -n "$stderr_file" && -s "$stderr_file" ]] \
+     && file_contains_auth_failure "$stderr_file"; then
+    log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
+    return 0
+  fi
 
   return 1
 }
@@ -565,6 +631,10 @@ Output ONLY the plan document. No preamble."
   # abort_on_timeout will fire from main flow if the dispatcher reports 124.
   # RTUX-01: Launch a live-tail window before the agent call (no-op unless --live).
   maybe_launch_live_window "compose" "$compose_stderr_file"
+  # v1.5 Phase 3: mark the compose phase as STARTING (status reader heartbeat).
+  begin_state_phase "$STATE_JSON" "compose"
+  # v1.5: layer the composer seat's model/effort (no-op when no per-seat env set).
+  apply_seat_env composer "$COMPOSER"
   invoke_agent_with_timeout "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$(phase_is_writable compose)"
   abort_on_timeout "compose" "$phase_start"
   ensure_valid_plan_output "compose phase" "$COMPOSER" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" "$compose_retry_stderr_file" "" "compose" || return $?
@@ -655,6 +725,17 @@ run_bounce_phase() {
     # so state.json records which pass hit the timeout.
     # RTUX-01: Per-pass live-tail window (bounce-01, bounce-02, ...) when --live.
     maybe_launch_live_window "bounce-${pass_padded}" "$stderr_file"
+    # v1.5 Phase 3: mark this bounce pass as STARTING (matches the bounce-NN
+    # name write_state_phase records on completion).
+    begin_state_phase "$STATE_JSON" "bounce-${pass_padded}"
+    # v1.5: composer turns get the composer seat's model/effort; reviewer (the
+    # bounce counterparty) turns use globals only (the `bounce` seat is a no-op
+    # arm in apply_seat_env). No-op overall when no per-seat env is set.
+    if [[ "$role" == "composer" ]]; then
+      apply_seat_env composer "$current_agent"
+    else
+      apply_seat_env bounce "$current_agent"
+    fi
     invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$(phase_is_writable bounce)"
     abort_on_timeout "bounce-${pass_padded}" "$bounce_pass_start"
     ensure_valid_plan_output "bounce pass ${pass}" "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$retry_stderr_file" "$PLAN_PATH" "bounce" || return $?
@@ -733,6 +814,17 @@ run_execute_phase() {
     PRE_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
   fi
 
+  # v1.5 Phase 3: record the workdir HEAD just before the executor runs so a
+  # reviewer can pin the exact pre-change commit. Non-git / detached / failed
+  # rev-parse yields an empty PRE_EXECUTE_SHA → write null (never die).
+  if [[ -n "${STATE_JSON:-}" ]]; then
+    if [[ -n "$PRE_EXECUTE_SHA" ]]; then
+      write_state_field "$STATE_JSON" ".pre_execute_sha" "string" "$PRE_EXECUTE_SHA"
+    else
+      write_state_field "$STATE_JSON" ".pre_execute_sha" "null"
+    fi
+  fi
+
   # RNPT-03: Capture pre-execute baseline hash of every workdir file.
   # Delta computed post-execute and written into state.json.
   if [[ -n "${STATE_JSON:-}" && -n "${BASELINE_HASHES_JSON:-}" ]]; then
@@ -751,6 +843,10 @@ run_execute_phase() {
   # RNPT-05: timeout-wrapped. abort_on_timeout uses _execute_phase_start from main flow.
   # RTUX-01: Live-tail window for execute phase (no-op unless --live).
   maybe_launch_live_window "execute" "$execute_stderr_file"
+  # v1.5: layer the executor seat's model/effort. The in-phase empty-output retry
+  # below inherits these exported values (no second apply needed). No-op when no
+  # per-seat env is set.
+  apply_seat_env executor "$EXECUTOR"
   invoke_agent_with_timeout "$EXECUTOR" "$execute_prompt_file" "$execute_output_file" "$execute_stderr_file" "$(phase_is_writable execute)"
   abort_on_timeout "execute" "$phase_start"
 
@@ -776,6 +872,17 @@ run_execute_phase() {
   if [[ "$IN_GIT" == "true" ]]; then
     POST_EXECUTE_SHA=$(git -C "$WORKDIR" rev-parse HEAD 2>/dev/null || true)
     status_output=$(git -C "$WORKDIR" status --short)
+
+    # v1.5 Phase 3: record the workdir HEAD just after change detection so a
+    # reviewer can see whether the executor committed (pre != post) or left the
+    # tree dirty (pre == post). Empty rev-parse → null (never die).
+    if [[ -n "${STATE_JSON:-}" ]]; then
+      if [[ -n "$POST_EXECUTE_SHA" ]]; then
+        write_state_field "$STATE_JSON" ".post_execute_sha" "string" "$POST_EXECUTE_SHA"
+      else
+        write_state_field "$STATE_JSON" ".post_execute_sha" "null"
+      fi
+    fi
 
     # RNPT-03: Post-execute delta (runs regardless of "no changes" branch below
     # so Phase 8 scorer sees an empty delta rather than a missing field).
@@ -857,6 +964,10 @@ run_verify_phase() {
   fi
 
   verifier=$(select_verifier)
+  # v1.5: layer the verifier seat's model/effort, AFTER the verifier agent is
+  # resolved (the seat env keys off the agent type). Covers both the codex-schema
+  # and opus branches below. No-op when no per-seat env is set.
+  apply_seat_env verifier "$verifier"
 
   plan_content=$(cat "$PLAN_PATH")
   diff_content=$(cat "$diff_file")
@@ -905,15 +1016,30 @@ run_verify_phase() {
     return 2
   fi
 
-  verdict_data=$(normalize_json_artifact "$verdict_file" "$normalized_verdict_file") || {
-    log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
-    return 2
-  }
+  if ! verdict_data=$(normalize_json_artifact "$verdict_file" "$normalized_verdict_file"); then
+    # v1.5: claude verifiers (no --output-schema) sometimes wrap the verdict in
+    # prose, which normalize_json_artifact rejects. Try a brace-block extraction
+    # (same idiom as evals/judge-bounce.sh:149) before giving up. codex verdicts
+    # come from --output-schema and never hit this branch (they normalize clean).
+    sed -n '/^{/,/^}/p' "$verdict_file" > "$normalized_verdict_file"
+    if [[ ! -s "$normalized_verdict_file" ]]; then
+      log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
+      return 2
+    fi
+  fi
 
   verdict_data=$(validate_review_verdict "$normalized_verdict_file") || {
     log "WARNING: verifier output was unusable: ${verdict_data}. Review manually."
     return 2
   }
+
+  # v1.5: persist the normalized verdict back to the contract path so downstream
+  # consumers (evals/score-run.sh jq-parses verdict.json raw; mapping unparseable
+  # -> FAIL) read clean JSON. Byte-no-op for codex --output-schema verdicts, which
+  # are already clean. The dot-prefixed .verdict-normalized.json copy stays for the
+  # revise-loop read; cleanup_runtime_artifacts sweeps it but verdict.json (plain
+  # path, no leading dot) survives as the contract artifact.
+  cp "$normalized_verdict_file" "$verdict_file"
 
   eval "$verdict_data"
 
@@ -937,8 +1063,33 @@ cleanup_runtime_artifacts() {
   find "$RUN_DIR" -maxdepth 1 -type f -name '.*' -delete 2>/dev/null || true
 }
 
+# v1.5 Phase 4: token-usage aggregation, gated on CO_EVOLVE_TOKEN_CAPTURE=1.
+# When the flag is unset/off this is a no-op and state.json never grows a
+# `tokens` key (byte-parity). Called just BEFORE cleanup_runtime_artifacts in
+# both terminal paths (plan-only early exit and normal EOF). collect_token_usage
+# reads the *.usage.json sidecars + per-phase stderr logs and writes one
+# state.json.tokens block; we then remove the transient sidecars/envelopes since
+# state.json is the durable record (some sidecars — execute-output.md.usage.json,
+# verdict.json.usage.json — have no leading dot, so cleanup_runtime_artifacts
+# would not sweep them).
+maybe_collect_token_usage() {
+  [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]] || return 0
+  collect_token_usage "$RUN_DIR" "$STATE_JSON"
+  find "$RUN_DIR" -maxdepth 1 -type f \
+    \( -name '*.usage.json' -o -name '*.envelope.json' \) -delete 2>/dev/null || true
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --preset)
+      # v1.5: expand a named seat preset. Applied in-parser so flags placed
+      # AFTER --preset override it (last-wins) and pre-set model/effort env vars
+      # win over the preset's fill-if-empty defaults. See apply_preset().
+      [[ $# -gt 1 ]] || die "--preset requires a value"
+      PRESET="$2"
+      apply_preset "$2"
+      shift 2
+      ;;
     --composer)
       [[ $# -gt 1 ]] || die "--composer requires a value"
       COMPOSER=$(normalize_agent "$2") || die "Unsupported composer: $2"
@@ -973,7 +1124,23 @@ while [[ $# -gt 0 ]]; do
       ;;
     --model)
       [[ $# -gt 1 ]] || die "--model requires a value"
-      CODEX_MODEL="$2"
+      # v1.5 (fixes B1): export so the `bash -c` child inside
+      # invoke_agent_with_timeout inherits it (mirrors the --timeout arm). Without
+      # export, CODEX_MODEL never reached invoke_codex in the dispatched child.
+      export CODEX_MODEL="$2"
+      shift 2
+      ;;
+    --verifier)
+      [[ $# -gt 1 ]] || die "--verifier requires a value"
+      # v1.5: normalize so `claude` maps to the opus seat name the rest of the
+      # script uses; reject anything normalize_agent doesn't accept.
+      VERIFIER_OVERRIDE=$(normalize_agent "$2") || die "Unsupported verifier: $2"
+      shift 2
+      ;;
+    --claude-model)
+      [[ $# -gt 1 ]] || die "--claude-model requires a value"
+      # v1.5: resolve friendly alias (fable -> claude-fable-5) else passthrough.
+      CLAUDE_MODEL=$(resolve_claude_model_alias "$2")
       shift 2
       ;;
     --workdir)
@@ -1018,6 +1185,19 @@ while [[ $# -gt 0 ]]; do
       # use PATH verbatim. Empty string allowed (no-op + WARNING from helper).
       [[ $# -gt 1 ]] || die "--worktree requires a value"
       WORKTREE_SPEC="$2"
+      shift 2
+      ;;
+    --parent-run)
+      # v1.5 Phase 3: orchestration lineage. Validate as a safe filesystem-ish
+      # token (alnum, _, -, .) so a malicious id can't traverse paths or inject
+      # shell-meta when echoed downstream (mirrors validate_lab_mode's posture,
+      # plus '.' since run ids carry dotted timestamps). Lineage only — no
+      # behavior change beyond the state.orchestration.parent_run_id write.
+      [[ $# -gt 1 ]] || die "--parent-run requires a value"
+      if ! [[ "$2" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "${#2}" -gt 128 ]]; then
+        die "--parent-run must be a safe token [A-Za-z0-9._-]{1,128} (got: $2)"
+      fi
+      PARENT_RUN_ID="$2"
       shift 2
       ;;
     --lab)
@@ -1147,6 +1327,12 @@ if [[ -n "$PLAN_SOURCE" ]]; then
 fi
 
 WORKDIR="$(cd "$WORKDIR" && pwd)"
+# v1.5 (fixes B3): export WORKDIR so the `bash -c` child inside
+# invoke_agent_with_timeout (and the verify-codex `bash -c` block) inherits it;
+# otherwise ${WORKDIR:-$PWD} in invoke_claude/invoke_codex falls back to the
+# child's launch cwd. The export attribute persists across the later worktree-mode
+# reassignment of WORKDIR (~line 1300), so the worktree path is exported too.
+export WORKDIR
 
 if [[ "$SKIP_PLAN" == "true" && -z "$PLAN_SOURCE" ]]; then
   die "--skip-plan requires --plan FILE"
@@ -1192,6 +1378,91 @@ ensure_codex_compatible_workdir
 
 require_selected_agent_clis
 
+# v1.5 per-seat env layer. Snapshot the post-parse base model/effort values (set
+# by globals / --model / --claude-model / CLAUDE_EFFORT / CODEX_REASONING_EFFORT),
+# then apply_seat_env layers an optional per-seat override before each invocation.
+# Byte-parity: with no COMPOSER_/EXECUTOR_/VERIFIER_ envs set, every seat resolves
+# to its base, so exported CLAUDE_MODEL/CLAUDE_EFFORT/CODEX_MODEL/CODEX_REASONING_EFFORT
+# match what the unlayered globals already were — argv is unchanged.
+CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
+CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
+
+# Export is load-bearing: invoke_agent_with_timeout crosses a `timeout bash -c`
+# process boundary; only exported values survive it.
+apply_seat_env() {
+  local seat="$1" agent="$2" model="" effort=""
+  case "$seat" in
+    composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
+    executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
+    verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    *) : ;;  # bounce counterparty: globals only
+  esac
+  # v1.5 cross-agent leak guard. A seat's model+effort is ONE override pair
+  # configured for a specific agent kind (e.g. the codex-build preset fills
+  # VERIFIER_MODEL=best / VERIFIER_EFFORT=max for its DEFAULT claude verifier).
+  # When --verifier codex flips that same seat to codex, the pair is now wrong:
+  # exporting CODEX_MODEL=best (a Claude alias) makes codex/ChatGPT reject the run
+  # with HTTP 400: e.g. "The 'fable' model is not supported when using Codex with
+  #   a ChatGPT account" — any Claude alias/id is off codex's menu.
+  # and CODEX_REASONING_EFFORT=max is off codex's scale (it ends at xhigh).
+  # The two halves are coupled: a model picked for the wrong kind means the
+  # effort was too — so drop the WHOLE pair (not just the model) and fall back
+  # to that agent's base values (CODEX_MODEL_BASE/CODEX_EFFORT_BASE = the user's
+  # codex config defaults, which is exactly right for the degrade path). Symmetric
+  # on the claude arm so a codex-shaped override never reaches a claude seat.
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in
+      fable|best|opus|claude-*) model=""; effort="" ;;
+    esac
+  else
+    case "$model" in
+      gpt-*|codex*) model=""; effort="" ;;
+    esac
+  fi
+  if [[ "$agent" == "codex" ]]; then
+    export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
+    export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
+  else
+    export CLAUDE_MODEL="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+    export CLAUDE_EFFORT="${effort:-$CLAUDE_EFFORT_BASE}"
+  fi
+}
+
+# v1.5: resolve a seat's "agent:model@effort" descriptor using the SAME model/
+# effort precedence apply_seat_env uses, but without mutating the exported env.
+# Feeds the startup banner and the optional state.json seat_models fields.
+# model defaults to "(default)" when unpinned (codex's executor seat under the
+# codex-build preset); effort defaults to "(default)" when no effort is set.
+resolve_seat_model_string() {
+  local seat="$1" agent="$2" model="" effort="" model_str="" effort_str=""
+  case "$seat" in
+    composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
+    executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
+    verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    *) : ;;
+  esac
+  # v1.5: mirror apply_seat_env's cross-agent leak guard (drop the wrong-kind
+  # model+effort pair as a unit) so the banner / state.json seat_models report
+  # what actually runs — e.g. codex:(default)@(default), not codex:fable@max.
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in
+      fable|best|opus|claude-*) model=""; effort="" ;;
+    esac
+  else
+    case "$model" in
+      gpt-*|codex*) model=""; effort="" ;;
+    esac
+  fi
+  if [[ "$agent" == "codex" ]]; then
+    model_str="${model:-$CODEX_MODEL_BASE}"
+    effort_str="${effort:-$CODEX_EFFORT_BASE}"
+  else
+    model_str="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+    effort_str="${effort:-$CLAUDE_EFFORT_BASE}"
+  fi
+  printf '%s:%s@%s' "$agent" "${model_str:-(default)}" "${effort_str:-(default)}"
+}
+
 # Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
 if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
   RUN_DIR="$RUN_DIR_OVERRIDE"
@@ -1214,12 +1485,41 @@ EXECUTE_DELTA_JSON="${RUN_DIR}/.execute-delta.json"
 RUN_ID="dev-review-${TIMESTAMP}"
 init_state_json "$STATE_JSON" "$RUN_ID" "$TASK" "$COMPOSER" "$EXECUTOR" "$REVIEWER"
 
+# v1.5 Phase 3: observability — record the runner's PID once so a status reader
+# can probe liveness via `kill -0`. Written as a number (jq accepts $$ verbatim).
+write_state_field "$STATE_JSON" ".runner_pid" "number" "$$"
+
+# v1.5 Phase 3: lineage — when this run was re-kicked by an orchestrator under a
+# parent run, record the parent's id (validated at parse time). Lineage only;
+# no other behavior. Omitted (left absent) when --parent-run was not passed.
+if [[ -n "$PARENT_RUN_ID" ]]; then
+  write_state_field "$STATE_JSON" ".orchestration.parent_run_id" "string" "$PARENT_RUN_ID"
+fi
+
+# v1.5: resolve the verifier seat and per-seat model/effort descriptors for the
+# banner + observability fields. _VERIFIER_SEAT reflects --verifier / executor
+# derivation (select_verifier); the seat strings reflect whatever the seats
+# resolve to under the per-seat env layer (apply_seat_env precedence).
+_VERIFIER_SEAT=$(select_verifier)
+_SEAT_COMPOSER=$(resolve_seat_model_string composer "$COMPOSER")
+_SEAT_EXECUTOR=$(resolve_seat_model_string executor "$EXECUTOR")
+_SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
+
+# v1.5: optional seat_models observability — records what each seat resolves to.
+# Unconditional + additive (no existing sim asserts an exact state.json key set,
+# so this does not break shape); cheap, and reflects the actual resolved seats.
+write_state_field "$STATE_JSON" ".seat_models.composer" "string" "$_SEAT_COMPOSER"
+write_state_field "$STATE_JSON" ".seat_models.executor" "string" "$_SEAT_EXECUTOR"
+write_state_field "$STATE_JSON" ".seat_models.verifier" "string" "$_SEAT_VERIFIER"
+
 log "============================================"
 log " DEV-REVIEW SESSION"
 log "============================================"
 log " Task:      $TASK"
+log " Preset:    ${PRESET:-<none>}"
 log " Composer:  $COMPOSER"
 log " Executor:  $EXECUTOR"
+log " Verifier:  $_VERIFIER_SEAT"
 log " Bounces:   $BOUNCES"
 log " Verify:    $VERIFY"
 log " Workdir:   $WORKDIR"
@@ -1228,6 +1528,9 @@ log " Timeout:   ${PHASE_TIMEOUT}s per phase"
 log " Live mode: $LIVE_MODE"
 log " Branch:    ${BRANCH_SPEC:-<empty>}"
 log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
+log " Composer model: $_SEAT_COMPOSER"
+log " Executor model: $_SEAT_EXECUTOR"
+log " Verifier model: $_SEAT_VERIFIER"
 log "============================================"
 log ""
 
@@ -1272,6 +1575,12 @@ if [[ "$PLAN_ONLY" == "true" ]]; then
   # RNPT-04: record completion even on plan-only exit so Phase 8 eval sees a
   # terminated run rather than one that looks crashed mid-phase.
   write_state_field "$STATE_JSON" ".completed_at" "string" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  # v1.5 Phase 3: plan-only runs also reach a clean terminal — clear the in-flight
+  # phase so a status reader does not see a stale compose/bounce as "still running".
+  write_state_field "$STATE_JSON" ".current_phase" "null"
+  # v1.5 Phase 4: aggregate token usage (no-op unless CO_EVOLVE_TOKEN_CAPTURE=1)
+  # BEFORE cleanup sweeps the dot-prefixed sidecars.
+  maybe_collect_token_usage
   cleanup_runtime_artifacts
   if [[ "${PLAN_EXIT:-0}" -eq 2 ]]; then
     exit 2
@@ -1363,6 +1672,9 @@ _run_revise_loop() {
 
     _execute_phase_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     EXECUTE_EXIT=0
+    # v1.5 Phase 3: mark execute (or execute-N on a revise pass) as STARTING,
+    # using the same name write_state_phase records on completion below.
+    begin_state_phase "$STATE_JSON" "$exec_name"
     run_execute_phase "$_execute_phase_start" || EXECUTE_EXIT=$?
     _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     _phase_status=$([[ "$EXECUTE_EXIT" -eq 0 ]] && echo "ok" || echo "error")
@@ -1377,6 +1689,8 @@ _run_revise_loop() {
     VERIFY_EXIT=0
     # Clear prior verdict globals so a hung/empty verify pass can't leak them.
     unset VERDICT CONFIDENCE SUMMARY
+    # v1.5 Phase 3: mark verify (or verify-N on a revise pass) as STARTING.
+    begin_state_phase "$STATE_JSON" "$verify_name"
     run_verify_phase "$_verify_phase_start" || VERIFY_EXIT=$?
     _phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     _phase_status=$([[ "$VERIFY_EXIT" -eq 0 ]] && echo "ok" || echo "error")
@@ -1427,6 +1741,10 @@ write_state_field "$STATE_JSON" ".status"       "string" "$_run_status"
 write_state_field "$STATE_JSON" ".completed_at" "string" "$_run_end_ts"
 # Phase 8.1 WR-02 supporting: .updated_at feeds Cost dimension (score-run.sh:261).
 write_state_field "$STATE_JSON" ".updated_at"   "string" "$_run_end_ts"
+# v1.5 Phase 3: the run reached EOF — no phase is in flight. The status reader
+# treats a non-null .current_phase on a non-terminal run as "still in <phase>";
+# clearing it here is the in-band "phases done" signal.
+write_state_field "$STATE_JSON" ".current_phase" "null"
 
 # Phase 8.1 / D-01: mirror phases[] into history[] (canonical contract name).
 # Field-rename transition posture — phases[] stays as legacy alias for one
@@ -1443,6 +1761,10 @@ if command -v jq >/dev/null 2>&1; then
   unset _tmp_history
 fi
 unset _run_status _run_end_ts
+
+# v1.5 Phase 4: aggregate token usage (no-op unless CO_EVOLVE_TOKEN_CAPTURE=1)
+# BEFORE cleanup sweeps the dot-prefixed sidecars.
+maybe_collect_token_usage
 
 cleanup_runtime_artifacts
 

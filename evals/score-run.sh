@@ -644,6 +644,14 @@ composite=$(jq -n --argjson scores "$scores_json" '
 # Details (sparse for Task 1; Task 2 expands per-dimension metadata)
 # ---------------------------------------------------------------------------
 
+# v1.5 Phase 4: token economics (informational only). When the runner ran with
+# CO_EVOLVE_TOKEN_CAPTURE=1, state.json carries a .tokens.totals block; surface
+# it under details.cost.tokens so the report can speak to the ~50% Claude-token
+# savings claim. The `// empty` guard means: when there is no tokens block (every
+# existing fixture, and any run with capture off), the key is simply absent and
+# details stays byte-identical — this MUST NOT touch any PASS/FAIL dimension.
+tokens_totals_json=$(jq -c '.tokens.totals // empty' "$state_json_path" 2>/dev/null)
+
 details_json=$(jq -n \
   --arg status "$status" \
   --argjson had_exception "$had_exception" \
@@ -651,9 +659,11 @@ details_json=$(jq -n \
   --argjson max_wall "$max_wall" \
   --arg composer "$composer" \
   --arg reviewer "$reviewer" \
+  --argjson tokens "${tokens_totals_json:-null}" \
   '{
     robustness: {status: $status, had_exception: $had_exception},
-    cost: {wall_clock_seconds: $wall_secs, max: $max_wall},
+    cost: ({wall_clock_seconds: $wall_secs, max: $max_wall}
+           + (if $tokens == null then {} else {tokens: $tokens} end)),
     cross_ai_diversity: {composer: $composer, reviewer: $reviewer}
   }')
 

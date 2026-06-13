@@ -101,6 +101,81 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# R-2b: agent_auth_failed (the dev-review.sh execute/verify auth gate, distinct
+# from lib's validate_agent_artifact). Regression for the false positive where a
+# large working log echoes auth strings (plan text, or the auth-detection source
+# itself) and trips a naive substring scan. Extract the real functions from the
+# runner via sed (dev-review.sh has no main guard, so it is not safe to source
+# whole — same discipline as tests/revise-loop-simulation.sh).
+# ---------------------------------------------------------------------------
+AUTH_FN_SRC="$TEST_DIR/agent_auth_failed.sh"
+sed -n '/^agent_cli_name() {/,/^}$/p'    "$REPO_ROOT/dev-review/codex/dev-review.sh" >  "$AUTH_FN_SRC"
+sed -n '/^agent_auth_failed() {/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh" >> "$AUTH_FN_SRC"
+# shellcheck disable=SC1090
+source "$AUTH_FN_SRC"
+
+if ! declare -F agent_auth_failed >/dev/null; then
+  TOTAL=$((TOTAL + 1))
+  fail "R-2b: agent_auth_failed not sourced — cannot test"
+else
+  # Scenario 5a: empty output + auth banner in stderr -> detected (rc 0).
+  TOTAL=$((TOTAL + 1))
+  out="$TEST_DIR/s5a-out.md"; err="$TEST_DIR/s5a-err.log"
+  : > "$out"; printf 'Not logged in. Please run /login\n' > "$err"
+  rc=0; agent_auth_failed codex "$out" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "S5a: agent_auth_failed: empty output + stderr banner -> detected"
+  else
+    fail "S5a: expected detection (rc 0), got $rc"
+  fi
+
+  # Scenario 5b: short auth banner in the OUTPUT -> detected (rc 0).
+  TOTAL=$((TOTAL + 1))
+  out="$TEST_DIR/s5b-out.md"; err="$TEST_DIR/s5b-err.log"
+  printf 'Failed to authenticate. Please run `claude login`.\n' > "$out"; : > "$err"
+  rc=0; agent_auth_failed claude "$out" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "S5b: agent_auth_failed: short banner in output -> detected"
+  else
+    fail "S5b: expected detection (rc 0), got $rc"
+  fi
+
+  # Scenario 5c (REGRESSION): substantial output + a huge stderr working log that
+  # echoes auth strings deep inside (plan text / the auth-detection source) ->
+  # NOT an auth failure (rc 1). This is the codex-build self-build false positive.
+  TOTAL=$((TOTAL + 1))
+  out="$TEST_DIR/s5c-out.md"; err="$TEST_DIR/s5c-err.log"
+  {
+    printf 'Implemented the feature as planned. Files changed and tests pass.\n'
+    for i in $(seq 1 80); do printf 'word%d ' "$i"; done; printf '\n'
+  } > "$out"
+  {
+    for i in $(seq 1 3000); do printf 'log line %d: working...\n' "$i"; done
+    printf '  66: - If the output contains `Not logged in` (or `/login`): degrade\n'
+    printf "  576: grep -qiE 'Not logged in|Please run /login|Unauthorized' file\n"
+    for i in $(seq 1 3000); do printf 'log line %d: more work...\n' "$i"; done
+  } > "$err"
+  rc=0; agent_auth_failed codex "$out" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 1 ]]; then
+    pass "S5c: agent_auth_failed: big working log echoing auth strings -> NOT flagged (regression)"
+  else
+    fail "S5c: expected no detection (rc 1), got $rc — false positive regressed"
+  fi
+
+  # Scenario 5d: empty output + genuine stderr banner -> still detected (rc 0).
+  # The regression guard must not mask a real failure whose only signal is stderr.
+  TOTAL=$((TOTAL + 1))
+  out="$TEST_DIR/s5d-out.md"; err="$TEST_DIR/s5d-err.log"
+  : > "$out"; printf 'authentication_error: OAuth token expired\n' > "$err"
+  rc=0; agent_auth_failed codex "$out" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "S5d: agent_auth_failed: empty output + genuine stderr banner -> detected"
+  else
+    fail "S5d: expected detection (rc 0), got $rc"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # C-2/S-2: fill_template metacharacter pinning (false-positive verification)
 # ---------------------------------------------------------------------------
 

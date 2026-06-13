@@ -5,9 +5,17 @@ agents using structured `[CONTESTED]` / `[CLARIFY]` markers until convergence.
 
 ## Default Rule
 
-Use general co-evolution by default. Reach for `dev-review` only when the user
-specifically wants repo files changed, a bug fixed, a feature implemented, or a
-code diff verified against a plan.
+Three routes, lowest-ceremony first:
+
+- **co-evolution** (default) — bounce protocol for questions, drafts, plans,
+  specs, arguments, and markdown refinement.
+- **dev-review** — interactive code pipeline (compose → bounce → execute →
+  verify in one session) when the user wants repo files changed, a bug fixed, a
+  feature implemented, or a code diff verified against a plan.
+- **codex-build** — "build with codex": the session plans and reviews, Codex
+  executes detached, with check-ins only at gates. Reach for this when the user
+  wants Codex to grind on a build in the background while the session stays free
+  (the model-ladder flavor of dev-review).
 
 ## Components
 
@@ -53,6 +61,17 @@ Code-focused compose-bounce-execute-verify pipeline integrated with Claude Code.
 
 Key flags: `--skip-plan` executes a pre-existing plan, `--plan-only` stops after
 bounce, and `--live` opens visible Windows terminals for Codex passes.
+
+### Codex-Build Skill (`skills/codex-build/`)
+
+Detached orchestration skill: the session (typically Opus) plans and reviews,
+Codex executes in the background, and the session is woken at gates instead of
+babysitting. Kicks `dev-review.sh --preset codex-build` via a background task,
+ends the turn, then runs a schema-bound ACCEPT / REVISE / ESCALATE gate on wake.
+
+```text
+/codex-build Have codex implement the retry wrapper while I review
+```
 
 ### Codex Runtime (`dev-review/codex/`)
 
