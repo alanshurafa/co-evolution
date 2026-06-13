@@ -10,7 +10,19 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 - [x] **v1.1 Polish & Ergonomics** (shipped 2026-04-17) — v1.0 code review fixes (WR-01/02/03) + runtime ergonomics (REVISE auto-loop, visible live mode, branch/worktree management). 4 phases, 6 requirements closed. PR [#2](https://github.com/alanshurafa/co-evolution/pull/2) · See [`milestones/v1.1-ROADMAP.md`](milestones/v1.1-ROADMAP.md) · [`milestones/v1.1-SUMMARY.md`](milestones/v1.1-SUMMARY.md) · [`milestones/v1.1-REQUIREMENTS.md`](milestones/v1.1-REQUIREMENTS.md)
 - [x] **v1.3 Reliability, Measurement & Cross-Platform** (shipped 2026-06-11) — stranded-fix landing, macOS/bash-3.2+5.2 portability with 3-OS CI, silent-failure hardening, and the bounce measurement stack (state.json, deterministic scorer + marker-fate ledger, blind judge, human report). Headline: 17.6% deletion-convergence measured; Fable-5 judge 7/7 improved. 9 phases. See [`milestones/v1.3-SUMMARY.md`](milestones/v1.3-SUMMARY.md) · audit at `docs/audits/2026-06-10-v13-audit.md`
 
-## Active Milestone: v1.4 Distribution — npm + MCP (2026-06-11)
+## Active Milestone: v1.5 Build with Codex — model ladder + orchestrated execution (2026-06-12)
+
+**Goal:** Adopt the Codex-execution / Fable-orchestration split (per @cjzafir's pattern) in the dev-review runner: fix 3 latent env-export bugs, add per-seat model/effort config, a `--preset codex-build` shortcut, detached background execution with harness-exit-wakeup, a status-reader script, token capture to measure the 50% cost claim, and a `/codex-build` orchestration skill for both the runner and plugin transports. Design basis: `.planning/v1.5-DESIGN.md` (approved 2026-06-12).
+
+- [ ] **Phase 0: Environment + research** (2026-06-12, in progress) — codex symlink + smoke; plugin install; R1 pin `claude -p --output-format json` envelope; R2 pin codex end-of-run token line; register milestone in .planning/; research notes filed.
+- [ ] **Phase 1: Seat plumbing + env-export correctness** — `lib/co-evolution.sh` effort knobs + `invoke_codex_schema` move (B2); `dev-review.sh` `export CODEX_MODEL` (B1) + `export WORKDIR` (B3) + `--verifier/--claude-model` flags + per-seat env via `apply_seat_env`. Gate: `tests/run-all.sh` green; byte-parity with knobs off.
+- [ ] **Phase 2: Claude-verifier hardening + `--preset codex-build`** — fenced-JSON verdict fallback; preset expansion (fable/high → codex/xhigh → fable/max, bounces=2, revise-loop=1); banner; `tests/preset-expansion-simulation.sh`.
+- [ ] **Phase 3: Runner observability + status reader** — `state.json` additions (`current_phase`, `runner_pid`, `pre/post_execute_sha`, `orchestration.parent_run_id`); new `dev-review-status.sh` (~120 lines, exit codes 0/2/3/4/5); `tests/status-reader-simulation.sh`.
+- [ ] **Phase 4: Token capture** — `CO_EVOLVE_TOKEN_CAPTURE=1` (default off); `invoke_claude` gated JSON mode; codex stderr harvest; `collect_token_usage` → `state.json.tokens`; `tests/token-capture-simulation.sh`.
+- [ ] **Phase 5: `/codex-build` skill + docs** — new `skills/codex-build/SKILL.md` (preflight → plan → kick → wake/gate loop, both runner and plugin transports); CLAUDE.md Default Rule update; routing doc updates.
+- [ ] **Phase 6: Dogfood + evidence** — 2–3 real `/codex-build` tasks (ACCEPT / REVISE→ACCEPT / ESCALATE); token evidence note; MCP parity (`vendor.sh` + `npm test`); memory update.
+
+## Previous Milestone: v1.4 Distribution — npm + MCP (2026-06-11)
 
 **Goal:** Make the bounce protocol invocable without `git clone`: a Node/TS
 MCP server (`@alanshurafa/co-evolution-mcp`, one `co_evolve` tool) published
