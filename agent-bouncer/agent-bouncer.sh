@@ -45,6 +45,15 @@ for agent in "$ODD_AGENT" "$EVEN_AGENT"; do
   fi
 done
 
+# RNPT-05 parity: bound every bounce dispatch with invoke_agent_with_timeout so a
+# network-stalled claude/codex read can't hang the run forever (the cause of the
+# multi-hour zombie this guard was added for). Keeps the 3-arg
+# invoke_<agent>(prompt, output, stderr) convention that validate_output's retry
+# callback requires; closes over the per-pass global AGENT_NAME.
+invoke_agent_bounded() {
+  invoke_agent_with_timeout "$AGENT_NAME" "$1" "$2" "$3"
+}
+
 # Generate a run name from the document content.
 # R-3: the LLM naming call is best-effort sugar — skip it entirely when the
 # codex CLI is absent, and fall back to a filename-derived label either way.
@@ -59,7 +68,7 @@ $(head -20 "$PLAN_FILE")"
   NAME_OUTPUT_FILE=$(mktemp)
   NAME_STDERR_FILE=$(mktemp)
   printf '%s' "$NAME_PROMPT" > "$NAME_PROMPT_FILE"
-  invoke_codex "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
+  invoke_agent_with_timeout codex "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
   CANDIDATE=$(tr -d '\r\n ' < "$NAME_OUTPUT_FILE" | head -c 60 || true)
   rm -f "$NAME_PROMPT_FILE" "$NAME_OUTPUT_FILE" "$NAME_STDERR_FILE"
 fi
@@ -156,10 +165,12 @@ $(cat "$TEMPLATE_DIR/bounce-protocol.md")"
   rm -f "$OUTPUT_FILE"
   STDERR_FILE="${RUN_DIR}/pass-${PASS}-stderr.log"
   RETRY_STDERR_FILE="${RUN_DIR}/pass-${PASS}-stderr-retry.log"
-  "invoke_${AGENT_NAME}" "$PROMPT_FILE" "$OUTPUT_FILE" "$STDERR_FILE"
+  invoke_agent_bounded "$PROMPT_FILE" "$OUTPUT_FILE" "$STDERR_FILE"
   # 8th arg (first-pass stderr) lets validate_output fail fast on
   # CLI-missing / auth-failure instead of accepting error text (R-1/R-2).
-  validate_output "$PLAN_FILE" "$OUTPUT_FILE" "$AGENT_NAME" "invoke_${AGENT_NAME}" "$PROMPT_FILE" "$RETRY_STDERR_FILE" 30 "$STDERR_FILE" || exit 1
+  # Retry callback is the bounded shim too, so the empty/short-output retries
+  # inside validate_output are time-boxed as well (RNPT-05).
+  validate_output "$PLAN_FILE" "$OUTPUT_FILE" "$AGENT_NAME" invoke_agent_bounded "$PROMPT_FILE" "$RETRY_STDERR_FILE" 30 "$STDERR_FILE" || exit 1
 
   cp "$OUTPUT_FILE" "${RUN_DIR}/pass-${PASS}-${ROLE}-${AGENT_NAME}-raw.md"
 

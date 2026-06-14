@@ -1603,7 +1603,7 @@ invoke_agent_with_timeout() {
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" \
         || exit_code=$?
       ;;
-    opus)
+    claude|opus)
       _run_with_phase_timeout "$effective_timeout" \
         bash -c 'source "$1"; invoke_claude "$2" "$3" "$4" "$5"' _ \
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" "$writable" \
