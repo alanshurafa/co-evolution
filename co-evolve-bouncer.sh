@@ -26,6 +26,22 @@ AGENT_B="codex"
 : "${REVIEWER_MODEL:=}"; : "${REVIEWER_EFFORT:=}"
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
+# Dev-review hand-off flags. Default off so a plain co-evolve run stays a pure
+# compose/bounce (byte-parity). When --execute is set, the bounced document is
+# treated as an implementation plan and handed to the dev-review execute (and,
+# with --verify, verify) engine — see the "Dev-review hand-off" block near EOF.
+# We delegate to dev-review/codex/dev-review.sh rather than re-implement its
+# ~600-line execute/verify engine here: that engine is CI-tested and shares this
+# script's lib/co-evolution.sh, so a copy would only duplicate tested code and
+# deepen this script's scope creep. See .notes/dev-review-merge-plan.md.
+EXECUTE=false
+DEV_REVIEW_VERIFY=false
+EXEC_WORKDIR=""
+EXEC_VERIFIER=""
+EXEC_REVISE_LOOP=""
+EXEC_BRANCH_SPEC=""
+EXEC_WORKTREE_SPEC=""
+EXEC_TIMEOUT=""
 TASK=""
 INPUT_CONTENT=""
 INPUT_TYPE=""  # "string", "file", or "pipe"
@@ -81,7 +97,15 @@ Options:
   --composer-effort E  Reasoning effort for the composer role. Also COMPOSER_EFFORT env.
   --reviewer-model M   Model for the reviewer role (odd passes / chain critique+tighten). Also REVIEWER_MODEL env. Default: inherit global.
   --reviewer-effort E  Reasoning effort for the reviewer role. Also REVIEWER_EFFORT env. (No global --effort: a bounce has two roles.)
-  --dev-review       Add execute + verify phases after bounce
+  --execute          After bounce, hand the result to dev-review as a plan and write code
+  --verify           With --execute, add the verify pass (APPROVED/REVISE verdict)
+  --dev-review       Shorthand for --execute --verify
+  --workdir DIR      With --execute: directory the executor writes into (default: cwd)
+  --verifier AGENT   With --execute --verify: force the verify agent (codex|opus|claude)
+  --revise-loop N    With --execute --verify: auto-retry on REVISE up to N extra passes (default 0)
+  --exec-branch SPEC With --execute: create a branch before writing (auto|NAME); excl. with --exec-worktree
+  --exec-worktree SPEC With --execute: create a worktree before writing (auto|PATH); excl. with --exec-branch
+  --exec-timeout SEC With --execute: per-phase timeout for the execute/verify engine (default 1800)
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
   --lab MODE         Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
@@ -153,7 +177,49 @@ while [[ $# -gt 0 ]]; do
       REVIEWER_EFFORT="$2"
       shift 2
       ;;
-    --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
+    # v1.5 Phase 4 (A-6): dev-review hand-off. --execute (and --verify) treat the
+    # bounced document as a plan and delegate to the dev-review execute/verify
+    # engine. Doc-pipeline seats (COMPOSER_/REVIEWER_MODEL above) are the bounce's
+    # seats and are NOT forwarded to the engine — the engine has its own seats and
+    # presets. Only --claude-model forwards (below, near the hand-off).
+    --execute) EXECUTE=true; shift ;;
+    --verify) DEV_REVIEW_VERIFY=true; shift ;;
+    --dev-review) EXECUTE=true; DEV_REVIEW_VERIFY=true; shift ;;
+    --workdir)
+      [[ $# -gt 1 ]] || die "--workdir requires a value"
+      EXEC_WORKDIR="$2"
+      shift 2
+      ;;
+    --verifier)
+      [[ $# -gt 1 ]] || die "--verifier requires a value"
+      case "$2" in
+        codex|opus|claude) EXEC_VERIFIER="$2" ;;
+        *) die "--verifier must be codex|opus|claude (got: $2)" ;;
+      esac
+      shift 2
+      ;;
+    --revise-loop)
+      [[ $# -gt 1 ]] || die "--revise-loop requires a value"
+      [[ "$2" =~ ^[0-9]+$ ]] || die "--revise-loop must be a non-negative integer (got: $2)"
+      EXEC_REVISE_LOOP="$2"
+      shift 2
+      ;;
+    --exec-branch)
+      [[ $# -gt 1 ]] || die "--exec-branch requires a value"
+      EXEC_BRANCH_SPEC="$2"
+      shift 2
+      ;;
+    --exec-worktree)
+      [[ $# -gt 1 ]] || die "--exec-worktree requires a value"
+      EXEC_WORKTREE_SPEC="$2"
+      shift 2
+      ;;
+    --exec-timeout)
+      [[ $# -gt 1 ]] || die "--exec-timeout requires a value"
+      { [[ "$2" =~ ^[0-9]+$ ]] && [[ "$2" != "0" ]]; } || die "--exec-timeout must be a positive integer (got: $2)"
+      EXEC_TIMEOUT="$2"
+      shift 2
+      ;;
     --bounce-only) BOUNCE_ONLY=true; shift ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --lab)
@@ -240,6 +306,7 @@ done
 # Bash runs accept Windows-style file arguments such as C:/Users/.../plan.md.
 [[ -n "$CONTEXT_FILE" ]] && CONTEXT_FILE=$(normalize_path_for_bash "$CONTEXT_FILE")
 [[ -n "$OUTPUT_FILE" ]] && OUTPUT_FILE=$(normalize_path_for_bash "$OUTPUT_FILE")
+[[ -n "$EXEC_WORKDIR" ]] && EXEC_WORKDIR=$(normalize_path_for_bash "$EXEC_WORKDIR")
 TASK_AS_PATH=""
 [[ -n "$TASK" ]] && TASK_AS_PATH=$(normalize_path_for_bash "$TASK")
 
@@ -249,6 +316,41 @@ TASK_AS_PATH=""
 # (best -> claude-opus-4-8); the others default empty (OFF) = argv parity.
 CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
 CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
+
+# v1.5 Phase 4 (A-6): dev-review hand-off flag validation. Fail fast BEFORE any
+# side effect so a misconfigured code run never composes/bounces first and then
+# dies. Every execute-only flag requires --execute; --verify requires it too
+# because verify only makes sense on code the executor just wrote.
+if [[ "$EXECUTE" == "false" ]]; then
+  _bad_exec_flag=""
+  [[ "$DEV_REVIEW_VERIFY" == "true" ]] && _bad_exec_flag="--verify"
+  [[ -n "$EXEC_WORKDIR" ]]             && _bad_exec_flag="--workdir"
+  [[ -n "$EXEC_VERIFIER" ]]            && _bad_exec_flag="--verifier"
+  [[ -n "$EXEC_REVISE_LOOP" ]]         && _bad_exec_flag="--revise-loop"
+  [[ -n "$EXEC_BRANCH_SPEC" ]]         && _bad_exec_flag="--exec-branch"
+  [[ -n "$EXEC_WORKTREE_SPEC" ]]       && _bad_exec_flag="--exec-worktree"
+  [[ -n "$EXEC_TIMEOUT" ]]             && _bad_exec_flag="--exec-timeout"
+  [[ -n "$_bad_exec_flag" ]] && die "${_bad_exec_flag} requires --execute (dev-review hand-off)."
+  unset _bad_exec_flag
+fi
+# --verifier / --revise-loop are verify-phase knobs; they no-op without --verify.
+if [[ "$EXECUTE" == "true" && "$DEV_REVIEW_VERIFY" == "false" ]]; then
+  [[ -n "$EXEC_VERIFIER" ]]    && die "--verifier requires --verify."
+  [[ -n "$EXEC_REVISE_LOOP" ]] && die "--revise-loop requires --verify."
+fi
+# Branch and worktree are mutually exclusive (dev-review enforces this too, but
+# failing here gives a clearer message before the pipeline runs).
+if [[ -n "$EXEC_BRANCH_SPEC" && -n "$EXEC_WORKTREE_SPEC" ]]; then
+  die "--exec-branch and --exec-worktree are mutually exclusive."
+fi
+# Locate the dev-review engine up front so a missing engine fails before the
+# (potentially slow, paid) compose/bounce rather than after it.
+# CO_EVOLVE_DEV_REVIEW_SCRIPT (mirrors CO_EVOLVE_RUNS_DIR): let an external
+# embedder — or a hermetic test — point at a relocated engine. Default unchanged.
+DEV_REVIEW_SCRIPT="${CO_EVOLVE_DEV_REVIEW_SCRIPT:-$SCRIPT_DIR/dev-review/codex/dev-review.sh}"
+if [[ "$EXECUTE" == "true" && ! -f "$DEV_REVIEW_SCRIPT" ]]; then
+  die "--execute needs the dev-review engine, not found at: $DEV_REVIEW_SCRIPT"
+fi
 
 # Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
 # (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
@@ -1024,6 +1126,50 @@ log " Run dir:   $RUN_DIR"
 log " Final:     $FINAL_FILE"
 log " Convergence: $CONVERGENCE_STATUS"
 log "============================================"
+
+# --- Dev-review hand-off (--execute / --verify) ---
+# The bounce is done and the converged document is $FINAL_FILE. When --execute
+# is set we now treat that document as an implementation plan and hand it to the
+# dev-review engine via --skip-plan --plan, which runs its execute (and, with
+# --verify, verify) phases. We do NOT re-implement those phases here: the engine
+# is a separate, CI-tested script that already sources this repo's shared
+# lib/co-evolution.sh, so delegating keeps a single source of truth and avoids
+# doubling this script's size. Intent per .notes/dev-review-merge-plan.md: one
+# entry point (co-evolve) for both non-code and code tasks; the flags differ.
+#
+# `exec` replaces this process so the engine owns the terminal and its exit code
+# becomes co-evolve's exit code (0 APPROVED / clean, 2 REVISE / needs-review,
+# 1 fatal) — the byte-for-byte contract dev-review callers already rely on.
+if [[ "$EXECUTE" == "true" ]]; then
+  # Byte-parity guard: the converged plan must exist and be non-empty, or the
+  # executor would run against nothing. run_bounce_phase always writes it, but
+  # fail loudly rather than hand the engine an empty plan.
+  [[ -s "$FINAL_FILE" ]] || die "cannot --execute: bounced plan is empty ($FINAL_FILE)"
+
+  # Print the plan first (unless redirected) so the operator sees what is about
+  # to be executed; the engine's own logs follow on the same stream.
+  if [[ -z "$OUTPUT_FILE" ]]; then
+    cat "$FINAL_FILE"
+  fi
+
+  dev_review_args=(--skip-plan --plan "$FINAL_FILE")
+  [[ "$DEV_REVIEW_VERIFY" == "true" ]] && dev_review_args+=(--verify)
+  [[ -n "$EXEC_WORKDIR" ]]       && dev_review_args+=(--workdir "$EXEC_WORKDIR")
+  [[ -n "$EXEC_VERIFIER" ]]      && dev_review_args+=(--verifier "$EXEC_VERIFIER")
+  [[ -n "$EXEC_REVISE_LOOP" ]]   && dev_review_args+=(--revise-loop "$EXEC_REVISE_LOOP")
+  [[ -n "$EXEC_BRANCH_SPEC" ]]   && dev_review_args+=(--branch "$EXEC_BRANCH_SPEC")
+  [[ -n "$EXEC_WORKTREE_SPEC" ]] && dev_review_args+=(--worktree "$EXEC_WORKTREE_SPEC")
+  [[ -n "$EXEC_TIMEOUT" ]]       && dev_review_args+=(--timeout "$EXEC_TIMEOUT")
+  # Forward the Claude model override so a code run honors the same seat choice
+  # as the bounce (dev-review resolves best/opus/fable aliases; ids pass through).
+  [[ -n "${CLAUDE_MODEL:-}" ]]   && dev_review_args+=(--claude-model "$CLAUDE_MODEL")
+
+  log ""
+  log "--- Handing bounced plan to dev-review (execute$([[ "$DEV_REVIEW_VERIFY" == "true" ]] && echo " + verify")) ---"
+  log ""
+
+  exec bash "$DEV_REVIEW_SCRIPT" "${dev_review_args[@]}"
+fi
 
 # Print clean result to stdout unless output was redirected to file
 if [[ -z "$OUTPUT_FILE" ]]; then
