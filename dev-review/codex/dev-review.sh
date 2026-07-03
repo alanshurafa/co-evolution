@@ -85,6 +85,12 @@ usage() {
 Usage:
   bash dev-review.sh [OPTIONS] <task-description>
 
+This is the execute/verify engine. For most code tasks prefer the unified
+entry point, which bounces the plan first and then hands it here:
+  co-evolve --vanilla --execute --verify "<task>"
+Call dev-review.sh directly when you need an existing plan (--skip-plan --plan),
+a preset (--preset), or engine knobs the co-evolve wrapper does not surface.
+
 Options:
   --composer opus|codex    Who creates the plan (default: codex)
   --executor opus|codex    Who writes the code (default: codex)
