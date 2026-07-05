@@ -136,11 +136,22 @@ if grep -Eq -- 'claude-reviewer-xyz' "$codex_log"; then s1_ok=false; fi
 if grep -Eq -- 'gpt-composer-xyz' "$claude_log"; then s1_ok=false; fi
 # Compose-phase claude fell back to the base default model.
 if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then s1_ok=false; fi
+# v1.5 Phase 1 (M2): the drop is surfaced, not silent — the run log carries the
+# explicit drop NOTE and the startup banner shows the compose phase's own seat.
+s1_run_log=$(ls -dt "$TEST_DIR"/runs1/co-evolve-*/run.log 2>/dev/null | head -1)
+if [[ -z "$s1_run_log" ]]; then
+  s1_ok=false
+else
+  if ! grep -Fq 'composer seat override dropped for compose phase: agent mismatch (codex override, claude phase)' "$s1_run_log"; then s1_ok=false; fi
+  if ! grep -Eq '^ Compose seat:  claude:' "$s1_run_log"; then s1_ok=false; fi
+fi
 if [[ "$s1_ok" == true ]]; then
-  pass "doc seats: REVIEWER_MODEL->claude argv, COMPOSER_MODEL->codex argv, no cross-leak, compose falls back to base"
+  pass "doc seats: REVIEWER_MODEL->claude argv, COMPOSER_MODEL->codex argv, no cross-leak, compose falls back to base + drop NOTE + banner seat"
 else
   fail "doc seat propagation/leak-guard mismatch (logs below)"
-  { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
+  { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"
+    [[ -n "${s1_run_log:-}" ]] && { echo "--- run.log seat/NOTE lines ---"; grep -E 'seat|NOTE' "$s1_run_log" || true; }
+  } >&2
 fi
 
 # ===========================================================================
