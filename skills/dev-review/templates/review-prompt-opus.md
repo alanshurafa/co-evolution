@@ -67,3 +67,10 @@ Respond with ONLY a JSON object:
 - APPROVED (confidence >= 75): Implementation matches the plan and works correctly.
 - REVISE: CRITICAL or HIGH issues that must be fixed.
 - Do NOT REVISE for LOW-only issues.
+
+### Output contract (enforced — over-cap verdicts are rejected as unusable)
+
+- `summary`: <= 40 words. State the verdict rationale, not a recap of the diff.
+- `issues`: <= 5, most severe first. Each is ONE line: `file:line — issue`. If you found more, keep only the 5 that matter and fold the rest into `summary`.
+- Do NOT paste file contents, full diffs, or long code blocks into any field. Point with `file:line`; the reader has the diff.
+- `description`/`suggestion`: one line each. `iteration_notes`: a short paragraph, not a report.
