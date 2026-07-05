@@ -141,6 +141,9 @@ normalize_agent() {
 #     override them via last-wins parsing.
 #   - model/effort knobs use fill-if-empty (`: "${VAR:=…}"`) so a value already
 #     present in the environment (e.g. COMPOSER_EFFORT=low) wins over the preset.
+# v1.5 Phase 1 (A-3): every codex seat in a preset is now MODEL-PINNED to gpt-5.5
+# (was left to the local config.toml). Cross-machine reproducibility is guaranteed
+# only for preset runs; ad-hoc runs may still inherit the local codex config.
 apply_preset() {
   case "$1" in
     codex-build)   # "build with codex": best Claude seats plan/review, Codex executes.
@@ -148,14 +151,14 @@ apply_preset() {
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
       : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
       : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
-      : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
+      : "${EXECUTOR_MODEL:=gpt-5.5}"; : "${EXECUTOR_EFFORT:=xhigh}"   # codex executor pinned (A-3), not inherited from local config.toml
       ;;
     claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
       COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
       : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
-      : "${COMPOSER_EFFORT:=xhigh}"   # codex plans; model left to the CLI's config (unpinned)
-      : "${VERIFIER_EFFORT:=xhigh}"   # codex reviews; model unpinned
+      : "${COMPOSER_MODEL:=gpt-5.5}"; : "${COMPOSER_EFFORT:=xhigh}"   # codex composer pinned (A-3)
+      : "${VERIFIER_MODEL:=gpt-5.5}"; : "${VERIFIER_EFFORT:=xhigh}"   # codex verifier pinned (A-3)
       ;;
     *) die "Unknown preset: $1 (available: codex-build, claude-build)" ;;
   esac

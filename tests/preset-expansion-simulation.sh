@@ -9,8 +9,8 @@
 # unpinned), Claude executes (best/high).
 # This gate pins:
 #   a. seat argv under the preset (composer claude --model claude-opus-4-8
-#      [the `best` alias resolved] --effort high; executor codex
-#      -c model_reasoning_effort=xhigh and NO -c model=; verifier claude
+#      [the `best` alias resolved] --effort high; executor codex PINNED
+#      -c model=gpt-5.5 + -c model_reasoning_effort=xhigh [A-3]; verifier claude
 #      --effort max).
 #   b. claude-verifier verdict hardening: a verdict wrapped in markdown
 #      fences/prose lands in verdict.json jq-parseable (brace-block fallback).
@@ -25,8 +25,8 @@
 #      on a ChatGPT account); seat_models.verifier falls back to default.
 #   i. alias resolution: resolve_claude_model_alias maps best/opus ->
 #      claude-opus-4-8, keeps fable -> claude-fable-5, passes ids through.
-#   j. --preset claude-build: composer=codex xhigh/no model, executor=claude
-#      best/high, verifier=codex xhigh/no model, with no codex model leaking
+#   j. --preset claude-build: composer=codex gpt-5.5/xhigh, executor=claude
+#      best/high, verifier=codex gpt-5.5/xhigh, with no codex model leaking
 #      into the claude executor argv.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
@@ -266,13 +266,15 @@ a_ok=true
 # composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
 if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then a_ok=false; fi
 if ! grep -Eq -- '--effort high' "$claude_log"; then a_ok=false; fi
-# executor = codex with xhigh effort and NO pinned model.
+# v1.5 Phase 1 (A-3): executor = codex PINNED to gpt-5.5 with xhigh effort.
+# The pin is the whole point of A-3 — both -c model=gpt-5.5 and the xhigh effort
+# must reach the executor codex argv (was previously unpinned: model=CLI config).
+if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then a_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false; fi
-if grep -Eq -- '-c model=' "$codex_log"; then a_ok=false; fi
 # verifier = claude with max effort.
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
 if [[ "$a_ok" == true ]]; then
-  pass "preset codex-build: composer best->opus/high, executor codex/xhigh (no model=), verifier claude/max"
+  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.5/xhigh (A-3 pin), verifier claude/max"
 else
   fail "preset codex-build seat argv mismatch (claude_log + codex_log below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
@@ -519,10 +521,11 @@ j_claude_execute_argv=$(grep -- '--permission-mode bypassPermissions' "$claude_l
 j_codex_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 j_ok=true
 
-# Composer/verifier = codex with xhigh effort and no pinned model.
+# v1.5 Phase 1 (A-3): composer/verifier = codex PINNED to gpt-5.5 at xhigh.
+if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then j_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then j_ok=false; fi
-if grep -Eq -- '-c model=' "$codex_log"; then j_ok=false; fi
 if [[ -z "$j_codex_verify_argv" ]]; then j_ok=false; fi
+if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model=gpt-5.5'; then j_ok=false; fi
 if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model_reasoning_effort=xhigh'; then j_ok=false; fi
 
 # Executor = claude writable argv with best -> claude-opus-4-8 and effort high.
@@ -532,9 +535,9 @@ if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--effort high'; then j_
 if printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model (gpt-|codex)'; then j_ok=false; fi
 
 if [[ -n "$j_run_dir" && "$j_run_dir" != "$run_dir_before" ]]; then
-  if ! jq -e '.seat_models.composer == "codex:(default)@xhigh"
+  if ! jq -e '.seat_models.composer == "codex:gpt-5.5@xhigh"
               and .seat_models.executor == "opus:claude-opus-4-8@high"
-              and .seat_models.verifier == "codex:(default)@xhigh"' \
+              and .seat_models.verifier == "codex:gpt-5.5@xhigh"' \
        "$j_run_dir/state.json" >/dev/null 2>&1; then
     j_ok=false
   fi
@@ -543,7 +546,7 @@ else
 fi
 
 if [[ "$j_ok" == true ]]; then
-  pass "preset claude-build: composer codex/xhigh (no model), executor best->opus/high, verifier codex/xhigh (no model)"
+  pass "preset claude-build: composer codex gpt-5.5/xhigh (A-3 pin), executor best->opus/high, verifier codex gpt-5.5/xhigh"
 else
   fail "preset claude-build seat argv mismatch (run dir: ${j_run_dir:-<none>})"
   { echo "--- claude execute argv ---"; printf '%s\n' "$j_claude_execute_argv"
