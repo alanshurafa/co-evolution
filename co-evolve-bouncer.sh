@@ -206,6 +206,13 @@ done
 TASK_AS_PATH=""
 [[ -n "$TASK" ]] && TASK_AS_PATH=$(normalize_path_for_bash "$TASK")
 
+# RNPT-05 parity: compose/bounce phases now dispatch through
+# invoke_agent_with_timeout, which runs the claude adapter inside a
+# `timeout ... bash -c 'source lib; invoke_claude'` subprocess that re-sources
+# the lib (re-applying the CLAUDE_MODEL default at line 59). Export so a
+# --claude-model override survives that boundary instead of silently resetting.
+export CLAUDE_MODEL
+
 # Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
 # (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
 # when LAB_MODE is empty, this block is a no-op and the rest of the script
@@ -453,7 +460,7 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
   log " Agent: $AGENT_A"
   log " Input: $INPUT_TYPE ($(echo "$INPUT_CONTENT" | wc -w | tr -d '\r\n ') words)"
 
-  invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
+  invoke_agent_with_timeout "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
 
   # R-1/R-2: fail fast on CLI-missing / auth-failure (rc 2) instead of
   # accepting the error text as a composed document or burning a retry.
@@ -466,7 +473,7 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
   if [[ ! -s "$compose_output_file" ]] || (( $(wc -w < "$compose_output_file" | tr -d '\r\n ') < 10 )); then
     log " WARNING: compose returned empty or minimal output. Retrying once..."
     : > "$compose_output_file"
-    invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_retry_stderr_file"
+    invoke_agent_with_timeout "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_retry_stderr_file"
 
     compose_artifact_rc=0
     validate_agent_artifact "$compose_output_file" "$compose_retry_stderr_file" "$AGENT_A" || compose_artifact_rc=$?
@@ -568,7 +575,7 @@ $(cat "$PROTOCOL_TEMPLATE")"
     log " BOUNCE $pass/$total_passes - ${role} (${current_agent})"
     log "--------------------------------------------"
 
-    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+    invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
 
     # Validate output. R-1/R-2: rc 2 = CLI missing or unauthenticated — an
     # auth-error page must never be copied into WORKING_FILE as the document,
@@ -581,7 +588,7 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     if [[ ! -s "$output_file" ]]; then
       log " WARNING: ${current_agent} returned empty output. Retrying..."
-      invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+      invoke_agent_with_timeout "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
 
       bounce_artifact_rc=0
       validate_agent_artifact "$output_file" "$stderr_file" "$current_agent" || bounce_artifact_rc=$?
