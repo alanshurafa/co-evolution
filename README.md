@@ -179,6 +179,17 @@ fallthrough.
 | Code pipeline inside Claude Code | `skills/dev-review/` |
 | External MCP client (Claude Desktop, Cursor, Continue) | `npm i -g @alanshurafa/co-evolution-mcp` |
 
+### Interactive Tooling vs The Pipeline
+
+The pipeline above (`co-evolve-bouncer.sh`, `dev-review/codex/dev-review.sh`) is
+headless and plugin-free by design — no live-session dependencies. In an
+interactive Claude Code session on this repo, the official Codex plugin is
+also available for ad-hoc work: `/plugin marketplace add openai/codex-plugin-cc`
+then `/plugin install codex@openai-codex` gets you `/codex:adversarial-review`,
+`/codex:transfer`, and related commands. Leave the plugin's review gate off —
+this repo's own review engine already covers that job. The Anthropic advisor
+tool is API-only and has no role in either the pipeline or the plugin.
+
 ### [MCP Server](mcp/)
 
 The bounce protocol without `git clone`: `@alanshurafa/co-evolution-mcp`
