@@ -1,5 +1,7 @@
 # Stack
 
+> **Historical snapshot (pre-v1.0).** The "no CI configuration" claim below is stale: the repo now has a hermetic simulation suite (`tests/run-all.sh`, 25+ sims) running on 3-OS CI.
+
 ## Snapshot
 
 - Project type: tooling repo for cross-AI document refinement, not a deployable app or service.

@@ -1,5 +1,7 @@
 # Concerns
 
+> **Historical snapshot (pre-v1.0).** The "no tests / no CI" claim below is stale: the repo now has a hermetic simulation suite (`tests/run-all.sh`, 25+ sims) running on 3-OS CI.
+
 ## 1. No Automated Regression Net
 
 - The repository has no tracked automated tests and no CI.

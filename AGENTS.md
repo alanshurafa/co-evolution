@@ -56,7 +56,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 ## Snapshot
 - Project type: tooling repo for cross-AI document refinement, not a deployable app or service.
-- Primary executable: `agent-bouncer/agent-bouncer.sh`.
+- Legacy runner (still used by tests/experiments): `agent-bouncer/agent-bouncer.sh`.
 - Primary orchestrator spec: `skills/dev-review/SKILL.md`.
 - Supporting assets: markdown templates in `agent-bouncer/templates/` and `skills/dev-review/templates/`, plus JSON schema in `skills/dev-review/schemas/review-verdict.json`.
 - Tracked source is small: one shell entrypoint, one large skill spec, supporting docs, prompts, and schema files.
@@ -68,7 +68,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 ## Runtime Dependencies
 - `agent-bouncer/agent-bouncer.sh` assumes a POSIX shell plus standard utilities such as `date`, `head`, `tr`, `cp`, `mv`, `rm`, `wc`, `awk`, `tee`, `mkdir`, and `cat`.
 - The bouncer depends on authenticated AI CLIs: `claude` and `codex`.
-- The Claude adapter is hard-coded to `claude -p --output-format text --model claude-opus-4-6 --tools ""`.
+- The Claude adapter defaults to model `claude-opus-4-6`, overridable via the `CLAUDE_MODEL` env var or the `--claude-model` flag (see `lib/co-evolution.sh`); it is not hard-coded.
 - The Codex adapter is hard-coded to `codex exec --full-auto --skip-git-repo-check`.
 - `skills/dev-review/SKILL.md` assumes Claude Code tooling, `git`, and optionally `gh` for PR creation.
 ## Build And Packaging
@@ -130,7 +130,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 
 ## System Shape
 - The repository contains two related but separate delivery surfaces:
-- `agent-bouncer/agent-bouncer.sh` is the executable runtime for bouncing a document between agents.
+- `agent-bouncer/agent-bouncer.sh` is a legacy runner (still used by tests/experiments) for bouncing a document between agents.
 - `skills/dev-review/SKILL.md` is a declarative Claude Code workflow for compose -> bounce -> execute -> verify.
 - Shared behavior is expressed through prompt templates rather than through a shared library module.
 ## Core Bouncer Flow

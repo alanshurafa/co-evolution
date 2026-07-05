@@ -115,9 +115,10 @@ bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
 
 ### [Agent Bouncer](agent-bouncer/)
 
-A standalone bash script that bounces any markdown document between two agents.
-Agent-agnostic: ships with Claude and Codex adapters, and new agents can be
-added by writing one function. Runs from any terminal.
+A legacy runner (still used by tests/experiments) that bounces any markdown
+document between two agents. Agent-agnostic: ships with Claude and Codex
+adapters, and new agents can be added by writing one function. Runs from any
+terminal.
 
 ```bash
 # Pass any document you want refined
@@ -199,7 +200,8 @@ Early development. The Co-Evolution skill, Co-Evolve Bouncer, Agent Bouncer,
 Dev-Review skill, and standalone Codex runtime are functional and run
 cross-platform on macOS, Linux, and Windows (Git Bash or WSL) — shell scripts
 are pinned to LF endings and Windows/WSL path arguments are normalized
-automatically. Next steps:
+automatically. The 3-OS CI suite validates the hermetic (stubbed-CLI)
+simulations, not live-LLM runs. Next steps:
 
 - Additional agent adapters (Gemini CLI, Ollama, direct API calls)
 - Standalone bounce protocol spec
