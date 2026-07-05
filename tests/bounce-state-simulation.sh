@@ -219,19 +219,22 @@ rm -rf "$s4_run_dir"
 # Policy (c): agent-bouncer.sh hardcodes RUNS_DIR="${REPO_ROOT}/runs" with no
 # env override (unlike co-evolve-bouncer.sh's CO_EVOLVE_RUNS_DIR), so it always
 # writes into the shared repo runs/ dir that a concurrent suite's own bouncer
-# runs also write into. Snapshot-diff instead of `ls -dt | head -1`: list
-# before, list after, the run dir is the one new entry — fail loudly if the
-# invocation produced zero or more than one new dir (either points at a real
-# bug, not this race).
+# runs also write into. Attributable snapshot-diff instead of `ls -dt | head -1`:
+# the run dir label derives from the input doc's basename (agent-bouncer.sh's
+# filename fallback — the stubbed LLM naming output never passes its kebab-case
+# regex), so a PID-tagged doc name makes OUR dir identifiable. List before,
+# list after, take the one new entry carrying our tag; a concurrent suite's S5
+# dirs carry a different PID and never match, so zero or multiple MATCHING
+# entries indicates a real bug — fail loudly.
 TOTAL=$((TOTAL + 1))
-s5_doc="$TEST_DIR/s5-doc.md"
+s5_doc="$TEST_DIR/s5-doc-$$.md"
 cp "$DOC_SRC" "$s5_doc"
-s5_before=$(ls -d "$REPO_ROOT"/runs/bouncer-* 2>/dev/null || true)
+s5_before=$(ls -d "$REPO_ROOT"/runs/bouncer-s5-doc-$$-* 2>/dev/null || true)
 rc=0
 BOUNCE_STUB_COUNTER="$TEST_DIR/s5-count" PATH="$TEST_DIR/bin:$PATH" \
   bash "$REPO_ROOT/agent-bouncer/agent-bouncer.sh" "$s5_doc" 2 claude claude \
   > "$TEST_DIR/s5-stdout.log" 2>&1 || rc=$?
-s5_after=$(ls -d "$REPO_ROOT"/runs/bouncer-* 2>/dev/null || true)
+s5_after=$(ls -d "$REPO_ROOT"/runs/bouncer-s5-doc-$$-* 2>/dev/null || true)
 s5_new=$(comm -13 <(printf '%s\n' "$s5_before" | sort) <(printf '%s\n' "$s5_after" | sort))
 s5_run_dir=""
 # grep -c exits 1 on zero matches, which would trip `set -e` inside a command
