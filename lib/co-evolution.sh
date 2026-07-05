@@ -52,11 +52,29 @@ LIVE_MODE_WARNING_LOGGED=false
 : "${DEV_REVIEW_BRANCH:=}"
 : "${DEV_REVIEW_WORKTREE:=}"
 
-# F-5a: Claude model override. CLAUDE_MODEL env var or --claude-model flag wins;
-# the default preserves the prior hardcoded value so behavior is unchanged unless
-# overridden. (CODEX_MODEL stays optional/unset by default -- invoke_codex only
-# appends -c model= when it is set.)
-: "${CLAUDE_MODEL:=claude-opus-4-6}"
+# v1.5 Phase 1 (A-4a): resolve a friendly Claude model alias to its CLI model id.
+# `best` and `opus` resolve to the current Opus line (claude-opus-4-8); `fable` is
+# retained for back-compat only (currently unreachable). Anything else passes
+# through verbatim so explicit ids (claude-opus-4-8[1m], …) and an empty value are
+# untouched. Used by the base CLAUDE_MODEL default below, the --claude-model flag,
+# and dev-review.sh's per-seat env layer (which sources this lib). This is the
+# SINGLE source of the alias table — dev-review.sh no longer defines its own copy.
+# Bumping the Claude default to a new model = edit the `best` arm here, one place.
+resolve_claude_model_alias() {
+  case "$1" in
+    best)  echo "claude-opus-4-8" ;;   # strongest supported Claude default for the preset
+    opus)  echo "claude-opus-4-8" ;;   # current Opus-line model
+    fable) echo "claude-fable-5" ;;    # retained for back-compat; currently unreachable, do not default to it
+    *)     echo "$1" ;;
+  esac
+}
+
+# F-5a: Claude model override. CLAUDE_MODEL env var or --claude-model flag wins.
+# v1.5 Phase 1 (A-4a): the base default is now the `best` alias resolved to the
+# current Opus line (claude-opus-4-8), replacing the stale claude-opus-4-6 pin.
+# Resolving through the alias keeps the "one place to bump" invariant. (CODEX_MODEL
+# stays optional/unset by default -- invoke_codex only appends -c model= when set.)
+: "${CLAUDE_MODEL:=$(resolve_claude_model_alias best)}"
 
 # v1.5: Per-seat reasoning-effort knobs. Both default empty = OFF, so invoke_*
 # omit the effort flag entirely and argv stays byte-identical to today (parity

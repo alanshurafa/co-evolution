@@ -190,12 +190,16 @@ Fill the brackets from Step 1:
 - `--parent-run <id>` only on a REVISE re-kick (Step 4), to tag lineage.
 - `--timeout` defaults to 1800s; raise it for large tasks.
 
-The preset expands to: composer = Opus (high), executor = Codex (xhigh, model
-left to the CLI's config), verifier = Opus (max), `--verify` on, bounces 2,
+The preset expands to: composer = Opus (high),
+executor = Codex (xhigh, model pinned to `gpt-5.5`),
+verifier = Opus (max), `--verify` on, bounces 2,
 revise-loop 1. The two Claude seats default through the `best` alias (currently
-`claude-opus-4-8`), so a future model bump is a one-line edit in the runner's
-`resolve_claude_model_alias`. `CO_EVOLVE_TOKEN_CAPTURE=1` records per-phase tokens
-into `state.json` so you can report spend at the gate.
+`claude-opus-4-8`), so a future model bump is a one-line edit in
+`resolve_claude_model_alias` (now in `lib/co-evolution.sh`). The codex executor
+seat is model-pinned (A-3), so a preset run reproduces across machines rather than
+inheriting the local codex `config.toml`; ad-hoc (non-preset) runs may still
+inherit it. `CO_EVOLVE_TOKEN_CAPTURE=1` records per-phase tokens into `state.json`
+so you can report spend at the gate.
 
 **Optional — make the seats follow THIS session's model.** By default the plan and
 review seats run `best` (a strong model) regardless of what you're driving the
