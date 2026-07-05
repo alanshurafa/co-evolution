@@ -470,15 +470,17 @@ fi
 [[ -n "${h_run_dir:-}" && "$h_run_dir" != "$run_dir_before" ]] && rm -rf "$h_run_dir"
 
 # ===========================================================================
-# Scenario (i): alias resolution. Extract the real resolve_claude_model_alias
-# from the runner (sed range + source — bash 3.2 silently sources nothing from
-# a process substitution, so use a temp file; same discipline as
+# Scenario (i): alias resolution. v1.5 Phase 1 (A-4a) moved
+# resolve_claude_model_alias into lib/co-evolution.sh (single source), so extract
+# it from the LIB, not the runner (sed range + source — bash 3.2 silently sources
+# nothing from a process substitution, so use a temp file; same discipline as
 # tests/revise-loop-simulation.sh). Assert the `best`/`opus` aliases resolve to
 # the current Opus id, `fable` stays mapped for back-compat, and an explicit id
 # passes through untouched.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
-sed -n '/^resolve_claude_model_alias() {/,/^}$/p' "$RUNNER" > "$TEST_DIR/_alias.sh"
+LIB="$REPO_ROOT/lib/co-evolution.sh"
+sed -n '/^resolve_claude_model_alias() {/,/^}$/p' "$LIB" > "$TEST_DIR/_alias.sh"
 # shellcheck disable=SC1090,SC1091
 source "$TEST_DIR/_alias.sh"
 i_ok=true
