@@ -30,6 +30,11 @@
 #      into the claude executor argv.
 #   k. bounce counterparty seat (A-8): BOUNCER_MODEL reaches the bounce reviewer
 #      argv and state.json seat_models.bouncer records it; no leak into codex.
+#   l. flag-over-preset precedence (H1): --model o4-mini --preset codex-build
+#      puts o4-mini (not gpt-5.5) in the executor codex argv, keeps the preset
+#      xhigh effort, records codex:o4-mini@xhigh, and logs the override NOTE.
+#   m. warn-only side (H1): --claude-model with a preset stays shadowed by the
+#      preset claude pins (pre-existing precedence, unchanged) but WARNs.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -613,6 +618,91 @@ else
   } >&2
 fi
 [[ -n "${k_run_dir:-}" && "$k_run_dir" != "$run_dir_before" ]] && rm -rf "$k_run_dir"
+
+# ===========================================================================
+# Scenario (l): v1.5 Phase 1 (H1) — an explicit --model beats the preset's
+# codex seat pins. `--model o4-mini --preset codex-build` (flag BEFORE preset,
+# the reported regression's exact shape) must put o4-mini, not gpt-5.5, in the
+# executor codex argv; the preset's xhigh EFFORT survives (master parity: the
+# flag never set efforts); state.json reports the post-precedence truth and the
+# override NOTE is logged. Preset-without-flag keeping gpt-5.5 = scenario (a).
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo l)
+claude_log="$TEST_DIR/l_claude.log"; codex_log="$TEST_DIR/l_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --model o4-mini --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
+    --workdir "$repo" --timeout 60 -- "flag-over-preset precedence probe"
+) >"$TEST_DIR/l.out" 2>&1 || true
+l_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+l_ok=true
+# Executor codex argv carries the FLAG model, the preset effort — and never gpt-5.5.
+if ! grep -Eq -- '-c model=o4-mini' "$codex_log"; then l_ok=false; fi
+if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then l_ok=false; fi
+if grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then l_ok=false; fi
+if [[ -n "$l_run_dir" && "$l_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.executor == "codex:o4-mini@xhigh"' "$l_run_dir/state.json" >/dev/null 2>&1; then l_ok=false; fi
+  # The override is surfaced, not silent.
+  if ! grep -Fq 'NOTE: preset executor codex model pin (gpt-5.5) overridden by explicit --model o4-mini' "$l_run_dir/run.log"; then l_ok=false; fi
+else
+  l_ok=false
+fi
+if [[ "$l_ok" == true ]]; then
+  pass "H1: --model o4-mini beats preset codex pins (argv o4-mini@xhigh, no gpt-5.5, NOTE logged)"
+else
+  fail "H1 flag-over-preset precedence failed (run dir: ${l_run_dir:-<none>})"
+  { echo "--- codex argv ---"; cat "$codex_log"
+    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$l_run_dir/state.json"; }
+    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/run.log" ]] && { echo "--- NOTE lines ---"; grep 'NOTE:' "$l_run_dir/run.log" || true; }
+  } >&2
+fi
+[[ -n "${l_run_dir:-}" && "$l_run_dir" != "$run_dir_before" ]] && rm -rf "$l_run_dir"
+
+# ===========================================================================
+# Scenario (m): v1.5 Phase 1 (H1, warn-only side) — --claude-model with a preset
+# keeps master's pre-existing precedence (the preset's claude pins still win: no
+# behavior change) but the shadow is WARNED, not silent. The claude verify argv
+# must still carry the preset's best->claude-opus-4-8, never the flag value.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo m)
+claude_log="$TEST_DIR/m_claude.log"; codex_log="$TEST_DIR/m_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --claude-model claude-shadow-test --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
+    --workdir "$repo" --timeout 60 -- "claude-model shadow warn probe"
+) >"$TEST_DIR/m.out" 2>&1 || true
+m_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+m_ok=true
+# Pre-existing precedence unchanged: the preset's claude pin still wins the argv.
+if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then m_ok=false; fi
+if grep -Eq -- '--model claude-shadow-test' "$claude_log"; then m_ok=false; fi
+# ...but the shadow is warned about (one line per shadowed preset claude seat).
+if [[ -n "$m_run_dir" && "$m_run_dir" != "$run_dir_before" ]]; then
+  if ! grep -Eq 'WARNING: explicit --claude-model \(claude-shadow-test\) is shadowed by the preset (composer|verifier) model pin' "$m_run_dir/run.log"; then m_ok=false; fi
+else
+  m_ok=false
+fi
+if [[ "$m_ok" == true ]]; then
+  pass "H1 warn-only: --claude-model stays shadowed by preset claude pins (unchanged) and the shadow is WARNED"
+else
+  fail "H1 --claude-model warn-only behavior mismatch (run dir: ${m_run_dir:-<none>})"
+  { echo "--- claude argv ---"; cat "$claude_log"
+    [[ -n "${m_run_dir:-}" && -f "$m_run_dir/run.log" ]] && { echo "--- WARNING lines ---"; grep 'WARNING:' "$m_run_dir/run.log" || true; }
+  } >&2
+fi
+[[ -n "${m_run_dir:-}" && "$m_run_dir" != "$run_dir_before" ]] && rm -rf "$m_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))

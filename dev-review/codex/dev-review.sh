@@ -34,6 +34,15 @@ VERIFIER_OVERRIDE="${DEV_REVIEW_VERIFIER:-}"
 # default). Applied in-parser so AFTER-preset flags win (last-wins) and model/
 # effort values fill-if-empty so pre-set env vars win. See apply_preset().
 PRESET=""
+# v1.5 Phase 1 (H1): explicit-flag markers + preset-supplied seat tracking.
+# CODEX/CLAUDE_MODEL_FLAG_EXPLICIT record that the USER passed --model /
+# --claude-model on this invocation (vs the value arriving via env), and
+# PRESET_SUPPLIED_MODEL_SEATS records which seat models the preset filled
+# (empty-at-expansion), so apply_flag_preset_precedence can tell a preset pin
+# apart from a deliberate user env override.
+CODEX_MODEL_FLAG_EXPLICIT=false
+CLAUDE_MODEL_FLAG_EXPLICIT=false
+PRESET_SUPPLIED_MODEL_SEATS=""
 BRANCH_CREATED=""
 WORKTREE_PATH=""
 WORKDIR="$(pwd)"
@@ -144,11 +153,28 @@ normalize_agent() {
 # v1.5 Phase 1 (A-3): every codex seat in a preset is now MODEL-PINNED to gpt-5.5
 # (was left to the local config.toml). Cross-machine reproducibility is guaranteed
 # only for preset runs; ad-hoc runs may still inherit the local codex config.
+#
+# v1.5 Phase 1 (H1): _mark_if_preset_supplied records the seats whose model the
+# PRESET is about to fill (var empty at expansion time). That marker is what lets
+# apply_flag_preset_precedence distinguish "preset pin" (an explicit --model flag
+# may override it) from "user env override" (always wins, never touched).
+_mark_if_preset_supplied() {
+  local seat="$1" current_value="$2"
+  if [[ -z "$current_value" ]]; then
+    PRESET_SUPPLIED_MODEL_SEATS="${PRESET_SUPPLIED_MODEL_SEATS} ${seat}"
+  fi
+  return 0
+}
+
 apply_preset() {
   case "$1" in
     codex-build)   # "build with codex": best Claude seats plan/review, Codex executes.
       COMPOSER="opus"; EXECUTOR="codex"; VERIFIER_OVERRIDE="opus"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      _mark_if_preset_supplied composer "${COMPOSER_MODEL:-}"
+      _mark_if_preset_supplied verifier "${VERIFIER_MODEL:-}"
+      _mark_if_preset_supplied executor "${EXECUTOR_MODEL:-}"
+      _mark_if_preset_supplied bouncer  "${BOUNCER_MODEL:-}"
       : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
       : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
       : "${EXECUTOR_MODEL:=gpt-5.5}"; : "${EXECUTOR_EFFORT:=xhigh}"   # codex executor pinned (A-3), not inherited from local config.toml
@@ -157,6 +183,10 @@ apply_preset() {
     claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
       COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      _mark_if_preset_supplied composer "${COMPOSER_MODEL:-}"
+      _mark_if_preset_supplied verifier "${VERIFIER_MODEL:-}"
+      _mark_if_preset_supplied executor "${EXECUTOR_MODEL:-}"
+      _mark_if_preset_supplied bouncer  "${BOUNCER_MODEL:-}"
       : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
       : "${COMPOSER_MODEL:=gpt-5.5}"; : "${COMPOSER_EFFORT:=xhigh}"   # codex composer pinned (A-3)
       : "${VERIFIER_MODEL:=gpt-5.5}"; : "${VERIFIER_EFFORT:=xhigh}"   # codex verifier pinned (A-3)
@@ -1124,6 +1154,9 @@ while [[ $# -gt 0 ]]; do
       # invoke_agent_with_timeout inherits it (mirrors the --timeout arm). Without
       # export, CODEX_MODEL never reached invoke_codex in the dispatched child.
       export CODEX_MODEL="$2"
+      # v1.5 Phase 1 (H1): an explicit --model must beat preset-supplied codex
+      # seat pins (see apply_flag_preset_precedence). Env-set CODEX_MODEL does not.
+      CODEX_MODEL_FLAG_EXPLICIT=true
       shift 2
       ;;
     --verifier)
@@ -1137,6 +1170,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -gt 1 ]] || die "--claude-model requires a value"
       # v1.5: resolve friendly alias (fable -> claude-fable-5) else passthrough.
       CLAUDE_MODEL=$(resolve_claude_model_alias "$2")
+      # v1.5 Phase 1 (H1): preset claude-seat pins deliberately keep winning over
+      # --claude-model (pre-existing v1.5 precedence, unchanged) — but the shadow
+      # is now WARNED about in apply_flag_preset_precedence instead of silent.
+      CLAUDE_MODEL_FLAG_EXPLICIT=true
       shift 2
       ;;
     --workdir)
@@ -1461,6 +1498,49 @@ resolve_seat_model_string() {
   printf '%s:%s@%s' "$agent" "${model_str:-(default)}" "${effort_str:-(default)}"
 }
 
+# v1.5 Phase 1 (H1): explicit CLI flag beats PRESET-supplied seat pins.
+# Regression fixed: `--model o4-mini --preset codex-build` silently ran gpt-5.5
+# because the preset's EXECUTOR_MODEL pin outranked the flag-set CODEX_MODEL base.
+# Rule: for every seat model the PRESET supplied (tracked in
+# PRESET_SUPPLIED_MODEL_SEATS; user-env seat values are never marked or touched):
+#   - codex-agented seat + explicit --model  -> clear the pin, so apply_seat_env
+#     falls through to CODEX_MODEL_BASE (the flag's value). Preset EFFORT stays,
+#     matching master behavior (--model never set efforts).
+#   - claude-agented seat + explicit --claude-model -> pre-existing v1.5
+#     precedence is preserved (preset pin still wins) but the shadow is WARNED,
+#     not silent.
+# Runs once, after parsing + REVIEWER derivation and after LOG_FILE is set, and
+# BEFORE the banner/state.json seat resolution and any apply_seat_env call.
+apply_flag_preset_precedence() {
+  local seat agent pin
+  for seat in $PRESET_SUPPLIED_MODEL_SEATS; do
+    case "$seat" in
+      composer) agent="$COMPOSER";          pin="${COMPOSER_MODEL:-}" ;;
+      executor) agent="$EXECUTOR";          pin="${EXECUTOR_MODEL:-}" ;;
+      verifier) agent="$(select_verifier)"; pin="${VERIFIER_MODEL:-}" ;;
+      bouncer)  agent="$REVIEWER";          pin="${BOUNCER_MODEL:-}" ;;
+      *) continue ;;
+    esac
+    [[ -z "$pin" ]] && continue
+    if [[ "$agent" == "codex" ]]; then
+      if [[ "$CODEX_MODEL_FLAG_EXPLICIT" == "true" ]]; then
+        case "$seat" in
+          composer) COMPOSER_MODEL="" ;;
+          executor) EXECUTOR_MODEL="" ;;
+          verifier) VERIFIER_MODEL="" ;;
+          bouncer)  BOUNCER_MODEL="" ;;
+        esac
+        log " NOTE: preset ${seat} codex model pin (${pin}) overridden by explicit --model ${CODEX_MODEL:-}"
+      fi
+    else
+      if [[ "$CLAUDE_MODEL_FLAG_EXPLICIT" == "true" ]]; then
+        log " WARNING: explicit --claude-model (${CLAUDE_MODEL}) is shadowed by the preset ${seat} model pin (${pin}); preset seat wins (pre-existing precedence)"
+      fi
+    fi
+  done
+  return 0
+}
+
 # Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
 if [[ -n "$RUN_DIR_OVERRIDE" ]]; then
   RUN_DIR="$RUN_DIR_OVERRIDE"
@@ -1493,6 +1573,11 @@ write_state_field "$STATE_JSON" ".runner_pid" "number" "$$"
 if [[ -n "$PARENT_RUN_ID" ]]; then
   write_state_field "$STATE_JSON" ".orchestration.parent_run_id" "string" "$PARENT_RUN_ID"
 fi
+
+# v1.5 Phase 1 (H1): apply explicit-flag-over-preset precedence BEFORE the seats
+# are resolved for the banner/state.json (and before any apply_seat_env call), so
+# both the logs and the argv reflect the post-precedence truth.
+apply_flag_preset_precedence
 
 # v1.5: resolve the verifier seat and per-seat model/effort descriptors for the
 # banner + observability fields. _VERIFIER_SEAT reflects --verifier / executor
