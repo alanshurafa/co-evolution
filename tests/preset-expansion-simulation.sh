@@ -28,6 +28,8 @@
 #   j. --preset claude-build: composer=codex gpt-5.5/xhigh, executor=claude
 #      best/high, verifier=codex gpt-5.5/xhigh, with no codex model leaking
 #      into the claude executor argv.
+#   k. bounce counterparty seat (A-8): BOUNCER_MODEL reaches the bounce reviewer
+#      argv and state.json seat_models.bouncer records it; no leak into codex.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -555,6 +557,52 @@ else
   } >&2
 fi
 [[ -n "${j_run_dir:-}" && "$j_run_dir" != "$run_dir_before" ]] && rm -rf "$j_run_dir"
+
+# ===========================================================================
+# Scenario (k): v1.5 Phase 1 (A-8) bounce counterparty seat. Default flavor
+# (composer=codex => reviewer=opus/claude), --bounces 2 --plan-only so the bounce
+# reviewer pass (pass 1, claude) runs but execute/verify do not. BOUNCER_MODEL
+# must reach that claude reviewer argv, and state.json seat_models.bouncer must
+# record it (opus:claude-bouncer-xyz@...). --bounces 2 (explicit int) sets
+# AUTO_CONVERGE=false so both passes run unconditionally (no marker early-exit).
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo k)
+claude_log="$TEST_DIR/k_claude.log"; codex_log="$TEST_DIR/k_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  export BOUNCER_MODEL="claude-bouncer-xyz" BOUNCER_EFFORT="high"
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --bounces 2 --plan-only --workdir "$repo" --timeout 60 -- "bouncer seat probe"
+) >"$TEST_DIR/k.out" 2>&1 || true
+k_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+k_ok=true
+# The bounce reviewer pass (claude) argv must carry BOUNCER_MODEL + effort.
+if ! grep -Eq -- '--model claude-bouncer-xyz' "$claude_log"; then k_ok=false; fi
+if ! grep -Eq -- '--effort high' "$claude_log"; then k_ok=false; fi
+# No leak: the bouncer claude id must not reach any codex argv.
+if grep -Eq -- 'claude-bouncer-xyz' "$codex_log"; then k_ok=false; fi
+# state.json seat_models.bouncer records the resolved reviewer seat.
+if [[ -n "$k_run_dir" && "$k_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.bouncer == "opus:claude-bouncer-xyz@high"' "$k_run_dir/state.json" >/dev/null 2>&1; then
+    k_ok=false
+  fi
+else
+  k_ok=false
+fi
+if [[ "$k_ok" == true ]]; then
+  pass "bounce counterparty seat: BOUNCER_MODEL reaches the reviewer argv; seat_models.bouncer recorded"
+else
+  fail "bouncer seat propagation failed (run dir: ${k_run_dir:-<none>})"
+  { echo "--- claude argv ---"; cat "$claude_log"
+    [[ -n "${k_run_dir:-}" && -f "$k_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$k_run_dir/state.json"; }
+  } >&2
+fi
+[[ -n "${k_run_dir:-}" && "$k_run_dir" != "$run_dir_before" ]] && rm -rf "$k_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))
