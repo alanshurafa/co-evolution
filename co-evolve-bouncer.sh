@@ -555,6 +555,22 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
   log "--- COMPOSE PHASE ---"
   log " Agent: $AGENT_A"
   log " Seat:  $(resolve_role_seat_string composer "$AGENT_A")"
+  # v1.5 Phase 1 (M2): the composer seat override can be shaped for the OTHER
+  # agent kind (e.g. COMPOSER_MODEL=gpt-5.5 while the compose phase runs on
+  # claude). apply_role_seat's leak guard drops it correctly — but used to do so
+  # silently. Surface the drop with an explicit one-liner so the operator sees
+  # why the compose phase is not using their composer override.
+  if [[ -n "$COMPOSER_MODEL" ]]; then
+    if [[ "$AGENT_A" == "codex" ]]; then
+      case "$COMPOSER_MODEL" in
+        fable|best|opus|claude-*) log " NOTE: composer seat override dropped for compose phase: agent mismatch (claude override, codex phase)" ;;
+      esac
+    else
+      case "$COMPOSER_MODEL" in
+        gpt-*|codex*) log " NOTE: composer seat override dropped for compose phase: agent mismatch (codex override, claude phase)" ;;
+      esac
+    fi
+  fi
   log " Input: $INPUT_TYPE ($(echo "$INPUT_CONTENT" | wc -w | tr -d '\r\n ') words)"
 
   invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" composer
@@ -758,7 +774,12 @@ log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
 # v1.5 Phase 1 (A-4b): resolved per-role seats. Reviewer runs on AGENT_A (odd
 # passes / critique+tighten); composer runs on AGENT_B (even passes / defend).
-# Each shows agent:model@effort, or (inherit:<global>) when no seat override is set.
+# The compose PHASE also runs the composer role, but on AGENT_A — its resolved
+# seat can differ from the bounce-composer's (M2: leak guard drops a wrong-kind
+# override), so it gets its own line and the actual compose model is always
+# surfaced. Each shows agent:model@effort, or (inherit:<global>) when no seat
+# override is set.
+log " Compose seat:  $(resolve_role_seat_string composer "$AGENT_A")"
 log " Reviewer seat: $(resolve_role_seat_string reviewer "$AGENT_A")"
 log " Composer seat: $(resolve_role_seat_string composer "$AGENT_B")"
 if [[ "$CHAIN" == "true" ]]; then
