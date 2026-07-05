@@ -112,3 +112,25 @@ Co-evolution tools are integrated into GSD workflows:
 - v1.4 npm/MCP publish pending — a human gate, not yet shipped.
 - v1.5 Phase 6 partial — degrade-path dogfood only; the rest is unbuilt.
 - Current default Claude model is `claude-opus-4-8` (the `best` alias; overridable via `CLAUDE_MODEL` / `--claude-model`).
+
+## Model Routing
+
+Seats and defaults (env/flag overridable; state.json `seat_models` must always show a concrete model for preset seats):
+
+| Work | Component | Model |
+|------|-----------|-------|
+| Code execution + mechanical verify | dev-review executor seat (`codex exec`) | `gpt-5.5` @ `xhigh` — pinned in presets, not inherited from local config.toml |
+| Plan composition | dev-review composer seat / document composer role | `best` alias → `claude-opus-4-8` @ high |
+| Verification verdicts | dev-review verifier seat | codex-build: opus @ max; claude-build: `gpt-5.5` @ xhigh |
+| Bounce critique (document pipeline reviewer role) | co-evolve-bouncer | `gpt-5.5` @ xhigh via codex (cross-vendor disagreement is the point) |
+| Accept / bounce / escalate decisions, adjudication passes | orchestrating session | fable-5 preferred, opus-4.8 acceptable |
+| Plan review before execution | session or `/codex:adversarial-review` | fable-5 or opus-4.8; optionally add a gpt-5.5 pass as an independent second perspective |
+| Blind quality judging | `evals/judge-bounce.sh` | fable-5 @ high (existing default) |
+| Glue/scout subagents inside Claude Code | Agent tool | sonnet-5; **Haiku is not used anywhere in this repo** (workspace-level Haiku automations elsewhere are unaffected) |
+
+Rules:
+- These are defaults, not limits. Standing permission: if a cheaper model's output misses the bar, redo with a smarter model without asking. Judge the output, not the price tag.
+- When axes conflict on anything that ships: intelligence > taste > cost. Cost is a tie-breaker only.
+- Bulk/mechanical work (clear-spec implementation, migrations, data transforms) → gpt-5.5. It is cheap under the Codex plan but **not free**: the codex-guard daily cap applies; batch calls, never poll-loop them.
+- Anything user-facing (docs prose, README, API/CLI surface design) needs high taste → opus-4.8 or fable-5 authors/reviews it.
+- gpt-5.5 is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
