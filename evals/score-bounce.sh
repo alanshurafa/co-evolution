@@ -119,8 +119,18 @@ PASS_COUNT=${#PASS_FILES[@]}
 # ---------------------------------------------------------------------------
 
 # Headings (H1-H4): normalized "level|text" lines.
+#
+# LC_ALL=C: gawk's locale-aware gsub() on a byte-oriented character class
+# (e.g. [^a-z0-9 ]) mishandles 4-byte UTF-8 codepoints (emoji) under a UTF-8
+# locale -- it strips 3 of the 4 bytes and leaves one orphan continuation
+# byte behind, which then makes the downstream `sort` hard-crash with
+# "Invalid or incomplete multibyte or wide character" (set -e kills the
+# whole scorer). Forcing byte semantics here is correct, not a workaround:
+# these extractors only ever emit ASCII fingerprints for set comparison, so
+# every byte of a multi-byte character is "not in [a-z0-9 ]" and gets
+# stripped cleanly either way.
 extract_headings() {
-  awk '
+  LC_ALL=C awk '
     /^```/ { in_fence = !in_fence; next }
     !in_fence && /^#{1,4}[ \t]/ {
       level = 0
@@ -137,8 +147,9 @@ extract_headings() {
 
 # Anchors: numbers(+units), comparison operators, `code` tokens, "quoted
 # terms", requirement modals. One anchor per line, normalized.
+# LC_ALL=C: see extract_headings() above -- same gawk multibyte gsub bug.
 extract_anchors() {
-  awk '
+  LC_ALL=C awk '
     /^```/ { in_fence = !in_fence; next }
     in_fence { next }
     {
@@ -185,8 +196,9 @@ extract_anchors() {
 
 # Markers with nearest-heading + normalized-text fingerprint.
 # Output: type|heading_norm|text_norm
+# LC_ALL=C: see extract_headings() above -- same gawk multibyte gsub bug.
 extract_markers() {
-  awk '
+  LC_ALL=C awk '
     /^```/ { in_fence = !in_fence; next }
     in_fence { next }
     /^#{1,4}[ \t]/ {
