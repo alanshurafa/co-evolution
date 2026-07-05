@@ -830,6 +830,17 @@ validate_review_verdict() {
   local high_severity_count=0
   local compact_json=""
 
+  # v1.5 Phase 2 (A-7): token-discipline size caps, mirrored from
+  # skills/dev-review/schemas/review-verdict.json (maxItems/maxLength). A verdict
+  # that blows past these is unusable verifier output (a wall of text is a failed
+  # verdict), so it takes the SAME invalid-verdict path as a malformed one —
+  # rejected here, never passed downstream. Kept shell-side too because the claude
+  # verifier seat has no --output-schema and never hits the CLI's schema check.
+  local -r MAX_ISSUES=5
+  local -r MAX_SUMMARY_LEN=320
+  local -r MAX_ISSUE_FIELD_LEN=240
+  local -r MAX_ITERATION_NOTES_LEN=600
+
   if command -v jq >/dev/null 2>&1; then
     jq -e 'type == "object"' "$json_file" >/dev/null 2>&1 || {
       printf '%s' "verdict was not a JSON object"
@@ -889,6 +900,24 @@ validate_review_verdict() {
       return 1
     }
 
+    # v1.5 Phase 2 (A-7): size caps (see MAX_* above). Over-cap = invalid verdict.
+    jq -e --argjson m "$MAX_ISSUES" '(.issues | length) <= $m' "$json_file" >/dev/null 2>&1 || {
+      printf 'verdict exceeded the %s-issue cap' "$MAX_ISSUES"
+      return 1
+    }
+    jq -e --argjson m "$MAX_SUMMARY_LEN" '(.summary | length) <= $m' "$json_file" >/dev/null 2>&1 || {
+      printf 'summary exceeded the %s-character cap' "$MAX_SUMMARY_LEN"
+      return 1
+    }
+    jq -e --argjson m "$MAX_ITERATION_NOTES_LEN" 'if has("iteration_notes") then (.iteration_notes | length) <= $m else true end' "$json_file" >/dev/null 2>&1 || {
+      printf 'iteration_notes exceeded the %s-character cap' "$MAX_ITERATION_NOTES_LEN"
+      return 1
+    }
+    jq -e --argjson m "$MAX_ISSUE_FIELD_LEN" '[.issues[]? | (.file? // ""), (.line_range? // ""), (.description? // ""), (.suggestion? // "")] | all(.[]; length <= $m)' "$json_file" >/dev/null 2>&1 || {
+      printf 'an issue field exceeded the %s-character cap' "$MAX_ISSUE_FIELD_LEN"
+      return 1
+    }
+
     high_severity_count=$(jq '[.issues[]? | select(.severity == "CRITICAL" or .severity == "HIGH")] | length' "$json_file" 2>/dev/null)
   else
     compact_json=$(tr -d '\r\n\t ' < "$json_file")
@@ -920,6 +949,20 @@ validate_review_verdict() {
     fi
 
     high_severity_count=$(grep -o '"severity"[[:space:]]*:[[:space:]]*"\(CRITICAL\|HIGH\)"' "$json_file" | wc -l | tr -d '\r\n ')
+
+    # v1.5 Phase 2 (A-7): size caps in the jq-less fallback. Issue count is proxied
+    # by the required per-issue "severity" key; summary length uses the extracted
+    # value. Same reject-as-invalid contract as the jq branch above.
+    local fallback_issue_count=0
+    fallback_issue_count=$(grep -o '"severity"[[:space:]]*:' "$json_file" | wc -l | tr -d '\r\n ')
+    if (( fallback_issue_count > MAX_ISSUES )); then
+      printf 'verdict exceeded the %s-issue cap' "$MAX_ISSUES"
+      return 1
+    fi
+    if (( ${#summary} > MAX_SUMMARY_LEN )); then
+      printf 'summary exceeded the %s-character cap' "$MAX_SUMMARY_LEN"
+      return 1
+    fi
   fi
 
   if [[ "$verdict" == "APPROVED" && "$confidence" -lt 75 ]]; then
