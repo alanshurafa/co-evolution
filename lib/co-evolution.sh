@@ -576,6 +576,57 @@ file_contains_auth_failure() {
   grep -qiE 'Failed to authenticate|authentication_error|Not authenticated|Not logged in|Unauthorized|login required|Please run .* login|Please run /login' "$file_path"
 }
 
+# A-2: strict, anchored auth-banner detector for the agent OUTPUT path. The
+# broad file_contains_auth_failure above is a loose substring scan (it even
+# matches a bare "Unauthorized"), which is right for stderr/empty-output paths
+# but wrong for the output document: a legitimate long artifact routinely
+# mentions "Unauthorized"/"Not authenticated" mid-sentence. A genuine CLI auth
+# failure prints a short banner that STANDS ALONE at the start of a line before
+# any work is done. So we scan only the first ~20 non-empty lines and require
+# an auth-context banner to be line-leading (leading whitespace/bullet/quote
+# punctuation is tolerated — e.g. the CLI's "Not logged in · Please run /login").
+# Markdown-QUOTED lines are skipped, not matched: a document about auth
+# handling legitimately quotes the banner as an example inside a ``` fence, a
+# 4-space/tab indented block, or a > blockquote — a real banner prints at
+# column 0 outside any code context. (Bold **...** lead-ins still match: a
+# colorized real banner can arrive wrapped; quoting-in-bold is rare.)
+# Deliberately excludes a bare "Unauthorized" and a bare "Not authenticated":
+# those are prose tokens far more often than banners, and the broad matcher
+# still guards the stderr path. This replaces the old whole-file <50-word
+# heuristic while preserving deb4669's intent — a long document that merely
+# echoes auth phrases mid-body must still pass.
+output_contains_auth_banner() {
+  local file_path="$1"
+  local line eligible=""
+  local nonempty=0 in_fence=false
+  local fence_re='^[[:space:]]*```'
+  local blockquote_re='^[[:space:]]*>'
+
+  [[ -s "$file_path" ]] || return 1
+
+  # Collect the window's match-eligible lines, then run the banner regex once.
+  # `|| [[ -n "$line" ]]` keeps a final line that lacks a trailing newline.
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue              # blank: not counted
+    nonempty=$((nonempty + 1))
+    (( nonempty > 20 )) && break                             # window exhausted
+    if [[ "$line" =~ $fence_re ]]; then                      # fence marker:
+      if [[ "$in_fence" == true ]]; then in_fence=false; else in_fence=true; fi
+      continue                                               # counted, never matched
+    fi
+    [[ "$in_fence" == true ]] && continue                    # inside ``` fence
+    [[ "$line" == '    '* || "$line" == $'\t'* ]] && continue # indented code
+    [[ "$line" =~ $blockquote_re ]] && continue              # blockquote
+    eligible+="$line"$'\n'
+  done < "$file_path"
+
+  [[ -n "$eligible" ]] || return 1
+
+  grep -qiE \
+    '^[[:space:]>*•[:punct:]]*(Not logged in|You are not logged in|Please run [^[:space:]]*login|Please sign in|Please log ?in|Login required|Authentication failed|Failed to authenticate|authentication_error|Your organization does not have access|Invalid API key|Session (has )?expired)' \
+    <<< "$eligible"
+}
+
 file_contains_error_payload() {
   local file_path="$1"
 
@@ -599,17 +650,17 @@ validate_agent_artifact() {
   local output_file="$1"
   local stderr_file="$2"
   local agent_name="${3:-agent}"
-  local words
 
-  # Fatal: auth-failure text IN THE OUTPUT. Real CLI auth errors are short;
-  # the <50-word ceiling keeps a long legitimate document that merely
-  # mentions "Unauthorized" from tripping the gate.
-  if file_contains_auth_failure "$output_file"; then
-    words=$(wc -w < "$output_file" | tr -d '\r\n ')
-    if (( words < 50 )); then
-      log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
-      return 2
-    fi
+  # Fatal: an auth-failure BANNER in the output. A real CLI auth error prints
+  # a short banner that stands alone at the top of its output before doing any
+  # work, so we head-scan with a strict, line-anchored matcher (A-2). The old
+  # whole-file <50-word ceiling let an auth-error PAGE longer than 50 words fall
+  # through to the accept below; anchoring to the head instead catches long
+  # error pages while still letting a long legitimate document that merely
+  # echoes auth phrases mid-body pass.
+  if output_contains_auth_banner "$output_file"; then
+    log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
+    return 2
   fi
 
   [[ -s "$output_file" ]] && return 0
