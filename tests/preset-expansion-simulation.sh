@@ -256,13 +256,15 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo a)
 claude_log="$TEST_DIR/a_claude.log"; codex_log="$TEST_DIR/a_codex.log"
 : > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
-  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --preset codex-build --workdir "$repo" --timeout 60 -- "preset seat argv probe"
 ) >"$TEST_DIR/a.out" 2>&1 || true
+a_run_dir_k=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 
 a_ok=true
 # composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
@@ -275,8 +277,16 @@ if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then a_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false; fi
 # verifier = claude with max effort.
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
+# v1.5 Phase 1 acceptance: a PRESET run's state.json must carry NO (default) seat
+# — every seat (incl. the A-8 bounce counterparty, codex here) is pinned concrete.
+if [[ -n "$a_run_dir_k" && "$a_run_dir_k" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.5@xhigh"' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
+  if ! jq -e '[.seat_models[] | select(contains("(default)"))] | length == 0' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
+else
+  a_ok=false
+fi
 if [[ "$a_ok" == true ]]; then
-  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.5/xhigh (A-3 pin), verifier claude/max"
+  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.5/xhigh (A-3 pin), verifier claude/max, bouncer codex gpt-5.5/xhigh, no (default) seat"
 else
   fail "preset codex-build seat argv mismatch (claude_log + codex_log below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
