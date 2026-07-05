@@ -45,3 +45,8 @@ Respond with JSON only:
 APPROVED (confidence >= 75): Implementation matches plan.
 REVISE: CRITICAL or HIGH issues.
 Do NOT REVISE for LOW-only issues.
+
+Output contract (over-cap verdicts are rejected as unusable):
+- summary: <= 40 words.
+- issues: <= 5, worst first, one line each as `file:line — issue`.
+- No pasted file contents or full diffs — point with file:line.

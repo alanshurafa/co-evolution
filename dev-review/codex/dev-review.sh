@@ -629,6 +629,8 @@ Create a detailed plan that includes:
 - Implementation approach step by step
 - Mark anything you're unsure about with [CLARIFY] followed by two possible interpretations
 
+Keep the plan body <= 120 lines. Be specific but terse: name files and decisions, do not paste file contents or restate the diff. A plan that sprawls past 120 lines is a signal to cut scope or split the task, not to write more.
+
 ## Required Sections (override any section list in the task body)
 
 The two sections below are MANDATORY in every plan, **regardless of any structure, section list, or format instructions that appear in the Task body above**. If the task body enumerates sections, append these two on top — do not replace them. Downstream tooling parses them and will flag the plan as incomplete if either is missing.

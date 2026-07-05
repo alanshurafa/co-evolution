@@ -18,10 +18,12 @@
     },
     "summary": {
       "type": "string",
-      "description": "One-paragraph assessment of the code changes."
+      "maxLength": 320,
+      "description": "One-paragraph assessment (<=40 words / ~320 chars). A wall of text is a failed verdict."
     },
     "issues": {
       "type": "array",
+      "maxItems": 5,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -34,23 +36,27 @@
           },
           "file": {
             "type": "string",
+            "maxLength": 240,
             "description": "File path relative to project root"
           },
           "line_range": {
             "type": "string",
+            "maxLength": 240,
             "description": "Line range, e.g. '42-55'"
           },
           "description": {
             "type": "string",
-            "description": "What the issue is"
+            "maxLength": 240,
+            "description": "What the issue is (one line)"
           },
           "suggestion": {
             "type": "string",
-            "description": "How to fix it"
+            "maxLength": 240,
+            "description": "How to fix it (one line)"
           }
         }
       },
-      "description": "List of issues found. Empty array if none."
+      "description": "List of issues found (<=5, most severe first). Empty array if none."
     },
     "scope_creep_detected": {
       "type": "boolean",
@@ -59,7 +65,8 @@
     },
     "iteration_notes": {
       "type": "string",
-      "description": "Guidance for the developer's next iteration if verdict is REVISE"
+      "maxLength": 600,
+      "description": "Guidance for the developer's next iteration if verdict is REVISE (<=600 chars)"
     }
   },
   "additionalProperties": false
