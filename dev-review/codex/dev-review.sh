@@ -34,6 +34,15 @@ VERIFIER_OVERRIDE="${DEV_REVIEW_VERIFIER:-}"
 # default). Applied in-parser so AFTER-preset flags win (last-wins) and model/
 # effort values fill-if-empty so pre-set env vars win. See apply_preset().
 PRESET=""
+# v1.5 Phase 1 (H1): explicit-flag markers + preset-supplied seat tracking.
+# CODEX/CLAUDE_MODEL_FLAG_EXPLICIT record that the USER passed --model /
+# --claude-model on this invocation (vs the value arriving via env), and
+# PRESET_SUPPLIED_MODEL_SEATS records which seat models the preset filled
+# (empty-at-expansion), so apply_flag_preset_precedence can tell a preset pin
+# apart from a deliberate user env override.
+CODEX_MODEL_FLAG_EXPLICIT=false
+CLAUDE_MODEL_FLAG_EXPLICIT=false
+PRESET_SUPPLIED_MODEL_SEATS=""
 BRANCH_CREATED=""
 WORKTREE_PATH=""
 WORKDIR="$(pwd)"
@@ -128,20 +137,11 @@ normalize_agent() {
   esac
 }
 
-# v1.5: resolve a friendly Claude model alias to its CLI model id. `best` and
-# `opus` resolve to the current Opus line (claude-opus-4-8); `fable` is retained
-# for back-compat only (currently unreachable). Anything else passes through
-# verbatim so explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty
-# value are untouched. Used by the --claude-model flag and the per-seat env layer.
-# Bumping the Claude default to a new model = edit the `best` arm here, one place.
-resolve_claude_model_alias() {
-  case "$1" in
-    best)  echo "claude-opus-4-8" ;;   # strongest supported Claude default for the preset
-    opus)  echo "claude-opus-4-8" ;;   # current Opus-line model
-    fable) echo "claude-fable-5" ;;    # retained for back-compat; currently unreachable, do not default to it
-    *)     echo "$1" ;;
-  esac
-}
+# v1.5 Phase 1 (A-4a): resolve_claude_model_alias now lives in lib/co-evolution.sh
+# (sourced above) as the SINGLE alias source. dev-review.sh consumes that copy;
+# the `--claude-model` flag and the per-seat env layer below call it unchanged.
+# Behavior is byte-identical (best/opus -> claude-opus-4-8, fable -> claude-fable-5,
+# else passthrough). Do NOT redefine it here — bump the alias table in the lib.
 
 # v1.5: expand a named seat preset into the underlying seat/model/effort knobs.
 # Called from the --preset parser arm. Two precedence rules, both deliberate:
@@ -150,21 +150,47 @@ resolve_claude_model_alias() {
 #     override them via last-wins parsing.
 #   - model/effort knobs use fill-if-empty (`: "${VAR:=…}"`) so a value already
 #     present in the environment (e.g. COMPOSER_EFFORT=low) wins over the preset.
+# v1.5 Phase 1 (A-3): every codex seat in a preset is now MODEL-PINNED to gpt-5.5
+# (was left to the local config.toml). Cross-machine reproducibility is guaranteed
+# only for preset runs; ad-hoc runs may still inherit the local codex config.
+#
+# v1.5 Phase 1 (H1): _mark_if_preset_supplied records the seats whose model the
+# PRESET is about to fill (var empty at expansion time). That marker is what lets
+# apply_flag_preset_precedence distinguish "preset pin" (an explicit --model flag
+# may override it) from "user env override" (always wins, never touched).
+_mark_if_preset_supplied() {
+  local seat="$1" current_value="$2"
+  if [[ -z "$current_value" ]]; then
+    PRESET_SUPPLIED_MODEL_SEATS="${PRESET_SUPPLIED_MODEL_SEATS} ${seat}"
+  fi
+  return 0
+}
+
 apply_preset() {
   case "$1" in
     codex-build)   # "build with codex": best Claude seats plan/review, Codex executes.
       COMPOSER="opus"; EXECUTOR="codex"; VERIFIER_OVERRIDE="opus"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      _mark_if_preset_supplied composer "${COMPOSER_MODEL:-}"
+      _mark_if_preset_supplied verifier "${VERIFIER_MODEL:-}"
+      _mark_if_preset_supplied executor "${EXECUTOR_MODEL:-}"
+      _mark_if_preset_supplied bouncer  "${BOUNCER_MODEL:-}"
       : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
       : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
-      : "${EXECUTOR_EFFORT:=xhigh}"   # codex model stays the CLI's configured default — deliberately unpinned
+      : "${EXECUTOR_MODEL:=gpt-5.5}"; : "${EXECUTOR_EFFORT:=xhigh}"   # codex executor pinned (A-3), not inherited from local config.toml
+      : "${BOUNCER_MODEL:=gpt-5.5}"; : "${BOUNCER_EFFORT:=xhigh}"   # bounce reviewer = codex here (COMPOSER=opus); pinned (A-8) so no (default) seat
       ;;
     claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
       COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
       VERIFY=true; BOUNCES=2; REVISE_LOOP_MAX=1
+      _mark_if_preset_supplied composer "${COMPOSER_MODEL:-}"
+      _mark_if_preset_supplied verifier "${VERIFIER_MODEL:-}"
+      _mark_if_preset_supplied executor "${EXECUTOR_MODEL:-}"
+      _mark_if_preset_supplied bouncer  "${BOUNCER_MODEL:-}"
       : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
-      : "${COMPOSER_EFFORT:=xhigh}"   # codex plans; model left to the CLI's config (unpinned)
-      : "${VERIFIER_EFFORT:=xhigh}"   # codex reviews; model unpinned
+      : "${COMPOSER_MODEL:=gpt-5.5}"; : "${COMPOSER_EFFORT:=xhigh}"   # codex composer pinned (A-3)
+      : "${VERIFIER_MODEL:=gpt-5.5}"; : "${VERIFIER_EFFORT:=xhigh}"   # codex verifier pinned (A-3)
+      : "${BOUNCER_MODEL:=best}"; : "${BOUNCER_EFFORT:=high}"   # bounce reviewer = opus here (COMPOSER=codex); pinned (A-8) so no (default) seat
       ;;
     *) die "Unknown preset: $1 (available: codex-build, claude-build)" ;;
   esac
@@ -1128,6 +1154,9 @@ while [[ $# -gt 0 ]]; do
       # invoke_agent_with_timeout inherits it (mirrors the --timeout arm). Without
       # export, CODEX_MODEL never reached invoke_codex in the dispatched child.
       export CODEX_MODEL="$2"
+      # v1.5 Phase 1 (H1): an explicit --model must beat preset-supplied codex
+      # seat pins (see apply_flag_preset_precedence). Env-set CODEX_MODEL does not.
+      CODEX_MODEL_FLAG_EXPLICIT=true
       shift 2
       ;;
     --verifier)
@@ -1141,6 +1170,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -gt 1 ]] || die "--claude-model requires a value"
       # v1.5: resolve friendly alias (fable -> claude-fable-5) else passthrough.
       CLAUDE_MODEL=$(resolve_claude_model_alias "$2")
+      # v1.5 Phase 1 (H1): preset claude-seat pins deliberately keep winning over
+      # --claude-model (pre-existing v1.5 precedence, unchanged) — but the shadow
+      # is now WARNED about in apply_flag_preset_precedence instead of silent.
+      CLAUDE_MODEL_FLAG_EXPLICIT=true
       shift 2
       ;;
     --workdir)
@@ -1395,7 +1428,8 @@ apply_seat_env() {
     composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
     executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
-    *) : ;;  # bounce counterparty: globals only
+    bounce)   model="${BOUNCER_MODEL:-}";  effort="${BOUNCER_EFFORT:-}" ;;  # v1.5 Phase 1 (A-8): bounce counterparty seat
+    *) : ;;  # unknown seat: globals only
   esac
   # v1.5 cross-agent leak guard. A seat's model+effort is ONE override pair
   # configured for a specific agent kind (e.g. the codex-build preset fills
@@ -1439,6 +1473,7 @@ resolve_seat_model_string() {
     composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
     executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    bounce)   model="${BOUNCER_MODEL:-}";  effort="${BOUNCER_EFFORT:-}" ;;  # v1.5 Phase 1 (A-8)
     *) : ;;
   esac
   # v1.5: mirror apply_seat_env's cross-agent leak guard (drop the wrong-kind
@@ -1461,6 +1496,49 @@ resolve_seat_model_string() {
     effort_str="${effort:-$CLAUDE_EFFORT_BASE}"
   fi
   printf '%s:%s@%s' "$agent" "${model_str:-(default)}" "${effort_str:-(default)}"
+}
+
+# v1.5 Phase 1 (H1): explicit CLI flag beats PRESET-supplied seat pins.
+# Regression fixed: `--model o4-mini --preset codex-build` silently ran gpt-5.5
+# because the preset's EXECUTOR_MODEL pin outranked the flag-set CODEX_MODEL base.
+# Rule: for every seat model the PRESET supplied (tracked in
+# PRESET_SUPPLIED_MODEL_SEATS; user-env seat values are never marked or touched):
+#   - codex-agented seat + explicit --model  -> clear the pin, so apply_seat_env
+#     falls through to CODEX_MODEL_BASE (the flag's value). Preset EFFORT stays,
+#     matching master behavior (--model never set efforts).
+#   - claude-agented seat + explicit --claude-model -> pre-existing v1.5
+#     precedence is preserved (preset pin still wins) but the shadow is WARNED,
+#     not silent.
+# Runs once, after parsing + REVIEWER derivation and after LOG_FILE is set, and
+# BEFORE the banner/state.json seat resolution and any apply_seat_env call.
+apply_flag_preset_precedence() {
+  local seat agent pin
+  for seat in $PRESET_SUPPLIED_MODEL_SEATS; do
+    case "$seat" in
+      composer) agent="$COMPOSER";          pin="${COMPOSER_MODEL:-}" ;;
+      executor) agent="$EXECUTOR";          pin="${EXECUTOR_MODEL:-}" ;;
+      verifier) agent="$(select_verifier)"; pin="${VERIFIER_MODEL:-}" ;;
+      bouncer)  agent="$REVIEWER";          pin="${BOUNCER_MODEL:-}" ;;
+      *) continue ;;
+    esac
+    [[ -z "$pin" ]] && continue
+    if [[ "$agent" == "codex" ]]; then
+      if [[ "$CODEX_MODEL_FLAG_EXPLICIT" == "true" ]]; then
+        case "$seat" in
+          composer) COMPOSER_MODEL="" ;;
+          executor) EXECUTOR_MODEL="" ;;
+          verifier) VERIFIER_MODEL="" ;;
+          bouncer)  BOUNCER_MODEL="" ;;
+        esac
+        log " NOTE: preset ${seat} codex model pin (${pin}) overridden by explicit --model ${CODEX_MODEL:-}"
+      fi
+    else
+      if [[ "$CLAUDE_MODEL_FLAG_EXPLICIT" == "true" ]]; then
+        log " WARNING: explicit --claude-model (${CLAUDE_MODEL}) is shadowed by the preset ${seat} model pin (${pin}); preset seat wins (pre-existing precedence)"
+      fi
+    fi
+  done
+  return 0
 }
 
 # Phase 8.1 WR-04: honor --run-dir when set; otherwise preserve v1.2 default (byte-parity).
@@ -1496,6 +1574,11 @@ if [[ -n "$PARENT_RUN_ID" ]]; then
   write_state_field "$STATE_JSON" ".orchestration.parent_run_id" "string" "$PARENT_RUN_ID"
 fi
 
+# v1.5 Phase 1 (H1): apply explicit-flag-over-preset precedence BEFORE the seats
+# are resolved for the banner/state.json (and before any apply_seat_env call), so
+# both the logs and the argv reflect the post-precedence truth.
+apply_flag_preset_precedence
+
 # v1.5: resolve the verifier seat and per-seat model/effort descriptors for the
 # banner + observability fields. _VERIFIER_SEAT reflects --verifier / executor
 # derivation (select_verifier); the seat strings reflect whatever the seats
@@ -1504,6 +1587,10 @@ _VERIFIER_SEAT=$(select_verifier)
 _SEAT_COMPOSER=$(resolve_seat_model_string composer "$COMPOSER")
 _SEAT_EXECUTOR=$(resolve_seat_model_string executor "$EXECUTOR")
 _SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
+# v1.5 Phase 1 (A-8): the bounce counterparty (reviewer side, $REVIEWER agent)
+# gets its own BOUNCER_MODEL/BOUNCER_EFFORT seat. Resolve its descriptor against
+# that agent so the banner + state.json report what the bounce reviewer runs.
+_SEAT_BOUNCER=$(resolve_seat_model_string bounce "$REVIEWER")
 
 # v1.5: optional seat_models observability — records what each seat resolves to.
 # Unconditional + additive (no existing sim asserts an exact state.json key set,
@@ -1511,6 +1598,7 @@ _SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
 write_state_field "$STATE_JSON" ".seat_models.composer" "string" "$_SEAT_COMPOSER"
 write_state_field "$STATE_JSON" ".seat_models.executor" "string" "$_SEAT_EXECUTOR"
 write_state_field "$STATE_JSON" ".seat_models.verifier" "string" "$_SEAT_VERIFIER"
+write_state_field "$STATE_JSON" ".seat_models.bouncer"  "string" "$_SEAT_BOUNCER"
 
 log "============================================"
 log " DEV-REVIEW SESSION"
@@ -1531,6 +1619,7 @@ log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
 log " Composer model: $_SEAT_COMPOSER"
 log " Executor model: $_SEAT_EXECUTOR"
 log " Verifier model: $_SEAT_VERIFIER"
+log " Bouncer model:  $_SEAT_BOUNCER"
 log "============================================"
 log ""
 

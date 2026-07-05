@@ -15,6 +15,15 @@ CHAIN=false
 MAX_BOUNCES=2
 AGENT_A="claude"
 AGENT_B="codex"
+# v1.5 Phase 1 (A-4b): document-pipeline per-role seats. Both roles default empty
+# (= inherit the global CLAUDE_MODEL/CODEX_MODEL + effort), so a run with no seat
+# flags/env is byte-identical to the pre-Phase-1 bouncer (argv parity). The
+# reviewer role covers odd passes + chain critique/tighten; the composer role
+# covers even passes + chain defend. Set via --composer-model/-effort and
+# --reviewer-model/-effort, or the COMPOSER_MODEL/COMPOSER_EFFORT/REVIEWER_MODEL/
+# REVIEWER_EFFORT env vars (flag wins over env via last-wins fill below).
+: "${COMPOSER_MODEL:=}"; : "${COMPOSER_EFFORT:=}"
+: "${REVIEWER_MODEL:=}"; : "${REVIEWER_EFFORT:=}"
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
 TASK=""
@@ -66,7 +75,11 @@ Options:
   --chain            Use staged passes: critique -> defend -> tighten
   --bounces N        Max bounce passes (default: 2, ignored with --chain)
   --agents A,B       Agent pair (default: claude,codex)
-  --claude-model M   Override the Claude model (default: claude-opus-4-6; also via CLAUDE_MODEL env)
+  --claude-model M   Override the Claude model (default: claude-opus-4-8; also via CLAUDE_MODEL env)
+  --composer-model M   Model for the composer role (even passes / chain defend). Also COMPOSER_MODEL env. Default: inherit global.
+  --composer-effort E  Reasoning effort for the composer role. Also COMPOSER_EFFORT env.
+  --reviewer-model M   Model for the reviewer role (odd passes / chain critique+tighten). Also REVIEWER_MODEL env. Default: inherit global.
+  --reviewer-effort E  Reasoning effort for the reviewer role. Also REVIEWER_EFFORT env. (No global --effort: a bounce has two roles.)
   --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
@@ -114,6 +127,29 @@ while [[ $# -gt 0 ]]; do
     --claude-model)
       [[ $# -gt 1 ]] || die "--claude-model requires a value"
       CLAUDE_MODEL="$2"
+      shift 2
+      ;;
+    # v1.5 Phase 1 (A-4b): per-role seats for the document pipeline. There is NO
+    # single global --effort (deliberately rejected as ambiguous — a bounce has
+    # two roles with different needs). Flag wins over the same-named env var.
+    --composer-model)
+      [[ $# -gt 1 ]] || die "--composer-model requires a value"
+      COMPOSER_MODEL="$2"
+      shift 2
+      ;;
+    --composer-effort)
+      [[ $# -gt 1 ]] || die "--composer-effort requires a value"
+      COMPOSER_EFFORT="$2"
+      shift 2
+      ;;
+    --reviewer-model)
+      [[ $# -gt 1 ]] || die "--reviewer-model requires a value"
+      REVIEWER_MODEL="$2"
+      shift 2
+      ;;
+    --reviewer-effort)
+      [[ $# -gt 1 ]] || die "--reviewer-effort requires a value"
+      REVIEWER_EFFORT="$2"
       shift 2
       ;;
     --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
@@ -205,6 +241,13 @@ done
 [[ -n "$OUTPUT_FILE" ]] && OUTPUT_FILE=$(normalize_path_for_bash "$OUTPUT_FILE")
 TASK_AS_PATH=""
 [[ -n "$TASK" ]] && TASK_AS_PATH=$(normalize_path_for_bash "$TASK")
+
+# v1.5 Phase 1 (A-4b): snapshot the post-parse base model/effort globals so the
+# per-role seat layer (apply_role_seat) can fall back to them. Captured AFTER
+# parsing so --claude-model is reflected. CLAUDE_MODEL carries its lib default
+# (best -> claude-opus-4-8); the others default empty (OFF) = argv parity.
+CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
+CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
 
 # Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
 # (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
@@ -415,12 +458,72 @@ build_composer_preamble() {
   fi
 }
 
+# --- v1.5 Phase 1 (A-4b): document-pipeline per-role seat layer ---
+# Mirrors dev-review.sh's apply_seat_env: layer an optional per-role model/effort
+# override onto the global CLAUDE_MODEL/CODEX_MODEL/effort vars around each
+# invocation, with the same cross-agent leak guard (a seat override configured for
+# one agent kind must never reach the other kind's argv). Byte-parity: with no
+# COMPOSER_/REVIEWER_ seat set, every role resolves to the base globals, so argv is
+# unchanged. The base snapshot (…_BASE) is captured once after arg parsing.
+apply_role_seat() {
+  local role="$1" agent="$2" model="" effort=""
+  case "$role" in
+    composer|defend)          model="$COMPOSER_MODEL"; effort="$COMPOSER_EFFORT" ;;  # composer side
+    reviewer|critique|tighten) model="$REVIEWER_MODEL"; effort="$REVIEWER_EFFORT" ;;  # reviewer side
+    *) : ;;  # unknown role: globals only
+  esac
+  # Cross-agent leak guard (same coupling rule as dev-review): a model picked for
+  # the wrong agent kind means its effort is wrong too, so drop the WHOLE pair and
+  # fall back to that agent's base values. Claude aliases/ids never reach a codex
+  # seat (codex/ChatGPT rejects them HTTP 400); codex ids never reach a claude seat.
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in
+      fable|best|opus|claude-*) model=""; effort="" ;;
+    esac
+    export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
+    export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
+  else
+    case "$model" in
+      gpt-*|codex*) model=""; effort="" ;;
+    esac
+    export CLAUDE_MODEL="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+    export CLAUDE_EFFORT="${effort:-$CLAUDE_EFFORT_BASE}"
+  fi
+}
+
+# Resolve a role's "agent:model@effort" descriptor with the SAME precedence
+# apply_role_seat uses, but without mutating the exported env. Feeds the banner.
+# When a role inherits (no seat set), reports "(inherit:<global>)" — never blank.
+resolve_role_seat_string() {
+  local role="$1" agent="$2" model="" effort="" model_str="" effort_str="" src=""
+  case "$role" in
+    composer|defend)           model="$COMPOSER_MODEL"; effort="$COMPOSER_EFFORT" ;;
+    reviewer|critique|tighten) model="$REVIEWER_MODEL"; effort="$REVIEWER_EFFORT" ;;
+    *) : ;;
+  esac
+  if [[ "$agent" == "codex" ]]; then
+    case "$model" in fable|best|opus|claude-*) model=""; effort="" ;; esac
+    if [[ -n "$model" ]]; then model_str="$model"; else model_str="(inherit:${CODEX_MODEL_BASE:-CLI-config})"; fi
+    if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CODEX_EFFORT_BASE:-default})"; fi
+  else
+    case "$model" in gpt-*|codex*) model=""; effort="" ;; esac
+    if [[ -n "$model" ]]; then model_str="$(resolve_claude_model_alias "$model")"; else model_str="(inherit:${CLAUDE_MODEL_BASE})"; fi
+    if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CLAUDE_EFFORT_BASE:-default})"; fi
+  fi
+  printf '%s:%s@%s' "$agent" "$model_str" "$effort_str"
+}
+
 # --- Agent Invocation Helper ---
+# v1.5 Phase 1 (A-4b): `role` (composer/reviewer/critique/defend/tighten) selects
+# the per-role seat; apply_role_seat layers it onto the globals before dispatch.
 invoke_agent() {
   local agent="$1"
   local prompt_file="$2"
   local output_file="$3"
   local stderr_file="$4"
+  local role="${5:-}"
+
+  [[ -n "$role" ]] && apply_role_seat "$role" "$agent"
 
   case "$agent" in
     claude) invoke_claude "$prompt_file" "$output_file" "$stderr_file" ;;
@@ -451,9 +554,26 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 
   log "--- COMPOSE PHASE ---"
   log " Agent: $AGENT_A"
+  log " Seat:  $(resolve_role_seat_string composer "$AGENT_A")"
+  # v1.5 Phase 1 (M2): the composer seat override can be shaped for the OTHER
+  # agent kind (e.g. COMPOSER_MODEL=gpt-5.5 while the compose phase runs on
+  # claude). apply_role_seat's leak guard drops it correctly — but used to do so
+  # silently. Surface the drop with an explicit one-liner so the operator sees
+  # why the compose phase is not using their composer override.
+  if [[ -n "$COMPOSER_MODEL" ]]; then
+    if [[ "$AGENT_A" == "codex" ]]; then
+      case "$COMPOSER_MODEL" in
+        fable|best|opus|claude-*) log " NOTE: composer seat override dropped for compose phase: agent mismatch (claude override, codex phase)" ;;
+      esac
+    else
+      case "$COMPOSER_MODEL" in
+        gpt-*|codex*) log " NOTE: composer seat override dropped for compose phase: agent mismatch (codex override, claude phase)" ;;
+      esac
+    fi
+  fi
   log " Input: $INPUT_TYPE ($(echo "$INPUT_CONTENT" | wc -w | tr -d '\r\n ') words)"
 
-  invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file"
+  invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_stderr_file" composer
 
   # R-1/R-2: fail fast on CLI-missing / auth-failure (rc 2) instead of
   # accepting the error text as a composed document or burning a retry.
@@ -466,7 +586,7 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
   if [[ ! -s "$compose_output_file" ]] || (( $(wc -w < "$compose_output_file" | tr -d '\r\n ') < 10 )); then
     log " WARNING: compose returned empty or minimal output. Retrying once..."
     : > "$compose_output_file"
-    invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_retry_stderr_file"
+    invoke_agent "$AGENT_A" "$compose_prompt_file" "$compose_output_file" "$compose_retry_stderr_file" composer
 
     compose_artifact_rc=0
     validate_agent_artifact "$compose_output_file" "$compose_retry_stderr_file" "$AGENT_A" || compose_artifact_rc=$?
@@ -566,9 +686,10 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     log "--------------------------------------------"
     log " BOUNCE $pass/$total_passes - ${role} (${current_agent})"
+    log " Seat:  $(resolve_role_seat_string "$role" "$current_agent")"
     log "--------------------------------------------"
 
-    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+    invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$role"
 
     # Validate output. R-1/R-2: rc 2 = CLI missing or unauthenticated — an
     # auth-error page must never be copied into WORKING_FILE as the document,
@@ -581,7 +702,7 @@ $(cat "$PROTOCOL_TEMPLATE")"
 
     if [[ ! -s "$output_file" ]]; then
       log " WARNING: ${current_agent} returned empty output. Retrying..."
-      invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file"
+      invoke_agent "$current_agent" "$prompt_file" "$output_file" "$stderr_file" "$role"
 
       bounce_artifact_rc=0
       validate_agent_artifact "$output_file" "$stderr_file" "$current_agent" || bounce_artifact_rc=$?
@@ -651,6 +772,16 @@ log " Input:     $INPUT_TYPE"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
+# v1.5 Phase 1 (A-4b): resolved per-role seats. Reviewer runs on AGENT_A (odd
+# passes / critique+tighten); composer runs on AGENT_B (even passes / defend).
+# The compose PHASE also runs the composer role, but on AGENT_A — its resolved
+# seat can differ from the bounce-composer's (M2: leak guard drops a wrong-kind
+# override), so it gets its own line and the actual compose model is always
+# surfaced. Each shows agent:model@effort, or (inherit:<global>) when no seat
+# override is set.
+log " Compose seat:  $(resolve_role_seat_string composer "$AGENT_A")"
+log " Reviewer seat: $(resolve_role_seat_string reviewer "$AGENT_A")"
+log " Composer seat: $(resolve_role_seat_string composer "$AGENT_B")"
 if [[ "$CHAIN" == "true" ]]; then
   log " Mode:      chain (critique -> defend -> tighten)"
 else

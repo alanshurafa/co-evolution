@@ -68,7 +68,7 @@ Co-Evolution is a tooling repo for structured iterative refinement between AI ag
 ## Runtime Dependencies
 - `agent-bouncer/agent-bouncer.sh` assumes a POSIX shell plus standard utilities such as `date`, `head`, `tr`, `cp`, `mv`, `rm`, `wc`, `awk`, `tee`, `mkdir`, and `cat`.
 - The bouncer depends on authenticated AI CLIs: `claude` and `codex`.
-- The Claude adapter defaults to model `claude-opus-4-6`, overridable via the `CLAUDE_MODEL` env var or the `--claude-model` flag (see `lib/co-evolution.sh`); it is not hard-coded.
+- The Claude adapter defaults to model `claude-opus-4-8` (the `best` alias resolved in `lib/co-evolution.sh`), overridable via the `CLAUDE_MODEL` env var or the `--claude-model` flag; it is not hard-coded.
 - The Codex adapter is hard-coded to `codex exec --full-auto --skip-git-repo-check`.
 - `skills/dev-review/SKILL.md` assumes Claude Code tooling, `git`, and optionally `gh` for PR creation.
 ## Build And Packaging

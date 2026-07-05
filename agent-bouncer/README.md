@@ -87,8 +87,8 @@ The Agent Bouncer generates a descriptive run name from the document content, fa
 
 | Agent | Adapter | Command |
 |-------|---------|---------|
-| Claude | `invoke_claude` | `claude -p --output-format text --model claude-opus-4-6 --max-turns 5` |
-| Codex | `invoke_codex` | `codex exec --full-auto -C <workdir> -o <output>` |
+| Claude | `invoke_claude` | `claude -p --output-format text --model claude-opus-4-8 --disallowedTools ...` (default model via the `best` alias; override with `CLAUDE_MODEL` / `--claude-model`) |
+| Codex | `invoke_codex` | `codex exec --full-auto --skip-git-repo-check -C <workdir> -o <output>` |
 
 To add a new agent, define an `invoke_<name>` function in `agent-bouncer.sh` that takes three arguments: prompt file, output file, stderr file.
 

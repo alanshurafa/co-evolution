@@ -9,8 +9,8 @@
 # unpinned), Claude executes (best/high).
 # This gate pins:
 #   a. seat argv under the preset (composer claude --model claude-opus-4-8
-#      [the `best` alias resolved] --effort high; executor codex
-#      -c model_reasoning_effort=xhigh and NO -c model=; verifier claude
+#      [the `best` alias resolved] --effort high; executor codex PINNED
+#      -c model=gpt-5.5 + -c model_reasoning_effort=xhigh [A-3]; verifier claude
 #      --effort max).
 #   b. claude-verifier verdict hardening: a verdict wrapped in markdown
 #      fences/prose lands in verdict.json jq-parseable (brace-block fallback).
@@ -25,9 +25,16 @@
 #      on a ChatGPT account); seat_models.verifier falls back to default.
 #   i. alias resolution: resolve_claude_model_alias maps best/opus ->
 #      claude-opus-4-8, keeps fable -> claude-fable-5, passes ids through.
-#   j. --preset claude-build: composer=codex xhigh/no model, executor=claude
-#      best/high, verifier=codex xhigh/no model, with no codex model leaking
+#   j. --preset claude-build: composer=codex gpt-5.5/xhigh, executor=claude
+#      best/high, verifier=codex gpt-5.5/xhigh, with no codex model leaking
 #      into the claude executor argv.
+#   k. bounce counterparty seat (A-8): BOUNCER_MODEL reaches the bounce reviewer
+#      argv and state.json seat_models.bouncer records it; no leak into codex.
+#   l. flag-over-preset precedence (H1): --model o4-mini --preset codex-build
+#      puts o4-mini (not gpt-5.5) in the executor codex argv, keeps the preset
+#      xhigh effort, records codex:o4-mini@xhigh, and logs the override NOTE.
+#   m. warn-only side (H1): --claude-model with a preset stays shadowed by the
+#      preset claude pins (pre-existing precedence, unchanged) but WARNs.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line
 # per invocation) to phase-agnostic logs; assertions grep the logs. Both stubs
@@ -254,25 +261,37 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo a)
 claude_log="$TEST_DIR/a_claude.log"; codex_log="$TEST_DIR/a_codex.log"
 : > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
-  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --preset codex-build --workdir "$repo" --timeout 60 -- "preset seat argv probe"
 ) >"$TEST_DIR/a.out" 2>&1 || true
+a_run_dir_k=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 
 a_ok=true
 # composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
 if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then a_ok=false; fi
 if ! grep -Eq -- '--effort high' "$claude_log"; then a_ok=false; fi
-# executor = codex with xhigh effort and NO pinned model.
+# v1.5 Phase 1 (A-3): executor = codex PINNED to gpt-5.5 with xhigh effort.
+# The pin is the whole point of A-3 — both -c model=gpt-5.5 and the xhigh effort
+# must reach the executor codex argv (was previously unpinned: model=CLI config).
+if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then a_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false; fi
-if grep -Eq -- '-c model=' "$codex_log"; then a_ok=false; fi
 # verifier = claude with max effort.
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
+# v1.5 Phase 1 acceptance: a PRESET run's state.json must carry NO (default) seat
+# — every seat (incl. the A-8 bounce counterparty, codex here) is pinned concrete.
+if [[ -n "$a_run_dir_k" && "$a_run_dir_k" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.5@xhigh"' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
+  if ! jq -e '[.seat_models[] | select(contains("(default)"))] | length == 0' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
+else
+  a_ok=false
+fi
 if [[ "$a_ok" == true ]]; then
-  pass "preset codex-build: composer best->opus/high, executor codex/xhigh (no model=), verifier claude/max"
+  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.5/xhigh (A-3 pin), verifier claude/max, bouncer codex gpt-5.5/xhigh, no (default) seat"
 else
   fail "preset codex-build seat argv mismatch (claude_log + codex_log below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
@@ -470,15 +489,17 @@ fi
 [[ -n "${h_run_dir:-}" && "$h_run_dir" != "$run_dir_before" ]] && rm -rf "$h_run_dir"
 
 # ===========================================================================
-# Scenario (i): alias resolution. Extract the real resolve_claude_model_alias
-# from the runner (sed range + source — bash 3.2 silently sources nothing from
-# a process substitution, so use a temp file; same discipline as
+# Scenario (i): alias resolution. v1.5 Phase 1 (A-4a) moved
+# resolve_claude_model_alias into lib/co-evolution.sh (single source), so extract
+# it from the LIB, not the runner (sed range + source — bash 3.2 silently sources
+# nothing from a process substitution, so use a temp file; same discipline as
 # tests/revise-loop-simulation.sh). Assert the `best`/`opus` aliases resolve to
 # the current Opus id, `fable` stays mapped for back-compat, and an explicit id
 # passes through untouched.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
-sed -n '/^resolve_claude_model_alias() {/,/^}$/p' "$RUNNER" > "$TEST_DIR/_alias.sh"
+LIB="$REPO_ROOT/lib/co-evolution.sh"
+sed -n '/^resolve_claude_model_alias() {/,/^}$/p' "$LIB" > "$TEST_DIR/_alias.sh"
 # shellcheck disable=SC1090,SC1091
 source "$TEST_DIR/_alias.sh"
 i_ok=true
@@ -517,10 +538,11 @@ j_claude_execute_argv=$(grep -- '--permission-mode bypassPermissions' "$claude_l
 j_codex_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 j_ok=true
 
-# Composer/verifier = codex with xhigh effort and no pinned model.
+# v1.5 Phase 1 (A-3): composer/verifier = codex PINNED to gpt-5.5 at xhigh.
+if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then j_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then j_ok=false; fi
-if grep -Eq -- '-c model=' "$codex_log"; then j_ok=false; fi
 if [[ -z "$j_codex_verify_argv" ]]; then j_ok=false; fi
+if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model=gpt-5.5'; then j_ok=false; fi
 if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model_reasoning_effort=xhigh'; then j_ok=false; fi
 
 # Executor = claude writable argv with best -> claude-opus-4-8 and effort high.
@@ -530,9 +552,9 @@ if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--effort high'; then j_
 if printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model (gpt-|codex)'; then j_ok=false; fi
 
 if [[ -n "$j_run_dir" && "$j_run_dir" != "$run_dir_before" ]]; then
-  if ! jq -e '.seat_models.composer == "codex:(default)@xhigh"
+  if ! jq -e '.seat_models.composer == "codex:gpt-5.5@xhigh"
               and .seat_models.executor == "opus:claude-opus-4-8@high"
-              and .seat_models.verifier == "codex:(default)@xhigh"' \
+              and .seat_models.verifier == "codex:gpt-5.5@xhigh"' \
        "$j_run_dir/state.json" >/dev/null 2>&1; then
     j_ok=false
   fi
@@ -541,7 +563,7 @@ else
 fi
 
 if [[ "$j_ok" == true ]]; then
-  pass "preset claude-build: composer codex/xhigh (no model), executor best->opus/high, verifier codex/xhigh (no model)"
+  pass "preset claude-build: composer codex gpt-5.5/xhigh (A-3 pin), executor best->opus/high, verifier codex gpt-5.5/xhigh"
 else
   fail "preset claude-build seat argv mismatch (run dir: ${j_run_dir:-<none>})"
   { echo "--- claude execute argv ---"; printf '%s\n' "$j_claude_execute_argv"
@@ -550,6 +572,137 @@ else
   } >&2
 fi
 [[ -n "${j_run_dir:-}" && "$j_run_dir" != "$run_dir_before" ]] && rm -rf "$j_run_dir"
+
+# ===========================================================================
+# Scenario (k): v1.5 Phase 1 (A-8) bounce counterparty seat. Default flavor
+# (composer=codex => reviewer=opus/claude), --bounces 2 --plan-only so the bounce
+# reviewer pass (pass 1, claude) runs but execute/verify do not. BOUNCER_MODEL
+# must reach that claude reviewer argv, and state.json seat_models.bouncer must
+# record it (opus:claude-bouncer-xyz@...). --bounces 2 (explicit int) sets
+# AUTO_CONVERGE=false so both passes run unconditionally (no marker early-exit).
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo k)
+claude_log="$TEST_DIR/k_claude.log"; codex_log="$TEST_DIR/k_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
+  export BOUNCER_MODEL="claude-bouncer-xyz" BOUNCER_EFFORT="high"
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --bounces 2 --plan-only --workdir "$repo" --timeout 60 -- "bouncer seat probe"
+) >"$TEST_DIR/k.out" 2>&1 || true
+k_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+k_ok=true
+# The bounce reviewer pass (claude) argv must carry BOUNCER_MODEL + effort.
+if ! grep -Eq -- '--model claude-bouncer-xyz' "$claude_log"; then k_ok=false; fi
+if ! grep -Eq -- '--effort high' "$claude_log"; then k_ok=false; fi
+# No leak: the bouncer claude id must not reach any codex argv.
+if grep -Eq -- 'claude-bouncer-xyz' "$codex_log"; then k_ok=false; fi
+# state.json seat_models.bouncer records the resolved reviewer seat.
+if [[ -n "$k_run_dir" && "$k_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.bouncer == "opus:claude-bouncer-xyz@high"' "$k_run_dir/state.json" >/dev/null 2>&1; then
+    k_ok=false
+  fi
+else
+  k_ok=false
+fi
+if [[ "$k_ok" == true ]]; then
+  pass "bounce counterparty seat: BOUNCER_MODEL reaches the reviewer argv; seat_models.bouncer recorded"
+else
+  fail "bouncer seat propagation failed (run dir: ${k_run_dir:-<none>})"
+  { echo "--- claude argv ---"; cat "$claude_log"
+    [[ -n "${k_run_dir:-}" && -f "$k_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$k_run_dir/state.json"; }
+  } >&2
+fi
+[[ -n "${k_run_dir:-}" && "$k_run_dir" != "$run_dir_before" ]] && rm -rf "$k_run_dir"
+
+# ===========================================================================
+# Scenario (l): v1.5 Phase 1 (H1) — an explicit --model beats the preset's
+# codex seat pins. `--model o4-mini --preset codex-build` (flag BEFORE preset,
+# the reported regression's exact shape) must put o4-mini, not gpt-5.5, in the
+# executor codex argv; the preset's xhigh EFFORT survives (master parity: the
+# flag never set efforts); state.json reports the post-precedence truth and the
+# override NOTE is logged. Preset-without-flag keeping gpt-5.5 = scenario (a).
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo l)
+claude_log="$TEST_DIR/l_claude.log"; codex_log="$TEST_DIR/l_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --model o4-mini --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
+    --workdir "$repo" --timeout 60 -- "flag-over-preset precedence probe"
+) >"$TEST_DIR/l.out" 2>&1 || true
+l_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+l_ok=true
+# Executor codex argv carries the FLAG model, the preset effort — and never gpt-5.5.
+if ! grep -Eq -- '-c model=o4-mini' "$codex_log"; then l_ok=false; fi
+if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then l_ok=false; fi
+if grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then l_ok=false; fi
+if [[ -n "$l_run_dir" && "$l_run_dir" != "$run_dir_before" ]]; then
+  if ! jq -e '.seat_models.executor == "codex:o4-mini@xhigh"' "$l_run_dir/state.json" >/dev/null 2>&1; then l_ok=false; fi
+  # The override is surfaced, not silent.
+  if ! grep -Fq 'NOTE: preset executor codex model pin (gpt-5.5) overridden by explicit --model o4-mini' "$l_run_dir/run.log"; then l_ok=false; fi
+else
+  l_ok=false
+fi
+if [[ "$l_ok" == true ]]; then
+  pass "H1: --model o4-mini beats preset codex pins (argv o4-mini@xhigh, no gpt-5.5, NOTE logged)"
+else
+  fail "H1 flag-over-preset precedence failed (run dir: ${l_run_dir:-<none>})"
+  { echo "--- codex argv ---"; cat "$codex_log"
+    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$l_run_dir/state.json"; }
+    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/run.log" ]] && { echo "--- NOTE lines ---"; grep 'NOTE:' "$l_run_dir/run.log" || true; }
+  } >&2
+fi
+[[ -n "${l_run_dir:-}" && "$l_run_dir" != "$run_dir_before" ]] && rm -rf "$l_run_dir"
+
+# ===========================================================================
+# Scenario (m): v1.5 Phase 1 (H1, warn-only side) — --claude-model with a preset
+# keeps master's pre-existing precedence (the preset's claude pins still win: no
+# behavior change) but the shadow is WARNED, not silent. The claude verify argv
+# must still carry the preset's best->claude-opus-4-8, never the flag value.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+repo=$(make_scratch_repo m)
+claude_log="$TEST_DIR/m_claude.log"; codex_log="$TEST_DIR/m_codex.log"
+: > "$claude_log"; : > "$codex_log"
+run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+(
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
+  bash "$RUNNER" --claude-model claude-shadow-test --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
+    --workdir "$repo" --timeout 60 -- "claude-model shadow warn probe"
+) >"$TEST_DIR/m.out" 2>&1 || true
+m_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
+m_ok=true
+# Pre-existing precedence unchanged: the preset's claude pin still wins the argv.
+if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then m_ok=false; fi
+if grep -Eq -- '--model claude-shadow-test' "$claude_log"; then m_ok=false; fi
+# ...but the shadow is warned about (one line per shadowed preset claude seat).
+if [[ -n "$m_run_dir" && "$m_run_dir" != "$run_dir_before" ]]; then
+  if ! grep -Eq 'WARNING: explicit --claude-model \(claude-shadow-test\) is shadowed by the preset (composer|verifier) model pin' "$m_run_dir/run.log"; then m_ok=false; fi
+else
+  m_ok=false
+fi
+if [[ "$m_ok" == true ]]; then
+  pass "H1 warn-only: --claude-model stays shadowed by preset claude pins (unchanged) and the shadow is WARNED"
+else
+  fail "H1 --claude-model warn-only behavior mismatch (run dir: ${m_run_dir:-<none>})"
+  { echo "--- claude argv ---"; cat "$claude_log"
+    [[ -n "${m_run_dir:-}" && -f "$m_run_dir/run.log" ]] && { echo "--- WARNING lines ---"; grep 'WARNING:' "$m_run_dir/run.log" || true; }
+  } >&2
+fi
+[[ -n "${m_run_dir:-}" && "$m_run_dir" != "$run_dir_before" ]] && rm -rf "$m_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))
