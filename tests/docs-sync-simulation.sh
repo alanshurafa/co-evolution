@@ -122,6 +122,9 @@ assert_text_grep "runner codex-build: bounces pinned to 2 (BOUNCES=2)" \
 # v1.5 Phase 1 (A-3): the codex executor seat is now MODEL-PINNED to gpt-5.5.
 assert_text_grep "runner codex-build: executor model pinned to gpt-5.5 (EXECUTOR_MODEL:=gpt-5.5)" \
   "$CODEX_BUILD_ARM" 'EXECUTOR_MODEL:=gpt-5.5'
+# v1.5 Phase 1 (A-8): the bounce counterparty (codex here) is pinned so no (default) seat.
+assert_text_grep "runner codex-build: bounce seat pinned to gpt-5.5 (BOUNCER_MODEL:=gpt-5.5)" \
+  "$CODEX_BUILD_ARM" 'BOUNCER_MODEL:=gpt-5.5'
 
 assert_text_grep "runner claude-build: composer codex / executor opus / verifier codex" \
   "$CLAUDE_BUILD_ARM" 'COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"'
@@ -140,6 +143,9 @@ assert_text_grep "runner claude-build: composer model pinned to gpt-5.5 (COMPOSE
   "$CLAUDE_BUILD_ARM" 'COMPOSER_MODEL:=gpt-5.5'
 assert_text_grep "runner claude-build: verifier model pinned to gpt-5.5 (VERIFIER_MODEL:=gpt-5.5)" \
   "$CLAUDE_BUILD_ARM" 'VERIFIER_MODEL:=gpt-5.5'
+# v1.5 Phase 1 (A-8): the bounce counterparty (opus here) is pinned so no (default) seat.
+assert_text_grep "runner claude-build: bounce seat pinned to best (BOUNCER_MODEL:=best)" \
+  "$CLAUDE_BUILD_ARM" 'BOUNCER_MODEL:=best'
 
 # ===========================================================================
 # Group 2: skills/codex-build/SKILL.md must describe the SAME triple.

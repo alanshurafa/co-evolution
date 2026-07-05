@@ -152,6 +152,7 @@ apply_preset() {
       : "${COMPOSER_MODEL:=best}";  : "${COMPOSER_EFFORT:=high}"
       : "${VERIFIER_MODEL:=best}";  : "${VERIFIER_EFFORT:=max}"
       : "${EXECUTOR_MODEL:=gpt-5.5}"; : "${EXECUTOR_EFFORT:=xhigh}"   # codex executor pinned (A-3), not inherited from local config.toml
+      : "${BOUNCER_MODEL:=gpt-5.5}"; : "${BOUNCER_EFFORT:=xhigh}"   # bounce reviewer = codex here (COMPOSER=opus); pinned (A-8) so no (default) seat
       ;;
     claude-build)  # "build with claude": Codex plans/reviews, Claude executes.
       COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"
@@ -159,6 +160,7 @@ apply_preset() {
       : "${EXECUTOR_MODEL:=best}";  : "${EXECUTOR_EFFORT:=high}"   # Claude (Opus) writes the code
       : "${COMPOSER_MODEL:=gpt-5.5}"; : "${COMPOSER_EFFORT:=xhigh}"   # codex composer pinned (A-3)
       : "${VERIFIER_MODEL:=gpt-5.5}"; : "${VERIFIER_EFFORT:=xhigh}"   # codex verifier pinned (A-3)
+      : "${BOUNCER_MODEL:=best}"; : "${BOUNCER_EFFORT:=high}"   # bounce reviewer = opus here (COMPOSER=codex); pinned (A-8) so no (default) seat
       ;;
     *) die "Unknown preset: $1 (available: codex-build, claude-build)" ;;
   esac
