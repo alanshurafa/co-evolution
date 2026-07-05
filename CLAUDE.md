@@ -134,3 +134,15 @@ Rules:
 - Bulk/mechanical work (clear-spec implementation, migrations, data transforms) → gpt-5.5. It is cheap under the Codex plan but **not free**: the codex-guard daily cap applies; batch calls, never poll-loop them.
 - Anything user-facing (docs prose, README, API/CLI surface design) needs high taste → opus-4.8 or fable-5 authors/reviews it.
 - gpt-5.5 is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
+
+## Interactive vs Pipeline Boundary
+
+**Pipeline (scripted, reproducible, headless):** `co-evolve-bouncer.sh`, `dev-review/codex/dev-review.sh`, `runners/codex-ps/` (frozen reference). No plugin slash commands, no advisor tool, no live-session dependencies. Anything here must run unattended and produce stable output.
+
+**Interactive (live Claude Code sessions on this repo):** the official Codex plugin (`openai/codex-plugin-cc`) is allowed and encouraged:
+- `/codex:adversarial-review` before letting the bouncer pass a risky plan.
+- The `codex:codex-rescue` subagent when a session is stuck.
+- `/codex:transfer` to hand work between Claude and Codex; `/codex:status` / `/codex:result` / `/codex:cancel` for job control.
+- The review gate (Stop hook) stays **off** (`/codex:setup --disable-review-gate`): this repo already has a review engine; a second automatic one would loop against it and burn Codex usage.
+
+**Advisor tool (Anthropic API beta, header `advisor-tool-2026-03-01`):** valid only inside API agent loops (Messages API `advisor_20260301`-type tool); never available to bash scripts, `claude -p`, or Claude Code sessions. If/when this repo grows an API-driven layer, pair a Sonnet executor with an **opus-4.8 advisor** — its advice returns readable and can be logged in the dev-review trail; a fable-5 advisor returns encrypted advice that cannot be audited. Timing discipline: consult before the first write, when stuck, and before declaring work done.
