@@ -128,20 +128,11 @@ normalize_agent() {
   esac
 }
 
-# v1.5: resolve a friendly Claude model alias to its CLI model id. `best` and
-# `opus` resolve to the current Opus line (claude-opus-4-8); `fable` is retained
-# for back-compat only (currently unreachable). Anything else passes through
-# verbatim so explicit ids (claude-opus-4-6, claude-opus-4-8[1m], …) and an empty
-# value are untouched. Used by the --claude-model flag and the per-seat env layer.
-# Bumping the Claude default to a new model = edit the `best` arm here, one place.
-resolve_claude_model_alias() {
-  case "$1" in
-    best)  echo "claude-opus-4-8" ;;   # strongest supported Claude default for the preset
-    opus)  echo "claude-opus-4-8" ;;   # current Opus-line model
-    fable) echo "claude-fable-5" ;;    # retained for back-compat; currently unreachable, do not default to it
-    *)     echo "$1" ;;
-  esac
-}
+# v1.5 Phase 1 (A-4a): resolve_claude_model_alias now lives in lib/co-evolution.sh
+# (sourced above) as the SINGLE alias source. dev-review.sh consumes that copy;
+# the `--claude-model` flag and the per-seat env layer below call it unchanged.
+# Behavior is byte-identical (best/opus -> claude-opus-4-8, fable -> claude-fable-5,
+# else passthrough). Do NOT redefine it here — bump the alias table in the lib.
 
 # v1.5: expand a named seat preset into the underlying seat/model/effort knobs.
 # Called from the --preset parser arm. Two precedence rules, both deliberate:

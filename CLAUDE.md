@@ -111,4 +111,4 @@ Co-evolution tools are integrated into GSD workflows:
 
 - v1.4 npm/MCP publish pending — a human gate, not yet shipped.
 - v1.5 Phase 6 partial — degrade-path dogfood only; the rest is unbuilt.
-- Current default Claude model is `claude-opus-4-6` (overridable via `CLAUDE_MODEL` / `--claude-model`).
+- Current default Claude model is `claude-opus-4-8` (the `best` alias; overridable via `CLAUDE_MODEL` / `--claude-model`).

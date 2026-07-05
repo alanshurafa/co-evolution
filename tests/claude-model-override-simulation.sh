@@ -3,12 +3,14 @@
 # Hermetic gate for the Claude model override (audit finding F-5a).
 #
 # invoke_claude() previously hardcoded "--model claude-opus-4-6" in two places.
-# After the fix it must read $CLAUDE_MODEL (default claude-opus-4-6), so the
-# model is overridable via the CLAUDE_MODEL env var and the --claude-model flag
-# without changing the default. Precedence: --claude-model > CLAUDE_MODEL > default.
+# After the F-5a fix it reads $CLAUDE_MODEL, overridable via the CLAUDE_MODEL env
+# var and the --claude-model flag. v1.5 Phase 1 (A-4a) bumped the base default from
+# the stale claude-opus-4-6 to the `best` alias resolved to claude-opus-4-8 (the
+# alias table now lives in lib/co-evolution.sh, one source of truth).
+# Precedence: --claude-model > CLAUDE_MODEL > default (best -> claude-opus-4-8).
 #
 # Coverage:
-#   1. default model is the unchanged claude-opus-4-6
+#   1. default model is the bumped claude-opus-4-8 (the `best` alias)
 #   2. CLAUDE_MODEL env override reaches the claude invocation
 #   3. co-evolve-bouncer.sh wires --claude-model to CLAUDE_MODEL
 #   4. --help documents --claude-model
@@ -46,7 +48,7 @@ echo "Stub document body with enough plain words to clear any downstream size ch
 STUB
 chmod +x "$TEST_DIR/bin/claude"
 
-# --- Scenario 1: default model is claude-opus-4-6 ---
+# --- Scenario 1: default model is claude-opus-4-8 (the bumped `best` alias) ---
 TOTAL=$((TOTAL + 1))
 marker="$TEST_DIR/m_default"
 (
@@ -57,10 +59,10 @@ marker="$TEST_DIR/m_default"
   invoke_claude /dev/null "$TEST_DIR/out1" "$TEST_DIR/err1" false
 ) >/dev/null 2>&1
 got="$(cat "$marker" 2>/dev/null || true)"
-if [[ "$got" == "claude-opus-4-6" ]]; then
-  pass "default model is claude-opus-4-6 (got '$got')"
+if [[ "$got" == "claude-opus-4-8" ]]; then
+  pass "default model is claude-opus-4-8 (got '$got')"
 else
-  fail "default: expected claude-opus-4-6, got '$got'"
+  fail "default: expected claude-opus-4-8, got '$got'"
 fi
 
 # --- Scenario 2: CLAUDE_MODEL env override reaches the invocation ---
