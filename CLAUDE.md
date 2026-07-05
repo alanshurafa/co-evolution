@@ -134,3 +134,23 @@ Rules:
 - Bulk/mechanical work (clear-spec implementation, migrations, data transforms) → gpt-5.5. It is cheap under the Codex plan but **not free**: the codex-guard daily cap applies; batch calls, never poll-loop them.
 - Anything user-facing (docs prose, README, API/CLI surface design) needs high taste → opus-4.8 or fable-5 authors/reviews it.
 - gpt-5.5 is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
+
+## Token Discipline
+
+Return contracts (a wall of raw output is a failed task even when the work was correct):
+- Scout/discovery reports: <=15 lines; file:line refs + one-sentence facts; never pasted file contents.
+- Build reports: <=20 lines; files + line ranges changed, what was run to verify, pass/fail; diffs only when <=30 lines.
+- Deep review reports: <=40 lines, conclusion first.
+- Test/lint runs report failures only; passing output is one line ("N passed").
+- Verifier verdicts: `summary` <=40 words; <=5 `issues`, one line each with file:line.
+
+Working style:
+- Grep before read. Read line ranges, not whole files. Never re-read an unchanged file already in context.
+- Noisy operations (tests/run-all.sh, log inspection, large-file summaries) run in an isolated subagent so only the summary reaches the main thread. Gate decisions read `dev-review-status.sh --json`, never raw runner logs.
+- Escalation ladder: one retry with a tighter prompt, then escalate upward carrying the prior failure evidence. Disagreements resolve upward, never re-litigated sideways. Ambiguity in high-risk areas — path normalization, git history, anything under runners/codex-ps/ — stops and surfaces immediately.
+
+Delegation template (exactly four parts, nothing else):
+1. **Goal** — one sentence.
+2. **Scope** — in bounds and explicitly out of bounds.
+3. **Contract** — which return format above.
+4. **Done means** — the observable check.

@@ -253,6 +253,14 @@ This emits one object with: `status`, `verdict` (APPROVED / REVISE / null),
 `current_phase`, `marker_counts`, `assess`, and `exit_code` (the status reader's
 liveness code: 0 done / 2 partial / 4 presumed-dead / 5 running / 3 no-run).
 
+**The gate reads the status JSON only — never the raw runner logs.** The status
+reader is the contract; `runs/<run-id>/*.log` (compose/execute/review stderr) and
+the runner's stdout are noisy and not the interface. Base every ACCEPT / REVISE /
+ESCALATE decision on the `--json` object plus the narrow reads below (`verdict.json`,
+diffstat, named `issues[]` hunks). Only crack open a raw log when ESCALATING for a
+human — and even then, hand the log path to the user rather than pasting its
+contents into your reasoning.
+
 Then, BEFORE reading any source files:
 1. Read `verdict.json` (the path is in `.verdict_json`) — the schema-bound
    verdict: `verdict`, `confidence`, `summary`, `issues[]`,
