@@ -1389,7 +1389,8 @@ apply_seat_env() {
     composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
     executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
-    *) : ;;  # bounce counterparty: globals only
+    bounce)   model="${BOUNCER_MODEL:-}";  effort="${BOUNCER_EFFORT:-}" ;;  # v1.5 Phase 1 (A-8): bounce counterparty seat
+    *) : ;;  # unknown seat: globals only
   esac
   # v1.5 cross-agent leak guard. A seat's model+effort is ONE override pair
   # configured for a specific agent kind (e.g. the codex-build preset fills
@@ -1433,6 +1434,7 @@ resolve_seat_model_string() {
     composer) model="${COMPOSER_MODEL:-}"; effort="${COMPOSER_EFFORT:-}" ;;
     executor) model="${EXECUTOR_MODEL:-}"; effort="${EXECUTOR_EFFORT:-}" ;;
     verifier) model="${VERIFIER_MODEL:-}"; effort="${VERIFIER_EFFORT:-}" ;;
+    bounce)   model="${BOUNCER_MODEL:-}";  effort="${BOUNCER_EFFORT:-}" ;;  # v1.5 Phase 1 (A-8)
     *) : ;;
   esac
   # v1.5: mirror apply_seat_env's cross-agent leak guard (drop the wrong-kind
@@ -1498,6 +1500,10 @@ _VERIFIER_SEAT=$(select_verifier)
 _SEAT_COMPOSER=$(resolve_seat_model_string composer "$COMPOSER")
 _SEAT_EXECUTOR=$(resolve_seat_model_string executor "$EXECUTOR")
 _SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
+# v1.5 Phase 1 (A-8): the bounce counterparty (reviewer side, $REVIEWER agent)
+# gets its own BOUNCER_MODEL/BOUNCER_EFFORT seat. Resolve its descriptor against
+# that agent so the banner + state.json report what the bounce reviewer runs.
+_SEAT_BOUNCER=$(resolve_seat_model_string bounce "$REVIEWER")
 
 # v1.5: optional seat_models observability — records what each seat resolves to.
 # Unconditional + additive (no existing sim asserts an exact state.json key set,
@@ -1505,6 +1511,7 @@ _SEAT_VERIFIER=$(resolve_seat_model_string verifier "$_VERIFIER_SEAT")
 write_state_field "$STATE_JSON" ".seat_models.composer" "string" "$_SEAT_COMPOSER"
 write_state_field "$STATE_JSON" ".seat_models.executor" "string" "$_SEAT_EXECUTOR"
 write_state_field "$STATE_JSON" ".seat_models.verifier" "string" "$_SEAT_VERIFIER"
+write_state_field "$STATE_JSON" ".seat_models.bouncer"  "string" "$_SEAT_BOUNCER"
 
 log "============================================"
 log " DEV-REVIEW SESSION"
@@ -1525,6 +1532,7 @@ log " Worktree:  ${WORKTREE_SPEC:-<empty>}"
 log " Composer model: $_SEAT_COMPOSER"
 log " Executor model: $_SEAT_EXECUTOR"
 log " Verifier model: $_SEAT_VERIFIER"
+log " Bouncer model:  $_SEAT_BOUNCER"
 log "============================================"
 log ""
 
