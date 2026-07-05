@@ -41,7 +41,8 @@ bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
 
 ### Agent Bouncer (`agent-bouncer/`)
 
-Legacy standalone script that bounces any markdown document between two agents.
+Legacy runner (still used by tests/experiments) that bounces any markdown
+document between two agents.
 
 ```bash
 bash agent-bouncer/agent-bouncer.sh <document.md> [max-bounces] [reviewer-agent] [composer-agent]
@@ -103,5 +104,11 @@ Co-evolution tools are integrated into GSD workflows:
 ## Conventions
 
 - Plan content is embedded inline in prompts, never passed as a canonical file path
-- Markers auto-expire after 2 passes to guarantee convergence
+- Bounce stops after MAX_BOUNCES=2 passes; unresolved markers are reported in the output, not auto-expired
 - Agent-bouncer overwrites the input file in place; orchestrators should back up first
+
+## Status
+
+- v1.4 npm/MCP publish pending — a human gate, not yet shipped.
+- v1.5 Phase 6 partial — degrade-path dogfood only; the rest is unbuilt.
+- Current default Claude model is `claude-opus-4-6` (overridable via `CLAUDE_MODEL` / `--claude-model`).
