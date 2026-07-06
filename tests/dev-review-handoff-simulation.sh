@@ -243,6 +243,97 @@ else
 fi
 [[ "$s6_rc" -eq 0 ]] && note_pass "pure bounce exited 0" || note_fail "pure bounce expected exit 0, got $s6_rc"
 
+# ------------------------------------------------------------------ S7
+# Seat-forwarding boundary (v1.5 Phase 4, A-6): the DOCUMENT pipeline's per-role
+# seats (COMPOSER_MODEL / REVIEWER_MODEL) shape the bounce's two roles. They must
+# NOT leak into the dev-review engine — the engine has its OWN seats/presets.
+# Only the base --claude-model is forwarded (a global model choice), and it is
+# forwarded from CLAUDE_MODEL_BASE, NOT the per-pass-mutated CLAUDE_MODEL.
+ARGV_FILE="$TEST_DIR/argv-s7.txt"
+echo "S7: doc-pipeline seats are NOT forwarded; base --claude-model IS"
+STUB_EXIT=0
+s7_rc=0
+COMPOSER_MODEL="gpt-5.5" REVIEWER_MODEL="claude-sonnet-4-5" \
+CO_EVOLVE_DEV_REVIEW_SCRIPT="$ENGINE_STUB" \
+CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs" \
+ARGV_FILE="$ARGV_FILE" \
+STUB_EXIT=0 \
+PATH="$TEST_DIR/bin:$PATH" \
+  bash "$BOUNCER" --skip-interview --auto --execute --claude-model best "seat boundary" \
+  >"$TEST_DIR/out-s7.log" 2>&1 || s7_rc=$?
+if [[ ! -f "$ARGV_FILE" ]]; then
+  note_fail "S7: engine stub never invoked"; cat "$TEST_DIR/out-s7.log"
+else
+  # No engine flag may carry the doc-pipeline seat model ids.
+  if grep -qxF -- "gpt-5.5" "$ARGV_FILE" || grep -qxF -- "claude-sonnet-4-5" "$ARGV_FILE"; then
+    note_fail "S7: a doc-pipeline seat (COMPOSER_MODEL/REVIEWER_MODEL) leaked into engine argv"
+  else
+    note_pass "S7: COMPOSER_MODEL/REVIEWER_MODEL not forwarded to engine"
+  fi
+  # The base --claude-model must be forwarded (resolved from the `best` alias).
+  if argv_has "--claude-model"; then
+    cm=$(awk 'prev=="--claude-model"{print; exit} {prev=$0}' "$ARGV_FILE")
+    note_pass "S7: base --claude-model forwarded to engine ($cm)"
+    # It must be the resolved base, never a doc-role seat value.
+    if [[ "$cm" == "gpt-5.5" || "$cm" == "claude-sonnet-4-5" ]]; then
+      note_fail "S7: forwarded --claude-model carries a doc-role seat value ($cm)"
+    else
+      note_pass "S7: forwarded --claude-model is the base choice, not a seat"
+    fi
+  else
+    note_fail "S7: base --claude-model was not forwarded"
+  fi
+fi
+
+# ------------------------------------------------------------------ S8
+# A STUCK bounce must NEVER be handed to the executor (v1.5 Phase 4, A-5 x A-6).
+# Use stubs that keep a marker alive through the bounce AND fail adjudication, so
+# the run ends `stuck`; the engine must not be invoked and co-evolve must exit
+# non-zero.
+ARGV_FILE="$TEST_DIR/argv-s8.txt"
+echo "S8: a STUCK bounce refuses the --execute hand-off"
+mkdir -p "$TEST_DIR/bin-stuck"
+# Bounce passes + adjudication all emit a doc that still carries a live marker
+# and never a valid ADJUDICATION REPORT => convergence_status=stuck.
+cat > "$TEST_DIR/bin-stuck/claude" <<'STUB'
+#!/usr/bin/env bash
+for a in "$@"; do case "$a" in --version|-v) echo "claude 1.0.0 (stub)"; exit 0 ;; esac; done
+cat > /dev/null
+cat <<'DOC'
+# Plan
+## Approach
+Do the thing. [CONTESTED] method A vs B — unresolved. Alternative: A, because simpler.
+DOC
+STUB
+cat > "$TEST_DIR/bin-stuck/codex" <<'STUB'
+#!/usr/bin/env bash
+for a in "$@"; do case "$a" in --version|-v) echo "codex 0.1.0 (stub)"; exit 0 ;; esac; done
+cat > /dev/null 2>/dev/null || true
+out=""; prev=""; for a in "$@"; do [[ "$prev" == "-o" ]] && out="$a"; prev="$a"; done
+body='# Plan
+## Approach
+Do the thing. [CONTESTED] method A vs B — unresolved. Alternative: A, because simpler.'
+if [[ -n "$out" ]]; then printf '%s\n' "$body" > "$out"; else printf '%s\n' "$body"; fi
+exit 0
+STUB
+chmod +x "$TEST_DIR/bin-stuck/claude" "$TEST_DIR/bin-stuck/codex"
+s8_rc=0
+CO_EVOLVE_DEV_REVIEW_SCRIPT="$ENGINE_STUB" \
+CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs-s8" \
+ARGV_FILE="$ARGV_FILE" \
+PATH="$TEST_DIR/bin-stuck:$PATH" \
+  bash "$BOUNCER" --skip-interview --auto --execute "stuck plan must not execute" \
+  >"$TEST_DIR/out-s8.log" 2>&1 || s8_rc=$?
+if [[ -f "$ARGV_FILE" ]]; then
+  note_fail "S8: engine ran on a STUCK bounce (must be refused)"
+else
+  note_pass "S8: engine not invoked on a STUCK bounce"
+fi
+[[ "$s8_rc" -ne 0 ]] && note_pass "S8: co-evolve exited non-zero on stuck --execute ($s8_rc)" \
+  || note_fail "S8: expected non-zero exit on stuck --execute"
+grep -q 'STUCK' "$TEST_DIR/out-s8.log" && note_pass "S8: refusal message names the stuck state" \
+  || note_fail "S8: no stuck-refusal message in output"
+
 # ------------------------------------------------------------------ summary
 echo "----------------------------------------------------------------------"
 echo "dev-review hand-off simulation: $PASS passed, $FAIL failed"
