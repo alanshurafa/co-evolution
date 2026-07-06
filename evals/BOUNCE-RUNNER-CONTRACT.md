@@ -82,8 +82,12 @@ Field rules:
   exit (auth failure, empty retry, user stop). A scorer MUST NOT issue a
   quality verdict for an `aborted` run. Orthogonal to `convergence_status`.
 - `convergence_status` — the **convergence** field, distinct from `status` (a
-  run can be `complete` yet `stuck`). One of:
-  - `converged` — markers reached 0 within the configured passes. No
+  run can be `complete` yet `stuck`). The convergence decision counts markers
+  **fence-agnostically** (`lib/co-evolution.sh::count_markers_raw`): a marker
+  token inside a code fence or inline code still blocks convergence, unlike
+  the per-pass `passes[].contested`/`clarify` counts, which stay fence-aware.
+  One of:
+  - `converged` — raw marker count reached 0 within the configured passes. No
     adjudication ran; the emitted document is byte-identical to what the
     pre-`1.1` bouncer produced on the same input (the byte-parity invariant).
   - `adjudicated` — markers survived the configured passes, so one forced

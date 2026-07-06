@@ -110,6 +110,27 @@ Ship the feature in a staged rollout.
 
 Rollback owner still unnamed.
 DOC
+  # Fenced-marker body (adversarial-review fix): the only marker token lives
+  # INSIDE a ```yaml fence, so fence-aware count_markers sees 0 — the exact
+  # hole that let a run present as "converged" with the token still in the
+  # final document. The honesty gate's raw count must catch it.
+  cat > "$TEST_DIR/body-fenced.txt" <<'DOC'
+# Sample Plan
+
+## Approach
+
+Ship the feature in a staged rollout window with soak checkpoints.
+
+```yaml
+rollout:
+  note: "[CONTESTED] window length disputed — one week vs two weeks"
+```
+
+## Risks
+
+Rollback is owned by the on-call lead. The fenced example above still carries
+a live disagreement token that per-pass fence-aware counting cannot see.
+DOC
 }
 write_bodies
 
@@ -121,7 +142,11 @@ prompt=\$(cat)
 if printf '%s' "\$prompt" | grep -q 'You are the ADJUDICATOR'; then
   if [[ "\${LC_ADJ_MODE:-resolve}" == "fail" ]]; then cat "$TEST_DIR/body-adj-fail.txt"; else cat "$TEST_DIR/body-adj-resolve.txt"; fi
 else
-  if [[ "\${LC_STUB_DOC:-markers}" == "clean" ]]; then cat "$TEST_DIR/body-clean.txt"; else cat "$TEST_DIR/body-markers.txt"; fi
+  case "\${LC_STUB_DOC:-markers}" in
+    clean)  cat "$TEST_DIR/body-clean.txt" ;;
+    fenced) cat "$TEST_DIR/body-fenced.txt" ;;
+    *)      cat "$TEST_DIR/body-markers.txt" ;;
+  esac
 fi
 STUB
 chmod +x "$TEST_DIR/bin/claude"
@@ -137,7 +162,11 @@ pick() { if [[ -n "\$out" ]]; then cat "\$1" > "\$out"; else cat "\$1"; fi; }
 if printf '%s' "\$prompt" | grep -q 'You are the ADJUDICATOR'; then
   if [[ "\${LC_ADJ_MODE:-resolve}" == "fail" ]]; then pick "$TEST_DIR/body-adj-fail.txt"; else pick "$TEST_DIR/body-adj-resolve.txt"; fi
 else
-  if [[ "\${LC_STUB_DOC:-markers}" == "clean" ]]; then pick "$TEST_DIR/body-clean.txt"; else pick "$TEST_DIR/body-markers.txt"; fi
+  case "\${LC_STUB_DOC:-markers}" in
+    clean)  pick "$TEST_DIR/body-clean.txt" ;;
+    fenced) pick "$TEST_DIR/body-fenced.txt" ;;
+    *)      pick "$TEST_DIR/body-markers.txt" ;;
+  esac
 fi
 exit 0
 STUB
@@ -274,6 +303,41 @@ check "S5b: chain adjudicated run produced adjudication-report.md" \
   "[[ -s '$S5_DIR/adjudication-report.md' ]]"
 check "S5c: chain ran its fixed 3 passes before adjudication" \
   "[[ -f '$S5_STATE' ]] && [[ \$(jq -r '.passes | length' '$S5_STATE') -eq 3 ]]"
+
+# ===========================================================================
+# Scenario 6: FENCED marker (adversarial-review fix) — a marker inside a
+# ```yaml fence is invisible to fence-aware per-pass counting, so the loop
+# early-breaks "converged"; the raw honesty gate must catch it and force
+# adjudication. With a resolving adjudicator the run ends `adjudicated`,
+# NEVER `converged`.
+# ===========================================================================
+S6_RUNS="$TEST_DIR/s6-runs"
+rc=0; LC_STUB_DOC=fenced LC_ADJ_MODE=resolve run_branch "$S6_RUNS" --vanilla --bounce-only "$SEED" || rc=$?
+S6_STATE=$(find_state "$S6_RUNS"); S6_DIR=$(dirname "$S6_STATE" 2>/dev/null || echo "")
+S6_FINAL=$(final_doc "$S6_DIR")
+check "S6a: fenced-marker run is NOT presented as converged" \
+  "[[ -f '$S6_STATE' ]] && [[ \$(jq -r '.convergence_status' '$S6_STATE') != converged ]]"
+check "S6b: fenced-marker run ends adjudicated (resolving adjudicator)" \
+  "[[ -f '$S6_STATE' ]] && [[ \$(jq -r '.convergence_status' '$S6_STATE') == adjudicated ]]"
+check "S6c: adjudication-report.md written for the fenced survivor" \
+  "[[ -s '$S6_DIR/adjudication-report.md' ]]"
+check "S6d: final document carries 0 marker tokens (raw grep, fences included)" \
+  "[[ -n '$S6_FINAL' ]] && [[ \$(grep -cE '\[(CONTESTED|CLARIFY)\]' '$S6_FINAL' || true) -eq 0 ]]"
+
+# ===========================================================================
+# Scenario 7: FENCED marker + failing adjudicator — the run must end `stuck`
+# with the fenced token preserved, never silent-converged.
+# ===========================================================================
+S7_RUNS="$TEST_DIR/s7-runs"
+rc=0; LC_STUB_DOC=fenced LC_ADJ_MODE=fail run_branch "$S7_RUNS" --vanilla --bounce-only "$SEED" || rc=$?
+S7_STATE=$(find_state "$S7_RUNS"); S7_DIR=$(dirname "$S7_STATE" 2>/dev/null || echo "")
+S7_FINAL=$(final_doc "$S7_DIR")
+check "S7a: fenced-marker run with failed adjudication ends stuck" \
+  "[[ -f '$S7_STATE' ]] && [[ \$(jq -r '.convergence_status' '$S7_STATE') == stuck ]]"
+check "S7b: stuck fenced run labeled with CO-EVOLVE:STUCK banner" \
+  "[[ -n '$S7_FINAL' ]] && grep -q 'CO-EVOLVE:STUCK' '$S7_FINAL'"
+check "S7c: fenced marker token preserved in the stuck document" \
+  "[[ -f '$S7_DIR/working.md' ]] && [[ \$(grep -cE '\[(CONTESTED|CLARIFY)\]' '$S7_DIR/working.md' || true) -ge 1 ]]"
 
 # ---------------------------------------------------------------------------
 printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"

@@ -1002,6 +1002,28 @@ count_markers() {
   ' "$file_path" | tr -d '\r\n '
 }
 
+# v1.5 Phase 4 (A-5 hardening): fence-AGNOSTIC marker count for the honesty
+# gate. count_markers deliberately skips code fences and inline code so a pass
+# that QUOTES a marker example is not treated as disagreeing — correct for
+# per-pass convergence accounting, but exploitable at the finish line: a live
+# marker tucked inside a ``` fence counts 0 there and the run would be
+# presented as "converged" with the marker text still in the final document.
+# The honesty gate (natural-convergence decision + post-adjudication body
+# verdict in co-evolve-bouncer.sh) uses THIS raw count instead: any line
+# carrying the literal marker token counts, fenced or not. A fenced survivor
+# forces adjudication (the adjudicator may resolve or drop it) or ends the run
+# stuck — never silent convergence. Do NOT swap this into per-pass accounting.
+count_markers_raw() {
+  local file_path="$1"
+  local marker="$2"
+
+  awk -v marker="$marker" '
+    BEGIN { count = 0 }
+    index($0, marker) > 0 { count++ }
+    END { print count }
+  ' "$file_path" | tr -d '\r\n '
+}
+
 strip_human_summary() {
   local input_file="$1"
   local output_file="$2"
