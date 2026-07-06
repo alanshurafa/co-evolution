@@ -100,17 +100,33 @@ STUB
 chmod +x "$TEST_DIR/bin/codex"
 
 # ---- Recording stub for the dev-review engine -------------------------------
-# Captures argv (one per line) to $ARGV_FILE and exits with $STUB_EXIT (env,
-# default 0). This is the seam under test: co-evolve exec's this instead of the
-# real engine, so whatever argv co-evolve built lands here verbatim.
+# Captures argv (one per line) to $ARGV_FILE, the seat-relevant ENVIRONMENT to
+# ${ARGV_FILE}.env, and exits with $STUB_EXIT (env, default 0). This is the
+# seam under test: co-evolve exec's this instead of the real engine, so
+# whatever argv AND env co-evolve built land here verbatim. The env capture
+# matters because the real engine snapshots CLAUDE_EFFORT / CODEX_MODEL /
+# CODEX_REASONING_EFFORT from its inherited environment as its own base seats
+# (dev-review.sh ~:1428) — a leaked doc-pipeline seat would silently become
+# the execute/verify seat.
 ENGINE_STUB="$TEST_DIR/dev-review-stub.sh"
 cat > "$ENGINE_STUB" <<'STUB'
 #!/usr/bin/env bash
 : > "$ARGV_FILE"
 for a in "$@"; do printf '%s\n' "$a" >> "$ARGV_FILE"; done
+{
+  printf 'CLAUDE_MODEL=%s\n' "${CLAUDE_MODEL-<unset>}"
+  printf 'CLAUDE_EFFORT=%s\n' "${CLAUDE_EFFORT-<unset>}"
+  printf 'CODEX_MODEL=%s\n' "${CODEX_MODEL-<unset>}"
+  printf 'CODEX_REASONING_EFFORT=%s\n' "${CODEX_REASONING_EFFORT-<unset>}"
+} > "${ARGV_FILE}.env"
 exit "${STUB_EXIT:-0}"
 STUB
 chmod +x "$ENGINE_STUB"
+
+# env_is <VAR> <value> — true iff ${ARGV_FILE}.env records VAR exactly =value.
+env_is() {
+  grep -qxF -- "$1=$2" "${ARGV_FILE}.env"
+}
 
 # Shared run: invoke co-evolve with the recording engine + stubbed CLIs.
 # Redirect co-evolve run artifacts into TEST_DIR so nothing pollutes the repo.
@@ -245,20 +261,67 @@ fi
 
 # ------------------------------------------------------------------ S7
 # Seat-forwarding boundary (v1.5 Phase 4, A-6): the DOCUMENT pipeline's per-role
-# seats (COMPOSER_MODEL / REVIEWER_MODEL) shape the bounce's two roles. They must
-# NOT leak into the dev-review engine — the engine has its OWN seats/presets.
-# Only the base --claude-model is forwarded (a global model choice), and it is
-# forwarded from CLAUDE_MODEL_BASE, NOT the per-pass-mutated CLAUDE_MODEL.
+# seats (COMPOSER_/REVIEWER_ model AND effort) shape the bounce's two roles.
+# They must NOT leak into the dev-review engine — neither on argv nor in the
+# exported ENVIRONMENT (the engine snapshots CLAUDE_EFFORT/CODEX_MODEL/
+# CODEX_REASONING_EFFORT from env as its own base seats). Only the base
+# --claude-model is forwarded, from CLAUDE_MODEL_BASE, never the per-pass-
+# mutated CLAUDE_MODEL.
+#
+# Dedicated stubs: claude (pass 1, reviewer seat) emits a doc WITH a marker so
+# pass 2 runs; codex (pass 2, composer seat) emits a clean doc so the bounce
+# converges. That mutates BOTH agent kinds' seat env before the hand-off —
+# without the restore, all four vars would leak.
 ARGV_FILE="$TEST_DIR/argv-s7.txt"
-echo "S7: doc-pipeline seats are NOT forwarded; base --claude-model IS"
+echo "S7: doc-pipeline seats (model+effort) leak neither into argv nor env; base --claude-model IS forwarded"
+mkdir -p "$TEST_DIR/bin-seat"
+cat > "$TEST_DIR/bin-seat/claude" <<'STUB'
+#!/usr/bin/env bash
+for a in "$@"; do case "$a" in --version|-v) echo "claude 1.0.0 (stub)"; exit 0 ;; esac; done
+cat > /dev/null
+cat <<'DOC'
+# Implementation Plan
+
+## Approach
+
+Create a single text file with one greeting line. This fixture document is
+long enough to satisfy the compose and bounce validators of the pipeline.
+[CONTESTED] One file or two? Alternative: one file — the task names a single artifact.
+
+## Risks
+
+- None beyond fixture scope.
+DOC
+STUB
+cat > "$TEST_DIR/bin-seat/codex" <<'STUB'
+#!/usr/bin/env bash
+for a in "$@"; do case "$a" in --version|-v) echo "codex 0.1.0 (stub)"; exit 0 ;; esac; done
+cat > /dev/null 2>/dev/null || true
+out=""; prev=""; for a in "$@"; do [[ "$prev" == "-o" ]] && out="$a"; prev="$a"; done
+body='# Implementation Plan
+
+## Approach
+
+Create a single text file with one greeting line. The contested point is
+resolved: one file, because the task names a single artifact. This fixture is
+long enough to satisfy the compose and bounce validators of the pipeline.
+
+## Risks
+
+- None beyond fixture scope.'
+if [[ -n "$out" ]]; then printf '%s\n' "$body" > "$out"; else printf '%s\n' "$body"; fi
+exit 0
+STUB
+chmod +x "$TEST_DIR/bin-seat/claude" "$TEST_DIR/bin-seat/codex"
 STUB_EXIT=0
 s7_rc=0
-COMPOSER_MODEL="gpt-5.5" REVIEWER_MODEL="claude-sonnet-4-5" \
+COMPOSER_MODEL="gpt-5.5" COMPOSER_EFFORT="xhigh" \
+REVIEWER_MODEL="claude-sonnet-4-5" REVIEWER_EFFORT="low" \
 CO_EVOLVE_DEV_REVIEW_SCRIPT="$ENGINE_STUB" \
 CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs" \
 ARGV_FILE="$ARGV_FILE" \
 STUB_EXIT=0 \
-PATH="$TEST_DIR/bin:$PATH" \
+PATH="$TEST_DIR/bin-seat:$PATH" \
   bash "$BOUNCER" --skip-interview --auto --execute --claude-model best "seat boundary" \
   >"$TEST_DIR/out-s7.log" 2>&1 || s7_rc=$?
 if [[ ! -f "$ARGV_FILE" ]]; then
@@ -268,13 +331,13 @@ else
   if grep -qxF -- "gpt-5.5" "$ARGV_FILE" || grep -qxF -- "claude-sonnet-4-5" "$ARGV_FILE"; then
     note_fail "S7: a doc-pipeline seat (COMPOSER_MODEL/REVIEWER_MODEL) leaked into engine argv"
   else
-    note_pass "S7: COMPOSER_MODEL/REVIEWER_MODEL not forwarded to engine"
+    note_pass "S7: COMPOSER_MODEL/REVIEWER_MODEL not forwarded to engine argv"
   fi
-  # The base --claude-model must be forwarded (resolved from the `best` alias).
+  # The base --claude-model must be forwarded (the raw `best` alias; the
+  # engine resolves aliases itself).
   if argv_has "--claude-model"; then
     cm=$(awk 'prev=="--claude-model"{print; exit} {prev=$0}' "$ARGV_FILE")
     note_pass "S7: base --claude-model forwarded to engine ($cm)"
-    # It must be the resolved base, never a doc-role seat value.
     if [[ "$cm" == "gpt-5.5" || "$cm" == "claude-sonnet-4-5" ]]; then
       note_fail "S7: forwarded --claude-model carries a doc-role seat value ($cm)"
     else
@@ -282,6 +345,25 @@ else
     fi
   else
     note_fail "S7: base --claude-model was not forwarded"
+  fi
+  # ENVIRONMENT assertions (adversarial-review fix): the exec'd engine must see
+  # the post-parse base env, not the last apply_role_seat mutation. Bases here:
+  # CLAUDE_MODEL=best (raw --claude-model), efforts/codex-model unset.
+  if [[ ! -f "${ARGV_FILE}.env" ]]; then
+    note_fail "S7: engine stub recorded no environment"
+  else
+    env_is "CLAUDE_MODEL" "best" \
+      && note_pass "S7: env CLAUDE_MODEL restored to base (best)" \
+      || note_fail "S7: env CLAUDE_MODEL not base: $(grep '^CLAUDE_MODEL=' "${ARGV_FILE}.env")"
+    env_is "CLAUDE_EFFORT" "low" \
+      && note_fail "S7: reviewer effort 'low' leaked into engine env" \
+      || note_pass "S7: env CLAUDE_EFFORT does not carry the reviewer seat effort"
+    env_is "CODEX_MODEL" "gpt-5.5" \
+      && note_fail "S7: composer model 'gpt-5.5' leaked into engine env" \
+      || note_pass "S7: env CODEX_MODEL does not carry the composer seat model"
+    env_is "CODEX_REASONING_EFFORT" "xhigh" \
+      && note_fail "S7: composer effort 'xhigh' leaked into engine env" \
+      || note_pass "S7: env CODEX_REASONING_EFFORT does not carry the composer seat effort"
   fi
 fi
 

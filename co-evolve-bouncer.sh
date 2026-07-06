@@ -1209,6 +1209,20 @@ if [[ "$EXECUTE" == "true" ]]; then
   # resolves best/opus/fable aliases; ids pass through.
   [[ -n "${CLAUDE_MODEL_BASE:-}" ]] && dev_review_args+=(--claude-model "$CLAUDE_MODEL_BASE")
 
+  # The boundary must hold for the ENVIRONMENT too, not just argv
+  # (adversarial-review fix): apply_role_seat exports CLAUDE_MODEL/CLAUDE_EFFORT
+  # (claude passes) and CODEX_MODEL/CODEX_REASONING_EFFORT (codex passes), and
+  # `exec` hands the mutated environment to the engine, which snapshots those
+  # very vars as ITS base seats (dev-review.sh ~:1428) — so `--reviewer-effort
+  # high` would silently become the execute/verify effort. Restore each var to
+  # its post-parse base before the exec: base non-empty -> export the base
+  # (user's own global env passes through unchanged); base empty -> unset (the
+  # var only exists because a seat exported it mid-run).
+  export CLAUDE_MODEL="$CLAUDE_MODEL_BASE"
+  if [[ -n "$CLAUDE_EFFORT_BASE" ]]; then export CLAUDE_EFFORT="$CLAUDE_EFFORT_BASE"; else unset CLAUDE_EFFORT; fi
+  if [[ -n "$CODEX_MODEL_BASE" ]]; then export CODEX_MODEL="$CODEX_MODEL_BASE"; else unset CODEX_MODEL; fi
+  if [[ -n "$CODEX_EFFORT_BASE" ]]; then export CODEX_REASONING_EFFORT="$CODEX_EFFORT_BASE"; else unset CODEX_REASONING_EFFORT; fi
+
   log ""
   log "--- Handing bounced plan to dev-review (execute$([[ "$DEV_REVIEW_VERIFY" == "true" ]] && echo " + verify")) ---"
   log ""
