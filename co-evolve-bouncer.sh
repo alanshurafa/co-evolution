@@ -1141,6 +1141,16 @@ log "============================================"
 # becomes co-evolve's exit code (0 APPROVED / clean, 2 REVISE / needs-review,
 # 1 fatal) — the byte-for-byte contract dev-review callers already rely on.
 if [[ "$EXECUTE" == "true" ]]; then
+  # v1.5 Phase 4 (A-5 x A-6): a STUCK plan must NEVER be executed. If the bounce
+  # could not converge and adjudication failed, $FINAL_FILE carries the
+  # CO-EVOLVE:STUCK banner plus live [CONTESTED]/[CLARIFY] markers — it is not a
+  # fit implementation plan. Refuse the hand-off (the empty-plan guard below does
+  # NOT catch this: a stuck plan is non-empty). Exit 1 so callers/CI see the
+  # code run did not proceed. The labeled plan + state.json/run.log explain why.
+  if [[ "$RUN_STUCK" == "true" ]]; then
+    die "cannot --execute: bounce is STUCK (unresolved markers). Resolve the document first; see $FINAL_FILE"
+  fi
+
   # Byte-parity guard: the converged plan must exist and be non-empty, or the
   # executor would run against nothing. run_bounce_phase always writes it, but
   # fail loudly rather than hand the engine an empty plan.
@@ -1160,9 +1170,16 @@ if [[ "$EXECUTE" == "true" ]]; then
   [[ -n "$EXEC_BRANCH_SPEC" ]]   && dev_review_args+=(--branch "$EXEC_BRANCH_SPEC")
   [[ -n "$EXEC_WORKTREE_SPEC" ]] && dev_review_args+=(--worktree "$EXEC_WORKTREE_SPEC")
   [[ -n "$EXEC_TIMEOUT" ]]       && dev_review_args+=(--timeout "$EXEC_TIMEOUT")
-  # Forward the Claude model override so a code run honors the same seat choice
-  # as the bounce (dev-review resolves best/opus/fable aliases; ids pass through).
-  [[ -n "${CLAUDE_MODEL:-}" ]]   && dev_review_args+=(--claude-model "$CLAUDE_MODEL")
+  # v1.5 Phase 4 (A-6): forward ONLY the base --claude-model, NOT the doc-pipeline
+  # per-role seats. Rationale (the seat-forwarding boundary): COMPOSER_/REVIEWER_
+  # seats shape the *bounce's* two roles; the dev-review engine has its OWN seats
+  # and presets (composer/executor/verifier), so leaking a doc-role seat into it
+  # would be meaningless at best and wrong at worst. We forward CLAUDE_MODEL_BASE
+  # (the snapshot taken before any apply_role_seat mutation) rather than the live
+  # CLAUDE_MODEL, which apply_role_seat rewrites per pass — by the hand-off it
+  # holds the last reviewer/composer seat, not the user's global choice. dev-review
+  # resolves best/opus/fable aliases; ids pass through.
+  [[ -n "${CLAUDE_MODEL_BASE:-}" ]] && dev_review_args+=(--claude-model "$CLAUDE_MODEL_BASE")
 
   log ""
   log "--- Handing bounced plan to dev-review (execute$([[ "$DEV_REVIEW_VERIFY" == "true" ]] && echo " + verify")) ---"
