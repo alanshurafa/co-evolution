@@ -166,7 +166,10 @@ doc="$e2e/doc.md"
 printf '# Sample Plan\n\nA plan with enough words to be a real document for the bounce loop to process.\n' > "$doc"
 
 rc=0
-PATH="$e2e/bin:$PATH" bash "$REPO_ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$doc" \
+# CO_EVOLVE_RUNS_DIR: land run artifacts inside TEST_DIR (EXIT-trap cleaned)
+# instead of leaking co-evolve-tmp-* dirs into the repo's shared runs/.
+CO_EVOLVE_RUNS_DIR="$TEST_DIR/co-evolve-runs" PATH="$e2e/bin:$PATH" \
+  bash "$REPO_ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$doc" \
   > "$e2e/stdout.log" 2> "$e2e/stderr.log" || rc=$?
 
 final_doc_corrupted=false
