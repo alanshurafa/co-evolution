@@ -261,15 +261,17 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo a)
 claude_log="$TEST_DIR/a_claude.log"; codex_log="$TEST_DIR/a_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+# Explicit run dir (policy a) — avoids the `ls -dt runs/dev-review-*` newest-mtime
+# race that cross-reads another concurrent suite's run dir. Scenario (b) below
+# reuses this same path directly instead of re-discovering "newest".
+a_run_dir="$TEST_DIR/run-a"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
-  bash "$RUNNER" --preset codex-build --workdir "$repo" --timeout 60 -- "preset seat argv probe"
+  bash "$RUNNER" --preset codex-build --run-dir "$a_run_dir" --workdir "$repo" --timeout 60 -- "preset seat argv probe"
 ) >"$TEST_DIR/a.out" 2>&1 || true
-a_run_dir_k=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 
 a_ok=true
 # composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
@@ -284,9 +286,9 @@ if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
 # v1.5 Phase 1 acceptance: a PRESET run's state.json must carry NO (default) seat
 # — every seat (incl. the A-8 bounce counterparty, codex here) is pinned concrete.
-if [[ -n "$a_run_dir_k" && "$a_run_dir_k" != "$run_dir_before" ]]; then
-  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.5@xhigh"' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
-  if ! jq -e '[.seat_models[] | select(contains("(default)"))] | length == 0' "$a_run_dir_k/state.json" >/dev/null 2>&1; then a_ok=false; fi
+if [[ -f "$a_run_dir/state.json" ]]; then
+  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.5@xhigh"' "$a_run_dir/state.json" >/dev/null 2>&1; then a_ok=false; fi
+  if ! jq -e '[.seat_models[] | select(contains("(default)"))] | length == 0' "$a_run_dir/state.json" >/dev/null 2>&1; then a_ok=false; fi
 else
   a_ok=false
 fi
@@ -303,10 +305,8 @@ fi
 # preset run already produced a claude verdict through the hardening path).
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
-# Find the run dir the scenario-(a) run created (newest under runs/).
-a_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 b_ok=false
-if [[ -n "$a_run_dir" && -f "$a_run_dir/verdict.json" ]]; then
+if [[ -f "$a_run_dir/verdict.json" ]]; then
   if jq -e '.verdict == "APPROVED" and (.confidence | type) == "number" and has("summary") and has("issues")' \
        "$a_run_dir/verdict.json" >/dev/null 2>&1; then
     b_ok=true
@@ -316,10 +316,8 @@ if [[ "$b_ok" == true ]]; then
   pass "verdict hardening: prose/fence-wrapped verdict.json is jq-parseable with expected fields"
 else
   fail "verdict.json not jq-parseable after hardening (run dir: ${a_run_dir:-<none>})"
-  [[ -n "${a_run_dir:-}" && -f "$a_run_dir/verdict.json" ]] && { echo "--- verdict.json ---"; cat "$a_run_dir/verdict.json"; } >&2
+  [[ -f "$a_run_dir/verdict.json" ]] && { echo "--- verdict.json ---"; cat "$a_run_dir/verdict.json"; } >&2
 fi
-# Clean up the runs/ artifacts this gate created so it leaves no side effects.
-[[ -n "${a_run_dir:-}" ]] && rm -rf "$a_run_dir"
 
 # ===========================================================================
 # Scenario (c): --preset codex-build --verifier codex → verifier is codex
@@ -329,18 +327,17 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo c)
 codex_log="$TEST_DIR/c_codex.log"; claude_log="$TEST_DIR/c_claude.log"
 : > "$codex_log"; : > "$claude_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+c_run_dir="$TEST_DIR/run-c"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --preset codex-build --verifier codex --skip-plan --plan "$PLAN_FIXTURE" \
-    --workdir "$repo" --timeout 60 -- "preset verifier override probe"
+    --run-dir "$c_run_dir" --workdir "$repo" --timeout 60 -- "preset verifier override probe"
 ) >"$TEST_DIR/c.out" 2>&1 || true
-c_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 c_ok=false
-if [[ -n "$c_run_dir" && "$c_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$c_run_dir/state.json" ]]; then
   # state.json seat_models.verifier must report codex; banner Verifier line too.
   if jq -e '.seat_models.verifier | startswith("codex:")' "$c_run_dir/state.json" >/dev/null 2>&1 \
      && grep -Eq '^ Verifier:  codex' "$c_run_dir/run.log"; then
@@ -351,9 +348,8 @@ if [[ "$c_ok" == true ]]; then
   pass "preset codex-build --verifier codex: verifier seat is codex (last-wins)"
 else
   fail "verifier override did not win over preset (run dir: ${c_run_dir:-<none>})"
-  [[ -n "${c_run_dir:-}" ]] && grep -E '^ Verifier:' "$c_run_dir/run.log" >&2 || true
+  [[ -f "$c_run_dir/run.log" ]] && grep -E '^ Verifier:' "$c_run_dir/run.log" >&2 || true
 fi
-[[ -n "${c_run_dir:-}" && "$c_run_dir" != "$run_dir_before" ]] && rm -rf "$c_run_dir"
 
 # ===========================================================================
 # Scenario (d): COMPOSER_EFFORT=low pre-set + preset → composer gets
@@ -363,23 +359,21 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo d)
 claude_log="$TEST_DIR/d_claude.log"; codex_log="$TEST_DIR/d_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+d_run_dir="$TEST_DIR/run-d"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export COMPOSER_EFFORT="low"
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
-  bash "$RUNNER" --preset codex-build --workdir "$repo" --timeout 60 -- "preset composer effort env probe"
+  bash "$RUNNER" --preset codex-build --run-dir "$d_run_dir" --workdir "$repo" --timeout 60 -- "preset composer effort env probe"
 ) >"$TEST_DIR/d.out" 2>&1 || true
-d_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 if grep -Eq -- '--effort low' "$claude_log" && ! grep -Eq -- '--effort high' "$claude_log"; then
   pass "preset + COMPOSER_EFFORT=low: composer gets --effort low (fill-if-empty env wins)"
 else
   fail "COMPOSER_EFFORT env did not beat preset high (claude argv below)"
   cat "$claude_log" >&2
 fi
-[[ -n "${d_run_dir:-}" && "$d_run_dir" != "$run_dir_before" ]] && rm -rf "$d_run_dir"
 
 # ===========================================================================
 # Scenario (e): --preset bogus dies with the unknown-preset message.
@@ -413,7 +407,7 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo g)
 claude_log="$TEST_DIR/g_claude.log"; codex_log="$TEST_DIR/g_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+g_run_dir="$TEST_DIR/run-g"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
@@ -422,9 +416,8 @@ run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || 
   # Default flavor: codex composes + executes, opus verifies. --verify so a
   # claude verdict path runs too. No preset, no effort knobs.
   bash "$RUNNER" --verify --bounces 0 --skip-plan --plan "$PLAN_FIXTURE" \
-    --workdir "$repo" --timeout 60 -- "parity guard probe"
+    --run-dir "$g_run_dir" --workdir "$repo" --timeout 60 -- "parity guard probe"
 ) >"$TEST_DIR/g.out" 2>&1 || true
-g_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 g_ok=true
 if grep -Eq -- '--effort ' "$claude_log"; then g_ok=false; fi
 if grep -Eq -- 'model_reasoning_effort=' "$codex_log"; then g_ok=false; fi
@@ -434,7 +427,6 @@ else
   fail "parity guard: an effort flag leaked into a default run (logs below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
 fi
-[[ -n "${g_run_dir:-}" && "$g_run_dir" != "$run_dir_before" ]] && rm -rf "$g_run_dir"
 
 # ===========================================================================
 # Scenario (h): cross-agent leak guard — --preset codex-build --verifier codex.
@@ -450,16 +442,15 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo h)
 codex_log="$TEST_DIR/h_codex.log"; claude_log="$TEST_DIR/h_claude.log"
 : > "$codex_log"; : > "$claude_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+h_run_dir="$TEST_DIR/run-h"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --preset codex-build --verifier codex --skip-plan --plan "$PLAN_FIXTURE" \
-    --workdir "$repo" --timeout 60 -- "preset codex-verifier leak guard probe"
+    --run-dir "$h_run_dir" --workdir "$repo" --timeout 60 -- "preset codex-verifier leak guard probe"
 ) >"$TEST_DIR/h.out" 2>&1 || true
-h_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 # The verify invocation is the codex argv line carrying --output-schema.
 h_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 h_ok=true
@@ -471,7 +462,7 @@ if printf '%s' "$h_verify_argv" | grep -Eq -- 'model_reasoning_effort=max'; then
 # Sanity: the codex verify invocation actually happened (so the asserts are real).
 if [[ -z "$h_verify_argv" ]]; then h_ok=false; fi
 # state.json must report the fallback seat, not the leaked fable@max pair.
-if [[ -n "$h_run_dir" && "$h_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$h_run_dir/state.json" ]]; then
   if ! jq -e '.seat_models.verifier == "codex:(default)@(default)"' "$h_run_dir/state.json" >/dev/null 2>&1; then
     h_ok=false
   fi
@@ -483,10 +474,9 @@ if [[ "$h_ok" == true ]]; then
 else
   fail "cross-agent leak guard failed (run dir: ${h_run_dir:-<none>})"
   { echo "--- codex verify argv ---"; printf '%s\n' "$h_verify_argv"
-    [[ -n "${h_run_dir:-}" && -f "$h_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$h_run_dir/state.json"; }
+    [[ -f "$h_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$h_run_dir/state.json"; }
   } >&2
 fi
-[[ -n "${h_run_dir:-}" && "$h_run_dir" != "$run_dir_before" ]] && rm -rf "$h_run_dir"
 
 # ===========================================================================
 # Scenario (i): alias resolution. v1.5 Phase 1 (A-4a) moved
@@ -525,15 +515,14 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo j)
 claude_log="$TEST_DIR/j_claude.log"; codex_log="$TEST_DIR/j_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+j_run_dir="$TEST_DIR/run-j"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
-  bash "$RUNNER" --preset claude-build --workdir "$repo" --timeout 60 -- "preset claude-build seat argv probe"
+  bash "$RUNNER" --preset claude-build --run-dir "$j_run_dir" --workdir "$repo" --timeout 60 -- "preset claude-build seat argv probe"
 ) >"$TEST_DIR/j.out" 2>&1 || true
-j_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 j_claude_execute_argv=$(grep -- '--permission-mode bypassPermissions' "$claude_log" || true)
 j_codex_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 j_ok=true
@@ -551,7 +540,7 @@ if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model claude-opus-4-8
 if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--effort high'; then j_ok=false; fi
 if printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model (gpt-|codex)'; then j_ok=false; fi
 
-if [[ -n "$j_run_dir" && "$j_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$j_run_dir/state.json" ]]; then
   if ! jq -e '.seat_models.composer == "codex:gpt-5.5@xhigh"
               and .seat_models.executor == "opus:claude-opus-4-8@high"
               and .seat_models.verifier == "codex:gpt-5.5@xhigh"' \
@@ -568,10 +557,9 @@ else
   fail "preset claude-build seat argv mismatch (run dir: ${j_run_dir:-<none>})"
   { echo "--- claude execute argv ---"; printf '%s\n' "$j_claude_execute_argv"
     echo "--- codex argv ---"; cat "$codex_log"
-    [[ -n "${j_run_dir:-}" && -f "$j_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$j_run_dir/state.json"; }
+    [[ -f "$j_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$j_run_dir/state.json"; }
   } >&2
 fi
-[[ -n "${j_run_dir:-}" && "$j_run_dir" != "$run_dir_before" ]] && rm -rf "$j_run_dir"
 
 # ===========================================================================
 # Scenario (k): v1.5 Phase 1 (A-8) bounce counterparty seat. Default flavor
@@ -585,16 +573,15 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo k)
 claude_log="$TEST_DIR/k_claude.log"; codex_log="$TEST_DIR/k_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+k_run_dir="$TEST_DIR/run-k"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export BOUNCER_MODEL="claude-bouncer-xyz" BOUNCER_EFFORT="high"
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
-  bash "$RUNNER" --bounces 2 --plan-only --workdir "$repo" --timeout 60 -- "bouncer seat probe"
+  bash "$RUNNER" --bounces 2 --plan-only --run-dir "$k_run_dir" --workdir "$repo" --timeout 60 -- "bouncer seat probe"
 ) >"$TEST_DIR/k.out" 2>&1 || true
-k_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 k_ok=true
 # The bounce reviewer pass (claude) argv must carry BOUNCER_MODEL + effort.
 if ! grep -Eq -- '--model claude-bouncer-xyz' "$claude_log"; then k_ok=false; fi
@@ -602,7 +589,7 @@ if ! grep -Eq -- '--effort high' "$claude_log"; then k_ok=false; fi
 # No leak: the bouncer claude id must not reach any codex argv.
 if grep -Eq -- 'claude-bouncer-xyz' "$codex_log"; then k_ok=false; fi
 # state.json seat_models.bouncer records the resolved reviewer seat.
-if [[ -n "$k_run_dir" && "$k_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$k_run_dir/state.json" ]]; then
   if ! jq -e '.seat_models.bouncer == "opus:claude-bouncer-xyz@high"' "$k_run_dir/state.json" >/dev/null 2>&1; then
     k_ok=false
   fi
@@ -614,10 +601,9 @@ if [[ "$k_ok" == true ]]; then
 else
   fail "bouncer seat propagation failed (run dir: ${k_run_dir:-<none>})"
   { echo "--- claude argv ---"; cat "$claude_log"
-    [[ -n "${k_run_dir:-}" && -f "$k_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$k_run_dir/state.json"; }
+    [[ -f "$k_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$k_run_dir/state.json"; }
   } >&2
 fi
-[[ -n "${k_run_dir:-}" && "$k_run_dir" != "$run_dir_before" ]] && rm -rf "$k_run_dir"
 
 # ===========================================================================
 # Scenario (l): v1.5 Phase 1 (H1) — an explicit --model beats the preset's
@@ -631,22 +617,21 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo l)
 claude_log="$TEST_DIR/l_claude.log"; codex_log="$TEST_DIR/l_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+l_run_dir="$TEST_DIR/run-l"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --model o4-mini --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
-    --workdir "$repo" --timeout 60 -- "flag-over-preset precedence probe"
+    --run-dir "$l_run_dir" --workdir "$repo" --timeout 60 -- "flag-over-preset precedence probe"
 ) >"$TEST_DIR/l.out" 2>&1 || true
-l_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 l_ok=true
 # Executor codex argv carries the FLAG model, the preset effort — and never gpt-5.5.
 if ! grep -Eq -- '-c model=o4-mini' "$codex_log"; then l_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then l_ok=false; fi
 if grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then l_ok=false; fi
-if [[ -n "$l_run_dir" && "$l_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$l_run_dir/state.json" ]]; then
   if ! jq -e '.seat_models.executor == "codex:o4-mini@xhigh"' "$l_run_dir/state.json" >/dev/null 2>&1; then l_ok=false; fi
   # The override is surfaced, not silent.
   if ! grep -Fq 'NOTE: preset executor codex model pin (gpt-5.5) overridden by explicit --model o4-mini' "$l_run_dir/run.log"; then l_ok=false; fi
@@ -658,11 +643,10 @@ if [[ "$l_ok" == true ]]; then
 else
   fail "H1 flag-over-preset precedence failed (run dir: ${l_run_dir:-<none>})"
   { echo "--- codex argv ---"; cat "$codex_log"
-    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$l_run_dir/state.json"; }
-    [[ -n "${l_run_dir:-}" && -f "$l_run_dir/run.log" ]] && { echo "--- NOTE lines ---"; grep 'NOTE:' "$l_run_dir/run.log" || true; }
+    [[ -f "$l_run_dir/state.json" ]] && { echo "--- seat_models ---"; jq -c '.seat_models' "$l_run_dir/state.json"; }
+    [[ -f "$l_run_dir/run.log" ]] && { echo "--- NOTE lines ---"; grep 'NOTE:' "$l_run_dir/run.log" || true; }
   } >&2
 fi
-[[ -n "${l_run_dir:-}" && "$l_run_dir" != "$run_dir_before" ]] && rm -rf "$l_run_dir"
 
 # ===========================================================================
 # Scenario (m): v1.5 Phase 1 (H1, warn-only side) — --claude-model with a preset
@@ -674,22 +658,21 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo m)
 claude_log="$TEST_DIR/m_claude.log"; codex_log="$TEST_DIR/m_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1 || true)
+m_run_dir="$TEST_DIR/run-m"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT BOUNCER_MODEL BOUNCER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --claude-model claude-shadow-test --preset codex-build --skip-plan --plan "$PLAN_FIXTURE" \
-    --workdir "$repo" --timeout 60 -- "claude-model shadow warn probe"
+    --run-dir "$m_run_dir" --workdir "$repo" --timeout 60 -- "claude-model shadow warn probe"
 ) >"$TEST_DIR/m.out" 2>&1 || true
-m_run_dir=$(ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1)
 m_ok=true
 # Pre-existing precedence unchanged: the preset's claude pin still wins the argv.
 if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then m_ok=false; fi
 if grep -Eq -- '--model claude-shadow-test' "$claude_log"; then m_ok=false; fi
 # ...but the shadow is warned about (one line per shadowed preset claude seat).
-if [[ -n "$m_run_dir" && "$m_run_dir" != "$run_dir_before" ]]; then
+if [[ -f "$m_run_dir/run.log" ]]; then
   if ! grep -Eq 'WARNING: explicit --claude-model \(claude-shadow-test\) is shadowed by the preset (composer|verifier) model pin' "$m_run_dir/run.log"; then m_ok=false; fi
 else
   m_ok=false
@@ -699,10 +682,9 @@ if [[ "$m_ok" == true ]]; then
 else
   fail "H1 --claude-model warn-only behavior mismatch (run dir: ${m_run_dir:-<none>})"
   { echo "--- claude argv ---"; cat "$claude_log"
-    [[ -n "${m_run_dir:-}" && -f "$m_run_dir/run.log" ]] && { echo "--- WARNING lines ---"; grep 'WARNING:' "$m_run_dir/run.log" || true; }
+    [[ -f "$m_run_dir/run.log" ]] && { echo "--- WARNING lines ---"; grep 'WARNING:' "$m_run_dir/run.log" || true; }
   } >&2
 fi
-[[ -n "${m_run_dir:-}" && "$m_run_dir" != "$run_dir_before" ]] && rm -rf "$m_run_dir"
 
 # --- summary ----------------------------------------------------------------
 passed=$((TOTAL - FAILURES))
