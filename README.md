@@ -208,8 +208,11 @@ leftover marker and records each choice, with a one-line rationale, in
 `adjudication-report.md`), or is marked **stuck** (no defensible resolution was
 possible, so the markers are preserved and the document is labeled NOT-final).
 Every run therefore ends with an auditable convergence verdict rather than a
-possibly-forced "0 markers". The protocol is customizable: swap in
-domain-specific markers, adjust the pass count, change role lenses.
+possibly-forced "0 markers". A stuck document run still exits 0 by design —
+the `CO-EVOLVE:STUCK` label and the failing scorer gate carry the signal, not
+the exit code; `--execute` is the exception and refuses a stuck plan with exit
+1. The protocol is customizable: swap in domain-specific markers, adjust the
+pass count, change role lenses.
 
 ## Status
 

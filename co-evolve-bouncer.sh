@@ -120,6 +120,14 @@ Options:
   --no-report        Skip the post-run HUMAN-REPORT.md / bounce-scores.json generation
   --complexity TIER  PEL-only: force complexity (NORMAL|COMPLEX); skips Haiku router call
   --help             Show this help text
+
+Convergence lifecycle:
+  Every run ends converged | adjudicated | stuck (recorded in state.json
+  convergence_status; adjudicated runs also write adjudication-report.md).
+  A stuck DOCUMENT run still exits 0 by design: the output is labeled
+  CO-EVOLVE:STUCK / NOT-final and the deterministic scorer gate fails it —
+  the label and the gate carry the signal, not the exit code. --execute is
+  the exception: it refuses a stuck plan and exits 1.
 USAGE
   exit 0
 }
