@@ -1002,6 +1002,28 @@ count_markers() {
   ' "$file_path" | tr -d '\r\n '
 }
 
+# v1.5 Phase 4 (A-5 hardening): fence-AGNOSTIC marker count for the honesty
+# gate. count_markers deliberately skips code fences and inline code so a pass
+# that QUOTES a marker example is not treated as disagreeing — correct for
+# per-pass convergence accounting, but exploitable at the finish line: a live
+# marker tucked inside a ``` fence counts 0 there and the run would be
+# presented as "converged" with the marker text still in the final document.
+# The honesty gate (natural-convergence decision + post-adjudication body
+# verdict in co-evolve-bouncer.sh) uses THIS raw count instead: any line
+# carrying the literal marker token counts, fenced or not. A fenced survivor
+# forces adjudication (the adjudicator may resolve or drop it) or ends the run
+# stuck — never silent convergence. Do NOT swap this into per-pass accounting.
+count_markers_raw() {
+  local file_path="$1"
+  local marker="$2"
+
+  awk -v marker="$marker" '
+    BEGIN { count = 0 }
+    index($0, marker) > 0 { count++ }
+    END { print count }
+  ' "$file_path" | tr -d '\r\n '
+}
+
 strip_human_summary() {
   local input_file="$1"
   local output_file="$2"
@@ -1271,7 +1293,7 @@ init_bounce_state() {
     --arg final "$final_file" \
     --arg now "$(bounce_state_now_utc)" \
     '{
-      schema: "bounce-state/1.0",
+      schema: "bounce-state/1.1",
       runner: $runner,
       mode: $mode,
       task: $task,
@@ -1279,6 +1301,7 @@ init_bounce_state() {
       baseline_file: $baseline,
       final_file: $final,
       status: "running",
+      convergence_status: null,
       started_at: $now,
       finished_at: null,
       passes: []
@@ -1336,6 +1359,34 @@ finalize_bounce_state() {
     --arg status "$status" \
     --arg now "$(bounce_state_now_utc)" \
     '.status = $status | .finished_at = $now' \
+    "$state_file" > "$tmp" && mv "$tmp" "$state_file"
+}
+
+# v1.5 Phase 4 (A-5): record the CONVERGENCE outcome, orthogonal to the
+# lifecycle `status` field. `status` answers "did the run finish?"
+# (complete/aborted); `convergence_status` answers "did the markers actually
+# resolve?" (converged/adjudicated/stuck). Kept separate so the scorer's
+# existing abort gate is untouched and a `stuck` run is not confused with an
+# `aborted` one. See evals/BOUNCE-RUNNER-CONTRACT.md (bounce-state/1.1).
+#   converged  — markers hit 0 naturally within the configured passes
+#   adjudicated — markers survived; a forced-adjudication pass resolved every
+#                 one with a defensible choice recorded in adjudication-report.md
+#   stuck      — adjudication could not defensibly resolve every marker; the
+#                working document is preserved WITH markers and is NOT clean
+# Additive: agent-bouncer.sh does not call this, so its state.json simply omits
+# the field and consumers MUST treat a missing value as "unknown/unset".
+set_bounce_convergence_status() {
+  local state_file="${1:?state file required}"
+  local convergence_status="${2:?convergence status required}"
+
+  command -v jq >/dev/null 2>&1 || return 0
+  [[ -f "$state_file" ]] || return 0
+
+  local tmp
+  tmp=$(mktemp)
+  jq \
+    --arg cs "$convergence_status" \
+    '.convergence_status = $cs' \
     "$state_file" > "$tmp" && mv "$tmp" "$state_file"
 }
 

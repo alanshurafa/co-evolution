@@ -201,9 +201,18 @@ scorecard, marker-fate ledger, human report — on every call. See
 ### The Bounce Protocol
 
 The shared foundation. Two markers - `[CONTESTED]` and `[CLARIFY]` - coordinate
-structured disagreement between agents. Both auto-expire after 2 passes,
-guaranteeing convergence. The protocol is customizable: swap in domain-specific
-markers, adjust convergence rules, change role lenses.
+structured disagreement between agents. Markers do not silently expire: a
+`co-evolve-bouncer.sh` run either **converges** (markers reach 0 within the
+configured passes), gets **adjudicated** (a final forced pass resolves every
+leftover marker and records each choice, with a one-line rationale, in
+`adjudication-report.md`), or is marked **stuck** (no defensible resolution was
+possible, so the markers are preserved and the document is labeled NOT-final).
+Every run therefore ends with an auditable convergence verdict rather than a
+possibly-forced "0 markers". A stuck document run still exits 0 by design —
+the `CO-EVOLVE:STUCK` label and the failing scorer gate carry the signal, not
+the exit code; `--execute` is the exception and refuses a stuck plan with exit
+1. The protocol is customizable: swap in domain-specific markers, adjust the
+pass count, change role lenses.
 
 ## Status
 

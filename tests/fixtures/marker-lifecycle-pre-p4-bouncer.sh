@@ -26,22 +26,6 @@ AGENT_B="codex"
 : "${REVIEWER_MODEL:=}"; : "${REVIEWER_EFFORT:=}"
 BOUNCE_ONLY=false
 OUTPUT_FILE=""
-# Dev-review hand-off flags. Default off so a plain co-evolve run stays a pure
-# compose/bounce (byte-parity). When --execute is set, the bounced document is
-# treated as an implementation plan and handed to the dev-review execute (and,
-# with --verify, verify) engine — see the "Dev-review hand-off" block near EOF.
-# We delegate to dev-review/codex/dev-review.sh rather than re-implement its
-# ~600-line execute/verify engine here: that engine is CI-tested and shares this
-# script's lib/co-evolution.sh, so a copy would only duplicate tested code and
-# deepen this script's scope creep. See .notes/dev-review-merge-plan.md.
-EXECUTE=false
-DEV_REVIEW_VERIFY=false
-EXEC_WORKDIR=""
-EXEC_VERIFIER=""
-EXEC_REVISE_LOOP=""
-EXEC_BRANCH_SPEC=""
-EXEC_WORKTREE_SPEC=""
-EXEC_TIMEOUT=""
 TASK=""
 INPUT_CONTENT=""
 INPUT_TYPE=""  # "string", "file", or "pipe"
@@ -68,8 +52,7 @@ PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
 # Validate templates exist
 for _tmpl in "$TEMPLATE_DIR/role-reviewer-light.md" "$TEMPLATE_DIR/role-composer-light.md" \
              "$TEMPLATE_DIR/chain-critique.md" "$TEMPLATE_DIR/chain-defend.md" \
-             "$TEMPLATE_DIR/chain-tighten.md" "$TEMPLATE_DIR/adjudicate.md" \
-             "$PROTOCOL_TEMPLATE"; do
+             "$TEMPLATE_DIR/chain-tighten.md" "$PROTOCOL_TEMPLATE"; do
   [[ -f "$_tmpl" ]] || die "Missing template: $_tmpl"
 done
 
@@ -97,15 +80,7 @@ Options:
   --composer-effort E  Reasoning effort for the composer role. Also COMPOSER_EFFORT env.
   --reviewer-model M   Model for the reviewer role (odd passes / chain critique+tighten). Also REVIEWER_MODEL env. Default: inherit global.
   --reviewer-effort E  Reasoning effort for the reviewer role. Also REVIEWER_EFFORT env. (No global --effort: a bounce has two roles.)
-  --execute          After bounce, hand the result to dev-review as a plan and write code
-  --verify           With --execute, add the verify pass (APPROVED/REVISE verdict)
-  --dev-review       Shorthand for --execute --verify
-  --workdir DIR      With --execute: directory the executor writes into (default: cwd)
-  --verifier AGENT   With --execute --verify: force the verify agent (codex|opus|claude)
-  --revise-loop N    With --execute --verify: auto-retry on REVISE up to N extra passes (default 0)
-  --exec-branch SPEC With --execute: create a branch before writing (auto|NAME); excl. with --exec-worktree
-  --exec-worktree SPEC With --execute: create a worktree before writing (auto|PATH); excl. with --exec-branch
-  --exec-timeout SEC With --execute: per-phase timeout for the execute/verify engine (default 1800)
+  --dev-review       Add execute + verify phases after bounce
   --bounce-only      Skip compose, bounce a file directly
   --output FILE      Write final output to a file instead of stdout
   --lab MODE         Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
@@ -120,14 +95,6 @@ Options:
   --no-report        Skip the post-run HUMAN-REPORT.md / bounce-scores.json generation
   --complexity TIER  PEL-only: force complexity (NORMAL|COMPLEX); skips Haiku router call
   --help             Show this help text
-
-Convergence lifecycle:
-  Every run ends converged | adjudicated | stuck (recorded in state.json
-  convergence_status; adjudicated runs also write adjudication-report.md).
-  A stuck DOCUMENT run still exits 0 by design: the output is labeled
-  CO-EVOLVE:STUCK / NOT-final and the deterministic scorer gate fails it —
-  the label and the gate carry the signal, not the exit code. --execute is
-  the exception: it refuses a stuck plan and exits 1.
 USAGE
   exit 0
 }
@@ -185,49 +152,7 @@ while [[ $# -gt 0 ]]; do
       REVIEWER_EFFORT="$2"
       shift 2
       ;;
-    # v1.5 Phase 4 (A-6): dev-review hand-off. --execute (and --verify) treat the
-    # bounced document as a plan and delegate to the dev-review execute/verify
-    # engine. Doc-pipeline seats (COMPOSER_/REVIEWER_MODEL above) are the bounce's
-    # seats and are NOT forwarded to the engine — the engine has its own seats and
-    # presets. Only --claude-model forwards (below, near the hand-off).
-    --execute) EXECUTE=true; shift ;;
-    --verify) DEV_REVIEW_VERIFY=true; shift ;;
-    --dev-review) EXECUTE=true; DEV_REVIEW_VERIFY=true; shift ;;
-    --workdir)
-      [[ $# -gt 1 ]] || die "--workdir requires a value"
-      EXEC_WORKDIR="$2"
-      shift 2
-      ;;
-    --verifier)
-      [[ $# -gt 1 ]] || die "--verifier requires a value"
-      case "$2" in
-        codex|opus|claude) EXEC_VERIFIER="$2" ;;
-        *) die "--verifier must be codex|opus|claude (got: $2)" ;;
-      esac
-      shift 2
-      ;;
-    --revise-loop)
-      [[ $# -gt 1 ]] || die "--revise-loop requires a value"
-      [[ "$2" =~ ^[0-9]+$ ]] || die "--revise-loop must be a non-negative integer (got: $2)"
-      EXEC_REVISE_LOOP="$2"
-      shift 2
-      ;;
-    --exec-branch)
-      [[ $# -gt 1 ]] || die "--exec-branch requires a value"
-      EXEC_BRANCH_SPEC="$2"
-      shift 2
-      ;;
-    --exec-worktree)
-      [[ $# -gt 1 ]] || die "--exec-worktree requires a value"
-      EXEC_WORKTREE_SPEC="$2"
-      shift 2
-      ;;
-    --exec-timeout)
-      [[ $# -gt 1 ]] || die "--exec-timeout requires a value"
-      { [[ "$2" =~ ^[0-9]+$ ]] && [[ "$2" != "0" ]]; } || die "--exec-timeout must be a positive integer (got: $2)"
-      EXEC_TIMEOUT="$2"
-      shift 2
-      ;;
+    --dev-review) die "--dev-review is not yet implemented. Use dev-review/codex/dev-review.sh directly." ;;
     --bounce-only) BOUNCE_ONLY=true; shift ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --lab)
@@ -314,7 +239,6 @@ done
 # Bash runs accept Windows-style file arguments such as C:/Users/.../plan.md.
 [[ -n "$CONTEXT_FILE" ]] && CONTEXT_FILE=$(normalize_path_for_bash "$CONTEXT_FILE")
 [[ -n "$OUTPUT_FILE" ]] && OUTPUT_FILE=$(normalize_path_for_bash "$OUTPUT_FILE")
-[[ -n "$EXEC_WORKDIR" ]] && EXEC_WORKDIR=$(normalize_path_for_bash "$EXEC_WORKDIR")
 TASK_AS_PATH=""
 [[ -n "$TASK" ]] && TASK_AS_PATH=$(normalize_path_for_bash "$TASK")
 
@@ -324,41 +248,6 @@ TASK_AS_PATH=""
 # (best -> claude-opus-4-8); the others default empty (OFF) = argv parity.
 CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
 CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
-
-# v1.5 Phase 4 (A-6): dev-review hand-off flag validation. Fail fast BEFORE any
-# side effect so a misconfigured code run never composes/bounces first and then
-# dies. Every execute-only flag requires --execute; --verify requires it too
-# because verify only makes sense on code the executor just wrote.
-if [[ "$EXECUTE" == "false" ]]; then
-  _bad_exec_flag=""
-  [[ "$DEV_REVIEW_VERIFY" == "true" ]] && _bad_exec_flag="--verify"
-  [[ -n "$EXEC_WORKDIR" ]]             && _bad_exec_flag="--workdir"
-  [[ -n "$EXEC_VERIFIER" ]]            && _bad_exec_flag="--verifier"
-  [[ -n "$EXEC_REVISE_LOOP" ]]         && _bad_exec_flag="--revise-loop"
-  [[ -n "$EXEC_BRANCH_SPEC" ]]         && _bad_exec_flag="--exec-branch"
-  [[ -n "$EXEC_WORKTREE_SPEC" ]]       && _bad_exec_flag="--exec-worktree"
-  [[ -n "$EXEC_TIMEOUT" ]]             && _bad_exec_flag="--exec-timeout"
-  [[ -n "$_bad_exec_flag" ]] && die "${_bad_exec_flag} requires --execute (dev-review hand-off)."
-  unset _bad_exec_flag
-fi
-# --verifier / --revise-loop are verify-phase knobs; they no-op without --verify.
-if [[ "$EXECUTE" == "true" && "$DEV_REVIEW_VERIFY" == "false" ]]; then
-  [[ -n "$EXEC_VERIFIER" ]]    && die "--verifier requires --verify."
-  [[ -n "$EXEC_REVISE_LOOP" ]] && die "--revise-loop requires --verify."
-fi
-# Branch and worktree are mutually exclusive (dev-review enforces this too, but
-# failing here gives a clearer message before the pipeline runs).
-if [[ -n "$EXEC_BRANCH_SPEC" && -n "$EXEC_WORKTREE_SPEC" ]]; then
-  die "--exec-branch and --exec-worktree are mutually exclusive."
-fi
-# Locate the dev-review engine up front so a missing engine fails before the
-# (potentially slow, paid) compose/bounce rather than after it.
-# CO_EVOLVE_DEV_REVIEW_SCRIPT (mirrors CO_EVOLVE_RUNS_DIR): let an external
-# embedder — or a hermetic test — point at a relocated engine. Default unchanged.
-DEV_REVIEW_SCRIPT="${CO_EVOLVE_DEV_REVIEW_SCRIPT:-$SCRIPT_DIR/dev-review/codex/dev-review.sh}"
-if [[ "$EXECUTE" == "true" && ! -f "$DEV_REVIEW_SCRIPT" ]]; then
-  die "--execute needs the dev-review engine, not found at: $DEV_REVIEW_SCRIPT"
-fi
 
 # Phase 3 LAB-01: opt-in lab routing. Dispatch BEFORE any side effects
 # (RUN_DIR creation, interview, compose). Byte-parity invariant (L-03):
@@ -721,20 +610,6 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 }
 
 # --- Bounce Phase ---
-# v1.5 Phase 4 (A-5): the bounce loop reports its convergence outcome via three
-# globals so the post-loop adjudication step (below) can decide honestly:
-#   RUN_CONVERGED_NATURALLY — "true" iff the RAW marker count hit 0 within the
-#     configured passes. Decided post-loop from RUN_FINAL_MARKERS_RAW only.
-#   RUN_FINAL_MARKERS       — fence-aware count after the last pass (per-pass
-#     accounting semantics; informational and for the loop's early break).
-#   RUN_FINAL_MARKERS_RAW   — fence-AGNOSTIC count of WORKING_FILE after the
-#     last pass; the honesty gate's authority (a marker inside a code fence
-#     still blocks convergence — see count_markers_raw in lib).
-# Byte-parity: these are set but, on the naturally-converging path, drive NO
-# extra work — the adjudication block only fires when raw markers survive.
-RUN_CONVERGED_NATURALLY="false"
-RUN_FINAL_MARKERS=0
-RUN_FINAL_MARKERS_RAW=0
 run_bounce_phase() {
   local pass
   local role
@@ -852,9 +727,6 @@ $(cat "$PROTOCOL_TEMPLATE")"
     clarify=$(count_markers "$WORKING_FILE" "[CLARIFY]")
     total_markers=$((contested + clarify))
     word_count=$(wc -w < "$WORKING_FILE" | tr -d '\r\n ')
-    # A-5: remember the live-marker count after the most recent pass so the
-    # post-loop adjudication step knows whether anything survived.
-    RUN_FINAL_MARKERS=$total_markers
 
     log " [CONTESTED] markers: $contested"
     log " [CLARIFY] markers:   $clarify"
@@ -883,169 +755,13 @@ $(cat "$PROTOCOL_TEMPLATE")"
       esac
     fi
 
-    # Early convergence (standard mode only). Uses the fence-aware per-pass
-    # count — pass semantics are unchanged; the HONEST convergence decision is
-    # made post-loop on the raw count below.
+    # Early convergence (standard mode only)
     if [[ "$CHAIN" == "false" && "$total_markers" -eq 0 ]]; then
       log "Converged after $pass passes (no open markers)."
       log ""
       break
     fi
   done
-
-  # A-5: convergence is decided by the marker count after the last pass, NOT by
-  # mode. Any run — standard OR chain — that ends with 0 live markers converged
-  # naturally and takes the byte-parity path (no adjudication). This also covers
-  # standard mode converging exactly on the final pass (the loop just ends
-  # without tripping the early-break) and chain mode's tighten pass clearing the
-  # last markers. Chain mode gets the same post-final adjudication as standard
-  # mode (it has no early-convergence break of its own and historically ran all
-  # 3 passes then left markers live — exactly the case adjudication exists to
-  # make honest).
-  #
-  # HONESTY GATE (adversarial-review fix): this decision uses the fence-AGNOSTIC
-  # raw count, not count_markers. The per-pass counts above skip ``` fences and
-  # inline code (correct for pass accounting — quoted examples are not
-  # disagreements), but a live marker tucked inside a fence would count 0 and be
-  # presented as natural convergence with the marker text still in the final
-  # document. Raw counting closes that hole: a fenced survivor forces
-  # adjudication (which may legitimately resolve or drop it) or ends the run
-  # stuck — never silent "converged".
-  local raw_contested raw_clarify
-  raw_contested=$(count_markers_raw "$WORKING_FILE" "[CONTESTED]")
-  raw_clarify=$(count_markers_raw "$WORKING_FILE" "[CLARIFY]")
-  RUN_FINAL_MARKERS_RAW=$((raw_contested + raw_clarify))
-  if [[ "$RUN_FINAL_MARKERS_RAW" -eq 0 ]]; then
-    RUN_CONVERGED_NATURALLY="true"
-  elif [[ "$RUN_FINAL_MARKERS" -eq 0 ]]; then
-    # Fence-aware saw 0 but raw found survivors: say why adjudication fires.
-    log " NOTE: $RUN_FINAL_MARKERS_RAW marker token(s) survive inside code fences/inline code — honesty gate forces adjudication."
-  fi
-}
-
-# --- Forced Adjudication (A-5, convergence honesty) ---
-# When the bounce ends with markers still live, "0 markers" can only be earned,
-# not forced-in-silence. run_adjudication attempts ONE composer pass whose job
-# is to resolve-or-drop every remaining marker AND emit a defensible receipt
-# (adjudication-report.md) mapping each stripped marker -> chosen text + reason.
-#
-# Outcome is returned in the global ADJUDICATION_RESULT (NOT echoed: this
-# function calls log(), which tees to stdout, so a command-substitution capture
-# would swallow the log lines into the result). Values:
-#   adjudicated — the pass produced a well-formed report AND left 0 live markers
-#   stuck       — anything else (empty/failed pass, missing/malformed report, or
-#                 markers still present). WORKING_FILE is left AS-IS (markers
-#                 preserved) and the caller must NOT present it as a clean final.
-ADJUDICATION_RESULT=""
-#
-# The report is emitted by the agent as a trailing `## ADJUDICATION REPORT`
-# section (same channel as HUMAN SUMMARY); we split it out to adjudication-
-# report.md and strip it from the document body. A "defensible choice for every
-# marker" is checked structurally: one report bullet per pre-adjudication marker
-# (>= PRE count) and zero live markers left in the body.
-
-# Extract the `## ADJUDICATION REPORT` section from an agent output file into a
-# standalone report file, and write the document body (everything before the
-# section) to a clean file. Returns 0 iff a non-empty report section was found.
-split_adjudication_report() {
-  local raw_file="$1" body_file="$2" report_file="$3"
-  awk '/^## ADJUDICATION REPORT[ \t]*$/{found=1} !found{print}' "$raw_file" > "$body_file"
-  awk '
-    /^## ADJUDICATION REPORT[ \t]*$/ { found=1; next }
-    found { print }
-  ' "$raw_file" > "$report_file"
-  [[ -s "$report_file" ]]
-}
-
-# Count report bullets: lines under the report that name a resolved note. Each
-# must start with a list marker and carry a [CONTESTED]/[CLARIFY] tag plus the
-# CHOSE/WHY structure the template mandates. Code-fence-agnostic (the report is
-# plain bullets, never fenced).
-count_adjudication_entries() {
-  local report_file="$1"
-  awk '
-    /^[ \t]*[-*][ \t]+\[(CONTESTED|CLARIFY)\]/ && /CHOSE:/ && /WHY:/ { n++ }
-    END { print n + 0 }
-  ' "$report_file" | tr -d '\r\n '
-}
-
-run_adjudication() {
-  local pre_markers="$1"
-  local adj_prompt_file="$RUN_DIR/.adjudicate-prompt.md"
-  local adj_output_file="$RUN_DIR/.adjudicate-output.md"
-  local adj_stderr_file="$RUN_DIR/adjudicate-stderr.log"
-  local adj_raw_file="$RUN_DIR/adjudicate-raw.md"
-  local adj_body_file="$RUN_DIR/adjudicate-clean.md"
-  local report_file="$RUN_DIR/adjudication-report.md"
-  local adj_agent="$AGENT_B"   # composer side owns resolution (defend/composer)
-
-  # Build the adjudication prompt the same safe way as bounce passes: substitute
-  # only safe tokens inline, append the document verbatim.
-  local adj_protocol
-  adj_protocol=$(cat "$TEMPLATE_DIR/adjudicate.md")
-  adj_protocol="${adj_protocol//\{PLAN_CONTENT\}/see DOCUMENT section below}"
-  {
-    printf '%s\n\n' "$adj_protocol"
-    printf '## TASK\n\n%s\n\n' "$TASK"
-    printf '## DOCUMENT TO ADJUDICATE\n\n'
-    cat "$WORKING_FILE"
-  } > "$adj_prompt_file"
-
-  log "--------------------------------------------"
-  log " ADJUDICATION PASS - ${adj_agent} ($pre_markers marker token(s) survived the bounce, raw count)"
-  log " Seat:  $(resolve_role_seat_string composer "$adj_agent")"
-  log "--------------------------------------------"
-
-  invoke_agent "$adj_agent" "$adj_prompt_file" "$adj_output_file" "$adj_stderr_file" composer
-
-  # A CLI/auth failure (rc 2) or empty output cannot yield a defensible report.
-  local adj_artifact_rc=0
-  validate_agent_artifact "$adj_output_file" "$adj_stderr_file" "$adj_agent" || adj_artifact_rc=$?
-  if (( adj_artifact_rc == 2 )) || [[ ! -s "$adj_output_file" ]]; then
-    log " ADJUDICATION FAILED: agent produced no usable output — run is STUCK."
-    ADJUDICATION_RESULT="stuck"
-    return 0
-  fi
-
-  cp "$adj_output_file" "$adj_raw_file"
-
-  # Split the report out of the document body. No report => cannot verify a
-  # defensible choice for every marker => stuck.
-  if ! split_adjudication_report "$adj_raw_file" "$adj_body_file" "$report_file"; then
-    log " ADJUDICATION FAILED: no '## ADJUDICATION REPORT' section produced — run is STUCK."
-    rm -f "$report_file"   # do not leave an empty report masquerading as valid
-    ADJUDICATION_RESULT="stuck"
-    return 0
-  fi
-
-  # The adjudicated body must itself carry zero marker tokens — counted
-  # fence-AGNOSTICALLY (honesty gate). adjudicate.md forbids ANY
-  # [CONTESTED]/[CLARIFY] token in the body above the report, so a raw count is
-  # the defensible verdict here; a marker smuggled into a code fence must not
-  # slip through as "adjudicated".
-  local body_markers
-  body_markers=$(( $(count_markers_raw "$adj_body_file" "[CONTESTED]") + $(count_markers_raw "$adj_body_file" "[CLARIFY]") ))
-
-  # The report must account for at least every marker that was live going in.
-  local entries
-  entries=$(count_adjudication_entries "$report_file")
-
-  if (( body_markers > 0 )); then
-    log " ADJUDICATION FAILED: $body_markers marker token(s) still present after the pass (raw count, fences included) — run is STUCK."
-    ADJUDICATION_RESULT="stuck"
-    return 0
-  fi
-  if (( entries < pre_markers )); then
-    log " ADJUDICATION FAILED: report maps $entries choice(s) for $pre_markers marker(s) — run is STUCK."
-    ADJUDICATION_RESULT="stuck"
-    return 0
-  fi
-
-  # Success: the adjudicated body becomes the working document.
-  cp "$adj_body_file" "$WORKING_FILE"
-  log " ADJUDICATED: $entries choice(s) recorded in adjudication-report.md; 0 live markers remain."
-  ADJUDICATION_RESULT="adjudicated"
-  return 0
 }
 
 # --- Banner ---
@@ -1091,35 +807,6 @@ fi
 
 run_bounce_phase
 
-# --- Convergence honesty (A-5) ---
-# Decide the run's convergence outcome and record it. Three terminal states:
-#   converged  — markers hit 0 naturally; NOTHING extra runs here, so a
-#                naturally-converging run is byte-identical to the pre-Phase-4
-#                bouncer on this path (the byte-parity invariant).
-#   adjudicated — markers survived; one forced-adjudication pass resolved every
-#                one with a receipt in adjudication-report.md.
-#   stuck      — adjudication could not defensibly resolve every marker; the
-#                working document is kept WITH its markers and is NOT presented
-#                as a clean final.
-CONVERGENCE_STATUS="converged"
-RUN_STUCK="false"
-if [[ "$RUN_CONVERGED_NATURALLY" == "true" ]]; then
-  CONVERGENCE_STATUS="converged"
-  log "Convergence: converged (markers resolved naturally within the configured passes)."
-else
-  # Markers survived the configured passes (standard mode with leftovers, any
-  # chain run, or fence-hidden markers the raw honesty count caught). Force one
-  # adjudication pass; it self-reports adjudicated|stuck via the
-  # ADJUDICATION_RESULT global (not stdout — log() tees to stdout). The RAW
-  # count is passed: every raw survivor needs a report entry.
-  run_adjudication "$RUN_FINAL_MARKERS_RAW"
-  CONVERGENCE_STATUS="$ADJUDICATION_RESULT"
-  if [[ "$CONVERGENCE_STATUS" == "stuck" ]]; then
-    RUN_STUCK="true"
-  fi
-fi
-
-set_bounce_convergence_status "$STATE_FILE" "$CONVERGENCE_STATUS"
 finalize_bounce_state "$STATE_FILE" "complete"
 
 # Post-run human report (deterministic scorer + HUMAN-REPORT.md; no LLM
@@ -1131,23 +818,7 @@ fi
 
 # --- Output ---
 FINAL_FILE="$RUN_DIR/${RUN_LABEL}.md"
-# A-5: a STUCK run must never masquerade as a clean final. Prepend a loud,
-# machine-greppable banner to the emitted document so both humans and any
-# downstream consumer see it is unresolved and still carries markers. The
-# working document (markers intact) is preserved verbatim below the banner.
-if [[ "$RUN_STUCK" == "true" ]]; then
-  {
-    printf '<!-- CO-EVOLVE:STUCK — unresolved markers remain; this is NOT a converged final. -->\n'
-    printf '> **STUCK — NOT A CLEAN FINAL.** The bounce could not resolve every disagreement, and\n'
-    printf '> the forced adjudication pass failed to produce a defensible choice for every marker.\n'
-    printf '> The document below is preserved AS-IS with its unresolved [CONTESTED]/[CLARIFY]\n'
-    printf '> markers. Do not treat it as converged. See run.log and (if present) adjudication-report.md.\n\n'
-    cat "$WORKING_FILE"
-  } > "$FINAL_FILE"
-  log " WARNING: run is STUCK — $FINAL_FILE carries unresolved markers and is labeled NOT-FINAL."
-else
-  cp "$WORKING_FILE" "$FINAL_FILE"
-fi
+cp "$WORKING_FILE" "$FINAL_FILE"
 
 if [[ -n "$OUTPUT_FILE" ]]; then
   cp "$FINAL_FILE" "$OUTPUT_FILE"
@@ -1160,83 +831,7 @@ log "============================================"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Run dir:   $RUN_DIR"
 log " Final:     $FINAL_FILE"
-log " Convergence: $CONVERGENCE_STATUS"
 log "============================================"
-
-# --- Dev-review hand-off (--execute / --verify) ---
-# The bounce is done and the converged document is $FINAL_FILE. When --execute
-# is set we now treat that document as an implementation plan and hand it to the
-# dev-review engine via --skip-plan --plan, which runs its execute (and, with
-# --verify, verify) phases. We do NOT re-implement those phases here: the engine
-# is a separate, CI-tested script that already sources this repo's shared
-# lib/co-evolution.sh, so delegating keeps a single source of truth and avoids
-# doubling this script's size. Intent per .notes/dev-review-merge-plan.md: one
-# entry point (co-evolve) for both non-code and code tasks; the flags differ.
-#
-# `exec` replaces this process so the engine owns the terminal and its exit code
-# becomes co-evolve's exit code (0 APPROVED / clean, 2 REVISE / needs-review,
-# 1 fatal) — the byte-for-byte contract dev-review callers already rely on.
-if [[ "$EXECUTE" == "true" ]]; then
-  # v1.5 Phase 4 (A-5 x A-6): a STUCK plan must NEVER be executed. If the bounce
-  # could not converge and adjudication failed, $FINAL_FILE carries the
-  # CO-EVOLVE:STUCK banner plus live [CONTESTED]/[CLARIFY] markers — it is not a
-  # fit implementation plan. Refuse the hand-off (the empty-plan guard below does
-  # NOT catch this: a stuck plan is non-empty). Exit 1 so callers/CI see the
-  # code run did not proceed. The labeled plan + state.json/run.log explain why.
-  if [[ "$RUN_STUCK" == "true" ]]; then
-    die "cannot --execute: bounce is STUCK (unresolved markers). Resolve the document first; see $FINAL_FILE"
-  fi
-
-  # Byte-parity guard: the converged plan must exist and be non-empty, or the
-  # executor would run against nothing. run_bounce_phase always writes it, but
-  # fail loudly rather than hand the engine an empty plan.
-  [[ -s "$FINAL_FILE" ]] || die "cannot --execute: bounced plan is empty ($FINAL_FILE)"
-
-  # Print the plan first (unless redirected) so the operator sees what is about
-  # to be executed; the engine's own logs follow on the same stream.
-  if [[ -z "$OUTPUT_FILE" ]]; then
-    cat "$FINAL_FILE"
-  fi
-
-  dev_review_args=(--skip-plan --plan "$FINAL_FILE")
-  [[ "$DEV_REVIEW_VERIFY" == "true" ]] && dev_review_args+=(--verify)
-  [[ -n "$EXEC_WORKDIR" ]]       && dev_review_args+=(--workdir "$EXEC_WORKDIR")
-  [[ -n "$EXEC_VERIFIER" ]]      && dev_review_args+=(--verifier "$EXEC_VERIFIER")
-  [[ -n "$EXEC_REVISE_LOOP" ]]   && dev_review_args+=(--revise-loop "$EXEC_REVISE_LOOP")
-  [[ -n "$EXEC_BRANCH_SPEC" ]]   && dev_review_args+=(--branch "$EXEC_BRANCH_SPEC")
-  [[ -n "$EXEC_WORKTREE_SPEC" ]] && dev_review_args+=(--worktree "$EXEC_WORKTREE_SPEC")
-  [[ -n "$EXEC_TIMEOUT" ]]       && dev_review_args+=(--timeout "$EXEC_TIMEOUT")
-  # v1.5 Phase 4 (A-6): forward ONLY the base --claude-model, NOT the doc-pipeline
-  # per-role seats. Rationale (the seat-forwarding boundary): COMPOSER_/REVIEWER_
-  # seats shape the *bounce's* two roles; the dev-review engine has its OWN seats
-  # and presets (composer/executor/verifier), so leaking a doc-role seat into it
-  # would be meaningless at best and wrong at worst. We forward CLAUDE_MODEL_BASE
-  # (the snapshot taken before any apply_role_seat mutation) rather than the live
-  # CLAUDE_MODEL, which apply_role_seat rewrites per pass — by the hand-off it
-  # holds the last reviewer/composer seat, not the user's global choice. dev-review
-  # resolves best/opus/fable aliases; ids pass through.
-  [[ -n "${CLAUDE_MODEL_BASE:-}" ]] && dev_review_args+=(--claude-model "$CLAUDE_MODEL_BASE")
-
-  # The boundary must hold for the ENVIRONMENT too, not just argv
-  # (adversarial-review fix): apply_role_seat exports CLAUDE_MODEL/CLAUDE_EFFORT
-  # (claude passes) and CODEX_MODEL/CODEX_REASONING_EFFORT (codex passes), and
-  # `exec` hands the mutated environment to the engine, which snapshots those
-  # very vars as ITS base seats (dev-review.sh ~:1428) — so `--reviewer-effort
-  # high` would silently become the execute/verify effort. Restore each var to
-  # its post-parse base before the exec: base non-empty -> export the base
-  # (user's own global env passes through unchanged); base empty -> unset (the
-  # var only exists because a seat exported it mid-run).
-  export CLAUDE_MODEL="$CLAUDE_MODEL_BASE"
-  if [[ -n "$CLAUDE_EFFORT_BASE" ]]; then export CLAUDE_EFFORT="$CLAUDE_EFFORT_BASE"; else unset CLAUDE_EFFORT; fi
-  if [[ -n "$CODEX_MODEL_BASE" ]]; then export CODEX_MODEL="$CODEX_MODEL_BASE"; else unset CODEX_MODEL; fi
-  if [[ -n "$CODEX_EFFORT_BASE" ]]; then export CODEX_REASONING_EFFORT="$CODEX_EFFORT_BASE"; else unset CODEX_REASONING_EFFORT; fi
-
-  log ""
-  log "--- Handing bounced plan to dev-review (execute$([[ "$DEV_REVIEW_VERIFY" == "true" ]] && echo " + verify")) ---"
-  log ""
-
-  exec bash "$DEV_REVIEW_SCRIPT" "${dev_review_args[@]}"
-fi
 
 # Print clean result to stdout unless output was redirected to file
 if [[ -z "$OUTPUT_FILE" ]]; then
