@@ -52,12 +52,20 @@ SOURCE="artifacts"
 MODE=""
 BASELINE_REL=""
 STATUS=""
+# v1.5 Phase 4 (A-5): convergence outcome, orthogonal to lifecycle status.
+# Absent on 1.0 states and legacy runs — default "unknown" and treat it as
+# non-blocking there (only an explicit "stuck" fails the convergence gate).
+CONVERGENCE_STATUS="unknown"
 
-if [[ -f "$STATE_FILE" ]] && jq -e '.schema == "bounce-state/1.0"' "$STATE_FILE" >/dev/null 2>&1; then
+# Accept the whole bounce-state/1.x family: 1.1 adds the optional
+# convergence_status field on top of 1.0 and is otherwise identical, so a 1.0
+# consumer reads a 1.1 state losslessly.
+if [[ -f "$STATE_FILE" ]] && jq -e '(.schema // "") | test("^bounce-state/1\\.")' "$STATE_FILE" >/dev/null 2>&1; then
   SOURCE="state"
   MODE=$(jq -r '.mode' "$STATE_FILE")
   BASELINE_REL=$(jq -r '.baseline_file' "$STATE_FILE")
   STATUS=$(jq -r '.status' "$STATE_FILE")
+  CONVERGENCE_STATUS=$(jq -r '.convergence_status // "unknown"' "$STATE_FILE")
 else
   # Legacy run: infer mode from run.log, baseline from the artifact set.
   if [[ -f "$RUN_DIR/run.log" ]] && grep -q 'AGENT BOUNCER' "$RUN_DIR/run.log"; then
@@ -358,6 +366,17 @@ else
   d1_add "run_not_aborted" true "status=$STATUS"
 fi
 
+# A-5: convergence honesty. A "stuck" run declared it could not defensibly
+# resolve every marker and preserved them in the output — it must NOT pass the
+# behavior gate. "converged"/"adjudicated"/"unknown" are all acceptable here
+# (adjudicated carries its own receipt; unknown = legacy/agent-bouncer run
+# that predates the field, so this check is a no-op for them).
+if [[ "$CONVERGENCE_STATUS" == "stuck" ]]; then
+  d1_add "convergence_not_stuck" false "convergence_status=stuck — markers left unresolved (see adjudication-report.md / run.log)"
+else
+  d1_add "convergence_not_stuck" true "convergence_status=$CONVERGENCE_STATUS"
+fi
+
 if (( PASS_COUNT >= EXPECTED_PASSES )); then
   d1_add "expected_passes" true "$PASS_COUNT/$EXPECTED_PASSES passes present"
 else
@@ -508,6 +527,7 @@ jq -S -n \
   --arg mode "$MODE" \
   --arg source "$SOURCE" \
   --arg status "$STATUS" \
+  --arg convergence_status "$CONVERGENCE_STATUS" \
   --argjson pass_count "$PASS_COUNT" \
   --argjson d1 "{\"pass\": $D1_PASS, \"checks\": $D1_CHECKS}" \
   --argjson d2 "{\"pass\": $D2_PASS, \"checks\": $D2_CHECKS, \"heading_retention\": $HEADING_RETENTION, \"marker_heading_retention\": $MARKER_HEADING_RETENTION, \"anchor_retention\": $ANCHOR_RETENTION}" \
@@ -522,6 +542,7 @@ jq -S -n \
     mode: $mode,
     source: $source,
     run_status: $status,
+    convergence_status: $convergence_status,
     pass_count: $pass_count,
     dimensions: {
       loop_execution: $d1,
