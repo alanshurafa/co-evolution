@@ -121,15 +121,22 @@ DOC
 # ---------------------------------------------------------------------------
 # Scenario 1: co-evolve-bouncer --vanilla --bounce-only -> conforming state
 # ---------------------------------------------------------------------------
+# Policy (b): co-evolve-bouncer.sh already supports CO_EVOLVE_RUNS_DIR (v1.4,
+# added for the npm MCP embedder) to redirect run artifacts away from its own
+# runs/ dir. Pointing it at this sim's own $TEST_DIR makes discovery within
+# that private root race-free by construction — no other concurrent suite can
+# ever write into it — instead of racing on `ls -dt` against the shared repo
+# runs/ dir that every concurrent suite's default invocation also writes to.
+CO_EVOLVE_RUNS_DIR="$TEST_DIR/co-evolve-runs"
 TOTAL=$((TOTAL + 1))
 s1_doc="$TEST_DIR/s1-doc.md"
 cp "$DOC_SRC" "$s1_doc"
 rc=0
-BOUNCE_STUB_COUNTER="$TEST_DIR/s1-count" PATH="$TEST_DIR/bin:$PATH" \
+BOUNCE_STUB_COUNTER="$TEST_DIR/s1-count" PATH="$TEST_DIR/bin:$PATH" CO_EVOLVE_RUNS_DIR="$CO_EVOLVE_RUNS_DIR" \
   bash "$REPO_ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$s1_doc" \
   > "$TEST_DIR/s1-stdout.log" 2> "$TEST_DIR/s1-stderr.log" || rc=$?
 
-s1_run_dir=$(ls -dt "$REPO_ROOT"/runs/co-evolve-* 2>/dev/null | head -1)
+s1_run_dir=$(ls -dt "$CO_EVOLVE_RUNS_DIR"/co-evolve-* 2>/dev/null | head -1)
 s1_state="$s1_run_dir/state.json"
 if [[ "$rc" -eq 0 && -f "$s1_state" ]] \
    && jq -e '.schema == "bounce-state/1.0"
@@ -193,10 +200,10 @@ cp "$TEST_DIR/authbin/claude" "$TEST_DIR/authbin/codex"
 s4_doc="$TEST_DIR/s4-doc.md"
 cp "$DOC_SRC" "$s4_doc"
 rc=0
-PATH="$TEST_DIR/authbin:$PATH" \
+PATH="$TEST_DIR/authbin:$PATH" CO_EVOLVE_RUNS_DIR="$CO_EVOLVE_RUNS_DIR" \
   bash "$REPO_ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$s4_doc" \
   > /dev/null 2>&1 || rc=$?
-s4_run_dir=$(ls -dt "$REPO_ROOT"/runs/co-evolve-* 2>/dev/null | head -1)
+s4_run_dir=$(ls -dt "$CO_EVOLVE_RUNS_DIR"/co-evolve-* 2>/dev/null | head -1)
 s4_state="$s4_run_dir/state.json"
 if [[ "$rc" -ne 0 && -f "$s4_state" ]] \
    && jq -e '.status == "aborted" and (.passes | length) == 0' "$s4_state" >/dev/null; then
@@ -209,14 +216,34 @@ rm -rf "$s4_run_dir"
 # ---------------------------------------------------------------------------
 # Scenario 5: agent-bouncer -> conforming state + normalized artifact names
 # ---------------------------------------------------------------------------
+# Policy (c): agent-bouncer.sh hardcodes RUNS_DIR="${REPO_ROOT}/runs" with no
+# env override (unlike co-evolve-bouncer.sh's CO_EVOLVE_RUNS_DIR), so it always
+# writes into the shared repo runs/ dir that a concurrent suite's own bouncer
+# runs also write into. Attributable snapshot-diff instead of `ls -dt | head -1`:
+# the run dir label derives from the input doc's basename (agent-bouncer.sh's
+# filename fallback — the stubbed LLM naming output never passes its kebab-case
+# regex), so a PID-tagged doc name makes OUR dir identifiable. List before,
+# list after, take the one new entry carrying our tag; a concurrent suite's S5
+# dirs carry a different PID and never match, so zero or multiple MATCHING
+# entries indicates a real bug — fail loudly.
 TOTAL=$((TOTAL + 1))
-s5_doc="$TEST_DIR/s5-doc.md"
+s5_doc="$TEST_DIR/s5-doc-$$.md"
 cp "$DOC_SRC" "$s5_doc"
+s5_before=$(ls -d "$REPO_ROOT"/runs/bouncer-s5-doc-$$-* 2>/dev/null || true)
 rc=0
 BOUNCE_STUB_COUNTER="$TEST_DIR/s5-count" PATH="$TEST_DIR/bin:$PATH" \
   bash "$REPO_ROOT/agent-bouncer/agent-bouncer.sh" "$s5_doc" 2 claude claude \
   > "$TEST_DIR/s5-stdout.log" 2>&1 || rc=$?
-s5_run_dir=$(ls -dt "$REPO_ROOT"/runs/bouncer-* 2>/dev/null | head -1)
+s5_after=$(ls -d "$REPO_ROOT"/runs/bouncer-s5-doc-$$-* 2>/dev/null || true)
+s5_new=$(comm -13 <(printf '%s\n' "$s5_before" | sort) <(printf '%s\n' "$s5_after" | sort))
+s5_run_dir=""
+# grep -c exits 1 on zero matches, which would trip `set -e` inside a command
+# substitution (zero-new-dirs is a real failure mode here, e.g. the invocation
+# died before creating one) — `|| true` keeps that a value, not a script kill.
+s5_new_count=$(printf '%s\n' "$s5_new" | grep -c . || true)
+if [[ "$s5_new_count" -eq 1 ]]; then
+  s5_run_dir="$s5_new"
+fi
 s5_state="$s5_run_dir/state.json"
 if [[ "$rc" -eq 0 && -f "$s5_state" ]] \
    && jq -e '.schema == "bounce-state/1.0"
