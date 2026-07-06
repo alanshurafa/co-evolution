@@ -713,15 +713,20 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 }
 
 # --- Bounce Phase ---
-# v1.5 Phase 4 (A-5): the bounce loop reports its convergence outcome via two
+# v1.5 Phase 4 (A-5): the bounce loop reports its convergence outcome via three
 # globals so the post-loop adjudication step (below) can decide honestly:
-#   RUN_CONVERGED_NATURALLY — "true" iff markers hit 0 within the configured
-#     passes (standard mode only; chain mode never early-converges).
-#   RUN_FINAL_MARKERS       — marker count of WORKING_FILE after the last pass.
+#   RUN_CONVERGED_NATURALLY — "true" iff the RAW marker count hit 0 within the
+#     configured passes. Decided post-loop from RUN_FINAL_MARKERS_RAW only.
+#   RUN_FINAL_MARKERS       — fence-aware count after the last pass (per-pass
+#     accounting semantics; informational and for the loop's early break).
+#   RUN_FINAL_MARKERS_RAW   — fence-AGNOSTIC count of WORKING_FILE after the
+#     last pass; the honesty gate's authority (a marker inside a code fence
+#     still blocks convergence — see count_markers_raw in lib).
 # Byte-parity: these are set but, on the naturally-converging path, drive NO
-# extra work — the adjudication block only fires when markers survive.
+# extra work — the adjudication block only fires when raw markers survive.
 RUN_CONVERGED_NATURALLY="false"
 RUN_FINAL_MARKERS=0
+RUN_FINAL_MARKERS_RAW=0
 run_bounce_phase() {
   local pass
   local role
@@ -870,11 +875,12 @@ $(cat "$PROTOCOL_TEMPLATE")"
       esac
     fi
 
-    # Early convergence (standard mode only)
+    # Early convergence (standard mode only). Uses the fence-aware per-pass
+    # count — pass semantics are unchanged; the HONEST convergence decision is
+    # made post-loop on the raw count below.
     if [[ "$CHAIN" == "false" && "$total_markers" -eq 0 ]]; then
       log "Converged after $pass passes (no open markers)."
       log ""
-      RUN_CONVERGED_NATURALLY="true"
       break
     fi
   done
@@ -884,12 +890,28 @@ $(cat "$PROTOCOL_TEMPLATE")"
   # naturally and takes the byte-parity path (no adjudication). This also covers
   # standard mode converging exactly on the final pass (the loop just ends
   # without tripping the early-break) and chain mode's tighten pass clearing the
-  # last markers. Adjudication fires ONLY when RUN_FINAL_MARKERS > 0. Chain mode
-  # gets the same post-final adjudication as standard mode (it has no
-  # early-convergence break of its own and historically ran all 3 passes then
-  # left markers live — exactly the case adjudication exists to make honest).
-  if [[ "$RUN_FINAL_MARKERS" -eq 0 ]]; then
+  # last markers. Chain mode gets the same post-final adjudication as standard
+  # mode (it has no early-convergence break of its own and historically ran all
+  # 3 passes then left markers live — exactly the case adjudication exists to
+  # make honest).
+  #
+  # HONESTY GATE (adversarial-review fix): this decision uses the fence-AGNOSTIC
+  # raw count, not count_markers. The per-pass counts above skip ``` fences and
+  # inline code (correct for pass accounting — quoted examples are not
+  # disagreements), but a live marker tucked inside a fence would count 0 and be
+  # presented as natural convergence with the marker text still in the final
+  # document. Raw counting closes that hole: a fenced survivor forces
+  # adjudication (which may legitimately resolve or drop it) or ends the run
+  # stuck — never silent "converged".
+  local raw_contested raw_clarify
+  raw_contested=$(count_markers_raw "$WORKING_FILE" "[CONTESTED]")
+  raw_clarify=$(count_markers_raw "$WORKING_FILE" "[CLARIFY]")
+  RUN_FINAL_MARKERS_RAW=$((raw_contested + raw_clarify))
+  if [[ "$RUN_FINAL_MARKERS_RAW" -eq 0 ]]; then
     RUN_CONVERGED_NATURALLY="true"
+  elif [[ "$RUN_FINAL_MARKERS" -eq 0 ]]; then
+    # Fence-aware saw 0 but raw found survivors: say why adjudication fires.
+    log " NOTE: $RUN_FINAL_MARKERS_RAW marker token(s) survive inside code fences/inline code — honesty gate forces adjudication."
   fi
 }
 
@@ -962,7 +984,7 @@ run_adjudication() {
   } > "$adj_prompt_file"
 
   log "--------------------------------------------"
-  log " ADJUDICATION PASS - ${adj_agent} ($pre_markers live marker(s) survived the bounce)"
+  log " ADJUDICATION PASS - ${adj_agent} ($pre_markers marker token(s) survived the bounce, raw count)"
   log " Seat:  $(resolve_role_seat_string composer "$adj_agent")"
   log "--------------------------------------------"
 
@@ -988,16 +1010,20 @@ run_adjudication() {
     return 0
   fi
 
-  # The adjudicated body must itself carry zero live markers.
+  # The adjudicated body must itself carry zero marker tokens — counted
+  # fence-AGNOSTICALLY (honesty gate). adjudicate.md forbids ANY
+  # [CONTESTED]/[CLARIFY] token in the body above the report, so a raw count is
+  # the defensible verdict here; a marker smuggled into a code fence must not
+  # slip through as "adjudicated".
   local body_markers
-  body_markers=$(( $(count_markers "$adj_body_file" "[CONTESTED]") + $(count_markers "$adj_body_file" "[CLARIFY]") ))
+  body_markers=$(( $(count_markers_raw "$adj_body_file" "[CONTESTED]") + $(count_markers_raw "$adj_body_file" "[CLARIFY]") ))
 
   # The report must account for at least every marker that was live going in.
   local entries
   entries=$(count_adjudication_entries "$report_file")
 
   if (( body_markers > 0 )); then
-    log " ADJUDICATION FAILED: $body_markers marker(s) still live after the pass — run is STUCK."
+    log " ADJUDICATION FAILED: $body_markers marker token(s) still present after the pass (raw count, fences included) — run is STUCK."
     ADJUDICATION_RESULT="stuck"
     return 0
   fi
@@ -1073,10 +1099,12 @@ if [[ "$RUN_CONVERGED_NATURALLY" == "true" ]]; then
   CONVERGENCE_STATUS="converged"
   log "Convergence: converged (markers resolved naturally within the configured passes)."
 else
-  # Markers survived the configured passes (standard mode with leftovers, or any
-  # chain run). Force one adjudication pass; it self-reports adjudicated|stuck
-  # via the ADJUDICATION_RESULT global (not stdout — log() tees to stdout).
-  run_adjudication "$RUN_FINAL_MARKERS"
+  # Markers survived the configured passes (standard mode with leftovers, any
+  # chain run, or fence-hidden markers the raw honesty count caught). Force one
+  # adjudication pass; it self-reports adjudicated|stuck via the
+  # ADJUDICATION_RESULT global (not stdout — log() tees to stdout). The RAW
+  # count is passed: every raw survivor needs a report entry.
+  run_adjudication "$RUN_FINAL_MARKERS_RAW"
   CONVERGENCE_STATUS="$ADJUDICATION_RESULT"
   if [[ "$CONVERGENCE_STATUS" == "stuck" ]]; then
     RUN_STUCK="true"
