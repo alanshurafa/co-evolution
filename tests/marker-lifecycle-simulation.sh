@@ -17,9 +17,12 @@
 #                loud CO-EVOLVE:STUCK banner, and is NOT presented as clean.
 #
 # Byte-parity is PROVEN, not asserted: the converging scenario runs the pristine
-# master co-evolve-bouncer.sh (via `git show`, placed at the repo root so its
-# SCRIPT_DIR resolves lib/) with the identical stub + input, then diffs the
-# emitted document.
+# pre-Phase-4 co-evolve-bouncer.sh (a frozen fixture, placed at the repo root
+# so its SCRIPT_DIR resolves lib/) with the identical stub + input, then diffs
+# the emitted document. The fixture is a checked-in file rather than a
+# `git show <sha>` lookup: a hardcoded commit SHA broke under CI's default
+# shallow checkout (fetch-depth 1 doesn't fetch ancestor objects), so a
+# fixture keeps this hermetic regardless of clone depth.
 #
 # Hermetic: agent CLIs PATH-stubbed; the adjudication branch is selected by the
 # stub sniffing the prompt for the adjudication template's signature. No
@@ -31,7 +34,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BOUNCER="$REPO_ROOT/co-evolve-bouncer.sh"
-MASTER_REF="${MARKER_LIFECYCLE_MASTER_REF:-f8b4f1b}"  # pre-Phase-4 baseline
+BASELINE_FIXTURE="$SCRIPT_DIR/fixtures/marker-lifecycle-pre-p4-bouncer.sh"  # frozen at f8b4f1b
 
 TEST_DIR=$(mktemp -d -t marker-lifecycle-XXXXXX)
 cleanup() { rm -rf "$TEST_DIR"; rm -f "$REPO_ROOT/_master-lifecycle-bouncer.sh"; }
@@ -214,26 +217,31 @@ check "S1c: schema bumped to bounce-state/1.1" \
 check "S1d: no adjudication-report.md on a converged run" \
   "[[ -n '$S1_DIR' ]] && [[ ! -f '$S1_DIR/adjudication-report.md' ]]"
 
-# Byte-parity: run pristine master on the identical stub+input and diff the doc.
-git -C "$REPO_ROOT" show "$MASTER_REF:co-evolve-bouncer.sh" > "$REPO_ROOT/_master-lifecycle-bouncer.sh"
-S1M_RUNS="$TEST_DIR/s1-master-runs"
-rc_m=0
-CO_EVOLVE_RUNS_DIR="$S1M_RUNS" PATH="$TEST_DIR/bin:$PATH" LC_STUB_DOC=clean \
-  bash "$REPO_ROOT/_master-lifecycle-bouncer.sh" --vanilla --bounce-only "$SEED" \
-  > "$TEST_DIR/s1-master.stdout.log" 2>&1 || rc_m=$?
-rm -f "$REPO_ROOT/_master-lifecycle-bouncer.sh"
-S1M_DIR=$(dirname "$(find_state "$S1M_RUNS")" 2>/dev/null || echo "")
+# Byte-parity: run the pre-Phase-4 baseline fixture on the identical stub+input
+# and diff the doc. Guarded (not a bare command) so a missing/unreadable
+# fixture fails these two checks cleanly instead of set -e-aborting the whole
+# script before scenarios 2-7 get a chance to run.
+S1M_DIR=""
+if cp "$BASELINE_FIXTURE" "$REPO_ROOT/_master-lifecycle-bouncer.sh" 2>/dev/null; then
+  S1M_RUNS="$TEST_DIR/s1-master-runs"
+  rc_m=0
+  CO_EVOLVE_RUNS_DIR="$S1M_RUNS" PATH="$TEST_DIR/bin:$PATH" LC_STUB_DOC=clean \
+    bash "$REPO_ROOT/_master-lifecycle-bouncer.sh" --vanilla --bounce-only "$SEED" \
+    > "$TEST_DIR/s1-master.stdout.log" 2>&1 || rc_m=$?
+  rm -f "$REPO_ROOT/_master-lifecycle-bouncer.sh"
+  S1M_DIR=$(dirname "$(find_state "$S1M_RUNS")" 2>/dev/null || echo "")
+fi
 TOTAL=$((TOTAL + 1))
 if [[ -n "$S1_DIR" && -n "$S1M_DIR" && -f "$S1_DIR/working.md" && -f "$S1M_DIR/working.md" ]] \
    && diff -q "$S1M_DIR/working.md" "$S1_DIR/working.md" >/dev/null 2>&1; then
-  pass "S1e: BYTE-PARITY — converged working.md identical to master ($MASTER_REF)"
+  pass "S1e: BYTE-PARITY — converged working.md identical to pre-Phase-4 baseline"
 else
-  fail "S1e: byte-parity broken (master rc=$rc_m); diff:"
-  diff "$S1M_DIR/working.md" "$S1_DIR/working.md" 2>&1 | head -20 || true
+  fail "S1e: byte-parity broken or baseline unavailable (rc_m=${rc_m:-n/a}); diff:"
+  diff "${S1M_DIR:-/dev/null}/working.md" "$S1_DIR/working.md" 2>&1 | head -20 || true
 fi
 # Final emitted doc also identical.
-S1_FINAL=$(final_doc "$S1_DIR"); S1M_FINAL=$(final_doc "$S1M_DIR")
-check "S1f: BYTE-PARITY — converged final .md identical to master" \
+S1_FINAL=$(final_doc "$S1_DIR"); S1M_FINAL=$(final_doc "${S1M_DIR:-/dev/null}" 2>/dev/null || echo "")
+check "S1f: BYTE-PARITY — converged final .md identical to pre-Phase-4 baseline" \
   "[[ -n '$S1_FINAL' && -n '$S1M_FINAL' ]] && diff -q '$S1M_FINAL' '$S1_FINAL' >/dev/null 2>&1"
 
 # ===========================================================================
