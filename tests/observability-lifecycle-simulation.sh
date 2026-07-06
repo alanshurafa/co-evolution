@@ -137,7 +137,10 @@ harmless line to a tracked file so the run produces a diff for verify to score.
 - None identified.
 PLAN
 
-latest_run_dir() { ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1; }
+# Explicit per-scenario run dirs (policy a) — avoids the `ls -dt runs/dev-review-*`
+# newest-mtime race that cross-reads another concurrent suite's run dir. Each
+# scenario passes --run-dir under this sim's own $TEST_DIR, so cleanup rides the
+# existing TEST_DIR EXIT trap instead of a per-scenario rm -rf.
 
 # ===========================================================================
 # Scenario 1: full lifecycle — current_phase=null at EOF, runner_pid present,
@@ -145,18 +148,17 @@ latest_run_dir() { ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1; 
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo s1)
-before=$(latest_run_dir || true)
+run1="$TEST_DIR/run-s1"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
   export PATH="$TEST_DIR/bin:$PATH"
   bash "$RUNNER" --skip-plan --plan "$PLAN_FIXTURE" --bounces 0 --verify --verifier codex \
-    --workdir "$repo" --timeout 60 -- "obs lifecycle probe"
+    --run-dir "$run1" --workdir "$repo" --timeout 60 -- "obs lifecycle probe"
 ) > "$TEST_DIR/s1.out" 2>&1 || true
-run1=$(latest_run_dir || true)
 s1_state="$run1/state.json"
 s1_ok=true
-if [[ -z "$run1" || "$run1" == "$before" || ! -f "$s1_state" ]]; then
+if [[ ! -f "$s1_state" ]]; then
   s1_ok=false
 else
   jq -e '.current_phase == null' "$s1_state" >/dev/null 2>&1 || { s1_ok=false; echo "  current_phase not null" >&2; }
@@ -172,28 +174,25 @@ else
   [[ -f "$s1_state" ]] && cat "$s1_state" >&2
   cat "$TEST_DIR/s1.out" >&2
 fi
-[[ -n "$run1" && "$run1" != "$before" ]] && rm -rf "$run1"
 
 # ===========================================================================
 # Scenario 2: --parent-run lands in .orchestration.parent_run_id.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo s2)
-before=$(latest_run_dir || true)
+run2="$TEST_DIR/run-s2"
 (
   export PATH="$TEST_DIR/bin:$PATH"
   bash "$RUNNER" --skip-plan --plan "$PLAN_FIXTURE" --bounces 0 --verify --verifier codex \
-    --parent-run "abc-123" --workdir "$repo" --timeout 60 -- "obs parent-run probe"
+    --parent-run "abc-123" --run-dir "$run2" --workdir "$repo" --timeout 60 -- "obs parent-run probe"
 ) > "$TEST_DIR/s2.out" 2>&1 || true
-run2=$(latest_run_dir || true)
-if [[ -n "$run2" && "$run2" != "$before" && -f "$run2/state.json" ]] \
+if [[ -f "$run2/state.json" ]] \
    && jq -e '.orchestration.parent_run_id == "abc-123"' "$run2/state.json" >/dev/null 2>&1; then
   pass "S2: --parent-run abc-123 recorded in .orchestration.parent_run_id"
 else
   fail "S2: parent_run_id missing (run=$run2)"
   [[ -f "$run2/state.json" ]] && cat "$run2/state.json" >&2
 fi
-[[ -n "$run2" && "$run2" != "$before" ]] && rm -rf "$run2"
 
 # ===========================================================================
 # Scenario 3: --parent-run rejects a garbage token (path traversal / shell meta).
@@ -215,25 +214,25 @@ fi
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo s4)
-before=$(latest_run_dir || true)
+run4="$TEST_DIR/run-s4"
 (
   export PATH="$TEST_DIR/bin:$PATH"
   export OBS_EXECUTE_SLEEP=4
   bash "$RUNNER" --skip-plan --plan "$PLAN_FIXTURE" --bounces 0 --verify --verifier codex \
-    --workdir "$repo" --timeout 60 -- "obs mid-run probe"
+    --run-dir "$run4" --workdir "$repo" --timeout 60 -- "obs mid-run probe"
 ) > "$TEST_DIR/s4.out" 2>&1 &
 runner_bg=$!
 
-# Poll for a run dir whose state.json reports current_phase.name == execute.
+# Poll the known run dir's state.json for current_phase.name == execute (no
+# newest-mtime discovery needed — the path is pinned by --run-dir above).
 captured=false
 captured_pid=""
 for _ in $(seq 1 60); do
-  rd=$(latest_run_dir || true)
-  if [[ -n "$rd" && "$rd" != "$before" && -f "$rd/state.json" ]]; then
-    name=$(jq -r '.current_phase.name // empty' "$rd/state.json" 2>/dev/null || true)
+  if [[ -f "$run4/state.json" ]]; then
+    name=$(jq -r '.current_phase.name // empty' "$run4/state.json" 2>/dev/null || true)
     if [[ "$name" == "execute" ]]; then
       captured=true
-      captured_pid=$(jq -r '.runner_pid // empty' "$rd/state.json" 2>/dev/null || true)
+      captured_pid=$(jq -r '.runner_pid // empty' "$run4/state.json" 2>/dev/null || true)
       break
     fi
   fi
@@ -246,8 +245,7 @@ s4_ok=true
 # runner_pid captured mid-run must be a positive integer.
 [[ "$captured_pid" =~ ^[0-9]+$ ]] || { s4_ok=false; echo "  captured runner_pid not numeric: $captured_pid" >&2; }
 # And the run must still terminate cleanly with current_phase cleared.
-run4=$(latest_run_dir || true)
-if [[ -n "$run4" && -f "$run4/state.json" ]]; then
+if [[ -f "$run4/state.json" ]]; then
   jq -e '.current_phase == null and .status == "completed"' "$run4/state.json" >/dev/null 2>&1 \
     || { s4_ok=false; echo "  post-run state not clean terminal" >&2; }
 fi
@@ -258,7 +256,6 @@ else
   [[ -f "$run4/state.json" ]] && cat "$run4/state.json" >&2
   cat "$TEST_DIR/s4.out" >&2
 fi
-[[ -n "$run4" && "$run4" != "$before" ]] && rm -rf "$run4"
 
 # ===========================================================================
 # Scenario 5: parity — a default skip-plan run with NO new flags still produces
@@ -267,21 +264,19 @@ fi
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo s5)
-before=$(latest_run_dir || true)
+run5="$TEST_DIR/run-s5"
 (
   export PATH="$TEST_DIR/bin:$PATH"
   bash "$RUNNER" --skip-plan --plan "$PLAN_FIXTURE" --bounces 0 --verify --verifier codex \
-    --workdir "$repo" --timeout 60 -- "obs parity probe"
+    --run-dir "$run5" --workdir "$repo" --timeout 60 -- "obs parity probe"
 ) > "$TEST_DIR/s5.out" 2>&1 || true
-run5=$(latest_run_dir || true)
-if [[ -n "$run5" && "$run5" != "$before" && -f "$run5/state.json" ]] \
+if [[ -f "$run5/state.json" ]] \
    && jq -e '.status == "completed" and .current_phase == null' "$run5/state.json" >/dev/null 2>&1; then
   pass "S5: no-new-flags run reaches completed with current_phase cleared"
 else
   fail "S5: parity run not clean (run=$run5)"
   [[ -f "$run5/state.json" ]] && cat "$run5/state.json" >&2
 fi
-[[ -n "$run5" && "$run5" != "$before" ]] && rm -rf "$run5"
 
 # ---------------------------------------------------------------------------
 printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"
