@@ -52,7 +52,8 @@ PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
 # Validate templates exist
 for _tmpl in "$TEMPLATE_DIR/role-reviewer-light.md" "$TEMPLATE_DIR/role-composer-light.md" \
              "$TEMPLATE_DIR/chain-critique.md" "$TEMPLATE_DIR/chain-defend.md" \
-             "$TEMPLATE_DIR/chain-tighten.md" "$PROTOCOL_TEMPLATE"; do
+             "$TEMPLATE_DIR/chain-tighten.md" "$TEMPLATE_DIR/adjudicate.md" \
+             "$PROTOCOL_TEMPLATE"; do
   [[ -f "$_tmpl" ]] || die "Missing template: $_tmpl"
 done
 
@@ -610,6 +611,15 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 }
 
 # --- Bounce Phase ---
+# v1.5 Phase 4 (A-5): the bounce loop reports its convergence outcome via two
+# globals so the post-loop adjudication step (below) can decide honestly:
+#   RUN_CONVERGED_NATURALLY — "true" iff markers hit 0 within the configured
+#     passes (standard mode only; chain mode never early-converges).
+#   RUN_FINAL_MARKERS       — marker count of WORKING_FILE after the last pass.
+# Byte-parity: these are set but, on the naturally-converging path, drive NO
+# extra work — the adjudication block only fires when markers survive.
+RUN_CONVERGED_NATURALLY="false"
+RUN_FINAL_MARKERS=0
 run_bounce_phase() {
   local pass
   local role
@@ -727,6 +737,9 @@ $(cat "$PROTOCOL_TEMPLATE")"
     clarify=$(count_markers "$WORKING_FILE" "[CLARIFY]")
     total_markers=$((contested + clarify))
     word_count=$(wc -w < "$WORKING_FILE" | tr -d '\r\n ')
+    # A-5: remember the live-marker count after the most recent pass so the
+    # post-loop adjudication step knows whether anything survived.
+    RUN_FINAL_MARKERS=$total_markers
 
     log " [CONTESTED] markers: $contested"
     log " [CLARIFY] markers:   $clarify"
@@ -759,9 +772,144 @@ $(cat "$PROTOCOL_TEMPLATE")"
     if [[ "$CHAIN" == "false" && "$total_markers" -eq 0 ]]; then
       log "Converged after $pass passes (no open markers)."
       log ""
+      RUN_CONVERGED_NATURALLY="true"
       break
     fi
   done
+
+  # A-5: convergence is decided by the marker count after the last pass, NOT by
+  # mode. Any run — standard OR chain — that ends with 0 live markers converged
+  # naturally and takes the byte-parity path (no adjudication). This also covers
+  # standard mode converging exactly on the final pass (the loop just ends
+  # without tripping the early-break) and chain mode's tighten pass clearing the
+  # last markers. Adjudication fires ONLY when RUN_FINAL_MARKERS > 0. Chain mode
+  # gets the same post-final adjudication as standard mode (it has no
+  # early-convergence break of its own and historically ran all 3 passes then
+  # left markers live — exactly the case adjudication exists to make honest).
+  if [[ "$RUN_FINAL_MARKERS" -eq 0 ]]; then
+    RUN_CONVERGED_NATURALLY="true"
+  fi
+}
+
+# --- Forced Adjudication (A-5, convergence honesty) ---
+# When the bounce ends with markers still live, "0 markers" can only be earned,
+# not forced-in-silence. run_adjudication attempts ONE composer pass whose job
+# is to resolve-or-drop every remaining marker AND emit a defensible receipt
+# (adjudication-report.md) mapping each stripped marker -> chosen text + reason.
+#
+# Outcome is returned in the global ADJUDICATION_RESULT (NOT echoed: this
+# function calls log(), which tees to stdout, so a command-substitution capture
+# would swallow the log lines into the result). Values:
+#   adjudicated — the pass produced a well-formed report AND left 0 live markers
+#   stuck       — anything else (empty/failed pass, missing/malformed report, or
+#                 markers still present). WORKING_FILE is left AS-IS (markers
+#                 preserved) and the caller must NOT present it as a clean final.
+ADJUDICATION_RESULT=""
+#
+# The report is emitted by the agent as a trailing `## ADJUDICATION REPORT`
+# section (same channel as HUMAN SUMMARY); we split it out to adjudication-
+# report.md and strip it from the document body. A "defensible choice for every
+# marker" is checked structurally: one report bullet per pre-adjudication marker
+# (>= PRE count) and zero live markers left in the body.
+
+# Extract the `## ADJUDICATION REPORT` section from an agent output file into a
+# standalone report file, and write the document body (everything before the
+# section) to a clean file. Returns 0 iff a non-empty report section was found.
+split_adjudication_report() {
+  local raw_file="$1" body_file="$2" report_file="$3"
+  awk '/^## ADJUDICATION REPORT[ \t]*$/{found=1} !found{print}' "$raw_file" > "$body_file"
+  awk '
+    /^## ADJUDICATION REPORT[ \t]*$/ { found=1; next }
+    found { print }
+  ' "$raw_file" > "$report_file"
+  [[ -s "$report_file" ]]
+}
+
+# Count report bullets: lines under the report that name a resolved note. Each
+# must start with a list marker and carry a [CONTESTED]/[CLARIFY] tag plus the
+# CHOSE/WHY structure the template mandates. Code-fence-agnostic (the report is
+# plain bullets, never fenced).
+count_adjudication_entries() {
+  local report_file="$1"
+  awk '
+    /^[ \t]*[-*][ \t]+\[(CONTESTED|CLARIFY)\]/ && /CHOSE:/ && /WHY:/ { n++ }
+    END { print n + 0 }
+  ' "$report_file" | tr -d '\r\n '
+}
+
+run_adjudication() {
+  local pre_markers="$1"
+  local adj_prompt_file="$RUN_DIR/.adjudicate-prompt.md"
+  local adj_output_file="$RUN_DIR/.adjudicate-output.md"
+  local adj_stderr_file="$RUN_DIR/adjudicate-stderr.log"
+  local adj_raw_file="$RUN_DIR/adjudicate-raw.md"
+  local adj_body_file="$RUN_DIR/adjudicate-clean.md"
+  local report_file="$RUN_DIR/adjudication-report.md"
+  local adj_agent="$AGENT_B"   # composer side owns resolution (defend/composer)
+
+  # Build the adjudication prompt the same safe way as bounce passes: substitute
+  # only safe tokens inline, append the document verbatim.
+  local adj_protocol
+  adj_protocol=$(cat "$TEMPLATE_DIR/adjudicate.md")
+  adj_protocol="${adj_protocol//\{PLAN_CONTENT\}/see DOCUMENT section below}"
+  {
+    printf '%s\n\n' "$adj_protocol"
+    printf '## TASK\n\n%s\n\n' "$TASK"
+    printf '## DOCUMENT TO ADJUDICATE\n\n'
+    cat "$WORKING_FILE"
+  } > "$adj_prompt_file"
+
+  log "--------------------------------------------"
+  log " ADJUDICATION PASS - ${adj_agent} ($pre_markers live marker(s) survived the bounce)"
+  log " Seat:  $(resolve_role_seat_string composer "$adj_agent")"
+  log "--------------------------------------------"
+
+  invoke_agent "$adj_agent" "$adj_prompt_file" "$adj_output_file" "$adj_stderr_file" composer
+
+  # A CLI/auth failure (rc 2) or empty output cannot yield a defensible report.
+  local adj_artifact_rc=0
+  validate_agent_artifact "$adj_output_file" "$adj_stderr_file" "$adj_agent" || adj_artifact_rc=$?
+  if (( adj_artifact_rc == 2 )) || [[ ! -s "$adj_output_file" ]]; then
+    log " ADJUDICATION FAILED: agent produced no usable output — run is STUCK."
+    ADJUDICATION_RESULT="stuck"
+    return 0
+  fi
+
+  cp "$adj_output_file" "$adj_raw_file"
+
+  # Split the report out of the document body. No report => cannot verify a
+  # defensible choice for every marker => stuck.
+  if ! split_adjudication_report "$adj_raw_file" "$adj_body_file" "$report_file"; then
+    log " ADJUDICATION FAILED: no '## ADJUDICATION REPORT' section produced — run is STUCK."
+    rm -f "$report_file"   # do not leave an empty report masquerading as valid
+    ADJUDICATION_RESULT="stuck"
+    return 0
+  fi
+
+  # The adjudicated body must itself carry zero live markers.
+  local body_markers
+  body_markers=$(( $(count_markers "$adj_body_file" "[CONTESTED]") + $(count_markers "$adj_body_file" "[CLARIFY]") ))
+
+  # The report must account for at least every marker that was live going in.
+  local entries
+  entries=$(count_adjudication_entries "$report_file")
+
+  if (( body_markers > 0 )); then
+    log " ADJUDICATION FAILED: $body_markers marker(s) still live after the pass — run is STUCK."
+    ADJUDICATION_RESULT="stuck"
+    return 0
+  fi
+  if (( entries < pre_markers )); then
+    log " ADJUDICATION FAILED: report maps $entries choice(s) for $pre_markers marker(s) — run is STUCK."
+    ADJUDICATION_RESULT="stuck"
+    return 0
+  fi
+
+  # Success: the adjudicated body becomes the working document.
+  cp "$adj_body_file" "$WORKING_FILE"
+  log " ADJUDICATED: $entries choice(s) recorded in adjudication-report.md; 0 live markers remain."
+  ADJUDICATION_RESULT="adjudicated"
+  return 0
 }
 
 # --- Banner ---
@@ -807,6 +955,33 @@ fi
 
 run_bounce_phase
 
+# --- Convergence honesty (A-5) ---
+# Decide the run's convergence outcome and record it. Three terminal states:
+#   converged  — markers hit 0 naturally; NOTHING extra runs here, so a
+#                naturally-converging run is byte-identical to the pre-Phase-4
+#                bouncer on this path (the byte-parity invariant).
+#   adjudicated — markers survived; one forced-adjudication pass resolved every
+#                one with a receipt in adjudication-report.md.
+#   stuck      — adjudication could not defensibly resolve every marker; the
+#                working document is kept WITH its markers and is NOT presented
+#                as a clean final.
+CONVERGENCE_STATUS="converged"
+RUN_STUCK="false"
+if [[ "$RUN_CONVERGED_NATURALLY" == "true" ]]; then
+  CONVERGENCE_STATUS="converged"
+  log "Convergence: converged (markers resolved naturally within the configured passes)."
+else
+  # Markers survived the configured passes (standard mode with leftovers, or any
+  # chain run). Force one adjudication pass; it self-reports adjudicated|stuck
+  # via the ADJUDICATION_RESULT global (not stdout — log() tees to stdout).
+  run_adjudication "$RUN_FINAL_MARKERS"
+  CONVERGENCE_STATUS="$ADJUDICATION_RESULT"
+  if [[ "$CONVERGENCE_STATUS" == "stuck" ]]; then
+    RUN_STUCK="true"
+  fi
+fi
+
+set_bounce_convergence_status "$STATE_FILE" "$CONVERGENCE_STATUS"
 finalize_bounce_state "$STATE_FILE" "complete"
 
 # Post-run human report (deterministic scorer + HUMAN-REPORT.md; no LLM
@@ -818,7 +993,23 @@ fi
 
 # --- Output ---
 FINAL_FILE="$RUN_DIR/${RUN_LABEL}.md"
-cp "$WORKING_FILE" "$FINAL_FILE"
+# A-5: a STUCK run must never masquerade as a clean final. Prepend a loud,
+# machine-greppable banner to the emitted document so both humans and any
+# downstream consumer see it is unresolved and still carries markers. The
+# working document (markers intact) is preserved verbatim below the banner.
+if [[ "$RUN_STUCK" == "true" ]]; then
+  {
+    printf '<!-- CO-EVOLVE:STUCK — unresolved markers remain; this is NOT a converged final. -->\n'
+    printf '> **STUCK — NOT A CLEAN FINAL.** The bounce could not resolve every disagreement, and\n'
+    printf '> the forced adjudication pass failed to produce a defensible choice for every marker.\n'
+    printf '> The document below is preserved AS-IS with its unresolved [CONTESTED]/[CLARIFY]\n'
+    printf '> markers. Do not treat it as converged. See run.log and (if present) adjudication-report.md.\n\n'
+    cat "$WORKING_FILE"
+  } > "$FINAL_FILE"
+  log " WARNING: run is STUCK — $FINAL_FILE carries unresolved markers and is labeled NOT-FINAL."
+else
+  cp "$WORKING_FILE" "$FINAL_FILE"
+fi
 
 if [[ -n "$OUTPUT_FILE" ]]; then
   cp "$FINAL_FILE" "$OUTPUT_FILE"
@@ -831,6 +1022,7 @@ log "============================================"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Run dir:   $RUN_DIR"
 log " Final:     $FINAL_FILE"
+log " Convergence: $CONVERGENCE_STATUS"
 log "============================================"
 
 # Print clean result to stdout unless output was redirected to file

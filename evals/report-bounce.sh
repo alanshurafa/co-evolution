@@ -50,6 +50,9 @@ MODE=$(s '.mode')
 PASS_COUNT=$(s '.pass_count')
 OVERALL=$(s '.overall_pass')
 RUN_STATUS=$(s '.run_status')
+# v1.5 Phase 4 (A-5): convergence outcome (converged|adjudicated|stuck|unknown).
+# "unknown" on legacy/agent-bouncer runs that predate the field.
+CONVERGENCE_STATUS=$(s '.convergence_status // "unknown"')
 
 yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
 
@@ -68,6 +71,16 @@ yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
   printf 'The run completed %s pass(es)' "$PASS_COUNT"
   [[ "$RUN_STATUS" == "aborted" ]] && printf ' and was ABORTED before finishing'
   printf '. Behavior gate: **%s**.\n\n' "$(yn "$OVERALL")"
+  case "$CONVERGENCE_STATUS" in
+    converged)
+      printf 'Convergence: **converged** — the agents resolved every disagreement on their own within the configured passes.\n\n' ;;
+    adjudicated)
+      printf 'Convergence: **adjudicated** — disagreements survived the normal passes, so a final forced-adjudication pass resolved each one; the choices and their reasons are recorded in `adjudication-report.md`.\n\n' ;;
+    stuck)
+      printf 'Convergence: **STUCK** — the agents did not converge and the forced-adjudication pass could not make a defensible choice for every disagreement. The document still carries unresolved markers and is NOT a clean final. It is labeled as such at the top.\n\n' ;;
+    *)
+      : ;;  # unknown: legacy/agent-bouncer run, say nothing
+  esac
   if [[ "$OVERALL" != "true" ]]; then
     printf 'Because the behavior gate failed, no claim is made about whether the document got better. The failed checks below say what went wrong mechanically.\n\n'
   fi
@@ -138,7 +151,7 @@ yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
   printf '## What we cannot measure\n\n'
   printf -- '- The deterministic checks confirm the loop **behaved** correctly — they cannot confirm the output is **genuinely better**. That needs the blind judge (above) and periodic human spot-checks.\n'
   printf -- '- The blind judge is an LLM: it can be wrong, and when it is the same model family as a bounce agent it may favor its own style (flagged above when applicable).\n'
-  printf -- '- Convergence is partly forced: the final pass is instructed to remove remaining markers, so "0 markers" alone never proves agreement — that is why the marker-fate ledger exists.\n'
+  printf -- '- "0 markers" alone never proves agreement. A run reports one of three honest convergence states: **converged** (agents cleared every marker themselves), **adjudicated** (a forced final pass resolved the leftovers, with each choice recorded in `adjudication-report.md`), or **stuck** (no defensible resolution was possible — the markers are preserved and the document is labeled NOT-final). The marker-fate ledger above shows what happened to each individual disagreement.\n'
   printf -- '- Thresholds are initial estimates pending calibration against human judgments (`evals/bounce-thresholds.yaml`).\n'
 } > "$OUTPUT_FILE"
 
