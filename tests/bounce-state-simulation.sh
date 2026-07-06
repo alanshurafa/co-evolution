@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # tests/bounce-state-simulation.sh — v1.3 Phase 3 gate: both document bouncers
-# emit a conforming bounce-state/1.0 state.json plus plain (not dot-prefixed)
+# emit a conforming bounce-state/1.x state.json plus plain (not dot-prefixed)
 # per-pass clean artifacts. Contract: evals/BOUNCE-RUNNER-CONTRACT.md.
+#
+# v1.5 Phase 4 (A-5): the schema is now bounce-state/1.1, which adds the
+# optional convergence_status field (converged|adjudicated|stuck|null). A
+# naturally-converging run reports "converged"; agent-bouncer never sets it and
+# so leaves it null. The dedicated lifecycle gate lives in
+# marker-lifecycle-simulation.sh; here we only pin the state shape.
 #
 # Hermetic: agent CLIs PATH-stubbed; no network, no LLM cost.
 
@@ -139,17 +145,18 @@ BOUNCE_STUB_COUNTER="$TEST_DIR/s1-count" PATH="$TEST_DIR/bin:$PATH" CO_EVOLVE_RU
 s1_run_dir=$(ls -dt "$CO_EVOLVE_RUNS_DIR"/co-evolve-* 2>/dev/null | head -1)
 s1_state="$s1_run_dir/state.json"
 if [[ "$rc" -eq 0 && -f "$s1_state" ]] \
-   && jq -e '.schema == "bounce-state/1.0"
+   && jq -e '.schema == "bounce-state/1.1"
              and .runner == "co-evolve-bouncer.sh"
              and .mode == "bounce-only"
              and .baseline_file == "original-input.md"
              and .status == "complete"
+             and .convergence_status == "converged"
              and (.passes | length) >= 2
              and .passes[0].role == "reviewer"
              and (.passes[0].total_markers > 0)
              and (.passes[-1].total_markers == 0)
              and (.finished_at != null)' "$s1_state" >/dev/null; then
-  pass "S1: co-evolve bounce-only writes conforming bounce-state/1.0"
+  pass "S1: co-evolve bounce-only writes conforming bounce-state/1.1 (converged)"
 else
   fail "S1: rc=$rc state=$( [[ -f "$s1_state" ]] && cat "$s1_state" || echo MISSING)"
 fi
@@ -206,8 +213,9 @@ PATH="$TEST_DIR/authbin:$PATH" CO_EVOLVE_RUNS_DIR="$CO_EVOLVE_RUNS_DIR" \
 s4_run_dir=$(ls -dt "$CO_EVOLVE_RUNS_DIR"/co-evolve-* 2>/dev/null | head -1)
 s4_state="$s4_run_dir/state.json"
 if [[ "$rc" -ne 0 && -f "$s4_state" ]] \
-   && jq -e '.status == "aborted" and (.passes | length) == 0' "$s4_state" >/dev/null; then
-  pass "S4: auth-failure abort marks state status=aborted"
+   && jq -e '.status == "aborted" and (.passes | length) == 0
+             and (.convergence_status == null)' "$s4_state" >/dev/null; then
+  pass "S4: auth-failure abort marks state status=aborted (convergence_status null)"
 else
   fail "S4: rc=$rc state=$( [[ -f "$s4_state" ]] && cat "$s4_state" || echo MISSING)"
 fi
@@ -246,13 +254,14 @@ if [[ "$s5_new_count" -eq 1 ]]; then
 fi
 s5_state="$s5_run_dir/state.json"
 if [[ "$rc" -eq 0 && -f "$s5_state" ]] \
-   && jq -e '.schema == "bounce-state/1.0"
+   && jq -e '.schema == "bounce-state/1.1"
              and .runner == "agent-bouncer.sh"
              and .mode == "agent-bouncer"
              and .status == "complete"
+             and (.convergence_status == null)
              and (.passes | length) >= 2' "$s5_state" >/dev/null \
    && [[ -s "$s5_run_dir/original-input.md" && -s "$s5_run_dir/pass-1-clean.md" ]]; then
-  pass "S5: agent-bouncer writes conforming state + normalized artifact names"
+  pass "S5: agent-bouncer writes conforming state (convergence_status null) + normalized artifact names"
 else
   fail "S5: rc=$rc dir=$s5_run_dir state=$( [[ -f "$s5_state" ]] && cat "$s5_state" || echo MISSING)"
 fi
