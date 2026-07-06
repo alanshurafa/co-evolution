@@ -228,7 +228,10 @@ make_scratch_repo() {
   printf '%s' "$repo"
 }
 
-latest_run_dir() { ls -dt "$REPO_ROOT"/runs/dev-review-* 2>/dev/null | head -1; }
+# Explicit per-scenario run dirs (policy a) — avoids the `ls -dt runs/dev-review-*`
+# newest-mtime race that cross-reads another concurrent suite's run dir. Each
+# scenario passes --run-dir under this sim's own $TEST_DIR, so cleanup rides the
+# existing TEST_DIR EXIT trap instead of a per-scenario rm -rf.
 
 # ===========================================================================
 # Scenario (a): flag ON, mixed run — claude composes + verifies, codex executes.
@@ -239,7 +242,7 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo a)
 claude_log="$TEST_DIR/a_claude.log"; codex_log="$TEST_DIR/a_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(latest_run_dir || true)
+a_run_dir="$TEST_DIR/run-a"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT MALFORMED_ENVELOPE
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
@@ -249,13 +252,12 @@ run_dir_before=$(latest_run_dir || true)
   # composer=claude, executor=codex, verifier=claude (opus alias). bounces 0 so
   # exactly two claude calls (compose + verify) and one codex call (execute).
   bash "$RUNNER" --composer opus --executor codex --verifier opus \
-    --verify --bounces 0 --workdir "$repo" --timeout 60 -- "token capture mixed run"
+    --verify --bounces 0 --run-dir "$a_run_dir" --workdir "$repo" --timeout 60 -- "token capture mixed run"
 ) >"$TEST_DIR/a.out" 2>&1 || true
-a_run_dir=$(latest_run_dir)
 a_ok=true
 a_msg=""
-if [[ -z "$a_run_dir" || "$a_run_dir" == "$run_dir_before" ]]; then
-  a_ok=false; a_msg="no new run dir"
+if [[ ! -f "$a_run_dir/state.json" ]]; then
+  a_ok=false; a_msg="no run dir/state.json produced"
 else
   state="$a_run_dir/state.json"
   # tokens block present, both phase kinds.
@@ -289,7 +291,6 @@ else
   fail "flag ON mixed run failed ($a_msg) — run dir: ${a_run_dir:-<none>}"
   [[ -n "${a_run_dir:-}" ]] && jq -c '.tokens // "<no tokens key>"' "$a_run_dir/state.json" >&2 2>/dev/null || true
 fi
-[[ -n "${a_run_dir:-}" && "$a_run_dir" != "$run_dir_before" ]] && rm -rf "$a_run_dir"
 
 # ===========================================================================
 # Scenario (b): flag ON, malformed claude envelope. The compose output file
@@ -298,7 +299,7 @@ fi
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo b)
-run_dir_before=$(latest_run_dir || true)
+b_run_dir="$TEST_DIR/run-b"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
@@ -309,13 +310,12 @@ run_dir_before=$(latest_run_dir || true)
   # malformed compose envelope is the one under test. plan-only keeps it short:
   # the run reaches the plan-only terminal (still calls maybe_collect_token_usage).
   bash "$RUNNER" --composer opus --plan-only --bounces 0 \
-    --workdir "$repo" --timeout 60 -- "token capture malformed envelope"
+    --run-dir "$b_run_dir" --workdir "$repo" --timeout 60 -- "token capture malformed envelope"
 ) >"$TEST_DIR/b.out" 2>&1 || true
-b_run_dir=$(latest_run_dir)
 b_ok=true
 b_msg=""
-if [[ -z "$b_run_dir" || "$b_run_dir" == "$run_dir_before" ]]; then
-  b_ok=false; b_msg="no new run dir"
+if [[ ! -f "$b_run_dir/state.json" ]]; then
+  b_ok=false; b_msg="no run dir/state.json produced"
 else
   state="$b_run_dir/state.json"
   # The run produced a plan.md from the envelope-copy fallback (non-empty).
@@ -338,7 +338,6 @@ if [[ "$b_ok" == true ]]; then
 else
   fail "flag ON malformed envelope failed ($b_msg) — run dir: ${b_run_dir:-<none>}"
 fi
-[[ -n "${b_run_dir:-}" && "$b_run_dir" != "$run_dir_before" ]] && rm -rf "$b_run_dir"
 
 # ===========================================================================
 # Scenario (c): flag OFF (default) — byte-parity guard. claude argv carries
@@ -349,7 +348,7 @@ TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo c)
 claude_log="$TEST_DIR/c_claude.log"; codex_log="$TEST_DIR/c_codex.log"
 : > "$claude_log"; : > "$codex_log"
-run_dir_before=$(latest_run_dir || true)
+c_run_dir="$TEST_DIR/run-c"
 (
   unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT MALFORMED_ENVELOPE
   unset COMPOSER_MODEL COMPOSER_EFFORT EXECUTOR_MODEL EXECUTOR_EFFORT VERIFIER_MODEL VERIFIER_EFFORT
@@ -357,16 +356,15 @@ run_dir_before=$(latest_run_dir || true)
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CODEX_ARGV_LOG="$codex_log"
   bash "$RUNNER" --composer opus --executor codex --verifier opus \
-    --verify --bounces 0 --workdir "$repo" --timeout 60 -- "token capture parity off"
+    --verify --bounces 0 --run-dir "$c_run_dir" --workdir "$repo" --timeout 60 -- "token capture parity off"
 ) >"$TEST_DIR/c.out" 2>&1 || true
-c_run_dir=$(latest_run_dir)
 c_ok=true
 c_msg=""
 # claude argv: text mode, never json.
 if ! grep -Eq -- '--output-format text' "$claude_log"; then c_ok=false; c_msg="claude not in text mode"; fi
 if grep -Eq -- '--output-format json' "$claude_log"; then c_ok=false; c_msg="claude leaked json mode with flag off"; fi
-if [[ -z "$c_run_dir" || "$c_run_dir" == "$run_dir_before" ]]; then
-  c_ok=false; c_msg="no new run dir"
+if [[ ! -f "$c_run_dir/state.json" ]]; then
+  c_ok=false; c_msg="no run dir/state.json produced"
 else
   # No sidecars anywhere (they were never written).
   if ls "$c_run_dir"/*.usage.json "$c_run_dir"/.*.usage.json >/dev/null 2>&1; then c_ok=false; c_msg="usage sidecar exists with flag off"; fi
@@ -380,7 +378,6 @@ else
   fail "flag OFF parity guard failed ($c_msg) — run dir: ${c_run_dir:-<none>}"
   [[ -s "$claude_log" ]] && { echo "--- claude argv ---"; cat "$claude_log"; } >&2
 fi
-[[ -n "${c_run_dir:-}" && "$c_run_dir" != "$run_dir_before" ]] && rm -rf "$c_run_dir"
 
 # ===========================================================================
 # Scenario (d): --help is unaffected by the capture machinery (exits 0, emits
