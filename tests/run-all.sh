@@ -56,6 +56,7 @@ for t in "$SCRIPT_DIR"/*-simulation.sh; do
 done
 if [[ "$QUICK" == false ]]; then
   SUITES+=("$REPO_ROOT/evals/tests/scorer-verification.sh")
+  SUITES+=("$REPO_ROOT/evals/tests/bounce-scorer-verification.sh")
 fi
 
 # --- run -----------------------------------------------------------------------
