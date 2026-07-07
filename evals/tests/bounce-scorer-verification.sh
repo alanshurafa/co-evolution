@@ -56,6 +56,9 @@ for fixture_dir in "$FIXTURES"/*/; do
 
   if [[ "$ok" == true ]] && jq -e 'has("failing_checks_include")' "$expected" >/dev/null; then
     while IFS= read -r check; do
+      # Windows-native jq emits CRLF line endings; strip the trailing \r or
+      # $check never matches the clean scorer check name.
+      check=${check%$'\r'}
       jq -e --arg c "$check" '[.dimensions[].checks[]? | select(.ok == false) | .name] | index($c) != null' "$out" >/dev/null || ok=false
     done < <(jq -r '.failing_checks_include[]' "$expected")
   fi

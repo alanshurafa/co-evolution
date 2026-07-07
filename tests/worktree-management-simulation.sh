@@ -140,7 +140,11 @@ init_repo() {
   runner="$REPO_ROOT/dev-review/codex/dev-review.sh"
   [[ -f "$runner" ]] || { echo "F: runner not found at $runner" >&2; exit 1; }
 
-  setup_line=$(grep -n 'if \[\[ -n "\$BRANCH_SPEC" \]\]; then' "$runner" | head -1 | cut -d: -f1)
+  # Match on the -n "$BRANCH_SPEC" test rather than the whole line: the
+  # setup block's if-condition also carries the PLAN_EXIT==0 guard (a failed
+  # plan phase must not spawn a stray branch/worktree) and may grow more
+  # clauses; the BRANCH_SPEC test is the stable anchor.
+  setup_line=$(grep -n -- '-n "\$BRANCH_SPEC" \]\]; then' "$runner" | head -1 | cut -d: -f1)
   capture_line=$(grep -n 'INITIAL_GIT_STATUS=\$(git -C "\$WORKDIR" status --short)' "$runner" | head -1 | cut -d: -f1)
 
   [[ -n "$setup_line" ]] \
@@ -150,6 +154,16 @@ init_repo() {
   (( capture_line > setup_line )) \
     || { echo "F: INITIAL_GIT_STATUS capture at line $capture_line happens BEFORE branch/worktree setup at line $setup_line — WR-04 regression (worktree mode would silently skip verify on dirty parent)" >&2; exit 1; }
 ) || fail "Scenario F (WR-04 capture-order regression)"
+
+# --- Scenario G: a failed plan phase must not spawn a stray branch/worktree.
+# Static check on the runner source: BOTH legs of the setup block must gate on
+# PLAN_EXIT==0. Grep-anchored the same way as Scenario F. ---
+(
+  runner="$REPO_ROOT/dev-review/codex/dev-review.sh"
+  guarded=$(grep -c 'PLAN_EXIT:-0}" -eq 0 && -n "\$\(BRANCH_SPEC\|WORKTREE_SPEC\)"' "$runner" || true)
+  [[ "$guarded" -eq 2 ]] \
+    || { echo "G: expected both branch and worktree setup legs guarded by PLAN_EXIT==0, found $guarded — a failed plan phase could leave an orphan branch/worktree" >&2; exit 1; }
+) || fail "Scenario G (failed plan must not create branch/worktree)"
 
 if (( FAILURES == 0 )); then
   echo "ALL SCENARIOS PASSED"
