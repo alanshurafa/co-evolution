@@ -148,6 +148,11 @@ else
   case "\${LC_STUB_DOC:-markers}" in
     clean)  cat "$TEST_DIR/body-clean.txt" ;;
     fenced) cat "$TEST_DIR/body-fenced.txt" ;;
+    empty)  : ;;   # C-2: emit NOTHING (empty output on every call, incl. retry)
+    # C-8 partial-failure: claude (reviewer, odd passes) SUCCEEDS with a
+    # markers body — pass 1 applies and another pass is still required; the
+    # codex side (composer, even passes) goes empty. See the codex stub.
+    partial) cat "$TEST_DIR/body-markers.txt" ;;
     *)      cat "$TEST_DIR/body-markers.txt" ;;
   esac
 fi
@@ -168,6 +173,10 @@ else
   case "\${LC_STUB_DOC:-markers}" in
     clean)  pick "$TEST_DIR/body-clean.txt" ;;
     fenced) pick "$TEST_DIR/body-fenced.txt" ;;
+    empty)  if [[ -n "\$out" ]]; then : > "\$out"; fi ;;  # C-2: empty artifact
+    # C-8 partial-failure: the composer side is the one that dies — empty
+    # artifact on call AND retry, after claude's pass 1 already applied.
+    partial) if [[ -n "\$out" ]]; then : > "\$out"; fi ;;
     *)      pick "$TEST_DIR/body-markers.txt" ;;
   esac
 fi
@@ -346,6 +355,59 @@ check "S7b: stuck fenced run labeled with CO-EVOLVE:STUCK banner" \
   "[[ -n '$S7_FINAL' ]] && grep -q 'CO-EVOLVE:STUCK' '$S7_FINAL'"
 check "S7c: fenced marker token preserved in the stuck document" \
   "[[ -f '$S7_DIR/working.md' ]] && [[ \$(grep -cE '\[(CONTESTED|CLARIFY)\]' '$S7_DIR/working.md' || true) -ge 1 ]]"
+
+# ===========================================================================
+# Scenario 8: ABORTED (C-2) — the reviewer returns EMPTY output on call AND
+# retry, so the loop breaks before any pass is applied. The un-reviewed compose
+# draft is marker-free, so the OLD code finalized it "converged" with passes=[]
+# — a fully failed bounce laundered into a clean final. The fix must instead end
+# the run ABORTED: non-zero exit, status=aborted, convergence_status left null,
+# and passes empty. This is distinct from `stuck` (which ran passes but could
+# not resolve markers); here NOTHING was reviewed.
+# ===========================================================================
+S8_RUNS="$TEST_DIR/s8-runs"
+rc=0; LC_STUB_DOC=empty run_branch "$S8_RUNS" --vanilla --bounce-only "$SEED" || rc=$?
+S8_STATE=$(find_state "$S8_RUNS"); S8_DIR=$(dirname "$S8_STATE" 2>/dev/null || echo "")
+check "S8a: zero-usable-pass run exits NON-ZERO (not laundered as success)" \
+  "[[ $rc -ne 0 ]]"
+check "S8b: convergence_status is NOT converged (left null on an abort)" \
+  "[[ -f '$S8_STATE' ]] && [[ \$(jq -r '.convergence_status' '$S8_STATE') != converged ]]"
+check "S8c: state status == aborted" \
+  "[[ -f '$S8_STATE' ]] && [[ \$(jq -r '.status' '$S8_STATE') == aborted ]]"
+check "S8d: passes array is empty (no usable pass was applied)" \
+  "[[ -f '$S8_STATE' ]] && [[ \$(jq -r '.passes | length' '$S8_STATE') -eq 0 ]]"
+
+# 8e: a chained --execute must REFUSE an aborted bounce — the process dies before
+# the hand-off, so the executor is never invoked (strictly stronger than the
+# stuck guard, which exits 1 at the hand-off). Assert non-zero exit AND that the
+# dev-review hand-off banner never printed.
+S8E_RUNS="$TEST_DIR/s8e-runs"
+rc=0; LC_STUB_DOC=empty run_branch "$S8E_RUNS" --vanilla --bounce-only --execute "$SEED" || rc=$?
+check "S8e-1: chained --execute on an aborted bounce exits NON-ZERO" \
+  "[[ $rc -ne 0 ]]"
+check "S8e-2: --execute never handed the (nonexistent) plan to dev-review" \
+  "! grep -q 'Handing bounced plan to dev-review' '$S8E_RUNS.stdout.log' '$S8E_RUNS.stderr.log' 2>/dev/null"
+
+# ===========================================================================
+# Scenario 9: PARTIAL-FAILURE ABORT (C-8, cross-vendor review) — pass 1 applies
+# successfully (reviewer output WITH surviving markers, so another pass is
+# still required), then pass 2's composer returns EMPTY on call AND retry. The
+# old `break` handed the half-bounced document to the post-loop convergence
+# block; the fix dies instead, so the EXIT trap finalizes status=aborted with
+# convergence_status null and EXACTLY the one applied pass recorded — never
+# converged, never adjudicated.
+# ===========================================================================
+S9_RUNS="$TEST_DIR/s9-runs"
+rc=0; LC_STUB_DOC=partial run_branch "$S9_RUNS" --vanilla --bounce-only "$SEED" || rc=$?
+S9_STATE=$(find_state "$S9_RUNS")
+check "S9a: partial-failure run exits NON-ZERO (empty retry dies, no break)" \
+  "[[ $rc -ne 0 ]]"
+check "S9b: state status == aborted" \
+  "[[ -f '$S9_STATE' ]] && [[ \$(jq -r '.status' '$S9_STATE') == aborted ]]"
+check "S9c: convergence_status is null (no convergence verdict on an abort)" \
+  "[[ -f '$S9_STATE' ]] && [[ \$(jq -r '.convergence_status' '$S9_STATE') == null ]]"
+check "S9d: passes array has exactly the ONE applied pass" \
+  "[[ -f '$S9_STATE' ]] && [[ \$(jq -r '.passes | length' '$S9_STATE') -eq 1 ]]"
 
 # ---------------------------------------------------------------------------
 printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"
