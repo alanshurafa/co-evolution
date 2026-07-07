@@ -117,19 +117,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# A4: a bare "Unauthorized" line in a short document must NOT be fatal. The
-# broad matcher would flag a lone "Unauthorized"; the strict output detector
-# deliberately does not, so a terse-but-legitimate artifact is not misread.
+# A4 (contract updated for C-8): a SHORT (<50-word) output containing a bare
+# "Unauthorized" IS fatal again. The anchored matcher alone deliberately skips
+# bare tokens, but output_is_auth_failure restores the old loose-when-short
+# catch: a real work product is never under 50 words, so a terse output with
+# an auth token is the CLI's own error, not a document. (The >50-word legit
+# doc mentioning "Unauthorized" mid-body stays covered by A2/C1-*-legit/C6-ok.)
 # ---------------------------------------------------------------------------
 TOTAL=$((TOTAL + 1))
 out="$TEST_DIR/a4-out.md"; err="$TEST_DIR/a4-err.log"
 printf '# Status Codes\n\n401 means Unauthorized and 403 means Forbidden.\n' > "$out"
 : > "$err"
 rc=0; validate_agent_artifact "$out" "$err" claude >/dev/null 2>&1 || rc=$?
-if [[ "$rc" -eq 0 ]]; then
-  pass "A4: bare 'Unauthorized' in short doc -> rc 0 (strict detector ignores bare token)"
+if [[ "$rc" -eq 2 ]]; then
+  pass "A4: bare 'Unauthorized' in <50-word output -> rc 2 (C-8 short+loose catch)"
 else
-  fail "A4: bare 'Unauthorized' -> expected rc 0, got $rc"
+  fail "A4: bare 'Unauthorized' in short output -> expected rc 2, got $rc"
 fi
 
 # ---------------------------------------------------------------------------
@@ -279,6 +282,226 @@ if [[ "$rc" -eq 2 ]]; then
 else
   fail "A9: banner after closed fence -> expected rc 2, got $rc"
 fi
+
+# ---------------------------------------------------------------------------
+# C-1 / C-6 dev-review.sh gates. The code pipeline's own auth detectors
+# (agent_auth_failed at the execute+verify gates, inspect_plan_output at the
+# compose/bounce gate) previously used the loose file_contains_auth_failure +
+# whole-file <50-word ceiling — the same blind spot A-2 closed for the document
+# pipeline. These scenarios extract the real dev-review.sh functions and pin the
+# anchored-matcher behavior directly. Extraction (not `source dev-review.sh`)
+# because the script runs its main flow at EOF; temp-file source, not process
+# substitution, because bash 3.2 (stock macOS) silently sources nothing from
+# `source <(...)`.
+# ---------------------------------------------------------------------------
+sed -n '/^agent_cli_name() {/,/^}$/p; /^agent_auth_failed() {/,/^}$/p; /^inspect_plan_output() {/,/^}$/p; /^abort_on_timeout() {/,/^}$/p' \
+  "$REPO_ROOT/dev-review/codex/dev-review.sh" > "$TEST_DIR/_dev_review_fns.sh"
+# abort_on_timeout calls cleanup_runtime_artifacts (defined further down in
+# dev-review.sh, not extracted); stub it so the timeout scenario runs hermetically.
+cleanup_runtime_artifacts() { :; }
+# shellcheck disable=SC1090,SC1091
+source "$TEST_DIR/_dev_review_fns.sh"
+if ! declare -F agent_auth_failed >/dev/null || ! declare -F inspect_plan_output >/dev/null \
+   || ! declare -F abort_on_timeout >/dev/null; then
+  echo "FAIL: dev-review.sh functions not sourced — simulation cannot continue"
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# (a) agent_auth_failed — a >50-word auth-error PAGE in the output is an auth
+# failure (rc 0) at BOTH the execute gate (executor agent) and the verify gate
+# (verifier agent). The old <50-word ceiling accepted this page as work product.
+# The two callers (887/897 execute, 1039 verify) invoke the same function with
+# their respective agent types, so exercising both names covers both gates.
+# ---------------------------------------------------------------------------
+authpage="$TEST_DIR/authpage.md"
+{
+  printf 'Not logged in \xc2\xb7 Please run /login\n\n'
+  printf 'You are not currently authenticated with the Claude CLI. To use this\n'
+  printf 'command you must first sign in with your Anthropic account. Run the\n'
+  printf 'login command in an interactive terminal, complete the browser flow,\n'
+  printf 'and then re-run. If you continue to see this message your session token\n'
+  printf 'may have expired or your organization may not have access to this tier.\n'
+} > "$authpage"
+authpage_words=$(wc -w < "$authpage" | tr -d '\r\n ')
+
+for gate in "execute:opus" "verify:codex"; do
+  gate_name="${gate%%:*}"; gate_agent="${gate##*:}"
+  TOTAL=$((TOTAL + 1))
+  err="$TEST_DIR/${gate_name}-err.log"; : > "$err"
+  rc=0; agent_auth_failed "$gate_agent" "$authpage" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 && "$authpage_words" -ge 50 ]]; then
+    pass "C1-${gate_name}: >50-word auth page ($authpage_words words) at ${gate_name} gate -> auth failure (rc 0)"
+  else
+    fail "C1-${gate_name}: >50-word auth page ($authpage_words words) -> expected rc 0, got $rc"
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# (b) agent_auth_failed — a legitimate long output that echoes "Unauthorized"
+# and "Not logged in" MID-body (never line-leading) passes BOTH gates: it is
+# real work product, not the CLI's own banner, so the function returns 1.
+# ---------------------------------------------------------------------------
+legit="$TEST_DIR/legit-exec.md"
+{
+  printf '# Auth Handling Change — Execution Log\n\n'
+  printf 'Wired the retry wrapper so a response marked Unauthorized is treated as\n'
+  printf 'fatal and surfaces immediately. When the token is missing the upstream\n'
+  printf 'returns a body that reads "Not logged in" and the wrapper must not retry\n'
+  printf 'that case. Added structured logging so operators can audit every attempt\n'
+  printf 'and see exactly why a request was rejected as Unauthorized after a run.\n'
+} > "$legit"
+legit_words=$(wc -w < "$legit" | tr -d '\r\n ')
+
+for gate in "execute:opus" "verify:codex"; do
+  gate_name="${gate%%:*}"; gate_agent="${gate##*:}"
+  TOTAL=$((TOTAL + 1))
+  err="$TEST_DIR/${gate_name}-legit-err.log"; : > "$err"
+  rc=0; agent_auth_failed "$gate_agent" "$legit" "$err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 1 && "$legit_words" -ge 50 ]]; then
+    pass "C1-${gate_name}-legit: long output echoing auth phrases mid-body ($legit_words words) passes ${gate_name} gate (rc 1)"
+  else
+    fail "C1-${gate_name}-legit: legit output ($legit_words words) -> expected rc 1, got $rc"
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# C-6 inspect_plan_output — a legitimate plan discussing "401 Unauthorized" and
+# "npm login required" mid-body must NOT be routed to manual review (status
+# stays "ok"); a leading auth banner still is (status "review").
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+c6ok="$TEST_DIR/c6-ok.md"; c6err="$TEST_DIR/c6-err.log"
+{
+  printf '# Publish Pipeline Plan\n\n## Goal\n'
+  printf 'Automate the npm publish. The CI job fails with "401 Unauthorized" when\n'
+  printf 'the token is stale, and the local dry-run prints "npm login required" —\n'
+  printf 'both are expected states the plan must handle by refreshing credentials\n'
+  printf 'before the release step rather than aborting the whole pipeline run.\n\n'
+  printf '## Steps\n1. Validate the token.\n2. Refresh on failure.\n3. Publish.\n'
+} > "$c6ok"
+: > "$c6err"
+PLAN_OUTPUT_STATUS=""; PLAN_OUTPUT_REASON=""
+rc=0; inspect_plan_output opus "$c6ok" "$c6err" >/dev/null 2>&1 || rc=$?
+# A valid plan may still be flagged "thin" by later checks, but it must NOT be
+# "review" on the auth leg — that is the C-6 false positive under test.
+if [[ "$PLAN_OUTPUT_STATUS" != "review" ]]; then
+  pass "C6-ok: plan discussing '401 Unauthorized'/'npm login required' mid-body -> status '$PLAN_OUTPUT_STATUS' (not routed to auth review)"
+else
+  fail "C6-ok: legit plan -> unexpectedly routed to review ($PLAN_OUTPUT_REASON)"
+fi
+
+TOTAL=$((TOTAL + 1))
+c6bad="$TEST_DIR/c6-bad.md"
+cp "$authpage" "$c6bad"
+PLAN_OUTPUT_STATUS=""; PLAN_OUTPUT_REASON=""
+rc=0; inspect_plan_output opus "$c6bad" "$c6err" >/dev/null 2>&1 || rc=$?
+if [[ "$PLAN_OUTPUT_STATUS" == "review" && "$rc" -eq 1 ]]; then
+  pass "C6-bad: leading auth banner in plan output -> status 'review' (rc 1)"
+else
+  fail "C6-bad: auth-banner plan -> expected status 'review' rc 1, got '$PLAN_OUTPUT_STATUS' rc $rc"
+fi
+
+# ---------------------------------------------------------------------------
+# C-8 (cross-vendor review): a CLI whose ENTIRE output is a bare "Unauthorized"
+# line. The anchored banner scan deliberately skips bare tokens, so removing
+# the <50-word ceiling reopened exactly this case; output_is_auth_failure
+# restores the loose-when-short catch. Pin it at every output-path gate:
+# execute + verify (agent_auth_failed) and the plan gate (inspect_plan_output).
+# The >50-word mid-body regression guards for the same helper path are
+# C1-execute-legit / C1-verify-legit / C6-ok above.
+# ---------------------------------------------------------------------------
+bare="$TEST_DIR/c8-bare.md"; c8err="$TEST_DIR/c8-err.log"
+printf 'Unauthorized\n' > "$bare"
+: > "$c8err"
+
+for gate in "execute:opus" "verify:codex"; do
+  gate_name="${gate%%:*}"; gate_agent="${gate##*:}"
+  TOTAL=$((TOTAL + 1))
+  rc=0; agent_auth_failed "$gate_agent" "$bare" "$c8err" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "C8-${gate_name}: sole bare 'Unauthorized' output at ${gate_name} gate -> auth failure (rc 0)"
+  else
+    fail "C8-${gate_name}: bare 'Unauthorized' output -> expected rc 0, got $rc"
+  fi
+done
+
+TOTAL=$((TOTAL + 1))
+PLAN_OUTPUT_STATUS=""; PLAN_OUTPUT_REASON=""
+rc=0; inspect_plan_output opus "$bare" "$c8err" >/dev/null 2>&1 || rc=$?
+if [[ "$PLAN_OUTPUT_STATUS" == "review" && "$rc" -eq 1 ]]; then
+  pass "C8-plan: sole bare 'Unauthorized' output at plan gate -> status 'review' (rc 1)"
+else
+  fail "C8-plan: bare 'Unauthorized' plan output -> expected status 'review' rc 1, got '$PLAN_OUTPUT_STATUS' rc $rc"
+fi
+
+# Same bare-line variant with "Not authenticated" — the other token the
+# anchored matcher deliberately excludes; the short+loose catch must hold too.
+TOTAL=$((TOTAL + 1))
+printf 'Not authenticated\n' > "$bare"
+rc=0; agent_auth_failed opus "$bare" "$c8err" >/dev/null 2>&1 || rc=$?
+if [[ "$rc" -eq 0 ]]; then
+  pass "C8-notauth: sole bare 'Not authenticated' output -> auth failure (rc 0)"
+else
+  fail "C8-notauth: bare 'Not authenticated' output -> expected rc 0, got $rc"
+fi
+
+# ---------------------------------------------------------------------------
+# (c) abort_on_timeout — a timeout abort is a terminal exit-1 run: state.json
+# must read status="failed" with current_phase=null, not the "pending" init
+# (which a status reader treats as "still running"). Runs in a subshell because
+# abort_on_timeout exits; the state writes land before exit, so the parent then
+# inspects the file. Requires jq (as every state.json sim does).
+# ---------------------------------------------------------------------------
+if command -v jq >/dev/null 2>&1; then
+  TOTAL=$((TOTAL + 1))
+  STATE_JSON="$TEST_DIR/timeout-state.json"
+  init_state_json "$STATE_JSON" "sim-timeout" "sim task" "codex" "codex" "opus"
+  # abort_on_timeout only fires when LAST_INVOKE_EXIT_CODE==124.
+  LAST_INVOKE_EXIT_CODE=124
+  PHASE_TIMEOUT=1800
+  sub_rc=0
+  ( abort_on_timeout "execute" "2026-07-07T00:00:00Z" ) >/dev/null 2>&1 || sub_rc=$?
+  status_val=$(jq -r '.status' "$STATE_JSON")
+  phase_val=$(jq -r '.current_phase' "$STATE_JSON")
+  if [[ "$sub_rc" -eq 1 && "$status_val" == "failed" && "$phase_val" == "null" ]]; then
+    pass "C-timeout: abort_on_timeout leaves status='failed', current_phase=null, exit 1"
+  else
+    fail "C-timeout: got rc=$sub_rc status='$status_val' current_phase='$phase_val' (expected 1/failed/null)"
+  fi
+  unset LAST_INVOKE_EXIT_CODE PHASE_TIMEOUT STATE_JSON
+else
+  printf 'SKIP: C-timeout scenario needs jq (not found)\n'
+fi
+
+# ---------------------------------------------------------------------------
+# phase_is_writable negative case: an unknown phase name resolves read-only.
+# The writable set is a fixed allowlist (execute/execute-retry/fix) plus the
+# ^execute-[0-9]+$ revise-pass pattern; anything else — including a plausible
+# typo like "verify" or an injection-shaped string — must return "false" so a
+# read-only phase never gains write access by accident. (An empty/unset name is
+# out of scope here: phase_is_writable :?-guards it, force-exiting by design.)
+# ---------------------------------------------------------------------------
+for bogus in "compose" "verify" "bounce" "execute-x" "exec" "execute; rm -rf"; do
+  TOTAL=$((TOTAL + 1))
+  verdict=$(phase_is_writable "$bogus")
+  if [[ "$verdict" == "false" ]]; then
+    pass "phase_is_writable: '${bogus}' -> read-only (false)"
+  else
+    fail "phase_is_writable: '${bogus}' -> expected false, got '$verdict'"
+  fi
+done
+
+# Positive control: a real writable phase and a numbered revise pass stay true.
+for good in "execute" "execute-2"; do
+  TOTAL=$((TOTAL + 1))
+  verdict=$(phase_is_writable "$good")
+  if [[ "$verdict" == "true" ]]; then
+    pass "phase_is_writable: '${good}' -> writable (true)"
+  else
+    fail "phase_is_writable: '${good}' -> expected true, got '$verdict'"
+  fi
+done
 
 # ---------------------------------------------------------------------------
 
