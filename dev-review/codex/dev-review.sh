@@ -113,6 +113,7 @@ Options:
   --live                   Launch visible Windows terminal tailing each phase's stderr (Windows-only; warns + falls back on other OS)
   --branch auto|NAME       Create a feature branch off HEAD before execute (auto = dev-review/auto-<timestamp>-<slug>); mutually exclusive with --worktree
   --worktree auto|PATH     Create a git worktree for isolation before execute (auto = sibling dir); mutually exclusive with --branch
+  --run-dir PATH           Write run artifacts (state.json, plan, logs) to PATH instead of the default runs/dev-review-<timestamp>/ (path-traversal guarded: rejects any '..' segment)
   --parent-run RUN_ID      Lineage tag: record the orchestrator's parent run id in state.orchestration.parent_run_id (re-kicks always get a fresh run dir; no behavior change)
   --lab MODE               Route to lab/<MODE>/entry.sh (opt-in beta channel; see lab/README.md)
   --target FILE            PEL-only: file to mutate (used with --lab pel-proposer; must be repo-relative forward-slash path, e.g. lib/co-evolution.sh — NOT absolute or WSL/Windows-style)
@@ -242,6 +243,13 @@ abort_on_timeout() {
     if [[ -n "${STATE_JSON:-}" ]]; then
       write_state_phase "$STATE_JSON" "$phase_name" "timeout" 124 "$phase_start" "$phase_end"
       write_state_field "$STATE_JSON" ".completed_at" "string" "$phase_end"
+      # A timeout abort is a terminal exit-1 run: mirror the EOF terminal block
+      # so a status reader sees a failed run, not one stuck "pending" mid-phase
+      # (the phase[].exit_code=124 above stays for observability). Without these,
+      # .status kept its "pending" init and .current_phase stayed non-null,
+      # which the status reader treats as "still in <phase>".
+      write_state_field "$STATE_JSON" ".status" "string" "failed"
+      write_state_field "$STATE_JSON" ".current_phase" "null"
     fi
     log "ERROR: ${phase_name} phase timed out after ${PHASE_TIMEOUT}s - aborting run"
     cleanup_runtime_artifacts
@@ -349,7 +357,7 @@ agent_auth_failed() {
   local agent="$1"
   local output_file="${2:-}"
   local stderr_file="${3:-}"
-  local cli_name words
+  local cli_name
 
   cli_name=$(agent_cli_name "$agent")
 
@@ -358,15 +366,19 @@ agent_auth_failed() {
   # a substantial work product that merely echoes auth strings — e.g. plan text,
   # or the auth-detection source itself — is never misread as an auth failure.
   #
-  # (1) Auth banner IN THE OUTPUT, but only when the output is short (< 50
-  #     words). A long output that mentions "Unauthorized"/"Not logged in" is
-  #     real work, not the CLI's own banner.
-  if [[ -n "$output_file" ]] && file_contains_auth_failure "$output_file"; then
-    words=$(wc -w < "$output_file" | tr -d '\r\n ')
-    if (( words < 50 )); then
-      log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
-      return 0
-    fi
+  # (1) Auth banner IN THE OUTPUT: route through lib's anchored
+  #     output_contains_auth_banner (A-2 / C-1). A real CLI auth error prints a
+  #     short banner that STANDS ALONE at the top of its output before doing any
+  #     work, so the strict head-scan catches an auth-error PAGE of any length
+  #     while still letting a long legitimate document that merely echoes
+  #     "Unauthorized"/"Not logged in" mid-body pass. This replaces the old
+  #     loose file_contains_auth_failure + whole-file <50-word ceiling, which
+  #     accepted an auth page longer than 50 words as work product. The
+  #     output_is_auth_failure wrapper keeps the short+loose catch for a bare
+  #     "Unauthorized"-style banner the anchor deliberately excludes (C-8).
+  if [[ -n "$output_file" ]] && output_is_auth_failure "$output_file"; then
+    log "WARNING: ${cli_name} authentication failed. Refresh the ${cli_name} CLI session and rerun."
+    return 0
   fi
 
   # (2) Auth banner in STDERR counts only when the agent produced NO output. A
@@ -505,7 +517,12 @@ inspect_plan_output() {
   PLAN_OUTPUT_REASON=""
   cli_name=$(agent_cli_name "$agent")
 
-  if file_contains_auth_failure "$output_file" || file_contains_auth_failure "$stderr_file"; then
+  # C-6: anchor the OUTPUT-path auth check to lib's strict head-scan so a
+  # legitimate plan that discusses "401 Unauthorized" or "npm login required"
+  # mid-body is not routed to manual review; the loose matcher stays on stderr,
+  # where any auth string is the CLI's own banner (mirrors validate_agent_artifact).
+  # output_is_auth_failure adds back the short+loose catch for a bare banner (C-8).
+  if output_is_auth_failure "$output_file" || file_contains_auth_failure "$stderr_file"; then
     PLAN_OUTPUT_STATUS="review"
     PLAN_OUTPUT_REASON="${cli_name} authentication failed"
     return 1
@@ -1694,12 +1711,16 @@ fi
 # `--branch auto --plan-only` is a silent no-op on the branching side because
 # plan artifacts intentionally stay on the parent branch.
 # Mutually exclusive: parser already rejected both-set; only one path fires.
-if [[ -n "$BRANCH_SPEC" ]]; then
+# PLAN_EXIT==0 guard: a failed compose/bounce phase must not spawn a stray
+# branch/worktree — the run is about to abort with the plan's non-zero exit
+# (the revise loop returns PLAN_EXIT immediately), so any branch created here
+# would be an orphan the executor never touches.
+if [[ "${PLAN_EXIT:-0}" -eq 0 && -n "$BRANCH_SPEC" ]]; then
   BRANCH_CREATED=$(maybe_setup_branch "$WORKDIR" "$BRANCH_SPEC" "$TASK")
   if [[ -n "$BRANCH_CREATED" ]]; then
     write_state_field "$STATE_JSON" ".branch_created" "string" "$BRANCH_CREATED"
   fi
-elif [[ -n "$WORKTREE_SPEC" ]]; then
+elif [[ "${PLAN_EXIT:-0}" -eq 0 && -n "$WORKTREE_SPEC" ]]; then
   _new_wt=$(maybe_setup_worktree "$WORKDIR" "$WORKTREE_SPEC" "$TASK")
   if [[ -n "$_new_wt" ]]; then
     WORKTREE_PATH="$_new_wt"

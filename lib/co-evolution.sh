@@ -645,6 +645,24 @@ output_contains_auth_banner() {
     <<< "$eligible"
 }
 
+# C-8 (2026-07-07 cross-vendor review): the anchored banner scan above
+# deliberately excludes a bare "Unauthorized"/"Not authenticated", so a CLI
+# whose ENTIRE output is such a bare line slipped through once the old
+# <50-word ceiling was removed (both reviewers flagged it independently).
+# Restore that catch without reopening the long-page hole: the loose matcher
+# is consulted only when the whole output is under 50 words — a real work
+# product is never that small, and the old heuristic caught exactly this case.
+# Output-path callers should use THIS, not output_contains_auth_banner alone.
+output_is_auth_failure() {
+  local file_path="$1"
+  local words
+
+  output_contains_auth_banner "$file_path" && return 0
+  [[ -s "$file_path" ]] || return 1
+  words=$(wc -w < "$file_path" | tr -d '\r\n ')
+  (( words < 50 )) && file_contains_auth_failure "$file_path"
+}
+
 file_contains_error_payload() {
   local file_path="$1"
 
@@ -675,8 +693,9 @@ validate_agent_artifact() {
   # whole-file <50-word ceiling let an auth-error PAGE longer than 50 words fall
   # through to the accept below; anchoring to the head instead catches long
   # error pages while still letting a long legitimate document that merely
-  # echoes auth phrases mid-body pass.
-  if output_contains_auth_banner "$output_file"; then
+  # echoes auth phrases mid-body pass. output_is_auth_failure additionally
+  # keeps the short+loose catch for a bare banner the anchor excludes (C-8).
+  if output_is_auth_failure "$output_file"; then
     log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
     return 2
   fi
@@ -1017,9 +1036,27 @@ count_markers_raw() {
   local file_path="$1"
   local marker="$2"
 
+  # Count TOKEN OCCURRENCES, not lines. The old form did `index($0,marker)>0 →
+  # count++`, incrementing once per line even when a line carried two markers
+  # (e.g. `[CONTESTED] a  [CONTESTED] b`), which UNDERCOUNTED. The adjudication
+  # receipt gate compares report entries against this count (co-evolve-bouncer.sh
+  # run_adjudication `entries < pre_markers`), so an undercount let ONE report
+  # bullet satisfy the gate for TWO live markers. Walk each line with index() and
+  # advance past every match to tally all occurrences. index() (literal match) is
+  # used rather than gsub so the marker's `[` and `]` need no ERE escaping — safe
+  # across gawk/nawk/mawk. A marker-free document counts 0 either way, so the
+  # byte-parity convergence path is unaffected.
   awk -v marker="$marker" '
-    BEGIN { count = 0 }
-    index($0, marker) > 0 { count++ }
+    BEGIN { count = 0; mlen = length(marker) }
+    {
+      line = $0
+      pos = index(line, marker)
+      while (pos > 0) {
+        count++
+        line = substr(line, pos + mlen)
+        pos = index(line, marker)
+      }
+    }
     END { print count }
   ' "$file_path" | tr -d '\r\n '
 }
@@ -1028,7 +1065,23 @@ strip_human_summary() {
   local input_file="$1"
   local output_file="$2"
 
-  awk '/^## HUMAN SUMMARY/{found=1} !found{print}' "$input_file" > "$output_file"
+  # The bounce protocol instructs agents to APPEND a `## HUMAN SUMMARY` section
+  # "at the very end" of the document (one line per pass) — it is always the
+  # trailing section (see templates/*/bounce-protocol.md rules 7-8). Stripping at
+  # the FIRST `^## HUMAN SUMMARY` heading destroyed any document whose BODY
+  # legitimately contains that heading (e.g. the protocol docs, or a plan that
+  # discusses human summaries) — everything from that point down was deleted.
+  # Key on the LAST occurrence instead: the final `## HUMAN SUMMARY` heading and
+  # everything after it is the agent-appended trailer; the body above it is
+  # preserved verbatim. Two-pass awk (find the last heading's line number, then
+  # print only lines before it) keeps this bash-3.2 / macOS-awk portable and
+  # byte-identical to the old behavior when there is exactly one (trailing)
+  # heading — the only case that changes is a document with an EARLIER body-level
+  # heading, which is now kept.
+  awk '
+    NR==FNR { if ($0 ~ /^## HUMAN SUMMARY/) last=FNR; next }
+    last==0 || FNR < last { print }
+  ' "$input_file" "$input_file" > "$output_file"
 }
 
 size_sanity_check() {
