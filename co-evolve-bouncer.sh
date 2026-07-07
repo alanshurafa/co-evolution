@@ -150,10 +150,18 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --agents)
+      # Must be exactly two non-empty, comma-separated agent names. A value with
+      # NO comma (e.g. `--agents claude`) previously self-paired silently:
+      # ${2%%,*} and ${2#*,} both return the whole string, so AGENT_A==AGENT_B
+      # and the "bounce" ran an agent against itself with no error. Require a
+      # comma so that mistake dies loudly. The three checks together — comma
+      # present, not two commas, both names non-empty — mean exactly one comma
+      # separating two non-empty names.
+      [[ "${2:-}" == *","* ]] || die "--agents requires two comma-separated agents (e.g., claude,codex), got: ${2:-<missing>}"
+      [[ "$2" == *","*","* ]] && die "--agents requires exactly two agents (e.g., claude,codex)"
       AGENT_A="${2%%,*}"
       AGENT_B="${2#*,}"
       AGENT_B="${AGENT_B%%,*}"
-      [[ "$2" == *","*","* ]] && die "--agents requires exactly two agents (e.g., claude,codex)"
       [[ -z "$AGENT_A" || -z "$AGENT_B" ]] && die "--agents requires exactly two agents separated by comma (e.g., claude,codex)"
       shift 2
       ;;
@@ -735,6 +743,13 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
 RUN_CONVERGED_NATURALLY="false"
 RUN_FINAL_MARKERS=0
 RUN_FINAL_MARKERS_RAW=0
+# C-2: count bounce passes that produced usable output AND were applied to
+# WORKING_FILE (i.e. reached append_bounce_pass). A loop that breaks on empty
+# agent output (call + retry both empty) never applies a pass, so this stays 0
+# and the post-loop guard refuses to launder the un-reviewed compose draft as a
+# converged final. Healthy runs apply >= 1 pass, so the guard never fires on
+# them and byte-parity is untouched.
+RUN_PASSES_APPLIED=0
 run_bounce_phase() {
   local pass
   local role
@@ -837,8 +852,15 @@ $(cat "$PROTOCOL_TEMPLATE")"
     fi
 
     if [[ ! -s "$output_file" ]]; then
-      log " ERROR: ${current_agent} returned empty output on retry. Stopping."
-      break
+      # C-2/C-8: die, don't break. A `break` here would hand whatever passes
+      # already applied to the post-loop convergence block, which happily
+      # finalizes "converged" on a run the protocol never finished — pass 1
+      # applied, pass 2's agent died, and the half-bounced document launders
+      # into a clean final. An empty retry only ever happens when another pass
+      # was still REQUIRED (markers open, or chain stages pending), so the
+      # honest terminal is the same aborted path as the zero-pass case: the
+      # EXIT trap finalizes status=aborted and a chained --execute never runs.
+      die "bounce pass $pass: ${current_agent} returned empty output on call and retry — the bounce did not complete; run ABORTED. See run.log."
     fi
 
     cp "$output_file" "$RUN_DIR/pass-${pass}-${role}-${current_agent}-raw.md"
@@ -865,6 +887,8 @@ $(cat "$PROTOCOL_TEMPLATE")"
     append_bounce_pass "$STATE_FILE" "$pass" "$role" "$current_agent" \
       "pass-${pass}-${role}-${current_agent}-raw.md" "pass-${pass}-clean.md" \
       "$contested" "$clarify" "$word_count"
+    # C-2: this pass produced usable output and is now recorded in state.passes.
+    RUN_PASSES_APPLIED=$((RUN_PASSES_APPLIED + 1))
 
     # Human check
     if [[ "$AUTO" == "false" ]]; then
@@ -892,6 +916,25 @@ $(cat "$PROTOCOL_TEMPLATE")"
       break
     fi
   done
+
+  # C-2: a bounce that applied ZERO usable passes never reviewed the document,
+  # and WORKING_FILE still holds the un-reviewed compose draft. That draft is
+  # marker-free, so the convergence honesty block below would read 0 raw
+  # markers and finalize "converged" — laundering a failed bounce into a clean
+  # final that --execute would run. Empty agent output now dies IN the loop
+  # (C-8, above), so this guard is the belt-and-suspenders invariant for any
+  # other way of arriving here passless (e.g. --bounces 0). Refuse it: die
+  # non-zero. The EXIT trap (_finalize_bounce_state_on_exit) then finalizes
+  # status=aborted with convergence_status left null, exactly like the
+  # auth-failure abort (bounce-state-simulation.sh S4); the scorer gate fails
+  # on status=aborted, and a chained --execute never runs because the process
+  # died before the hand-off. This is the honest terminal state for "the agent
+  # produced nothing usable" — distinct from `stuck` (passes ran, but markers
+  # could not be resolved). Healthy runs apply >= 1 pass, so this never fires
+  # and the byte-parity path below is unchanged.
+  if (( RUN_PASSES_APPLIED == 0 )); then
+    die "bounce produced zero usable passes; the document was never reviewed — run ABORTED. See run.log."
+  fi
 
   # A-5: convergence is decided by the marker count after the last pass, NOT by
   # mode. Any run — standard OR chain — that ends with 0 live markers converged

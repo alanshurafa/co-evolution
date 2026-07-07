@@ -43,6 +43,7 @@ bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-
 | `--plan FILE` | Plan file used with `--skip-plan` |
 | `--model MODEL` | Override the Codex model for Codex-backed passes |
 | `--workdir DIR` | Execute against a target working directory |
+| `--run-dir PATH` | Write run artifacts (`state.json`, plan, logs) to `PATH` instead of the default `runs/dev-review-<timestamp>/`. Path-traversal guarded: any `..` segment is rejected (`--run-dir must not contain '..'`) — defense in depth over the harness-side sanitizer |
 | `--lab MODE` | Route to `lab/<MODE>/entry.sh` (opt-in beta channel; fails fast with `unknown --lab mode: <MODE>. Available: <list>` if `lab/<MODE>/` does not exist). See [`lab/README.md`](../../lab/README.md) for boundary, graduation criteria, and sandbox guarantee. |
 
 ### Lab routing
