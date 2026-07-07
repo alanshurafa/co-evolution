@@ -1220,6 +1220,35 @@ fill_conditional() {
   printf '%s' "$rendered"
 }
 
+# C-4: pick a code-fence backtick run long enough to safely wrap an untrusted
+# diff. CommonMark closes a fenced block only on a backtick run at least as long
+# as the opener, so a diff line that is itself ``` (or longer) breaks out of a
+# bare ```diff fence and the remainder reads as verifier instructions. We find
+# the longest backtick run anywhere in the diff and return a fence ONE backtick
+# longer (never fewer than 3, so a clean diff keeps the byte-identical ```diff
+# fence). Pure parameter-expansion: no subprocess, hermetic, and CRLF-safe (a CR
+# is a non-backtick char that just resets the run).
+compute_diff_fence() {
+  local diff="$1"
+  local longest=0
+  local probe='`'
+  # Grow the probe one backtick at a time; while the diff still contains a run
+  # that long, the longest run is at least this length. Iterations == longest+1,
+  # typically <=4 (a clean diff exits immediately at length 1).
+  while [[ "$diff" == *"$probe"* ]]; do
+    longest=$(( longest + 1 ))
+    probe="${probe}\`"
+  done
+  local fence_len=3
+  (( longest + 1 > fence_len )) && fence_len=$(( longest + 1 ))
+  local fence=""
+  local i
+  for (( i = 0; i < fence_len; i++ )); do
+    fence="${fence}\`"
+  done
+  printf '%s' "$fence"
+}
+
 parse_verdict() {
   local json_file="$1"
   local verdict=""
@@ -1745,6 +1774,59 @@ write_state_field() {
   fi
 }
 
+# C-3: portable timeout-runner selection, shared by invoke_agent_with_timeout AND
+# the dev-review codex-verify branch. Echoes the first available runner —
+# GNU coreutils `timeout` (Linux, Git Bash), `gtimeout` (macOS + brew coreutils),
+# then a perl-alarm fallback (perl ships on stock macOS) — or the empty string
+# when none exist, leaving the degrade-to-unbounded decision to the caller.
+# Extracting this (rather than a second copy at the verify site) closes the same
+# copy-paste divergence class that produced C-1 in the auth detectors.
+select_timeout_runner() {
+  if command -v timeout >/dev/null 2>&1; then
+    printf 'timeout'
+  elif command -v gtimeout >/dev/null 2>&1; then
+    printf 'gtimeout'
+  elif command -v perl >/dev/null 2>&1; then
+    printf 'perl'
+  else
+    printf ''
+  fi
+}
+
+# C-3: run a command under the selected timeout runner. $1=runner name (from
+# select_timeout_runner, must be non-empty), $2=seconds, rest=command+args.
+#   - GNU timeout/gtimeout use --foreground so the SIGTERM reaches the claude/
+#     codex child (a plain timeout puts the child in its own pgroup where a
+#     SIGTERM to a network-blocked read is easy to miss).
+#   - The perl leg forks+alarms and exits 124 on expiry to match timeout(1).
+# The caller is responsible for the empty-runner (degrade) path; an unknown
+# runner is a programming error and dies.
+run_with_timeout_runner() {
+  local runner="$1"
+  local seconds="$2"
+  shift 2
+  case "$runner" in
+    timeout|gtimeout)
+      "$runner" --foreground "${seconds}s" "$@"
+      ;;
+    perl)
+      perl -e '
+        my $t = shift @ARGV;
+        my $pid = fork();
+        if (!defined $pid) { exit 125; }
+        if ($pid == 0) { exec @ARGV; exit 127; }
+        $SIG{ALRM} = sub { kill "TERM", $pid; waitpid($pid, 0); exit 124; };
+        alarm $t;
+        waitpid($pid, 0);
+        exit(($? >> 8) & 0xff);
+      ' "$seconds" "$@"
+      ;;
+    *)
+      die "run_with_timeout_runner: unsupported runner '$runner'"
+      ;;
+  esac
+}
+
 # RNPT-05: invoke_agent_with_timeout — same signature as invoke_agent but wrapped
 # in `timeout(1)`. Sets the global $LAST_INVOKE_EXIT_CODE for the caller to
 # inspect (124 = timeout fired, 0 = ok, other = underlying agent exit code).
@@ -1771,56 +1853,29 @@ invoke_agent_with_timeout() {
     die "PHASE_TIMEOUT must be a positive integer (got: $effective_timeout)"
   fi
 
-  # Portable timeout: GNU coreutils `timeout` (Linux, Git Bash), `gtimeout`
-  # (macOS with brew coreutils), then a perl-alarm wrapper (perl ships on
-  # stock macOS). Only with none of the three do we degrade to unbounded
-  # dispatch. The perl wrapper exits 124 on expiry to match timeout(1).
-  local timeout_runner=""
-  if command -v timeout >/dev/null 2>&1; then
-    timeout_runner="timeout"
-  elif command -v gtimeout >/dev/null 2>&1; then
-    timeout_runner="gtimeout"
-  elif command -v perl >/dev/null 2>&1; then
-    timeout_runner="perl"
-  else
+  # C-3: runner selection extracted to select_timeout_runner so the codex-verify
+  # branch in dev-review.sh reuses the exact same 3-tier ladder instead of a
+  # divergent copy (copy-paste drift produced C-1). Empty => none of the three
+  # are on PATH; degrade to unbounded dispatch as before.
+  local timeout_runner
+  timeout_runner=$(select_timeout_runner)
+  if [[ -z "$timeout_runner" ]]; then
     log "WARNING: no timeout(1)/gtimeout/perl found - invoke_agent_with_timeout degrading to direct dispatch"
     invoke_agent "$agent" "$prompt_file" "$output_file" "$stderr_file" "$writable"
     LAST_INVOKE_EXIT_CODE=0
     return 0
   fi
 
-  _run_with_phase_timeout() {
-    local seconds="$1"
-    shift
-    case "$timeout_runner" in
-      timeout|gtimeout)
-        "$timeout_runner" --foreground "${seconds}s" "$@"
-        ;;
-      perl)
-        perl -e '
-          my $t = shift @ARGV;
-          my $pid = fork();
-          if (!defined $pid) { exit 125; }
-          if ($pid == 0) { exec @ARGV; exit 127; }
-          $SIG{ALRM} = sub { kill "TERM", $pid; waitpid($pid, 0); exit 124; };
-          alarm $t;
-          waitpid($pid, 0);
-          exit(($? >> 8) & 0xff);
-        ' "$seconds" "$@"
-        ;;
-    esac
-  }
-
   local exit_code=0
   case "$agent" in
     codex)
-      _run_with_phase_timeout "$effective_timeout" \
+      run_with_timeout_runner "$timeout_runner" "$effective_timeout" \
         bash -c 'source "$1"; invoke_codex "$2" "$3" "$4"' _ \
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" \
         || exit_code=$?
       ;;
     opus)
-      _run_with_phase_timeout "$effective_timeout" \
+      run_with_timeout_runner "$timeout_runner" "$effective_timeout" \
         bash -c 'source "$1"; invoke_claude "$2" "$3" "$4" "$5"' _ \
         "${BASH_SOURCE[0]}" "$prompt_file" "$output_file" "$stderr_file" "$writable" \
         || exit_code=$?
