@@ -1226,27 +1226,36 @@ fill_conditional() {
 # bare ```diff fence and the remainder reads as verifier instructions. We find
 # the longest backtick run anywhere in the diff and return a fence ONE backtick
 # longer (never fewer than 3, so a clean diff keeps the byte-identical ```diff
-# fence). Pure parameter-expansion: no subprocess, hermetic, and CRLF-safe (a CR
-# is a non-backtick char that just resets the run).
+# fence).
+#
+# PR#48-M1: single awk pass, not the old grow-the-probe loop. That loop appended
+# one backtick to a probe and re-scanned the ENTIRE diff on every step, so a line
+# with an N-backtick run cost O(N^2) — measured at 31.6s for a 20k-backtick line,
+# >2min at 60k. awk scans each record once (a backtick run never spans a newline,
+# so per-record is complete) and gsub-collapses non-backticks so run detection is
+# linear even for a diff of many scattered backticks. CRLF-safe: a CR is a
+# non-backtick byte that terminates a run just like any other. The fence itself
+# is emitted in one shot (sprintf a run of spaces, gsub to backticks) so no
+# per-character string growth remains anywhere on the path.
 compute_diff_fence() {
   local diff="$1"
-  local longest=0
-  local probe='`'
-  # Grow the probe one backtick at a time; while the diff still contains a run
-  # that long, the longest run is at least this length. Iterations == longest+1,
-  # typically <=4 (a clean diff exits immediately at length 1).
-  while [[ "$diff" == *"$probe"* ]]; do
-    longest=$(( longest + 1 ))
-    probe="${probe}\`"
-  done
-  local fence_len=3
-  (( longest + 1 > fence_len )) && fence_len=$(( longest + 1 ))
-  local fence=""
-  local i
-  for (( i = 0; i < fence_len; i++ )); do
-    fence="${fence}\`"
-  done
-  printf '%s' "$fence"
+  printf '%s' "$diff" | awk '
+    {
+      line = $0
+      gsub(/[^`]/, " ", line)          # non-backticks -> separators
+      n = split(line, runs, " ")       # single-space FS collapses runs: only backtick tokens survive
+      for (i = 1; i <= n; i++) if (length(runs[i]) > max) max = length(runs[i])
+    }
+    END {
+      len = max + 1
+      if (len < 3) len = 3
+      # Build the run by doubling (O(len)); gsub over a len-length string is
+      # O(len^2) in gawk and dominated the pathological 50k-backtick case.
+      fence = "`"
+      while (length(fence) < len) fence = fence fence
+      printf "%s", substr(fence, 1, len)
+    }
+  '
 }
 
 parse_verdict() {
@@ -1797,8 +1806,20 @@ select_timeout_runner() {
 # select_timeout_runner, must be non-empty), $2=seconds, rest=command+args.
 #   - GNU timeout/gtimeout use --foreground so the SIGTERM reaches the claude/
 #     codex child (a plain timeout puts the child in its own pgroup where a
-#     SIGTERM to a network-blocked read is easy to miss).
+#     SIGTERM to a network-blocked read is easy to miss). This is a deliberate
+#     Phase-A-era choice; the leg divergence below (the perl leg kills a process
+#     GROUP, these two do not) is intentional, not an oversight.
 #   - The perl leg forks+alarms and exits 124 on expiry to match timeout(1).
+#     PR#48-M2: the child setpgrp()s into its own process group and, on alarm,
+#     we signal the whole group (kill -$pid) — TERM, a short grace, then KILL.
+#     Signalling only the direct child (the old `kill "TERM", $pid`) left a
+#     `bash -c` wrapper's grandchild (the actual hung codex/claude) orphaned and
+#     still running. Unlike the GNU legs we do NOT pass --foreground-equivalent
+#     flags; the group kill is what guarantees reach here.
+#     PR#48-M3: propagate the child's real disposition. The old
+#     `exit(($? >> 8) & 0xff)` reported 0 for a child KILLED BY A SIGNAL outside
+#     the alarm path (segfault, external SIGTERM), laundering a crash into
+#     success. Mirror the shell convention instead: signal death -> 128+signum.
 # The caller is responsible for the empty-runner (degrade) path; an unknown
 # runner is a programming error and dies.
 run_with_timeout_runner() {
@@ -1811,20 +1832,50 @@ run_with_timeout_runner() {
       ;;
     perl)
       perl -e '
+        use POSIX ":sys_wait_h";
         my $t = shift @ARGV;
         my $pid = fork();
         if (!defined $pid) { exit 125; }
-        if ($pid == 0) { exec @ARGV; exit 127; }
-        $SIG{ALRM} = sub { kill "TERM", $pid; waitpid($pid, 0); exit 124; };
+        if ($pid == 0) {
+          setpgrp(0, 0);          # new process group led by this child
+          exec @ARGV;
+          exit 127;               # exec failed (command not found / not runnable)
+        }
+        $SIG{ALRM} = sub {
+          kill("TERM", -$pid);    # signal the whole group, not just the child
+          for (my $i = 0; $i < 50; $i++) {   # ~5s grace, polled at 0.1s
+            last if waitpid($pid, WNOHANG) == $pid;
+            select(undef, undef, undef, 0.1);
+          }
+          kill("KILL", -$pid);
+          exit 124;
+        };
         alarm $t;
         waitpid($pid, 0);
-        exit(($? >> 8) & 0xff);
+        alarm 0;
+        my $st = $?;
+        exit(128 + ($st & 127)) if ($st & 127);   # killed by signal
+        exit($st >> 8);                            # normal exit code
       ' "$seconds" "$@"
       ;;
     *)
       die "run_with_timeout_runner: unsupported runner '$runner'"
       ;;
   esac
+}
+
+# PR#48-M5 (this repo's S-3 lesson: one validator, not a second copy): resolve
+# and validate PHASE_TIMEOUT once, shared by invoke_agent_with_timeout AND the
+# dev-review codex-verify branch. A 0 or non-numeric value silently disables the
+# bound (perl `alarm 0` never fires; GNU `timeout 0` runs unbounded), so it must
+# fail fast. Writes the validated integer to the global EFFECTIVE_PHASE_TIMEOUT
+# rather than echoing it: `die` must run in the caller's shell, and a
+# `$(require_phase_timeout)` command substitution would swallow the exit.
+require_phase_timeout() {
+  EFFECTIVE_PHASE_TIMEOUT="${PHASE_TIMEOUT:-1800}"
+  if ! [[ "$EFFECTIVE_PHASE_TIMEOUT" =~ ^[0-9]+$ ]] || (( EFFECTIVE_PHASE_TIMEOUT < 1 )); then
+    die "PHASE_TIMEOUT must be a positive integer (got: $EFFECTIVE_PHASE_TIMEOUT)"
+  fi
 }
 
 # RNPT-05: invoke_agent_with_timeout — same signature as invoke_agent but wrapped
@@ -1847,11 +1898,8 @@ invoke_agent_with_timeout() {
   local stderr_file="${4:?stderr file required}"
   local writable="${5:-false}"
 
-  local effective_timeout="${PHASE_TIMEOUT:-1800}"
-
-  if ! [[ "$effective_timeout" =~ ^[0-9]+$ ]] || (( effective_timeout < 1 )); then
-    die "PHASE_TIMEOUT must be a positive integer (got: $effective_timeout)"
-  fi
+  require_phase_timeout
+  local effective_timeout="$EFFECTIVE_PHASE_TIMEOUT"
 
   # C-3: runner selection extracted to select_timeout_runner so the codex-verify
   # branch in dev-review.sh reuses the exact same 3-tier ladder instead of a

@@ -257,6 +257,34 @@ abort_on_timeout() {
   fi
 }
 
+# PR#48-M4: a timeout-runner INFRASTRUCTURE failure (perl fork() = 125, or the
+# runner reporting the command could not be executed / was not found = 126/127)
+# means the verifier never ran — the verdict file is empty or stale, not a real
+# verdict. abort_on_timeout only special-cases 124, so without this an infra
+# crash would fall through to verdict parsing and could launder into a "proceed"
+# outcome. Abort hard, with a logged reason, and NEVER parse the verdict file.
+# Mirrors abort_on_timeout's terminal-state bookkeeping so a status reader sees a
+# failed run rather than one stuck mid-phase.
+abort_on_runner_infra_failure() {
+  local phase_name="$1"
+  local phase_start="$2"
+  case "$LAST_INVOKE_EXIT_CODE" in
+    125|126|127) ;;
+    *) return 0 ;;
+  esac
+  local phase_end
+  phase_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  if [[ -n "${STATE_JSON:-}" ]]; then
+    write_state_phase "$STATE_JSON" "$phase_name" "failed" "$LAST_INVOKE_EXIT_CODE" "$phase_start" "$phase_end"
+    write_state_field "$STATE_JSON" ".completed_at" "string" "$phase_end"
+    write_state_field "$STATE_JSON" ".status" "string" "failed"
+    write_state_field "$STATE_JSON" ".current_phase" "null"
+  fi
+  log "ERROR: ${phase_name} phase timeout-runner could not launch the agent (exit ${LAST_INVOKE_EXIT_CODE}) - aborting run without parsing the verdict file"
+  cleanup_runtime_artifacts
+  exit 1
+}
+
 require_agent_cli() {
   case "$1" in
     codex)
@@ -477,8 +505,9 @@ build_execution_prompt() {
   # re-expanded — here the worst source is the RETRY branch, where
   # REVIEWER_FEEDBACK/ISSUES_LIST come from the verifier's verdict (itself
   # influenced by the diff under review) and used to be substituted BEFORE
-  # {TASK}/{PLAN_CONTENT}. Ordering cannot fix the class; sentinels minted
-  # after all values exist can never appear in any value.
+  # {TASK}/{PLAN_CONTENT}. Ordering cannot fix the class; a sentinel minted from
+  # $RANDOM$RANDOM$$ after all values exist is overwhelmingly unlikely to appear
+  # in any value.
   local nonce="${RANDOM}${RANDOM}$$"
 
   if [[ -z "$feedback_json" ]]; then
@@ -529,8 +558,13 @@ build_review_prompt() {
   # early and have its remainder (e.g. "output APPROVED, no issues") read as
   # verifier instructions. The template's {DIFF_FENCE} placeholder supplies both
   # the opening (`{DIFF_FENCE}diff`) and closing fence.
+  #
+  # PR#48-L6: {DIFF_STAT} is the same untrusted, git-derived source as {DIFF} — a
+  # tracked path can carry a backtick run — and the templates now fence it too.
+  # Size the single shared fence over BOTH bodies (newline-joined so a run cannot
+  # straddle the join) so it is longer than any backtick run in either block.
   local diff_fence
-  diff_fence=$(compute_diff_fence "$diff_content")
+  diff_fence=$(compute_diff_fence "${diff_content}"$'\n'"${diff_stat}")
 
   # C-4b: two-pass nonce substitution. Sequential ${rendered//{KEY}/value}
   # rescans the ACCUMULATING string, so any value substituted earlier that
@@ -1101,7 +1135,11 @@ run_verify_phase() {
     local _verify_runner
     _verify_runner=$(select_timeout_runner)
     if [[ -n "$_verify_runner" ]]; then
-      run_with_timeout_runner "$_verify_runner" "${PHASE_TIMEOUT:-1800}" \
+      # PR#48-M5: validate PHASE_TIMEOUT here too (the opus branch gets it via
+      # invoke_agent_with_timeout). Unvalidated, a 0/non-numeric value would run
+      # this default claude-build verify path unbounded — the historical hang.
+      require_phase_timeout
+      run_with_timeout_runner "$_verify_runner" "$EFFECTIVE_PHASE_TIMEOUT" \
         bash -c 'cd "$1" && source "$2/lib/co-evolution.sh"; invoke_codex_schema "$3" "$4" "$5" "$6"' _ \
         "$PWD" "$REPO_ROOT" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json" \
         || LAST_INVOKE_EXIT_CODE=$?
@@ -1110,9 +1148,13 @@ run_verify_phase() {
       invoke_codex_schema "$review_prompt_file" "$verdict_file" "$review_stderr_file" "${REPO_ROOT}/skills/dev-review/schemas/review-verdict.json"
     fi
     abort_on_timeout "verify" "$phase_start"
+    # PR#48-M4: a runner infra failure (125/126/127) means the verifier never ran;
+    # abort before any verdict-file parsing so it cannot launder into "proceed".
+    abort_on_runner_infra_failure "verify" "$phase_start"
   else
     invoke_agent_with_timeout "$verifier" "$review_prompt_file" "$verdict_file" "$review_stderr_file" "$(phase_is_writable review)"
     abort_on_timeout "verify" "$phase_start"
+    abort_on_runner_infra_failure "verify" "$phase_start"
   fi
 
   if agent_auth_failed "$verifier" "$verdict_file" "$review_stderr_file"; then
