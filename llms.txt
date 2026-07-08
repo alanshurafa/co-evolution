@@ -2,14 +2,16 @@
 
 > Tools for structured iterative refinement between AI agents. Two agents bounce
 > a shared markdown document back and forth using in-document disagreement
-> markers - `[CONTESTED]` and `[CLARIFY]` - that auto-expire after 2 passes,
-> guaranteeing bounded convergence. Agent-agnostic via CLI adapters.
+> markers - `[CONTESTED]` and `[CLARIFY]` - that auto-expire after 2 passes.
+> Convergence contract (v0.2): bounded passes with explicit terminal states —
+> converged, adjudicated, or stuck; non-convergence is signalled, never silent
+> or forced. Agent-agnostic via CLI adapters.
 
 ## Core Concepts
 
 - [README](https://github.com/alanshurafa/co-evolution/blob/master/README.md): overview of the default co-evolution runner, Claude Code skills, Agent Bouncer, and code runtime
 - [Co-Evolution SKILL.md](https://github.com/alanshurafa/co-evolution/blob/master/skills/co-evolution/SKILL.md): default Claude Code skill for questions, drafts, plans, specs, arguments, and document refinement
-- [Bounce protocol + marker semantics](https://github.com/alanshurafa/co-evolution/blob/master/agent-bouncer/README.md): `[CONTESTED]` / `[CLARIFY]` usage, 2-pass staleness rule, convergence guarantee
+- [Bounce protocol + marker semantics](https://github.com/alanshurafa/co-evolution/blob/master/agent-bouncer/README.md): `[CONTESTED]` / `[CLARIFY]` usage, 2-pass staleness rule, convergence semantics
 - [dev-review SKILL.md](https://github.com/alanshurafa/co-evolution/blob/master/skills/dev-review/SKILL.md): code-focused compose -> bounce -> execute -> verify workflow for real repo changes
 - [Codex standalone runtime](https://github.com/alanshurafa/co-evolution/blob/master/dev-review/codex/README.md): Bash runtime for the same code workflow outside Claude Code
 - [Eval harness](https://github.com/alanshurafa/co-evolution/blob/master/evals/README.md): YAML case files with 5-tier scoring
@@ -30,4 +32,4 @@ execution, diff verification, or a repo-change trail.
 ## Optional
 
 - [Project contract](https://github.com/alanshurafa/co-evolution/blob/master/.planning/PROJECT.md): project-level constraints and value statement
-- [v1.2 roadmap](https://github.com/alanshurafa/co-evolution/blob/master/.planning/ROADMAP.md): Protocol Evolution Loop - self-mutating harness with human review gate on proposed mutations
+- [Roadmap](https://github.com/alanshurafa/co-evolution/blob/master/.planning/ROADMAP.md): milestone history — v1.0-v1.2 shipped and tagged; v1.3-v1.4 merged to master, unreleased; v1.5 Build with Codex is the active milestone

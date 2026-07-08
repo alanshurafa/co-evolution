@@ -21,6 +21,8 @@ The paper exists as 7 drafted markdown sections in [`sections/`](sections/). It 
 
 **Trigger to revive the arxiv push:** explicit external request for a PDF preprint, an outreach reply mentioning citation, or a downstream tool wanting to reference the protocol formally. At that point the markdown is already in good shape; the remaining work is editorial + build infrastructure (which is preserved — see [Build pipeline](#build-pipeline) below).
 
+**Correctness note (2026-07-08):** the paper's central claim — "proves convergence in a bounded number of passes," formalized in [`sections/03-convergence.md`](sections/03-convergence.md) — is stated stronger than the current implementation supports. `BOUNCE-PROTOCOL.md` and the runners moved to a three-terminal-state contract (converged / adjudicated / stuck; non-convergence is signalled, not silent or forced) because the final-pass rule alone doesn't always produce a fully resolved document. Sections 02–03 and 05 need a revision pass to argue the weaker, accurate claim before any revival — this is now the first item in "Open items" below, ahead of the polish/citation work.
+
 ## Structure
 
 ```
@@ -70,11 +72,12 @@ The pipeline is committed but not exercised. We don't actively maintain it; revi
 
 These would re-activate as work to do, in priority order:
 
-1. **Trim pass** — every section is over its word budget; total cut needed is ~30-40% to hit a 4-6 page target
-2. **Citation resolution** — every `[CITATION-NEEDED]` in the section files needs a real reference; every entry in [`refs.bib`](refs.bib) needs verification (titles, authors, venues, DOIs)
-3. **Section 4 polish** — identify the commit hash where final-pass enforcement landed (`[HASH-NEEDED]` in §4.2); recompute convergence rate restricted to post-enforcement runs (`[HIGHER-FIGURE-NEEDED]`); write Appendix A sample bounce walkthrough
-4. **Author affiliation + ORCID** — fill in [`metadata.yaml`](metadata.yaml)
-5. **Confirm comparison table** — verify each row in §5.2 is still accurate at submission time
-6. **License decision** — paper text proposed under CC-BY 4.0; [BOUNCE-PROTOCOL.md](../../BOUNCE-PROTOCOL.md) stays CC0
+1. **Convergence claim revision (correctness, not polish)** — rewrite §§02-03 and 05 to argue the actual protocol contract (bounded passes, three explicit terminal states — converged / adjudicated / stuck — non-convergence signalled rather than silent or forced) instead of the current unconditional "always converges" proof sketch. Do this before any of the items below; the rest is wasted effort against a claim that will change.
+2. **Trim pass** — every section is over its word budget; total cut needed is ~30-40% to hit a 4-6 page target
+3. **Citation resolution** — every `[CITATION-NEEDED]` in the section files needs a real reference; every entry in [`refs.bib`](refs.bib) needs verification (titles, authors, venues, DOIs)
+4. **Section 4 polish** — identify the commit hash where final-pass enforcement landed (`[HASH-NEEDED]` in §4.2); recompute convergence rate restricted to post-enforcement runs (`[HIGHER-FIGURE-NEEDED]`); write Appendix A sample bounce walkthrough
+5. **Author affiliation + ORCID** — fill in [`metadata.yaml`](metadata.yaml)
+6. **Confirm comparison table** — verify each row in §5.2 is still accurate at submission time
+7. **License decision** — paper text proposed under CC-BY 4.0; [BOUNCE-PROTOCOL.md](../../BOUNCE-PROTOCOL.md) stays CC0
 
 None of these are active work items today.

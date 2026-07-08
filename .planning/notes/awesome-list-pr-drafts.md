@@ -21,7 +21,7 @@ Check last-merged-PR date on each list. Skip lists with no activity in the last 
 Likely section: "Workflows" or "Skills" (read their categorization — match the idiom).
 
 ```
-- [Co-Evolution](https://github.com/alanshurafa/co-evolution) — Structured iterative refinement between AI agents using expiring in-document disagreement markers (`[CONTESTED]` / `[CLARIFY]`). Ships a Claude Code skill `/dev-review` that runs a compose → bounce → execute → verify workflow with Codex CLI as the bounce partner; convergence guaranteed by protocol construction.
+- [Co-Evolution](https://github.com/alanshurafa/co-evolution) — Structured iterative refinement between AI agents using expiring in-document disagreement markers (`[CONTESTED]` / `[CLARIFY]`). Ships a Claude Code skill `/dev-review` that runs a compose → bounce → execute → verify workflow with Codex CLI as the bounce partner; every run ends converged, adjudicated, or explicitly flagged stuck — never silently.
 ```
 
 ### awesome-ai-agents

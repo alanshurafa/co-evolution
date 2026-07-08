@@ -7,7 +7,7 @@ This repo implements the **Bounce Protocol** — a convention for structured ite
 - **`[CONTESTED]`** — appears on its own line below text you disagree with. The note states the disagreement and proposes a concrete alternative. If you see one in a document you are editing, either resolve it (delete it after applying its alternative or rebutting it) or leave it for the next agent.
 - **`[CLARIFY]`** — appears on its own line below ambiguous text. The note offers two interpretations or asks a question with a finite answer space. If you can disambiguate, do so and delete the marker.
 
-Both markers **auto-expire after 2 passes**: on the final pass of any bounce, you must resolve every remaining marker and may not introduce new ones. This rule guarantees convergence.
+Both markers **auto-expire after 2 passes**: on the final pass of any bounce, you must resolve every remaining marker and may not introduce new ones. Convergence contract (v0.2): bounded passes with explicit terminal states — converged, adjudicated, or stuck; non-convergence is signalled, never silent or forced.
 
 Full spec: [`BOUNCE-PROTOCOL.md`](BOUNCE-PROTOCOL.md). Reference implementation: [`agent-bouncer/`](agent-bouncer/).
 
@@ -39,16 +39,16 @@ The sections below are auto-generated from `.planning/` artifacts. They describe
 
 **Co-Evolution**
 
-Co-Evolution is a tooling repo for structured iterative refinement between AI agents and humans. It already ships a standalone Agent Bouncer and a Claude Code `/dev-review` skill, and the current initiative is to add a standalone Codex runtime for the same compose-bounce-execute-verify workflow.
+Co-Evolution is a tooling repo for structured iterative refinement between AI agents and humans. It ships a standalone Agent Bouncer, a Claude Code `/dev-review` skill, a standalone Codex Bash runtime with parity to the PowerShell reference implementation, a portable eval harness (`evals/` + `schemas/`), and a read-only reference copy of the PS runtime at `runners/codex-ps/`. The repo splits into a stable default runner (`co-evolve`, `dev-review`) that every user invokes, and an opt-in `lab/` subdirectory (reached via `--lab <mode>`) where experimental machinery — including the Protocol Evolution Loop, which proposes mutations to the bouncer itself — lives.
 
 **Core Value:** Cross-AI workflows can be executed from local CLIs with clear artifact trails, reusable prompt contracts, and enough control to course-correct between steps.
 
 ### Constraints
 
-- **Tech stack**: Bash-first runtime plus Markdown templates — existing product surface should stay shell-native
-- **Compatibility**: Preserve current Agent Bouncer behavior and artifact naming while extracting helpers
+- **Tech stack**: Bash-first runtime plus Markdown templates — the default runner surface stays shell-native; `lab/` may experiment with other stacks, but the promotion target is Bash
+- **Byte-parity for the default runner**: lab machinery (including PEL mutations) must stay invisible to callers who never invoke `--lab <mode>` — no new visible flags or behavior changes on default runs
 - **Shared assets**: Prompt templates and schema live under `skills/dev-review/` so all runtimes share one contract
-- **Execution style**: Implement and commit in visible steps aligned with the external plan so progress is easy to inspect
+- **Human review is the backstop**: lab-proposed mutations (e.g. PEL) merge only through ordinary human PR review — no auto-merge paths
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:codebase/STACK.md -->
@@ -161,16 +161,11 @@ No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skill
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+## GSD Workflow Enforcement (dormant)
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+GSD's skill surface was archived on 2026-06-10 while GSD is dormant for this repo. `/gsd-quick`, `/gsd-debug`, `/gsd-execute-phase`, and the rest of the GSD command surface are not currently installed — running `/gsd-update` reinstalls the surface, then `gsd:new-project` if a fresh multi-session project needs it.
 
-Use these entry points:
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+While GSD is dormant, direct repo edits with Edit, Write, and other file-changing tools are the normal path; no GSD command is required first. Default to orchestrator-first execution per the root `CLAUDE.md`: the bounce protocol (`co-evolve-bouncer.sh` / `skills/co-evolution/`) for documents, `skills/dev-review/` or `/codex-build` for code changes.
 <!-- GSD:workflow-end -->
 
 
