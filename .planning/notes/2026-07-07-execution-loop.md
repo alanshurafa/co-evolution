@@ -39,8 +39,8 @@ Loop mechanics: background agents re-invoke the orchestrator on completion (no p
 
 | Phase | Status | Branch / PR | Verify (suite / adv / codex / done-means) | Notes |
 |-------|--------|-------------|-------------------------------------------|-------|
-| A — Correctness closure | PR #47 open, suite 32/32, awaiting CI → merge | claude/nervous-hodgkin-bcf03d → PR #47 | ✓32/32 / ✓(F1 fixed) / ✓(H1,H2,L1 fixed) / ✓ | Cross-vendor review earned its keep: codex found the partial-failure→converged gap (H1) and both vendors independently flagged the bare-banner auth gap (H2→`output_is_auth_failure` in lib, 3 call sites). Claude reviewer caught the Scenario-F grep regression (F1) + missing guard scenario (→Scenario G). Bonus find-along: bounce-scorer-verification.sh had a Windows jq-CRLF bug (5/7→7/7, fixed) before wiring into run-all (C-5). Accepted residual: none remaining — F2/H2 fixed. Sims: auth-gate 28/28, marker-lifecycle 41/41 (byte-parity intact), audit-hardening 18/18, worktree-mgmt green, reliability 17/17. |
-| B — Robustness/injection | pending | | | |
+| A — Correctness closure | DONE — merged f295e8b (PR #47) | claude/nervous-hodgkin-bcf03d → PR #47 | ✓32/32 / ✓(F1 fixed) / ✓(H1,H2,L1 fixed) / ✓ | Cross-vendor review earned its keep: codex found the partial-failure→converged gap (H1) and both vendors independently flagged the bare-banner auth gap (H2→`output_is_auth_failure` in lib, 3 call sites). Claude reviewer caught the Scenario-F grep regression (F1) + missing guard scenario (→Scenario G). Bonus find-along: bounce-scorer-verification.sh had a Windows jq-CRLF bug (5/7→7/7, fixed) before wiring into run-all (C-5). Accepted residual: none remaining — F2/H2 fixed. Sims: auth-gate 28/28, marker-lifecycle 41/41 (byte-parity intact), audit-hardening 18/18, worktree-mgmt green, reliability 17/17. |
+| B — Robustness/injection | IN PROGRESS — build agent launched | claude/imp-b-robustness | – / – / – / – | C-3 shared timeout-runner helper; C-4 long-fence + untrusted-data framing |
 | C — Protocol v0.2 | pending | | | includes docs sweep + STACK.md re-check |
 | D — Signal quality | pending | | | can start once C's marker changes are stable |
 | E — Measurement | pending | | | panel-labeled gold set; spend approved |
@@ -57,6 +57,7 @@ Loop mechanics: background agents re-invoke the orchestrator on completion (no p
 | Verifier canary catch rate (n=3) | – | | E.4 |
 | A/B: cross- vs same-vendor (pre-registered criterion) | – | | E.3 |
 | Master suite trend | baseline: 27 sims + scorer gate green @ 05d151e | 2026-07-07 | V-6 |
+| Master suite trend | 32/32 suites (local) + 6/6 CI checks 3-OS @ f295e8b (Phase A) | 2026-07-07 | V-6 |
 
 ## Handoff notes
 
