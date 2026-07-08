@@ -26,6 +26,8 @@ Repeat until GOAL or a hard stop:
 
 Loop mechanics: background agents re-invoke the orchestrator on completion (no polling); a ScheduleWakeup heartbeat (~25 min) survives hangs. This file is the single source of truth — sessions are disposable, the loop is not.
 
+Conventions adopted 2026-07-08: (1) progress/measurement updates to this file are committed directly to master (docs-only commits) so any fresh session reads current truth — never onto phase branches, where they fork (the Phase B row briefly diverged between master and PR #48's branch). (2) If the codex-guard daily cap trips during a codex-heavy phase (esp. E), the loop batches remaining codex work and schedules a next-day wakeup instead of erroring or downgrading the seat. (3) Phase D starts only after C merges — D.1/D.2/D.3/D.5 all touch the marker syntax/templates C.2 rewrites; the plan's C ∥ D allowance underestimated that coupling (only D.4 is truly independent, not worth a lone PR cycle).
+
 ## Verification additions (beyond the plan's per-phase done-means)
 
 - **V-1 Cross-vendor PR review** on every phase (loop step 3c) — added because the audit's headline defect (C-1) was a single-reviewer blind spot on a "finished" fix.
@@ -40,7 +42,7 @@ Loop mechanics: background agents re-invoke the orchestrator on completion (no p
 | Phase | Status | Branch / PR | Verify (suite / adv / codex / done-means) | Notes |
 |-------|--------|-------------|-------------------------------------------|-------|
 | A — Correctness closure | DONE — merged f295e8b (PR #47) | claude/nervous-hodgkin-bcf03d → PR #47 | ✓32/32 / ✓(F1 fixed) / ✓(H1,H2,L1 fixed) / ✓ | Cross-vendor review earned its keep: codex found the partial-failure→converged gap (H1) and both vendors independently flagged the bare-banner auth gap (H2→`output_is_auth_failure` in lib, 3 call sites). Claude reviewer caught the Scenario-F grep regression (F1) + missing guard scenario (→Scenario G). Bonus find-along: bounce-scorer-verification.sh had a Windows jq-CRLF bug (5/7→7/7, fixed) before wiring into run-all (C-5). Accepted residual: none remaining — F2/H2 fixed. Sims: auth-gate 28/28, marker-lifecycle 41/41 (byte-parity intact), audit-hardening 18/18, worktree-mgmt green, reliability 17/17. |
-| B — Robustness/injection | IN PROGRESS — build agent launched | claude/imp-b-robustness | – / – / – / – | C-3 shared timeout-runner helper; C-4 long-fence + untrusted-data framing |
+| B — Robustness/injection | DONE — merged 360c7bf (PR #48) | claude/imp-b-robustness → PR #48 | ✓CI-3OS+32/32 / ✓(M1 fixed) / ✓(REJECT→APPROVE) / ✓7/7 | Dual review earned its keep again: codex REJECTed over the new perl timeout leg (M2 grandchildren survive TERM, M3 signal-death reads as exit 0); Claude adversarial independently measured M1 (compute_diff_fence O(N²): 20k backticks = 31.6s) + found {DIFF_STAT} unfenced and PHASE_TIMEOUT=0 disabling the bound. Fix b4fbeef: O(N) awk fence (50k in 130ms), setpgrp+group TERM→KILL, 128+signum, abort on runner rc 125/126/127, require_phase_timeout, stat fenced+framed. Empirical find: macos-latest runners ship NEITHER timeout nor gtimeout — C3a/b is a loud counted SKIP there; perl leg is that platform's production path (covered by C3c/d). reliability sim 27→35 scenarios. Codex re-verdict APPROVE (static-only; runtime verified locally). |
 | C — Protocol v0.2 | pending | | | includes docs sweep + STACK.md re-check |
 | D — Signal quality | pending | | | can start once C's marker changes are stable |
 | E — Measurement | pending | | | panel-labeled gold set; spend approved |
@@ -58,6 +60,7 @@ Loop mechanics: background agents re-invoke the orchestrator on completion (no p
 | A/B: cross- vs same-vendor (pre-registered criterion) | – | | E.3 |
 | Master suite trend | baseline: 27 sims + scorer gate green @ 05d151e | 2026-07-07 | V-6 |
 | Master suite trend | 32/32 suites (local) + 6/6 CI checks 3-OS @ f295e8b (Phase A) | 2026-07-07 | V-6 |
+| Master suite trend | 32/32 suites (branch-local, 1097s) + 6/6 CI checks 3-OS @ 360c7bf (Phase B); master regression re-run pending | 2026-07-08 | V-6 |
 
 ## Handoff notes
 
