@@ -339,17 +339,21 @@ fi
 # (b) a hanging codex stub reached through the exact verify command shape is
 # killed. Hermetic: a `command -v` shadow hides the higher-priority runner(s)
 # without stripping PATH (PATH-stripping breaks msys DLL resolution for the
-# nested bash on Git Bash); a prepended stub dir supplies the hanging codex and
-# a gtimeout wrapper that delegates to the real timeout.
+# nested bash on Git Bash); a prepended stub dir supplies the hanging codex and,
+# where needed, a gtimeout wrapper. macOS runners ship a real `gtimeout` (from
+# coreutils) but no bare `timeout` at all, so the gtimeout leg is backed by
+# whichever real GNU runner is actually on PATH: the real `gtimeout` directly
+# when present, else a wrapper that delegates to the real `timeout`.
 # ---------------------------------------------------------------------------
 REAL_BASH=$(command -v bash)
 REAL_TIMEOUT=$(command -v timeout || true)
+REAL_GTIMEOUT=$(command -v gtimeout || true)
 REAL_PERL=$(command -v perl || true)
 LIB_PATH="$REPO_ROOT/lib/co-evolution.sh"
 c3_prompt="$TEST_DIR/c3-prompt.md"; printf 'verify this\n' > "$c3_prompt"
 c3_schema="$REPO_ROOT/skills/dev-review/schemas/review-verdict.json"
 
-# Stub dir (prepended to a full PATH): hanging codex + gtimeout->timeout wrapper.
+# Stub dir (prepended to a full PATH): hanging codex + (maybe) gtimeout wrapper.
 c3_stub="$TEST_DIR/c3-stub"; mkdir -p "$c3_stub"
 cat > "$c3_stub/codex" <<'STUB'
 #!/usr/bin/env bash
@@ -357,13 +361,17 @@ cat > "$c3_stub/codex" <<'STUB'
 sleep 30
 STUB
 chmod +x "$c3_stub/codex"
-if [[ -n "$REAL_TIMEOUT" ]]; then
+if [[ -z "$REAL_GTIMEOUT" && -n "$REAL_TIMEOUT" ]]; then
+  # No native gtimeout on this platform (Linux, Windows/Git Bash): fabricate one
+  # in the stub dir so the gtimeout leg is exercised end-to-end via a real timer.
   cat > "$c3_stub/gtimeout" <<STUB
 #!/usr/bin/env bash
 exec "$REAL_TIMEOUT" "\$@"
 STUB
   chmod +x "$c3_stub/gtimeout"
 fi
+# else: real gtimeout already resolves via PATH (e.g. macOS coreutils) since we
+# deliberately don't shadow it in c3_stub — nothing to fabricate.
 
 # Probe: hide the named runner(s) from select_timeout_runner via a `command -v`
 # shadow (same idiom as the jq-absent tests), then drive invoke_codex_schema
@@ -425,12 +433,17 @@ c3_expect_kill() { # $1 label, $2 hide-list, $3 expect_runner
   fi
 }
 
-# gtimeout leg: hide GNU timeout; the stub gtimeout (→ real timeout) enforces.
-if [[ -n "$REAL_TIMEOUT" ]]; then
+# gtimeout leg: hide GNU timeout; either the real gtimeout (macOS coreutils) or
+# the stub gtimeout (→ real timeout, fabricated above) enforces.
+if [[ -n "$REAL_TIMEOUT" || -n "$REAL_GTIMEOUT" ]]; then
   c3_expect_select "C3a: select falls back to gtimeout when timeout hidden" timeout gtimeout
   c3_expect_kill   "C3b: codex verify bounded via gtimeout fallback"        timeout gtimeout
 else
-  TOTAL=$((TOTAL + 1)); fail "C3a/b: no real timeout(1) to back the gtimeout stub — cannot test"
+  # Every supported CI platform (Linux: timeout, macOS: gtimeout, Git Bash:
+  # timeout) ships at least one real GNU runner, so this should never fire in
+  # CI; keep it a loud FAIL rather than a SKIP so a genuine environment
+  # regression (e.g. a stripped-down container) is never silently swallowed.
+  TOTAL=$((TOTAL + 1)); fail "C3a/b: no real timeout(1) or gtimeout(1) found — cannot test"
 fi
 
 # perl leg: hide both timeout and gtimeout; the perl-alarm wrapper enforces.
