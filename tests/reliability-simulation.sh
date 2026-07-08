@@ -27,9 +27,15 @@ source "$REPO_ROOT/lib/co-evolution.sh"
 
 TOTAL=0
 PASSED=0
+SKIPPED=0
 
 pass() { printf 'PASS: %s\n' "$1"; PASSED=$((PASSED + 1)); }
 fail() { printf 'FAIL: %s\n' "$1"; }
+# A SKIP is a counted-but-not-failed scenario (platform can't exercise the path).
+# It increments TOTAL like pass/fail; the final reconciliation treats
+# PASSED+SKIPPED==TOTAL as success so a legitimately-unavailable leg keeps the
+# suite green instead of going red (e.g. macos-latest ships no GNU timeout).
+skip() { printf 'SKIP: %s\n' "$1"; SKIPPED=$((SKIPPED + 1)); }
 
 # ---------------------------------------------------------------------------
 # R-1/R-2: validate_agent_artifact
@@ -439,11 +445,14 @@ if [[ -n "$REAL_TIMEOUT" || -n "$REAL_GTIMEOUT" ]]; then
   c3_expect_select "C3a: select falls back to gtimeout when timeout hidden" timeout gtimeout
   c3_expect_kill   "C3b: codex verify bounded via gtimeout fallback"        timeout gtimeout
 else
-  # Every supported CI platform (Linux: timeout, macOS: gtimeout, Git Bash:
-  # timeout) ships at least one real GNU runner, so this should never fire in
-  # CI; keep it a loud FAIL rather than a SKIP so a genuine environment
-  # regression (e.g. a stripped-down container) is never silently swallowed.
-  TOTAL=$((TOTAL + 1)); fail "C3a/b: no real timeout(1) or gtimeout(1) found — cannot test"
+  # macos-latest ships NEITHER timeout(1) NOR gtimeout(1) (coreutils is not
+  # preinstalled — confirmed by CI run 28950870947). On such a platform the
+  # perl-alarm leg is the actual production timeout path, and C3c/C3d below
+  # exercise it end-to-end. So this is a loud, COUNTED skip (not a FAIL that
+  # would keep macOS CI permanently red, and not a silent pass): the GNU legs
+  # simply do not exist here to test.
+  TOTAL=$((TOTAL + 1))
+  skip "C3a/b: no GNU timeout(1)/gtimeout(1) on this platform (e.g. macos-latest) — the production timeout path here is the perl leg, covered by C3c/C3d"
 fi
 
 # perl leg: hide both timeout and gtimeout; the perl-alarm wrapper enforces.
@@ -603,10 +612,146 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# PR#48-M1: compute_diff_fence is a single awk pass, not the old grow-the-probe
+# loop that re-scanned the whole diff per added backtick (O(N^2): 31.6s at 20k
+# backticks, >2min at 60k). A ~50k-backtick run must finish well under 2s and
+# still return the correct fence length (longest_run + 1).
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+m1_run=$(printf '%*s' 50000 '' | tr ' ' '`')
+m1_start=$(date +%s)
+m1_fence=$(compute_diff_fence "$m1_run")
+m1_elapsed=$(( $(date +%s) - m1_start ))
+if [[ "${#m1_fence}" -eq 50001 && "$m1_elapsed" -lt 2 ]]; then
+  pass "M1: compute_diff_fence handles a 50k-backtick run in ${m1_elapsed}s (<2s), fence=50001"
+else
+  fail "M1: fence=${#m1_fence} (want 50001) in ${m1_elapsed}s (want <2s)"
+fi
 
-printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"
-if (( PASSED != TOTAL )); then
-  printf ' (%d failed)\n' "$((TOTAL - PASSED))"
+# ---------------------------------------------------------------------------
+# PR#48-M3: run_with_timeout_runner's perl leg must propagate a child killed by a
+# signal OUTSIDE the alarm path as a non-zero exit (128+signum), not the old
+# `($? >> 8) & 0xff` that reported 0 for a signal death (a crash laundered into
+# success). Perl-leg only; SKIP loudly where perl/fork is unavailable — that
+# platform's real runner is GNU timeout, exercised by C3a-d above.
+# ---------------------------------------------------------------------------
+if perl -e 'my $p=fork(); exit(defined $p ? 0 : 1)' >/dev/null 2>&1; then
+  TOTAL=$((TOTAL + 1))
+  m3_rc=0
+  run_with_timeout_runner perl 30 bash -c 'kill -TERM $$' >/dev/null 2>&1 || m3_rc=$?
+  if [[ "$m3_rc" -ge 128 ]]; then
+    pass "M3: perl leg surfaces a non-alarm signal death as rc $m3_rc (128+signum), not 0"
+  else
+    fail "M3: signal death yielded rc=$m3_rc (want >=128) — laundered into success"
+  fi
+else
+  TOTAL=$((TOTAL + 1))
+  skip "M3: perl fork() unavailable here — signal-propagation leg not testable"
+fi
+
+# ---------------------------------------------------------------------------
+# PR#48-M2: the perl leg setpgrp()s the child and, on timeout, kills the whole
+# PROCESS GROUP (TERM, ~5s grace, then KILL). A `bash -c` wrapper that spawns the
+# real hung agent as a grandchild must therefore die too, instead of being
+# orphaned by a kill that reached only the direct child. Perl-leg only; SKIP
+# loudly where fork/setpgrp/process-groups are unsupported.
+# ---------------------------------------------------------------------------
+if perl -e 'my $p=fork(); if(!defined $p){exit 1} if($p==0){ eval { setpgrp(0,0) }; exit($@ ? 3 : 0) } waitpid($p,0); exit($? >> 8)' >/dev/null 2>&1; then
+  TOTAL=$((TOTAL + 1))
+  m2_pidfile="$TEST_DIR/m2-grandchild.pid"; : > "$m2_pidfile"
+  m2_rc=0
+  # Grandchild = the backgrounded `sleep 60`; its PID is recorded, then the wait
+  # keeps the child (bash) alive until the 1s timer fires and kills the group.
+  run_with_timeout_runner perl 1 \
+    bash -c 'sleep 60 & echo $! > "'"$m2_pidfile"'"; wait' >/dev/null 2>&1 || m2_rc=$?
+  m2_pid=$(cat "$m2_pidfile" 2>/dev/null || true)
+  sleep 1  # let the KILL land before probing
+  m2_alive=no
+  [[ -n "$m2_pid" ]] && kill -0 "$m2_pid" 2>/dev/null && m2_alive=yes
+  if [[ "$m2_rc" -eq 124 && -n "$m2_pid" && "$m2_alive" == no ]]; then
+    pass "M2: perl leg timeout kills the grandchild too (pid $m2_pid gone, rc 124)"
+  else
+    [[ "$m2_alive" == yes ]] && kill -9 "$m2_pid" 2>/dev/null || true
+    fail "M2: grandchild containment failed (rc=$m2_rc pid=$m2_pid alive=$m2_alive)"
+  fi
+else
+  TOTAL=$((TOTAL + 1))
+  skip "M2: perl fork/setpgrp unavailable here — grandchild-containment leg not testable"
+fi
+
+# ---------------------------------------------------------------------------
+# PR#48-M5: PHASE_TIMEOUT is validated by the shared require_phase_timeout, so a
+# 0 / non-numeric / negative value fails fast instead of silently disabling the
+# bound (perl `alarm 0` never fires; GNU `timeout 0` runs unbounded). An unset or
+# empty value keeps defaulting to 1800.
+# ---------------------------------------------------------------------------
+TOTAL=$((TOTAL + 1))
+m5_ok=true
+for bad in 0 abc -5 3.5 12x; do
+  rc=0
+  ( PHASE_TIMEOUT="$bad" require_phase_timeout ) >/dev/null 2>&1 || rc=$?
+  [[ "$rc" -ne 0 ]] || { m5_ok=false; break; }
+done
+# A positive integer passes and is exported into EFFECTIVE_PHASE_TIMEOUT.
+rc=0
+( PHASE_TIMEOUT=42 require_phase_timeout && [[ "$EFFECTIVE_PHASE_TIMEOUT" == 42 ]] ) >/dev/null 2>&1 || rc=$?
+[[ "$rc" -eq 0 ]] || m5_ok=false
+# Unset defaults to 1800 (must NOT die).
+rc=0
+( unset PHASE_TIMEOUT; require_phase_timeout && [[ "$EFFECTIVE_PHASE_TIMEOUT" == 1800 ]] ) >/dev/null 2>&1 || rc=$?
+[[ "$rc" -eq 0 ]] || m5_ok=false
+if [[ "$m5_ok" == true ]]; then
+  pass "M5: require_phase_timeout rejects 0/non-numeric/negative, accepts a positive int, defaults when unset"
+else
+  fail "M5: PHASE_TIMEOUT validation gap"
+fi
+
+# M5b: the verify path itself (not just the shared helper) must route through the
+# validator — otherwise the codex-verify branch could still use PHASE_TIMEOUT raw.
+TOTAL=$((TOTAL + 1))
+m5_verify_fn=$(sed -n '/^run_verify_phase() {/,/^}$/p' "$REPO_ROOT/dev-review/codex/dev-review.sh")
+if printf '%s' "$m5_verify_fn" | grep -q 'require_phase_timeout'; then
+  pass "M5b: run_verify_phase validates PHASE_TIMEOUT via require_phase_timeout"
+else
+  fail "M5b: run_verify_phase does not call require_phase_timeout — raw PHASE_TIMEOUT risk"
+fi
+
+# ---------------------------------------------------------------------------
+# PR#48-L6: {DIFF_STAT} is the same untrusted, git-derived source as {DIFF} (a
+# tracked path can carry a backtick run) and is now wrapped in the shared dynamic
+# fence, sized over BOTH bodies. A --stat line whose filename contains a backtick
+# run must sit inside a fenced block whose fence is longer than that run, so it
+# cannot break out and smuggle instructions — in BOTH templates.
+# ---------------------------------------------------------------------------
+l6_diff=$(printf '%s\n' 'diff --git a/x.c b/x.c' '@@ -1 +1 @@' '-int a = 0;' '+int a = 1;')
+l6_stat=$(printf '%s\n' ' `````weird.md | 5 +++++' ' 1 file changed, 5 insertions(+)')
+for v in codex opus; do
+  TOTAL=$((TOTAL + 1))
+  fence=$(compute_diff_fence "${l6_diff}"$'\n'"${l6_stat}")
+  pf="$TEST_DIR/l6-$v.txt"
+  build_review_prompt "$v" "PLAN BODY" "$l6_diff" "$l6_stat" > "$pf"
+  stat_ln=$(grep -n 'weird.md' "$pf" | head -1 | cut -d: -f1 || true)
+  # nearest bare-fence line before and after the stat content line
+  before=$(awk -v f="$fence" -v s="${stat_ln:-0}" 'NR<s && $0==f {b=NR} END{print b+0}' "$pf")
+  after=$(awk -v f="$fence" -v s="${stat_ln:-0}" 'NR>s && $0==f {print NR; exit}' "$pf")
+  if [[ "${#fence}" -gt 5 && -n "$stat_ln" && "$before" -gt 0 && -n "$after" \
+        && "$before" -lt "$stat_ln" && "$stat_ln" -lt "$after" ]]; then
+    pass "L6-$v: backtick-run --stat filename stays inside the stat fence (fence=${#fence} > run=5)"
+  else
+    fail "L6-$v: fence=${#fence} stat_ln=$stat_ln before=$before after=$after"
+  fi
+done
+
+# ---------------------------------------------------------------------------
+
+FAILED_COUNT=$(( TOTAL - PASSED - SKIPPED ))
+if (( SKIPPED > 0 )); then
+  printf '%d/%d scenarios passed (%d skipped)' "$PASSED" "$TOTAL" "$SKIPPED"
+else
+  printf '%d/%d scenarios passed' "$PASSED" "$TOTAL"
+fi
+if (( FAILED_COUNT > 0 )); then
+  printf ' (%d failed)\n' "$FAILED_COUNT"
   exit 1
 fi
 printf '\n'
