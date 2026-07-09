@@ -1369,6 +1369,10 @@ init_bounce_state() {
   local input_type="${5:-}"
   local baseline_file="${6:?baseline file required}"
   local final_file="${7:?final file required}"
+  # Optional: which reviewer persona shaped the critique passes
+  # (light|adversarial|lens). Additive to bounce-state/1.1 — callers that
+  # omit it (agent-bouncer) default to "light", the pre-persona behavior.
+  local reviewer_persona="${8:-light}"
 
   if ! command -v jq >/dev/null 2>&1; then
     log "WARNING: jq unavailable — bounce state.json will not be written (scorer falls back to artifact parsing)"
@@ -1382,6 +1386,7 @@ init_bounce_state() {
     --arg input_type "$input_type" \
     --arg baseline "$baseline_file" \
     --arg final "$final_file" \
+    --arg persona "$reviewer_persona" \
     --arg now "$(bounce_state_now_utc)" \
     '{
       schema: "bounce-state/1.1",
@@ -1391,6 +1396,7 @@ init_bounce_state() {
       input_type: $input_type,
       baseline_file: $baseline,
       final_file: $final,
+      reviewer_persona: $persona,
       status: "running",
       convergence_status: null,
       started_at: $now,

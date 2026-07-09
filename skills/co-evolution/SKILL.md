@@ -6,7 +6,8 @@ description: >
   using [CONTESTED]/[CLARIFY] markers until it converges. Triggers on
   "co-evolution", "co-evolve", "co evolve", "bounce", "bounce document",
   "agent bouncer", "refine with another agent", "cross-AI refinement",
-  "stress test this", and "have two AIs review this".
+  "stress test this", "have two AIs review this", "adversarial review",
+  and "red team this".
 allowed-tools: Bash, Read, Write, Glob, AskUserQuestion
 ---
 
@@ -77,6 +78,20 @@ repo=$(resolve_co_evolution_repo) || exit 1
 bash -lc 'cd "$1" && bash ./co-evolve-bouncer.sh --vanilla --chain "$2"' bash "$repo" "argument or decision to stress test"
 ```
 
+Run an adversarial review (structured falsification persona — premises,
+assumptions, decisions, complexity, alternatives). Cross-AI by default; add
+`--agents claude,claude` for an internal same-model review when the user wants
+no Codex involvement:
+
+```bash
+repo=$(resolve_co_evolution_repo) || exit 1
+bash -lc 'cd "$1" && bash ./co-evolve-bouncer.sh --vanilla --adversarial --bounce-only "$2"' bash "$repo" "path/to/document.md"
+bash -lc 'cd "$1" && bash ./co-evolve-bouncer.sh --vanilla --adversarial --agents claude,claude --bounce-only "$2"' bash "$repo" "path/to/document.md"
+```
+
+On dense documents pair `--adversarial` with `--chain` or `--bounces 3` — an
+aggressive critique pass can leave markers open at the default 2 passes.
+
 ## Routing
 
 | User intent | Command |
@@ -84,6 +99,8 @@ bash -lc 'cd "$1" && bash ./co-evolve-bouncer.sh --vanilla --chain "$2"' bash "$
 | General question, idea, strategy, or draft | `bash ./co-evolve-bouncer.sh --vanilla "input"` |
 | Existing markdown file needs refinement | `bash ./co-evolve-bouncer.sh --vanilla --bounce-only <file>` |
 | High-stakes argument or decision needs adversarial passes | `bash ./co-evolve-bouncer.sh --vanilla --chain "input"` |
+| Adversarial review of a document (cross-AI bounce) | `bash ./co-evolve-bouncer.sh --vanilla --adversarial --bounce-only <file>` |
+| Internal adversarial review, same model, no Codex | `bash ./co-evolve-bouncer.sh --vanilla --adversarial --agents claude,claude --bounce-only <file>` |
 | Real repo change with code execution | `/dev-review` or `dev-review/codex/dev-review.sh` |
 
 ## Output
