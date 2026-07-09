@@ -37,7 +37,15 @@ document, or run staged critique -> defend -> tighten passes.
 bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this argument?"
 bash ./co-evolve-bouncer.sh --vanilla --bounce-only docs/plan.md
 bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
+bash ./co-evolve-bouncer.sh --vanilla --adversarial --bounce-only docs/plan.md
+bash ./co-evolve-bouncer.sh --vanilla --adversarial --agents claude,claude "Same-model adversarial review"
 ```
+
+`--adversarial` swaps the reviewer's 1-line role for a structured falsification
+persona (vendored from the compound-engineering adversarial-document-reviewer;
+templates/co-evolve/role-reviewer-adversarial.md). Cross-AI by default; with
+`--agents claude,claude` it is an internal same-model adversarial review. Pair
+with `--chain` or `--bounces 3` on dense documents (marker-flooding risk).
 
 ### Agent Bouncer (`agent-bouncer/`)
 

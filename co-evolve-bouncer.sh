@@ -11,6 +11,10 @@ EXOCORTEX_QUERY=""
 CONTEXT_FILE=""
 AUDIENCE=""
 LENS=""
+# Adversarial reviewer persona (falsification method, vendored from the
+# compound-engineering adversarial-document-reviewer). Default off so runs
+# without the flag are byte-identical to the pre-persona bouncer.
+ADVERSARIAL=false
 CHAIN=false
 MAX_BOUNCES=2
 AGENT_A="claude"
@@ -67,7 +71,9 @@ PROTOCOL_TEMPLATE="$SCRIPT_DIR/agent-bouncer/templates/bounce-protocol.md"
 
 # Validate templates exist
 for _tmpl in "$TEMPLATE_DIR/role-reviewer-light.md" "$TEMPLATE_DIR/role-composer-light.md" \
+             "$TEMPLATE_DIR/role-reviewer-adversarial.md" \
              "$TEMPLATE_DIR/chain-critique.md" "$TEMPLATE_DIR/chain-defend.md" \
+             "$TEMPLATE_DIR/chain-critique-adversarial.md" \
              "$TEMPLATE_DIR/chain-tighten.md" "$TEMPLATE_DIR/adjudicate.md" \
              "$PROTOCOL_TEMPLATE"; do
   [[ -f "$_tmpl" ]] || die "Missing template: $_tmpl"
@@ -89,6 +95,10 @@ Options:
   --context FILE     Include a file as background context (not bounced; one file, concatenate if needed)
   --audience WHO     Prime agents for a specific reader
   --lens NAME        Use a named adversarial lens (replaces auto-shaped roles)
+  --adversarial      Structured adversarial reviewer persona (falsification
+                     method: premises, assumptions, decisions, complexity,
+                     alternatives). Composes with --lens (lens becomes the
+                     focus) and --chain (swaps the critique stage).
   --chain            Use staged passes: critique -> defend -> tighten
   --bounces N        Max bounce passes (default: 2, ignored with --chain)
   --agents A,B       Agent pair (default: claude,codex)
@@ -143,6 +153,7 @@ while [[ $# -gt 0 ]]; do
     --context) CONTEXT_FILE="$2"; shift 2 ;;
     --audience) AUDIENCE="$2"; shift 2 ;;
     --lens) LENS="$2"; shift 2 ;;
+    --adversarial) ADVERSARIAL=true; shift ;;
     --chain) CHAIN=true; shift ;;
     --bounces)
       MAX_BOUNCES="$2"
@@ -460,7 +471,16 @@ fi
 # improve the composed draft, so that draft is the comparison baseline.
 BASELINE_FILE="original-input.md"
 [[ "$RUN_MODE" == "compose" ]] && BASELINE_FILE="compose-output.md"
-init_bounce_state "$STATE_FILE" "co-evolve-bouncer.sh" "$RUN_MODE" "$TASK" "$INPUT_TYPE" "$BASELINE_FILE" "working.md"
+# Reviewer persona is orthogonal to RUN_MODE (the scorer's baseline logic keys
+# off mode, so persona must never become a mode value). Precedence mirrors
+# build_reviewer_preamble: adversarial > lens > light.
+REVIEWER_PERSONA="light"
+if [[ "$ADVERSARIAL" == "true" ]]; then
+  REVIEWER_PERSONA="adversarial"
+elif [[ -n "$LENS" ]]; then
+  REVIEWER_PERSONA="lens"
+fi
+init_bounce_state "$STATE_FILE" "co-evolve-bouncer.sh" "$RUN_MODE" "$TASK" "$INPUT_TYPE" "$BASELINE_FILE" "working.md" "$REVIEWER_PERSONA"
 
 # Any fatal exit (die, set -e, auth abort) marks the run aborted so the
 # scorer never issues a quality verdict for a half-finished run.
@@ -548,7 +568,22 @@ fi
 
 # --- Role Preamble Generation ---
 build_reviewer_preamble() {
-  if [[ -n "$LENS" ]]; then
+  # --adversarial wins over --lens: adversarial is the METHOD, lens the FOCUS,
+  # so a lens given alongside it composes as a focus line instead of replacing
+  # the persona. Adversarial-off paths below are byte-identical to pre-persona.
+  if [[ "$ADVERSARIAL" == "true" ]]; then
+    local preamble
+    preamble=$(cat "$TEMPLATE_DIR/role-reviewer-adversarial.md")
+    if [[ -n "$LENS" ]]; then
+      preamble="${preamble}
+Focus your adversarial review through this lens: ${LENS}."
+    fi
+    if [[ "$SKIP_INTERVIEW" != "true" && -n "$AUDIENCE" && "$AUDIENCE" != "general" && "$AUDIENCE" != "auto" ]]; then
+      preamble="${preamble}
+Evaluate this as if you are a ${AUDIENCE} reading it. What would they find unconvincing, unclear, or missing?"
+    fi
+    echo "$preamble"
+  elif [[ -n "$LENS" ]]; then
     echo "You are the ${LENS} reviewing this work. Be adversarial from that perspective. Every critique must include a concrete alternative."
   elif [[ "$SKIP_INTERVIEW" == "true" ]]; then
     cat "$TEMPLATE_DIR/role-reviewer-light.md"
@@ -780,7 +815,15 @@ run_bounce_phase() {
       current_agent="$AGENT_A"
       if [[ "$CHAIN" == "true" ]]; then
         case "$pass" in
-          1) role_preamble=$(cat "$TEMPLATE_DIR/chain-critique.md") ;;
+          1)
+            # --adversarial swaps only the critique stage; defend/tighten keep
+            # their templates (the persona is a critique method, not a chain).
+            if [[ "$ADVERSARIAL" == "true" ]]; then
+              role_preamble=$(cat "$TEMPLATE_DIR/chain-critique-adversarial.md")
+            else
+              role_preamble=$(cat "$TEMPLATE_DIR/chain-critique.md")
+            fi
+            ;;
           3) role_preamble=$(cat "$TEMPLATE_DIR/chain-tighten.md") ;;
         esac
         role="critique"
@@ -1099,6 +1142,10 @@ log " Input:     $INPUT_TYPE"
 log " Task:      $(echo "$TASK" | head -c 80)"
 log " Compose:   $AGENT_A"
 log " Bounce:    $AGENT_A / $AGENT_B"
+log " Persona:   $REVIEWER_PERSONA (reviewer)"
+if [[ "$AGENT_A" == "$AGENT_B" ]]; then
+  log " NOTE: same-model bounce ($AGENT_A vs $AGENT_B) — no cross-vendor disagreement; persona and per-role seats are the only independence between passes."
+fi
 # v1.5 Phase 1 (A-4b): resolved per-role seats. Reviewer runs on AGENT_A (odd
 # passes / critique+tighten); composer runs on AGENT_B (even passes / defend).
 # The compose PHASE also runs the composer role, but on AGENT_A — its resolved
