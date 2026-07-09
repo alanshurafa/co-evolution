@@ -45,6 +45,7 @@ a pass artifact missing.
   "input_type": "file | string | pipe",
   "baseline_file": "original-input.md",
   "final_file": "working.md",
+  "reviewer_persona": "light | adversarial | lens",
   "status": "running | complete | aborted",
   "convergence_status": "converged | adjudicated | stuck | null",
   "started_at": "2026-06-10T22:00:00Z",
@@ -103,6 +104,12 @@ Field rules:
     fail a gate on it. Only an explicit `stuck` blocks.
   Only `co-evolve-bouncer.sh` writes this field today; `agent-bouncer.sh`
   leaves it `null`.
+- `reviewer_persona` — which reviewer persona shaped the critique passes:
+  `light` (default 1-line role), `adversarial` (falsification persona, the
+  `--adversarial` flag), or `lens` (`--lens` free-text override). Additive to
+  `1.1`: absent means `light` (pre-persona states, agent-bouncer). Consumers
+  MUST NOT fail on its absence and MUST NOT branch scoring on it — persona is
+  orthogonal to `mode` and to the baseline rules above.
 - `passes[].contested` / `clarify` — marker counts of the **clean** output,
   counted by `lib/co-evolution.sh::count_markers` (code-fence-aware). The
   scorer reuses the same function; counts must match.
@@ -111,7 +118,7 @@ Field rules:
 
 ## Writer helpers (lib/co-evolution.sh)
 
-- `init_bounce_state <state_file> <runner> <mode> <task> <input_type> <baseline_file> <final_file>`
+- `init_bounce_state <state_file> <runner> <mode> <task> <input_type> <baseline_file> <final_file> [reviewer_persona]` — the optional 8th arg defaults to `light`
 - `append_bounce_pass <state_file> <pass> <role> <agent> <raw_rel> <clean_rel> <contested> <clarify> <word_count>`
 - `set_bounce_convergence_status <state_file> <converged|adjudicated|stuck>` — set the convergence outcome (co-evolve only; call before `finalize_bounce_state`).
 - `finalize_bounce_state <state_file> <status>`

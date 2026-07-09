@@ -111,7 +111,16 @@ existing document, or run staged critique -> defend -> tighten passes.
 ```bash
 bash ./co-evolve-bouncer.sh --vanilla "What is the strongest version of this argument?"
 bash ./co-evolve-bouncer.sh --vanilla --chain "Should we ship this migration?"
+bash ./co-evolve-bouncer.sh --vanilla --adversarial --bounce-only docs/plan.md
+bash ./co-evolve-bouncer.sh --vanilla --adversarial --agents claude,claude "Same-model adversarial review"
 ```
+
+`--adversarial` swaps the reviewer's 1-line role for a structured falsification
+persona (premises, assumptions, decisions, complexity, alternatives). It rides
+the normal cross-AI bounce, or runs single-vendor with `--agents claude,claude`
+when you want an internal same-model review. An aggressive persona can leave
+markers open at the default 2 passes; pair it with `--chain` or `--bounces 3`
+on dense documents.
 
 ### [Agent Bouncer](agent-bouncer/)
 
