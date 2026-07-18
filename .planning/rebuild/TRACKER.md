@@ -1,6 +1,6 @@
 # Rebuild Phase 0 — TRACKER
 
-**NEXT ACTION:** Wave 1 — start WP-01 (decision record, direct) and WP-02 (corpus copy-out, Sonnet agent) in parallel.
+**NEXT ACTION:** Verify Wave 1+2 worker results as they land (WP-02/03/07/09 in flight); commit each verified WP; then Wave 3 (WP-04/05/06) once WP-03 verifies.
 **Current phase:** Phase 0 — Decisions, vertical slice, contract freeze
 **Plan:** `.planning/rebuild/PHASE-0-PLAN.md` (this branch) | **Authority:** `C:\Users\alan\Project\Admin\docs\rebuild-proposals\co-evolution.md` (v1.1)
 **Branch/worktree:** `rebuild/phase-0` @ `C:\Users\alan\Project\co-evolution\.claude\worktrees\rebuild-phase-0` (cut from origin/master `0d53f57`)
@@ -10,15 +10,15 @@
 
 | WP | Title | Deps | Status | Evidence |
 |---|---|---|---|---|
-| WP-01 | Decision record + scaffold commit | — | todo | |
-| WP-02 | Corpus preservation copy-out | — | todo | |
-| WP-03 | packages/engine scaffold | 01 | todo | |
+| WP-01 | Decision record + scaffold commit | — | done | DECISIONS.md (D1–D5 + gates) committed with this tracker update |
+| WP-02 | Corpus preservation copy-out | — | in-progress | |
+| WP-03 | packages/engine scaffold | 01 | in-progress | |
 | WP-04 | Slice A: real adapter call | 03 | todo | |
 | WP-05 | Slice B: process-tree kill (language gate) | 03 | todo | |
 | WP-06 | Slice C: bounce-state serializer vs real scorer | 02,03 | todo | |
-| WP-07 | Contract kit extraction + drift test | 01 | todo | |
+| WP-07 | Contract kit extraction + drift test | 01 | in-progress | |
 | WP-08 | Engine CI job, 3-OS (completes WP-05 proof) | 03,05 | todo | |
-| WP-09 | Spec v0.2 draft (ambiguities resolved) | 01 | todo | |
+| WP-09 | Spec v0.2 draft (ambiguities resolved) | 01 | in-progress | (adversarial-review half of done-check runs after draft lands) |
 | WP-10 | Phase 0 gate review + Phase 1 plan + STOP B | all | todo | |
 
 ## Gates
@@ -35,3 +35,4 @@
 ## Session log
 
 - 2026-07-17 (Fable, planning): bootstrapped branch `rebuild/phase-0` from origin/master `0d53f57`; authored PHASE-0-PLAN.md + this tracker; execution handed to a fresh Opus session.
+- 2026-07-17 (Fable, executing — user redirected execution into this session): S1 clean; WP-01 done direct; Waves 1+2 merged (WP-01 completes in-turn, deps met) — fanned out WP-02 (Sonnet), WP-03 (Sonnet), WP-07 (Sonnet), WP-09 (Opus); workers report, orchestrator verifies + commits. Assumption logged: merging suggested waves is within LOOP §1 batching.
