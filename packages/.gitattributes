@@ -1,0 +1,3 @@
+engine/src/** text eol=lf
+engine/tests/** text eol=lf
+engine/*.json text eol=lf
