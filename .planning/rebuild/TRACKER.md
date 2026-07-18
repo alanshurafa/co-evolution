@@ -11,7 +11,7 @@
 | WP | Title | Deps | Status | Evidence |
 |---|---|---|---|---|
 | WP-01 | Decision record + scaffold commit | — | done | DECISIONS.md (D1–D5 + gates) committed with this tracker update |
-| WP-02 | Corpus preservation copy-out | — | in-progress | |
+| WP-02 | Corpus preservation copy-out | — | done | robocopy exit 1 both trees; 3,471 files / 53,879,601 B + 1 file / 28,208 B; listing digest `97430c59…` identical src/dst, INDEPENDENTLY recomputed by orchestrator; manifest at .planning/rebuild/corpus-manifest.md. Anomaly: 296 top-level run dirs (not ~302 — brief's estimate conflated entries/files; all three verification methods agree src==dst) |
 | WP-03 | packages/engine scaffold | 01 | in-progress | |
 | WP-04 | Slice A: real adapter call | 03 | todo | |
 | WP-05 | Slice B: process-tree kill (language gate) | 03 | todo | |
