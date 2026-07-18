@@ -11,3 +11,9 @@ export const engineInfo: EngineInfo = {
   name: "@alanshurafa/co-evolve",
   version: "0.0.0-dev",
 };
+
+export * from "./state/index.js";
+
+export * from "./adapters/index.js";
+
+export { runWithDeadline, type RunResult, type RunWithDeadlineOptions, type RunOutcome } from "./proc/deadline.js";
