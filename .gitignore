@@ -48,3 +48,7 @@ tests/.sim-*/
 mcp/node_modules/
 mcp/dist/
 mcp/vendor/
+
+# npm workspaces root + packages (v1.5 rebuild engine package)
+/node_modules/
+packages/*/node_modules/

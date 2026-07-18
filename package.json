@@ -1,0 +1,7 @@
+{
+  "name": "co-evolution-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}
