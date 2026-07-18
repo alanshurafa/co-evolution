@@ -8,7 +8,7 @@ name: ci
 
 on:
   push:
-    branches: [master]
+    branches: [master, "rebuild/**"]
   pull_request:
 
 jobs:
@@ -70,3 +70,48 @@ jobs:
       - name: MCP package test (vendor + build + hermetic smoke)
         shell: bash
         run: cd mcp && npm ci && npm test
+
+  # Rebuild Phase 0: the TypeScript engine package (packages/engine). Proves
+  # the process-tree kill contract on all three OSes (the language gate) and
+  # the bounce-state serializer against the real score-bounce.sh. Paid smoke
+  # tests are env-gated and stay skipped here; everything below is hermetic.
+  engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install mikefarah yq (score-bounce dependency for the serializer proof)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          case "$(uname -s)" in
+            Linux)  asset=yq_linux_amd64 ;;
+            Darwin) asset=yq_darwin_arm64; [[ "$(uname -m)" == x86_64 ]] && asset=yq_darwin_amd64 ;;
+            MINGW*|MSYS*|CYGWIN*) asset=yq_windows_amd64.exe ;;
+            *) echo "unsupported runner OS"; exit 1 ;;
+          esac
+          dest="$HOME/.local/bin/yq"
+          [[ "$asset" == *.exe ]] && dest="$HOME/.local/bin/yq.exe"
+          curl -sSL -o "$dest" "https://github.com/mikefarah/yq/releases/latest/download/$asset"
+          chmod +x "$dest"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install workspace dependencies
+        shell: bash
+        run: npm ci
+      - name: Engine tests (kill-contract gate + serializer-vs-scorer proof)
+        shell: bash
+        run: cd packages/engine && npm test
+      - name: Typecheck
+        shell: bash
+        run: cd packages/engine && npx tsc --noEmit
+      - name: Contract-kit drift check
+        shell: bash
+        run: node packages/engine/contracts/verify-manifest.mjs
