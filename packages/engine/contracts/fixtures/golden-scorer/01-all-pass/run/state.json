@@ -1,0 +1,26 @@
+{
+  "run_id": "fixture-01-all-pass",
+  "task": "Edit the README to fix a typo.",
+  "composer": "codex",
+  "reviewer": "codex",
+  "executor": "codex",
+  "max_bounces": 1,
+  "verify": true,
+  "autonomous": true,
+  "status": "completed",
+  "status_detail": "Runner completed successfully.",
+  "current_phase": "verify",
+  "marker_counts": { "contested": 0, "clarify": 0, "total": 0 },
+  "changed_files": ["README.md"],
+  "verify_verdict": "APPROVED",
+  "started_at": "2026-04-17T09:00:00.0000000-04:00",
+  "updated_at": "2026-04-17T09:02:30.0000000-04:00",
+  "completed_at": "2026-04-17T09:02:30.0000000-04:00",
+  "history": [
+    {"phase":"compose","status":"running","detail":"","timestamp":"2026-04-17T09:00:00.0000000-04:00"},
+    {"phase":"bounce","status":"running","detail":"","timestamp":"2026-04-17T09:00:30.0000000-04:00"},
+    {"phase":"bounce-01","status":"running","detail":"","timestamp":"2026-04-17T09:00:45.0000000-04:00"},
+    {"phase":"execute","status":"running","detail":"","timestamp":"2026-04-17T09:01:30.0000000-04:00"},
+    {"phase":"verify","status":"running","detail":"","timestamp":"2026-04-17T09:02:00.0000000-04:00"}
+  ]
+}

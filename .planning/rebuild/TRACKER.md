@@ -16,7 +16,7 @@
 | WP-04 | Slice A: real adapter call | 03 | todo | |
 | WP-05 | Slice B: process-tree kill (language gate) | 03 | todo | |
 | WP-06 | Slice C: bounce-state serializer vs real scorer | 02,03 | todo | |
-| WP-07 | Contract kit extraction + drift test | 01 | in-progress | |
+| WP-07 | Contract kit extraction + drift test | 01 | done | 119 files copied byte-identical (templates 17, schema 1, runner-contracts 2, thresholds 1, fixtures 98) + MANIFEST.md + verify-manifest.mjs; worker negative-tested drift path (corrupt→DRIFT/exit1→restore); orchestrator re-ran verifier: 45 entries, 0 drifts; `git status runners/codex-ps` empty (read-only tree respected). Ownership note: BOUNCE-PROTOCOL-v0.2-draft.md inside contracts/ is WP-09's authored file — intentional, correctly excluded from the extraction manifest |
 | WP-08 | Engine CI job, 3-OS (completes WP-05 proof) | 03,05 | todo | |
 | WP-09 | Spec v0.2 draft (ambiguities resolved) | 01 | in-progress | Draft committed: 275 lines, all six fixes present (fix-mapping table verified by grep: pass-budget rule :84, protocol_outcome :122-144), root spec untouched. First worker attempt returned prompt-echo garbage (0 tool uses) — relaunched once, succeeded. Remaining: adversarial review pass (agent launched) |
 | WP-10 | Phase 0 gate review + Phase 1 plan + STOP B | all | todo | |

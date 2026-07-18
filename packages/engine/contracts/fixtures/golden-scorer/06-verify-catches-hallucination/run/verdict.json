@@ -1,0 +1,10 @@
+﻿{
+  "verdict": "REVISE",
+  "confidence": 88,
+  "summary": "The code calls RetryAsync which does not exist on HttpClient.",
+  "issues": [
+    { "severity": "high", "file": "src/Get-Data.ps1", "line": 2, "description": "RetryAsync is not a member of HttpClient; this will throw at runtime.", "suggestion": "Implement retry with Polly or a custom loop." }
+  ],
+  "scope_creep_detected": false,
+  "iteration_notes": ""
+}

@@ -1,0 +1,11 @@
+﻿{
+    "scores":  {
+                   "convergence":  "PASS",
+                   "execution_fidelity":  "PASS",
+                   "cost":  "PASS",
+                   "cross_ai_diversity":  "PASS",
+                   "robustness":  "PASS",
+                   "plan_quality":  "PASS",
+                   "verify_accuracy":  "PASS"
+               }
+}
