@@ -12,13 +12,13 @@
 |---|---|---|---|---|
 | WP-01 | Decision record + scaffold commit | — | done | DECISIONS.md (D1–D5 + gates) committed with this tracker update |
 | WP-02 | Corpus preservation copy-out | — | done | robocopy exit 1 both trees; 3,471 files / 53,879,601 B + 1 file / 28,208 B; listing digest `97430c59…` identical src/dst, INDEPENDENTLY recomputed by orchestrator; manifest at .planning/rebuild/corpus-manifest.md. Anomaly: 296 top-level run dirs (not ~302 — brief's estimate conflated entries/files; all three verification methods agree src==dst) |
-| WP-03 | packages/engine scaffold | 01 | in-progress | |
+| WP-03 | packages/engine scaffold | 01 | done | Worker: vitest 1/1, tsc clean, mcp regression `npm ci && npm test` 4/4 green, lockfile untouched. Orchestrator re-ran `npm test` (1/1) + `tsc --noEmit` (clean). Deviations logged: vitest ^4.1, TS ^5.9, @types/node ^22, version 0.0.0-dev, scoped gitignore lines |
 | WP-04 | Slice A: real adapter call | 03 | todo | |
 | WP-05 | Slice B: process-tree kill (language gate) | 03 | todo | |
 | WP-06 | Slice C: bounce-state serializer vs real scorer | 02,03 | todo | |
 | WP-07 | Contract kit extraction + drift test | 01 | in-progress | |
 | WP-08 | Engine CI job, 3-OS (completes WP-05 proof) | 03,05 | todo | |
-| WP-09 | Spec v0.2 draft (ambiguities resolved) | 01 | in-progress | (adversarial-review half of done-check runs after draft lands) |
+| WP-09 | Spec v0.2 draft (ambiguities resolved) | 01 | in-progress | Draft committed: 275 lines, all six fixes present (fix-mapping table verified by grep: pass-budget rule :84, protocol_outcome :122-144), root spec untouched. First worker attempt returned prompt-echo garbage (0 tool uses) — relaunched once, succeeded. Remaining: adversarial review pass (agent launched) |
 | WP-10 | Phase 0 gate review + Phase 1 plan + STOP B | all | todo | |
 
 ## Gates
@@ -31,6 +31,8 @@
 
 - 2026-07-17: §8 defaults adopted per proposal v1.1 (in-place migration, protocol = markers+loop+termination, single-model → Phase 4, GSD = documented consumer); Alan may override at any gate.
 - 2026-07-17: Node v22.22.2 present on the dev machine (satisfies >=20).
+- 2026-07-17 RULING (orchestrator): spec concept name is `protocol_outcome`; the bounce-state legacy serializer maps it to the runtime's existing `convergence_status` field (verified on master: co-evolve-bouncer.sh:1212, score-bounce.sh:68). No runtime rename now; contract-specific serializers own the mapping. Also: master's scorer comments reference a bounce-state "1.1" (adds convergence_status atop 1.0) — WP-06 must target the family, not just 1.0.
+- 2026-07-17: WP-09's rename of the legitimate final-pass rule to "the pass-budget rule" (dropping ambiguous "staleness") accepted; paper vocabulary continuity waived (paper is dormant per §4).
 
 ## Session log
 
