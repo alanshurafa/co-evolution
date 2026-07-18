@@ -20,6 +20,22 @@ file itself.
   every digest below against both the `contracts/` copy and the original
   in-repo source and fails closed (exit 1) on any drift. Run it with
   `node packages/engine/contracts/verify-manifest.mjs`.
+- **Hashing is line-ending-normalized (as of fix-08b).** Every digest below
+  is computed with all CR (0x0D) bytes stripped before hashing, both for
+  individual files and for each file that feeds an aggregate directory
+  digest. This was added after CI run 29629259173 failed on ubuntu-latest and
+  macos-latest, but only on `fixtures/golden-scorer/09-cross-ai-rubber-stamp`
+  and `10-cross-ai-genuine-bounce` — the only two entries whose fixture trees
+  contain `*.txt` files, which `.gitattributes` leaves on the generic
+  `* text=auto` rule (everything else in this manifest is `.md`/`.json`/
+  `.yaml`, all pinned `eol=lf`). Windows checkouts smudge those LF-stored
+  blobs to CRLF via `core.autocrlf`; POSIX checkout runners do not. The
+  source and its `contracts/` copy always agreed with each other on a given
+  platform — the failure was this manifest's expected digest, captured on a
+  Windows checkout, disagreeing with what POSIX runners compute for the same,
+  unchanged blobs. This kit's job is CONTENT drift detection; end-of-line
+  fidelity belongs to git's own filters/`.gitattributes`, not to this
+  verifier.
 
 ## Annotations (apply to the copies below, source files are untouched)
 
@@ -45,7 +61,8 @@ file itself.
 
 ## Digest table
 
-Individual files are the plain SHA-256 hex digest of file bytes. The two
+Individual files are the SHA-256 hex digest of file bytes with all CR (0x0D)
+bytes stripped first (see the line-ending-normalization note above). The two
 recursive fixture trees (`fixtures/bounce-runs/`, `fixtures/golden-scorer/`)
 are recorded as one **aggregate digest per top-level fixture directory**:
 every file within is hashed individually, sorted by relative path, formatted
@@ -145,8 +162,8 @@ copy error.
 | `runners/codex-ps/evals/tests/fixtures/06-verify-catches-hallucination/` | `contracts/fixtures/golden-scorer/06-verify-catches-hallucination/` | 6 | `ea81613e43892b380310a83d435c9e6f314858c1e57767f643428c3ccc27d7c5` |
 | `runners/codex-ps/evals/tests/fixtures/07-verify-misses-hallucination/` | `contracts/fixtures/golden-scorer/07-verify-misses-hallucination/` | 6 | `dba36acbe457c70256594c7538038b1cb51a200094126e16ee8e308621ff610c` |
 | `runners/codex-ps/evals/tests/fixtures/08-unparseable-verdict/` | `contracts/fixtures/golden-scorer/08-unparseable-verdict/` | 6 | `8ee7b1c0a86df0bb012919d0fe1de73ef28f1b6993daaebe55cf43ef8786651d` |
-| `runners/codex-ps/evals/tests/fixtures/09-cross-ai-rubber-stamp/` | `contracts/fixtures/golden-scorer/09-cross-ai-rubber-stamp/` | 8 | `3161dffbb1d02ede84d84ba6427776d1ba8801a9fa75df04e5e19bad28ab3856` |
-| `runners/codex-ps/evals/tests/fixtures/10-cross-ai-genuine-bounce/` | `contracts/fixtures/golden-scorer/10-cross-ai-genuine-bounce/` | 8 | `be724da0b92588f2897e4272974503586c8d831eb3d5c21395b6c3d12b2ab396` |
+| `runners/codex-ps/evals/tests/fixtures/09-cross-ai-rubber-stamp/` | `contracts/fixtures/golden-scorer/09-cross-ai-rubber-stamp/` | 8 | `095260f9c509ff608814949daccbc0160470e34ee0595b4b30fb1240c57fdcbe` |
+| `runners/codex-ps/evals/tests/fixtures/10-cross-ai-genuine-bounce/` | `contracts/fixtures/golden-scorer/10-cross-ai-genuine-bounce/` | 8 | `6040da15b459420a8bbb6231072f7ecee2bb262ead17622d8235b8a25369cecf` |
 
 ## Totals
 

@@ -24,8 +24,32 @@ import { fileURLToPath } from 'node:url';
 const CONTRACTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(CONTRACTS_DIR, '..', '..', '..');
 
+// Strip CR (0x0D) bytes before hashing so CRLF-vs-LF representation never
+// affects a digest. Root cause (CI run 29629259173, ubuntu-latest +
+// macos-latest only): fixtures/golden-scorer/09-cross-ai-rubber-stamp and
+// 10-cross-ai-genuine-bounce are the only manifest entries containing *.txt
+// fixture files, which .gitattributes leaves on the generic `* text=auto`
+// rule (unlike the .md/.json/.yaml entries elsewhere here, all pinned
+// `eol=lf`). Windows checkouts smudge those LF-stored blobs to CRLF on disk
+// via core.autocrlf; POSIX checkout runners do not. Source and its
+// contracts/ copy always agree with EACH OTHER on a given platform -- the
+// false DRIFT was this manifest's expected digest, captured on Windows,
+// disagreeing with what POSIX runners compute for the very same (unchanged)
+// blobs. This kit's job is CONTENT drift detection; EOL fidelity belongs to
+// git's own filters/.gitattributes, so both hashing paths below (per-file
+// sha256, and the aggregate directory digest built from these same per-file
+// hashes) hash CR-stripped bytes.
+function stripCR(buf) {
+  const out = Buffer.allocUnsafe(buf.length);
+  let j = 0;
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] !== 0x0d) out[j++] = buf[i];
+  }
+  return out.subarray(0, j);
+}
+
 function sha256File(absPath) {
-  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
+  return createHash('sha256').update(stripCR(readFileSync(absPath))).digest('hex');
 }
 
 // Recursively lists files under absDir as relative POSIX-style paths, sorted
@@ -290,13 +314,13 @@ const DIR_ENTRIES = [
   {
     "source": "runners/codex-ps/evals/tests/fixtures/09-cross-ai-rubber-stamp",
     "dest": "fixtures/golden-scorer/09-cross-ai-rubber-stamp",
-    "sha256": "3161dffbb1d02ede84d84ba6427776d1ba8801a9fa75df04e5e19bad28ab3856",
+    "sha256": "095260f9c509ff608814949daccbc0160470e34ee0595b4b30fb1240c57fdcbe",
     "fileCount": 8
   },
   {
     "source": "runners/codex-ps/evals/tests/fixtures/10-cross-ai-genuine-bounce",
     "dest": "fixtures/golden-scorer/10-cross-ai-genuine-bounce",
-    "sha256": "be724da0b92588f2897e4272974503586c8d831eb3d5c21395b6c3d12b2ab396",
+    "sha256": "6040da15b459420a8bbb6231072f7ecee2bb262ead17622d8235b8a25369cecf",
     "fileCount": 8
   }
 ];
