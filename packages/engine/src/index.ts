@@ -16,4 +16,4 @@ export * from "./state/index.js";
 
 export * from "./adapters/index.js";
 
-export { runWithDeadline, type RunResult, type RunWithDeadlineOptions, type RunOutcome } from "./proc/deadline.js";
+export * from "./proc/index.js";

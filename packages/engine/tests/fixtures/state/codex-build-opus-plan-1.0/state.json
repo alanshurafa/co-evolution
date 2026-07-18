@@ -1,0 +1,36 @@
+{
+  "schema": "bounce-state/1.0",
+  "runner": "co-evolve-bouncer.sh",
+  "mode": "bounce-only",
+  "task": "C:/Users/alan/AppData/Local/Temp/codex-build-opus-plan.md",
+  "input_type": "file",
+  "baseline_file": "original-input.md",
+  "final_file": "working.md",
+  "status": "complete",
+  "started_at": "2026-06-13T16:47:39Z",
+  "finished_at": "2026-06-13T16:53:10Z",
+  "passes": [
+    {
+      "pass": 1,
+      "role": "reviewer",
+      "agent": "claude",
+      "output_raw": "pass-1-reviewer-claude-raw.md",
+      "output_clean": "pass-1-clean.md",
+      "contested": 9,
+      "clarify": 2,
+      "total_markers": 11,
+      "word_count": 1943
+    },
+    {
+      "pass": 2,
+      "role": "composer",
+      "agent": "codex",
+      "output_raw": "pass-2-composer-codex-raw.md",
+      "output_clean": "pass-2-clean.md",
+      "contested": 0,
+      "clarify": 0,
+      "total_markers": 0,
+      "word_count": 754
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "bounce-state/1.1",
+  "runner": "co-evolve-bouncer.sh",
+  "mode": "compose",
+  "task": "Synthetic WP-06 fixture: hand-authored to exercise the bounce-state/1.1 family (convergence_status + reviewer_persona + forward-compat unmodeled fields). Not a real run; no artifacts on disk. See state-roundtrip.test.ts.",
+  "input_type": "string",
+  "baseline_file": "compose-output.md",
+  "final_file": "working.md",
+  "reviewer_persona": "adversarial",
+  "status": "complete",
+  "convergence_status": "adjudicated",
+  "started_at": "2026-07-10T12:00:00Z",
+  "finished_at": "2026-07-10T12:07:45Z",
+  "future_field_unmodeled": {
+    "note": "an unmodeled 1.x+ top-level field the parser must preserve verbatim",
+    "nested": ["forward", "compat"],
+    "count": 2,
+    "flag": true,
+    "empty": null
+  },
+  "passes": [
+    {
+      "pass": 1,
+      "role": "reviewer",
+      "agent": "codex",
+      "output_raw": "pass-1-reviewer-codex-raw.md",
+      "output_clean": "pass-1-clean.md",
+      "contested": 2,
+      "clarify": 1,
+      "total_markers": 3,
+      "word_count": 812,
+      "latency_ms": 41231
+    },
+    {
+      "pass": 2,
+      "role": "adjudicator",
+      "agent": "claude",
+      "output_raw": "pass-2-adjudicator-claude-raw.md",
+      "output_clean": "pass-2-clean.md",
+      "contested": 0,
+      "clarify": 0,
+      "total_markers": 0,
+      "word_count": 845
+    }
+  ]
+}

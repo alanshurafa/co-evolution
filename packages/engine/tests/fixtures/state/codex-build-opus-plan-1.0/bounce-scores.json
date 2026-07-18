@@ -1,0 +1,215 @@
+{
+  "dimensions": {
+    "loop_execution": {
+      "checks": [
+        {
+          "detail": "status=complete",
+          "name": "run_not_aborted",
+          "ok": true
+        },
+        {
+          "detail": "2/2 passes present",
+          "name": "expected_passes",
+          "ok": true
+        },
+        {
+          "detail": "all clean passes non-empty",
+          "name": "no_empty_pass",
+          "ok": true
+        },
+        {
+          "detail": "0 live markers in final",
+          "name": "final_markers",
+          "ok": true
+        },
+        {
+          "detail": "zero-marker input; baseline->final edit ratio 0.258",
+          "name": "zero_marker_input_changed",
+          "ok": true
+        },
+        {
+          "detail": "4 marker(s) resolved by deleting their section",
+          "name": "no_deletion_convergence",
+          "ok": false
+        }
+      ],
+      "pass": false
+    },
+    "material_engagement": {
+      "checks": [
+        {
+          "detail": "max per-pass edit ratio 0.456 (need >=0.03 or >=25 tokens in some pass)",
+          "name": "material_edit",
+          "ok": true
+        },
+        {
+          "detail": "no high-replacement pass without preserved structure",
+          "name": "no_destructive_churn",
+          "ok": true
+        }
+      ],
+      "pass": true,
+      "pass_edit_ratios": [
+        {
+          "changed_tokens": 315,
+          "edit_ratio": 0.317,
+          "pass": 1
+        },
+        {
+          "changed_tokens": 886,
+          "edit_ratio": 0.456,
+          "pass": 2
+        }
+      ]
+    },
+    "scope_discipline": {
+      "checks": [
+        {
+          "detail": "word ratio 0.758 (band 0.55-1.15, mode bounce-only)",
+          "name": "word_ratio",
+          "ok": true
+        },
+        {
+          "detail": "heading ratio 1.000 (band 0.75-1.25)",
+          "name": "heading_ratio",
+          "ok": true
+        }
+      ],
+      "heading_ratio": 1.000,
+      "pass": true,
+      "word_ratio": 0.758
+    },
+    "structural_preservation": {
+      "anchor_retention": 0.561,
+      "checks": [
+        {
+          "detail": "H2/H3 retention 0.500 (min 0.9)",
+          "name": "heading_retention",
+          "ok": false
+        },
+        {
+          "detail": "marker-hosting heading retention 0.500 (min 1)",
+          "name": "marker_heading_retention",
+          "ok": false
+        },
+        {
+          "detail": "anchor retention 0.561 (min 0.9)",
+          "name": "anchor_retention",
+          "ok": false
+        }
+      ],
+      "heading_retention": 0.500,
+      "marker_heading_retention": 0.500,
+      "pass": false
+    }
+  },
+  "marker_ledger": [
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "out of scope risks",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the alias is retained for backcompat but fable is described as now unreachable w",
+      "type": "clarify"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "phase 1 runtime change devreviewcodexdevreviewsh",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "does mean latest opus today 48 tomorrow 49 or opus 48 specifically a its an alia",
+      "type": "clarify"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "context",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the plan says is futureproof but its a manual alias pinned to a single model str",
+      "type": "contested"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "phase 1 runtime change devreviewcodexdevreviewsh",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "and should not be synonyms means give me opus regardless of which version is cur",
+      "type": "contested"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "phase 1 runtime change devreviewcodexdevreviewsh",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the help text says opus plans high but the variable is not when a user reads and",
+      "type": "contested"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "phase 1 runtime change devreviewcodexdevreviewsh",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the leak guard uses a denylist approach every new claude alias must be manually ",
+      "type": "contested"
+    },
+    {
+      "fate": "resolved",
+      "first_pass": 1,
+      "heading": "phase 1 runtime change devreviewcodexdevreviewsh",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the preset sets and but the comment says opus plansreviews if someone reads the ",
+      "type": "contested"
+    },
+    {
+      "fate": "deleted-with-section",
+      "first_pass": 1,
+      "heading": "phase 2 operational docs kept in sync with the drift guard",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the session optin documentation references a variable that doesnt exist in the r",
+      "type": "contested"
+    },
+    {
+      "fate": "deleted-with-section",
+      "first_pass": 1,
+      "heading": "phase 3 update the driftguard preset assertions",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the docssync assertions at 99103 will assert in the skill doc but the runner cod",
+      "type": "contested"
+    },
+    {
+      "fate": "deleted-with-section",
+      "first_pass": 1,
+      "heading": "phase 3 update the driftguard preset assertions",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "the plan says this test exercises the alias resolver but the codebase verificati",
+      "type": "contested"
+    },
+    {
+      "fate": "deleted-with-section",
+      "first_pass": 1,
+      "heading": "verification endtoend",
+      "last_pass": 1,
+      "passes_carried": 0,
+      "text": "dynamically discovers test suites it does not hardcode a total the expect 2525 c",
+      "type": "contested"
+    }
+  ],
+  "mode": "bounce-only",
+  "overall_pass": false,
+  "pass_count": 2,
+  "run_dir": "co-evolve-tmp-codex-build-opus-plan-md-20260613-124738-cbf801",
+  "run_status": "complete",
+  "schema": "bounce-scores/1.0",
+  "scored_at": "2026-07-06T03:34:45Z",
+  "source": "state"
+}
