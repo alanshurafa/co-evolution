@@ -8,6 +8,11 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { test } from "node:test";
+import {
+  type Agent,
+  BounceError,
+  runtimePrerequisites,
+} from "../src/bouncer.js";
 import { createServer } from "../src/server.js";
 
 const MARKER_DOC = `# Sample Plan
@@ -199,4 +204,159 @@ test("missing document_path is rejected before spawning", async () => {
     arguments: { document_path: "/nonexistent/place/doc.md" },
   });
   assert.equal(result.isError, true);
+});
+
+function prerequisiteOptions(work: string, reviewerAgent: Agent, composerAgent: Agent) {
+  return {
+    documentPath: join(work, "doc.md"),
+    maxBounces: 1,
+    reviewerAgent,
+    composerAgent,
+    outputPath: join(work, "out.md"),
+    runsDir: join(work, "runs"),
+  };
+}
+
+test("glm accepts only the targeted .env.local key without mutating process.env", () => {
+  const work = mkdtempSync(join(tmpdir(), "mcp-glm-prereq-"));
+  const originalPath = process.env.PATH;
+  const originalKey = process.env.ZAI_API_KEY;
+  const originalCwd = process.cwd();
+  try {
+    const binDir = join(work, "bin");
+    writeStubs(binDir, join(work, "counter"));
+    process.env.PATH = `${binDir}${delimiter}${originalPath}`;
+    delete process.env.ZAI_API_KEY;
+    process.chdir(work);
+    writeFileSync(join(work, ".env.local"), "UNRELATED=value\nZAI_API_KEY=test-only-key\n");
+
+    const childEnv = runtimePrerequisites(prerequisiteOptions(work, "glm", "claude"));
+    assert.equal(childEnv.ZAI_API_KEY, "test-only-key");
+    assert.equal(process.env.ZAI_API_KEY, undefined);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    if (originalKey === undefined) delete process.env.ZAI_API_KEY;
+    else process.env.ZAI_API_KEY = originalKey;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test("glm rejects WSL Windows dispatch before spawn", () => {
+  const work = mkdtempSync(join(tmpdir(), "mcp-glm-wsl-"));
+  const originalPath = process.env.PATH;
+  const originalKey = process.env.ZAI_API_KEY;
+  const originalWsl = process.env.WSL_DISTRO_NAME;
+  try {
+    const binDir = join(work, "bin");
+    mkdirSync(binDir, { recursive: true });
+    const suffix = process.platform === "win32" ? ".cmd" : "";
+    writeFileSync(join(binDir, `cmd.exe${suffix}`), "exit 0\n");
+    writeFileSync(join(binDir, `claude${suffix}`), "exit 0\n");
+    chmodSync(join(binDir, `cmd.exe${suffix}`), 0o755);
+    chmodSync(join(binDir, `claude${suffix}`), 0o755);
+    process.env.PATH = binDir;
+    process.env.ZAI_API_KEY = "test-only-key";
+    process.env.WSL_DISTRO_NAME = "test";
+
+    assert.throws(
+      () => runtimePrerequisites(prerequisiteOptions(work, "glm", "claude")),
+      (error: unknown) =>
+        error instanceof BounceError &&
+        error.code === "missing_prerequisite" &&
+        error.message === "glm seat unsupported under WSL claude dispatch",
+    );
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalKey === undefined) delete process.env.ZAI_API_KEY;
+    else process.env.ZAI_API_KEY = originalKey;
+    if (originalWsl === undefined) delete process.env.WSL_DISTRO_NAME;
+    else process.env.WSL_DISTRO_NAME = originalWsl;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test("glm rejects the Windows System32 WSL launcher before spawn", () => {
+  const work = mkdtempSync(join(tmpdir(), "mcp-glm-wsl-launcher-"));
+  try {
+    assert.throws(
+      () =>
+        runtimePrerequisites(
+          prerequisiteOptions(work, "glm", "claude"),
+          "C:\\Windows\\System32\\bash.exe",
+        ),
+      (error: unknown) =>
+        error instanceof BounceError &&
+        error.code === "missing_prerequisite" &&
+        error.message === "glm seat unsupported under WSL claude dispatch" &&
+        error.runDir === null,
+    );
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test("kimi accepts the portable CLI only with config and login files", () => {
+  const work = mkdtempSync(join(tmpdir(), "mcp-kimi-prereq-"));
+  const originalPath = process.env.PATH;
+  const originalHome = process.env.HOME;
+  const originalProfile = process.env.USERPROFILE;
+  try {
+    const kimiRoot = join(work, ".kimi-code");
+    const executable = join(kimiRoot, "bin", process.platform === "win32" ? "kimi.exe" : "kimi");
+    mkdirSync(join(kimiRoot, "bin"), { recursive: true });
+    mkdirSync(join(kimiRoot, "credentials"), { recursive: true });
+    writeFileSync(executable, "exit 0\n");
+    chmodSync(executable, 0o755);
+    const jqExecutable = join(
+      kimiRoot,
+      "bin",
+      process.platform === "win32" ? "jq.exe" : "jq",
+    );
+    writeFileSync(jqExecutable, "exit 0\n");
+    chmodSync(jqExecutable, 0o755);
+    writeFileSync(join(kimiRoot, "config.toml"), "[service]\n");
+    writeFileSync(join(kimiRoot, "credentials", "kimi-code.json"), "{}\n");
+    process.env.PATH = join(kimiRoot, "bin");
+    process.env.HOME = work;
+    process.env.USERPROFILE = work;
+
+    const childEnv = runtimePrerequisites(prerequisiteOptions(work, "kimi", "kimi"));
+    assert.equal(childEnv.HOME, work);
+
+    rmSync(join(kimiRoot, "credentials", "kimi-code.json"));
+    assert.throws(
+      () => runtimePrerequisites(prerequisiteOptions(work, "kimi", "kimi")),
+      (error: unknown) =>
+        error instanceof BounceError &&
+        error.code === "missing_prerequisite" &&
+        error.details.missing instanceof Array &&
+        error.details.missing.includes("kimi_login"),
+    );
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalProfile;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test("unknown agents produce a structured error", () => {
+  const work = mkdtempSync(join(tmpdir(), "mcp-agent-prereq-"));
+  try {
+    const opts = prerequisiteOptions(work, "claude", "codex");
+    opts.composerAgent = "nonsense" as Agent;
+    assert.throws(
+      () => runtimePrerequisites(opts),
+      (error: unknown) =>
+        error instanceof BounceError &&
+        error.code === "unknown_agent" &&
+        error.details.agent === "nonsense" &&
+        error.runDir === null,
+    );
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
 });
