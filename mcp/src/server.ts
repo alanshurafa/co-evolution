@@ -7,7 +7,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
-import { BounceError, runBounce } from "./bouncer.js";
+import { AGENTS, BounceError, runBounce } from "./bouncer.js";
 import { preflight } from "./preflight.js";
 
 const INPUT_SHAPE = {
@@ -16,8 +16,8 @@ const INPUT_SHAPE = {
     .describe("Path to the markdown document to bounce (absolute, or relative to the server's cwd)"),
   max_bounces: z.number().int().min(1).max(5).default(2)
     .describe("Bounce passes between the agents (default 2)"),
-  reviewer_agent: z.enum(["claude", "codex"]).default("claude"),
-  composer_agent: z.enum(["claude", "codex"]).default("codex"),
+  reviewer_agent: z.enum(AGENTS).default("claude"),
+  composer_agent: z.enum(AGENTS).default("codex"),
   in_place: z.boolean().default(false)
     .describe("Overwrite the input document with the bounced result"),
   output_path: z.string().optional()
@@ -133,6 +133,26 @@ export function createServer(): McpServer {
         };
       } catch (error) {
         if (error instanceof BounceError) {
+          if (error.code) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(
+                    {
+                      error: error.code,
+                      message: error.message,
+                      ...error.details,
+                      run_dir: error.runDir,
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+            };
+          }
           return {
             isError: true,
             content: [

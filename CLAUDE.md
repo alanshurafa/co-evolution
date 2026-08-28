@@ -143,6 +143,33 @@ Rules:
 - Anything user-facing (docs prose, README, API/CLI surface design) needs high taste → opus-4.8 or fable-5 authors/reviews it.
 - gpt-5.5 is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
 
+### Seat selection
+
+The document pipeline can use four agents: `claude`, `codex`, `glm` (GLM-5.3-Flash through Z.AI), and `kimi` (Kimi K3 through Kimi Code). Choose seats with the procedure below instead of treating today's roster as policy. When another agent arrives, run the same procedure again.
+
+**Step 1: classify the run.** Classify its stakes as user-facing, internal, or throwaway. Then classify the task as draft, critique, adjudicate, execute, or verify. Both dimensions affect the panel; a throwaway critique does not need the same seats as a spec that will ship.
+
+**Step 2: assign seats by constraint, in order.**
+
+1. The adjudicator or orchestrator is the highest-trust model with the full session context. Today that is the session Claude, preferably fable-5 and otherwise opus-4.8. Free-tier seats never adjudicate.
+2. The reviewer comes from a different vendor than the composer. The point of the bounce is to surface cross-vendor disagreement. If Claude composes, Codex, GLM, or Kimi can review.
+3. Fill any remaining seats cheapest-first from the free pool (`glm`, then `kimi`). If an output misses the bar, escalate that seat without asking. Judge the output, not its price.
+4. Break ties in this order: intelligence > taste > cost. Cost matters only when the other factors are equal.
+
+**Step 3: size the panel.** Use one reviewer for routine documents. For high-stakes work, run two independent critique chains with the `--agents` order flipped. A third cross-vendor pass is effectively free with a free seat; for example, `--agents claude,glm` adds a GLM critique.
+
+The table below is a worked result of the procedure, not a canonical assignment. Re-run the steps when the roster or task changes.
+
+| Role | Current agent | Reason |
+|------|---------------|--------|
+| Adjudicator / orchestrator | session Claude (fable-5 or opus-4.8) | Holds the full context and meets the trust bar |
+| Composer | `claude` (`best` resolves to opus-4.8) | Strong fit for user-facing prose |
+| Primary reviewer | `codex` (`gpt-5.5` at xhigh) | Different vendor from the default composer |
+| Extra reviewer | `glm` (`glm-5.3-flash`) | First free cross-vendor critique |
+| Alternate extra reviewer | `kimi` (Kimi K3) | Another free cross-vendor critique when a second read helps |
+
+The dev-review executor and verifier do not change. Code execution stays on `codex` (`gpt-5.5`), with verification on opus or `gpt-5.5` according to the preset. GLM and Kimi are document-pipeline seats in this phase; they do not enter the execution or verification paths. See [docs/agent-seats.md](docs/agent-seats.md) for account, launcher, and web chat setup.
+
 ## Token Discipline
 
 Return contracts (a wall of raw output is a failed task even when the work was correct):

@@ -31,6 +31,9 @@ tmp/
 # Local project notes (decisions, plans, handoffs)
 .notes/
 
+# Local credentials — populate from .env.fill; never commit values
+.env.local
+
 # Personal inputs and planning reports — may contain personal data
 inputs/
 .planning/reports/
