@@ -6,7 +6,7 @@ accounts also work in each vendor's web chat.
 | Seat | Route | Cost |
 |------|-------|------|
 | `glm` | GLM-5.3-Flash through Z.AI's direct Chat Completions API | Z.AI API balance or an eligible resource package |
-| `kimi` | Kimi K3 through Kimi Code and a kimi.com account | Free consumer account |
+| `kimi` | Kimi K3 through Moonshot's direct Chat Completions API | Kimi Platform API balance |
 
 Both are document-pipeline-only. They compose or review bounces; they never
 adjudicate and never touch the dev-review code-execution or verify paths. Seat
@@ -45,11 +45,11 @@ Account creation, key entry, and interactive login remain manual steps.
    and add an
    `op://Development/...` reference to `.env.fill`. One key works on both machines.
 
-### kimi.com account
+### Kimi Platform account + API key
 
-Create or log into a free account at [kimi.com](https://kimi.com). The same login
-drives Kimi Code on each machine and the web chat. The CLI authenticates through
-the browser, so there is no API key to paste.
+Create or log into [Kimi Platform](https://platform.kimi.ai/), add API balance,
+and create an API key. Take `KIMI_API_KEY` into the repo through the same
+`secret-intake.py` flow used for Z.AI; never paste it into chat or commit it.
 
 ## GLM on Z.AI
 
@@ -154,10 +154,13 @@ same Z.AI account used for the API key.
 
 ## Kimi K3
 
-The preferred route is the **Kimi Code CLI** (open source,
-[github.com/MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code)),
-authenticated with the free kimi.com account. The paid Moonshot API is a fallback
-only and is not set up here.
+The document seat calls Kimi Platform directly at
+`https://api.moonshot.ai/v1/chat/completions` with model `kimi-k3`. This avoids
+Kimi Code's agent loop, which may invoke Read/Write tools even for a document
+prompt. The seat requires `KIMI_API_KEY`, `curl`, and `jq`.
+
+Kimi Code remains an optional standalone interactive client. Its install and
+login do not control the Co-Evolution document seat.
 
 ### Install on Windows
 
@@ -178,48 +181,27 @@ curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
 The source and current install notes are in the official
 [MoonshotAI/kimi-code repository](https://github.com/MoonshotAI/kimi-code).
 
-### Log in and run a prompt
+### Configure and run a standalone prompt
 
-The project uses a kimi.com account, so log in to the mainland-cn region on each
-machine and complete the browser flow:
-
-```bash
-kimi login --region mainland-cn
-```
-
-Kimi Code stores the resulting login under `~/.kimi-code/credentials/`. Do not
-copy that directory between machines; log in separately on each one. A headless
-Kimi K3 call uses the verified command below:
+Inside Kimi Code, run `/login`, select `Kimi Platform (API key ·
+platform.kimi.ai)`, paste the API key locally, and select `kimi-k3`. A headless
+standalone call then uses the configured default model:
 
 ```bash
-kimi -m kimi-code/k3 -p "Two-line sanity check: are you Kimi K3?" --output-format text
+kimi -p "Two-line sanity check: are you Kimi K3?" --output-format text
 ```
 
-The co-evolution adapter uses `stream-json` plus `jq` so it can recover raw
-assistant Markdown. It runs Kimi in a disposable project with a no-tools policy
-and rejects any stream that contains tool activity. Install `jq` before
-selecting the `kimi` seat; the runner fails early if it is missing.
-
-Kimi 0.39.1 accepts prompt text only as a command-line argument. On native
-Windows, the adapter rejects prompts over 12,000 bytes with a clear error so it
-cannot cross the Windows process command-line ceiling. Use a shorter document
-or another seat for larger inputs. Kimi also has no reasoning-effort flag, so an
-effort override is rejected when that role targets Kimi. An effort override for
-the other seat in the pair remains valid.
+The Co-Evolution adapter sends only the Bounce Protocol prompt and extracts the
+returned assistant content. It does not grant Kimi file, shell, or MCP tools.
+K3 requires `temperature: 1`; the adapter pins that provider requirement. Role
+effort overrides remain unsupported for the Kimi seat.
 
 The account quota is shared between the two machines.
 
-### Mainland China vs global
-
-Moonshot keeps the kimi.com and global accounts separate. This project uses
-[kimi.com](https://kimi.com) with `--region mainland-cn`. If you instead have a
-kimi.ai global account, use `kimi login --region global` and keep that region on
-both machines.
-
 ### Web chat
 
-[kimi.com](https://kimi.com) uses the same account as the CLI and needs no local
-install.
+[kimi.com](https://kimi.com) needs no local install, but its consumer account is
+separate from Kimi Platform API billing.
 
 ---
 
@@ -247,8 +229,8 @@ bash ./co-evolve-bouncer.sh --vanilla --agents claude,kimi "Two-line test questi
 ## Manual gates
 
 1. Create the Z.AI account and API key; take the key in through `secret-intake.py`.
-2. Create or log into the kimi.com account; run
-   `kimi login --region mainland-cn` on each machine.
+2. Create the Kimi Platform API key and take `KIMI_API_KEY` into each machine's
+   gitignored `.env.local` without exposing the value.
 3. On the Mac, run the launcher install blocks above and load `ZAI_API_KEY` from
    1Password or `.env.local`.
 4. Mirror `ZAI_API_KEY` into the 1Password Development vault and add its `op://`
