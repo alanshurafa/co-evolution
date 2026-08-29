@@ -329,6 +329,46 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# A GLM seat may receive its key through this worktree's gitignored .env.local.
+# Read only ZAI_API_KEY; sourcing the file would import unrelated settings into
+# the long-lived bouncer process. The value remains a shell variable and is
+# never exported — invoke_glm places it on its one child command with `env`.
+load_zai_api_key_from_env_local() {
+  local env_file="$SCRIPT_DIR/.env.local"
+  local line="" value=""
+
+  [[ -z "${ZAI_API_KEY:-}" && -r "$env_file" ]] || return 0
+  line=$(grep -m 1 -E '^[[:space:]]*(export[[:space:]]+)?ZAI_API_KEY[[:space:]]*=' "$env_file" 2>/dev/null || true)
+  [[ -n "$line" ]] || return 0
+
+  value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  [[ -n "$value" ]] && ZAI_API_KEY="$value"
+}
+
+# Order is intentional: a key present only in .env.local must be loaded before
+# the per-seat prerequisite checks. Unknown agents also fail here, before a run
+# directory or any paid/live compose call is created.
+load_zai_api_key_from_env_local
+for _seat_agent in "$AGENT_A" "$AGENT_B"; do
+  if ! seat_prereqs_ok "$_seat_agent"; then
+    die "$SEAT_PREREQ_ERROR"
+  fi
+done
+unset _seat_agent
+if [[ "$AGENT_A" == "kimi" && -n "$REVIEWER_EFFORT" ]]; then
+  die "kimi seat does not support reviewer effort overrides"
+fi
+if [[ "$AGENT_B" == "kimi" && -n "$COMPOSER_EFFORT" ]]; then
+  die "kimi seat does not support composer effort overrides"
+fi
+if [[ "$BOUNCE_ONLY" == "false" && "$AGENT_A" == "kimi" && -n "$COMPOSER_EFFORT" ]]; then
+  die "kimi seat does not support composer effort overrides"
+fi
+
 # Normalize user-supplied filesystem paths after parsing. This lets WSL-backed
 # Bash runs accept Windows-style file arguments such as C:/Users/.../plan.md.
 [[ -n "$CONTEXT_FILE" ]] && CONTEXT_FILE=$(normalize_path_for_bash "$CONTEXT_FILE")
@@ -342,7 +382,9 @@ TASK_AS_PATH=""
 # parsing so --claude-model is reflected. CLAUDE_MODEL carries its lib default
 # (best -> claude-opus-4-8); the others default empty (OFF) = argv parity.
 CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
+GLM_MODEL_BASE="${GLM_MODEL:-glm-5.3-flash}"; KIMI_MODEL_BASE="${KIMI_MODEL:-kimi-code/k3}"
 CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
+GLM_EFFORT_BASE="${GLM_EFFORT:-}"
 
 # v1.5 Phase 4 (A-6): dev-review hand-off flag validation. Fail fast BEFORE any
 # side effect so a misconfigured code run never composes/bounces first and then
@@ -628,42 +670,70 @@ apply_role_seat() {
   esac
   # Cross-agent leak guard (same coupling rule as dev-review): a model picked for
   # the wrong agent kind means its effort is wrong too, so drop the WHOLE pair and
-  # fall back to that agent's base values. Claude aliases/ids never reach a codex
-  # seat (codex/ChatGPT rejects them HTTP 400); codex ids never reach a claude seat.
-  if [[ "$agent" == "codex" ]]; then
-    case "$model" in
-      fable|best|opus|claude-*) model=""; effort="" ;;
-    esac
-    export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
-    export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
-  else
-    case "$model" in
-      gpt-*|codex*) model=""; effort="" ;;
-    esac
-    export CLAUDE_MODEL="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
-    export CLAUDE_EFFORT="${effort:-$CLAUDE_EFFORT_BASE}"
-  fi
+  # fall back to that agent's base values. Every supported agent has an explicit
+  # arm so a new/typoed name can never silently inherit Claude's credentials.
+  case "$agent" in
+    claude)
+      case "$model" in gpt-*|codex*|glm-*|kimi-*) model=""; effort="" ;; esac
+      export CLAUDE_MODEL="$(resolve_claude_model_alias "${model:-$CLAUDE_MODEL_BASE}")"
+      export CLAUDE_EFFORT="${effort:-$CLAUDE_EFFORT_BASE}"
+      ;;
+    codex)
+      case "$model" in fable|best|opus|claude-*|glm-*|kimi-*) model=""; effort="" ;; esac
+      export CODEX_MODEL="${model:-$CODEX_MODEL_BASE}"
+      export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
+      ;;
+    glm)
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
+      GLM_MODEL="$(resolve_claude_model_alias "${model:-$GLM_MODEL_BASE}")"
+      GLM_EFFORT="${effort:-$GLM_EFFORT_BASE}"
+      ;;
+    kimi)
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|glm-*) model=""; effort="" ;; esac
+      [[ -z "$effort" ]] || die "kimi seat does not support composer/reviewer effort overrides"
+      KIMI_MODEL="${model:-$KIMI_MODEL_BASE}"
+      ;;
+    *)
+      die "Unknown agent: $agent"
+      ;;
+  esac
 }
 
 # Resolve a role's "agent:model@effort" descriptor with the SAME precedence
 # apply_role_seat uses, but without mutating the exported env. Feeds the banner.
 # When a role inherits (no seat set), reports "(inherit:<global>)" — never blank.
 resolve_role_seat_string() {
-  local role="$1" agent="$2" model="" effort="" model_str="" effort_str="" src=""
+  local role="$1" agent="$2" model="" effort="" model_str="" effort_str=""
   case "$role" in
     composer|defend)           model="$COMPOSER_MODEL"; effort="$COMPOSER_EFFORT" ;;
     reviewer|critique|tighten) model="$REVIEWER_MODEL"; effort="$REVIEWER_EFFORT" ;;
     *) : ;;
   esac
-  if [[ "$agent" == "codex" ]]; then
-    case "$model" in fable|best|opus|claude-*) model=""; effort="" ;; esac
-    if [[ -n "$model" ]]; then model_str="$model"; else model_str="(inherit:${CODEX_MODEL_BASE:-CLI-config})"; fi
-    if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CODEX_EFFORT_BASE:-default})"; fi
-  else
-    case "$model" in gpt-*|codex*) model=""; effort="" ;; esac
-    if [[ -n "$model" ]]; then model_str="$(resolve_claude_model_alias "$model")"; else model_str="(inherit:${CLAUDE_MODEL_BASE})"; fi
-    if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CLAUDE_EFFORT_BASE:-default})"; fi
-  fi
+  case "$agent" in
+    claude)
+      case "$model" in gpt-*|codex*|glm-*|kimi-*) model=""; effort="" ;; esac
+      if [[ -n "$model" ]]; then model_str="$(resolve_claude_model_alias "$model")"; else model_str="(inherit:${CLAUDE_MODEL_BASE})"; fi
+      if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CLAUDE_EFFORT_BASE:-default})"; fi
+      ;;
+    codex)
+      case "$model" in fable|best|opus|claude-*|glm-*|kimi-*) model=""; effort="" ;; esac
+      if [[ -n "$model" ]]; then model_str="$model"; else model_str="(inherit:${CODEX_MODEL_BASE:-CLI-config})"; fi
+      if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CODEX_EFFORT_BASE:-default})"; fi
+      ;;
+    glm)
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
+      model_str="$(resolve_claude_model_alias "${model:-$GLM_MODEL_BASE}")"
+      if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="${GLM_EFFORT_BASE:-default}"; fi
+      ;;
+    kimi)
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|glm-*) model=""; effort="" ;; esac
+      model_str="${model:-$KIMI_MODEL_BASE}"
+      effort_str="default"
+      ;;
+    *)
+      die "Unknown agent: $agent"
+      ;;
+  esac
   printf '%s:%s@%s' "$agent" "$model_str" "$effort_str"
 }
 
@@ -682,9 +752,22 @@ invoke_agent() {
   case "$agent" in
     claude) invoke_claude "$prompt_file" "$output_file" "$stderr_file" ;;
     codex)  invoke_codex "$prompt_file" "$output_file" "$stderr_file" ;;
+    glm)    invoke_glm "$prompt_file" "$output_file" "$stderr_file" ;;
+    kimi)   invoke_kimi "$prompt_file" "$output_file" "$stderr_file" ;;
     *)      die "Unknown agent: $agent" ;;
   esac
 }
+
+# Additive observability matching dev-review's seat_models convention. GLM and
+# Kimi descriptors always contain their concrete model ids, even with no role
+# override, so state.json never reports an ambiguous inherited/default model for
+# either new seat.
+write_state_field "$STATE_FILE" ".seat_models.compose" "string" \
+  "$(resolve_role_seat_string composer "$AGENT_A")"
+write_state_field "$STATE_FILE" ".seat_models.reviewer" "string" \
+  "$(resolve_role_seat_string reviewer "$AGENT_A")"
+write_state_field "$STATE_FILE" ".seat_models.composer" "string" \
+  "$(resolve_role_seat_string composer "$AGENT_B")"
 
 # --- Compose Phase ---
 run_compose_phase() {
