@@ -118,8 +118,9 @@ different vendors so the bounce can surface disagreement.
 - **`glm`**: GLM-5.3-Flash through Z.AI's direct Chat Completions API. Calls use
   the Z.AI account balance or resource package shared across machines. Use it
   for a low-cost extra cross-vendor critique.
-- **`kimi`**: Kimi K3 through Kimi Code, authenticated with a free kimi.com
-  account. It is a second free cross-vendor composer or reviewer.
+- **`kimi`**: Kimi K3 through Moonshot's direct Chat Completions API, using the
+  Kimi Platform balance shared across machines. It is a second low-cost
+  cross-vendor composer or reviewer.
 
 Setup for the `glm` and `kimi` seats (accounts, keys, launchers, web chat) lives in
 [docs/agent-seats.md](../../docs/agent-seats.md). Document seats compose or review;

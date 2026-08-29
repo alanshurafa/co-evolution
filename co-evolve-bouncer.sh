@@ -329,8 +329,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# A GLM seat may receive its key through this worktree's gitignored .env.local.
-# Read only ZAI_API_KEY; sourcing the file would import unrelated settings into
+# Document seats may receive keys through this worktree's gitignored .env.local.
+# Read only the named keys; sourcing the file would import unrelated settings into
 # the long-lived bouncer process. The value remains a shell variable and is
 # never exported — invoke_glm reads it into a mode-600 temporary curl config.
 load_zai_api_key_from_env_local() {
@@ -349,10 +349,27 @@ load_zai_api_key_from_env_local() {
   [[ -n "$value" ]] && ZAI_API_KEY="$value"
 }
 
+load_kimi_api_key_from_env_local() {
+  local env_file="$SCRIPT_DIR/.env.local"
+  local line="" value=""
+
+  [[ -z "${KIMI_API_KEY:-}" && -r "$env_file" ]] || return 0
+  line=$(grep -m 1 -E '^[[:space:]]*(export[[:space:]]+)?KIMI_API_KEY[[:space:]]*=' "$env_file" 2>/dev/null || true)
+  [[ -n "$line" ]] || return 0
+
+  value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  [[ -n "$value" ]] && KIMI_API_KEY="$value"
+}
+
 # Order is intentional: a key present only in .env.local must be loaded before
 # the per-seat prerequisite checks. Unknown agents also fail here, before a run
 # directory or any paid/live compose call is created.
 load_zai_api_key_from_env_local
+load_kimi_api_key_from_env_local
 for _seat_agent in "$AGENT_A" "$AGENT_B"; do
   if ! seat_prereqs_ok "$_seat_agent"; then
     die "$SEAT_PREREQ_ERROR"
@@ -382,7 +399,7 @@ TASK_AS_PATH=""
 # parsing so --claude-model is reflected. CLAUDE_MODEL carries its lib default
 # (best -> claude-opus-4-8); the others default empty (OFF) = argv parity.
 CLAUDE_MODEL_BASE="$CLAUDE_MODEL"; CODEX_MODEL_BASE="${CODEX_MODEL:-}"
-GLM_MODEL_BASE="${GLM_MODEL:-glm-5.3-flash}"; KIMI_MODEL_BASE="${KIMI_MODEL:-kimi-code/k3}"
+GLM_MODEL_BASE="${GLM_MODEL:-glm-5.3-flash}"; KIMI_MODEL_BASE="${KIMI_MODEL:-kimi-k3}"
 CLAUDE_EFFORT_BASE="${CLAUDE_EFFORT:-}"; CODEX_EFFORT_BASE="${CODEX_REASONING_EFFORT:-}"
 GLM_EFFORT_BASE="${GLM_EFFORT:-}"
 
