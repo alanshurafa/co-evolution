@@ -288,49 +288,32 @@ test("glm direct API ignores the Windows System32 WSL launcher", () => {
   }
 });
 
-test("kimi accepts the portable CLI only with config and login files", () => {
+test("kimi accepts only the targeted .env.local API key without mutating process.env", () => {
   const work = mkdtempSync(join(tmpdir(), "mcp-kimi-prereq-"));
-  const originalPath = process.env.PATH;
-  const originalHome = process.env.HOME;
-  const originalProfile = process.env.USERPROFILE;
+  const originalKey = process.env.KIMI_API_KEY;
+  const originalCwd = process.cwd();
   try {
-    const kimiRoot = join(work, ".kimi-code");
-    const executable = join(kimiRoot, "bin", process.platform === "win32" ? "kimi.exe" : "kimi");
-    mkdirSync(join(kimiRoot, "bin"), { recursive: true });
-    mkdirSync(join(kimiRoot, "credentials"), { recursive: true });
-    writeFileSync(executable, "exit 0\n");
-    chmodSync(executable, 0o755);
-    const jqExecutable = join(
-      kimiRoot,
-      "bin",
-      process.platform === "win32" ? "jq.exe" : "jq",
-    );
-    writeFileSync(jqExecutable, "exit 0\n");
-    chmodSync(jqExecutable, 0o755);
-    writeFileSync(join(kimiRoot, "config.toml"), "[service]\n");
-    writeFileSync(join(kimiRoot, "credentials", "kimi-code.json"), "{}\n");
-    process.env.PATH = join(kimiRoot, "bin");
-    process.env.HOME = work;
-    process.env.USERPROFILE = work;
+    delete process.env.KIMI_API_KEY;
+    process.chdir(work);
+    writeFileSync(join(work, ".env.local"), "UNRELATED=value\nKIMI_API_KEY=test-only-kimi-key\n");
 
     const childEnv = runtimePrerequisites(prerequisiteOptions(work, "kimi", "kimi"));
-    assert.equal(childEnv.HOME, work);
+    assert.equal(childEnv.KIMI_API_KEY, "test-only-kimi-key");
+    assert.equal(process.env.KIMI_API_KEY, undefined);
 
-    rmSync(join(kimiRoot, "credentials", "kimi-code.json"));
+    rmSync(join(work, ".env.local"));
     assert.throws(
       () => runtimePrerequisites(prerequisiteOptions(work, "kimi", "kimi")),
       (error: unknown) =>
         error instanceof BounceError &&
         error.code === "missing_prerequisite" &&
         error.details.missing instanceof Array &&
-        error.details.missing.includes("kimi_login"),
+        error.details.missing.includes("KIMI_API_KEY"),
     );
   } finally {
-    process.env.PATH = originalPath;
-    if (originalHome === undefined) delete process.env.HOME;
-    else process.env.HOME = originalHome;
-    if (originalProfile === undefined) delete process.env.USERPROFILE;
-    else process.env.USERPROFILE = originalProfile;
+    process.chdir(originalCwd);
+    if (originalKey === undefined) delete process.env.KIMI_API_KEY;
+    else process.env.KIMI_API_KEY = originalKey;
     rmSync(work, { recursive: true, force: true });
   }
 });
