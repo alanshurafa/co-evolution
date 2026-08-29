@@ -51,3 +51,7 @@ tests/.sim-*/
 mcp/node_modules/
 mcp/dist/
 mcp/vendor/
+
+# Benchmark suite run outputs and scrubbed-source-path selection log
+benchmarks/results/
+benchmarks/corpus/selection-log.json
