@@ -164,21 +164,18 @@ export function runtimePrerequisites(
   }
 
   if (agents.includes("glm")) {
-    if (
-      (process.env.WSL_DISTRO_NAME && findOnPath("cmd.exe")) ||
-      isWslLauncher(bashPath)
-    ) {
+    if (!findOnPath("curl")) {
       throw runtimeError(
         "glm",
-        "native_claude_dispatch",
-        "glm seat unsupported under WSL claude dispatch",
+        "curl",
+        "glm seat requires curl for the direct Z.AI API",
       );
     }
-    if (!findOnPath("claude")) {
+    if (!findOnPath("jq")) {
       throw runtimeError(
         "glm",
-        "claude",
-        "glm seat requires the claude CLI on PATH",
+        "jq",
+        "glm seat requires jq for Z.AI request and response handling",
       );
     }
 
