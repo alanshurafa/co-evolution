@@ -883,7 +883,21 @@ file_contains_error_payload() {
 
   [[ -s "$file_path" ]] || return 1
 
-  grep -qiE '^(Error|ERROR|fatal|Fatal):|^Internal Server Error$|^Bad Gateway$|^Service Unavailable$|rate limit exceeded|context deadline exceeded|timed out|connection (reset|refused)|ECONNREFUSED|ENOTFOUND|Traceback \(most recent call last\):' "$file_path"
+  grep -qiE '^(API Error|Error|ERROR|fatal|Fatal):|^Internal Server Error$|^Bad Gateway$|^Service Unavailable$|rate limit exceeded|context deadline exceeded|timed out|connection (reset|refused)|ECONNREFUSED|ENOTFOUND|Traceback \(most recent call last\):' "$file_path"
+}
+
+# Provider CLIs sometimes print a short API-error sentence to stdout and still
+# exit zero. Without a content gate, the bouncer can install that sentence as
+# the document and report false convergence. Keep this deliberately narrow:
+# consult the broad error-payload matcher only for short outputs, so a real
+# document that discusses or quotes provider errors is not rejected.
+output_is_provider_failure() {
+  local file_path="$1"
+  local words
+
+  [[ -s "$file_path" ]] || return 1
+  words=$(wc -w < "$file_path" | tr -d '\r\n ')
+  (( words < 50 )) && file_contains_error_payload "$file_path"
 }
 
 # R-1/R-2 (v1.3 Phase 1): classify an agent invocation's outcome BEFORE the
@@ -912,6 +926,11 @@ validate_agent_artifact() {
   # keeps the short+loose catch for a bare banner the anchor excludes (C-8).
   if output_is_auth_failure "$output_file"; then
     log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
+    return 2
+  fi
+
+  if output_is_provider_failure "$output_file"; then
+    log " ERROR: ${agent_name} returned a provider/API failure, not a document. Inspect the captured output and provider account status before re-running."
     return 2
   fi
 
