@@ -1,11 +1,11 @@
 # Agent seats: GLM-5.3-Flash and Kimi K3
 
-This guide sets up the two free Chinese-model seats on the PC and Mac. The same
+This guide sets up two Chinese-model seats on the PC and Mac. The same
 accounts also work in each vendor's web chat.
 
 | Seat | Route | Cost |
 |------|-------|------|
-| `glm` | GLM-5.3-Flash through the `claude` CLI and Z.AI's Anthropic-compatible endpoint | Free tier, reported at about 50 requests per day |
+| `glm` | GLM-5.3-Flash through Z.AI's direct Chat Completions API | Z.AI API balance or an eligible resource package |
 | `kimi` | Kimi K3 through Kimi Code and a kimi.com account | Free consumer account |
 
 Both are document-pipeline-only. They compose or review bounces; they never
@@ -53,7 +53,16 @@ the browser, so there is no API key to paste.
 
 ## GLM on Z.AI
 
-Facts the launchers depend on:
+The document seat uses Z.AI directly, without Claude Code's internal agent
+messages. The standalone `glm` convenience launchers continue to use Z.AI's
+official Claude-compatible route for interactive prompts.
+
+| Use | Endpoint | Authentication |
+|-----|----------|----------------|
+| Co-Evolution document seat | `https://api.z.ai/api/paas/v4/chat/completions` | `Authorization: Bearer ZAI_API_KEY` |
+| Standalone `glm` launcher | `https://api.z.ai/api/anthropic` | `ZAI_API_KEY` → `ANTHROPIC_AUTH_TOKEN` |
+
+Facts the standalone launchers depend on:
 
 | Setting | Value |
 |---------|-------|
@@ -138,10 +147,10 @@ same Z.AI account used for the API key.
 
 ### Quota and upgrades
 
-- The free tier is reported at about 50 requests per day. The Mac and PC share
-  that quota because they use one account.
-- If you outgrow it, the GLM Coding Plan Lite is ~$18/month. OpenRouter is a
-  further fallback. Neither is needed to run the seat.
+- Direct API calls consume the Z.AI account balance or an attached resource
+  package. The Mac and PC share that account.
+- The GLM Coding Plan and OpenRouter are alternative routes, not requirements
+  for the direct document adapter.
 
 ## Kimi K3
 
@@ -217,7 +226,7 @@ install.
 ## Verifying the seats
 
 After the CORE seat work has landed in the repo, smoke-test each seat from the
-repo root. These count against the free quotas, so keep them to a couple of calls.
+repo root. These consume provider quota or balance, so keep them to a couple of calls.
 
 ```bash
 # GLM seat through the bouncer (2–4 requests)

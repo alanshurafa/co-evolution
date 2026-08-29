@@ -101,7 +101,7 @@ aggressive critique pass can leave markers open at the default 2 passes.
 | High-stakes argument or decision needs adversarial passes | `bash ./co-evolve-bouncer.sh --vanilla --chain "input"` |
 | Adversarial review of a document (cross-AI bounce) | `bash ./co-evolve-bouncer.sh --vanilla --adversarial --bounce-only <file>` |
 | Internal adversarial review, same model, no Codex | `bash ./co-evolve-bouncer.sh --vanilla --adversarial --agents claude,claude --bounce-only <file>` |
-| Free third cross-vendor read | `bash ./co-evolve-bouncer.sh --vanilla --agents claude,glm "input"` |
+| Low-cost third cross-vendor read | `bash ./co-evolve-bouncer.sh --vanilla --agents claude,glm "input"` |
 | Bounce against Kimi instead of Codex | `bash ./co-evolve-bouncer.sh --vanilla --agents claude,kimi --bounce-only <file>` |
 | Real repo change with code execution | `/dev-review` or `dev-review/codex/dev-review.sh` |
 
@@ -115,14 +115,14 @@ different vendors so the bounce can surface disagreement.
   opus-4.8). Best suited to user-facing composition.
 - **`codex`**: GPT-5.5 through the Codex CLI. A strong mechanical reviewer. It is
   cheap under the Codex plan but not free; the daily codex-guard cap applies.
-- **`glm`**: GLM-5.3-Flash through Z.AI's Anthropic-compatible endpoint. Its free
-  tier is reported at about 50 requests per day, shared across machines. Use it
-  for an extra cross-vendor critique before paying for another pass.
+- **`glm`**: GLM-5.3-Flash through Z.AI's direct Chat Completions API. Calls use
+  the Z.AI account balance or resource package shared across machines. Use it
+  for a low-cost extra cross-vendor critique.
 - **`kimi`**: Kimi K3 through Kimi Code, authenticated with a free kimi.com
   account. It is a second free cross-vendor composer or reviewer.
 
 Setup for the `glm` and `kimi` seats (accounts, keys, launchers, web chat) lives in
-[docs/agent-seats.md](../../docs/agent-seats.md). Free seats compose or review;
+[docs/agent-seats.md](../../docs/agent-seats.md). Document seats compose or review;
 the full-context session Claude adjudicates.
 
 ## Output

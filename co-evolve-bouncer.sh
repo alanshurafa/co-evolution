@@ -332,7 +332,7 @@ done
 # A GLM seat may receive its key through this worktree's gitignored .env.local.
 # Read only ZAI_API_KEY; sourcing the file would import unrelated settings into
 # the long-lived bouncer process. The value remains a shell variable and is
-# never exported — invoke_glm places it on its one child command with `env`.
+# never exported — invoke_glm reads it into a mode-600 temporary curl config.
 load_zai_api_key_from_env_local() {
   local env_file="$SCRIPT_DIR/.env.local"
   local line="" value=""

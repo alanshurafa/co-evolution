@@ -113,6 +113,35 @@ if [[ -n "$output_file" ]]; then printf '%s\n' "$body" > "$output_file"; else pr
 STUB
 chmod +x "$TEST_DIR/bin/codex"
 
+# curl stub: validate the mode-600 config/request contract without recording the
+# bearer value, then return a Z.AI-shaped Chat Completions response. The default
+# content keeps one marker open so mixed glm,claude scenarios exercise pass 2.
+cat > "$TEST_DIR/bin/curl" <<'STUB'
+#!/usr/bin/env bash
+config=""; prev=""
+for arg in "$@"; do
+  [[ "$prev" == "--config" ]] && config="$arg"
+  prev="$arg"
+done
+[[ -n "$config" && -r "$config" ]] || exit 2
+request=$(cat)
+if [[ -n "${CURL_CALL_LOG:-}" ]]; then
+  {
+    printf 'MODEL=%s\n' "$(printf '%s' "$request" | jq -r '.model // empty')"
+    grep -Fq 'header = "Authorization: Bearer ' "$config" && printf '%s\n' 'AUTH_PRESENT=1'
+    printf '%s' "$request" | jq -e '.messages[0].content | contains("## DOCUMENT TO REVIEW")' >/dev/null \
+      && printf '%s\n' 'PROMPT_PRESENT=1'
+  } >> "$CURL_CALL_LOG"
+fi
+if [[ "${CURL_STUB_CLEAN:-}" == "1" ]]; then
+  content='GLM clean document response with enough ordinary words to pass artifact validation safely.'
+else
+  content='GLM reviewer response with enough ordinary words to pass validation. [CONTESTED] keep one marker for the composer pass.'
+fi
+jq -n --arg content "$content" '{model:"glm-5.3-flash",choices:[{message:{content:$content},finish_reason:"stop"}],usage:{prompt_tokens:10,completion_tokens:10}}'
+STUB
+chmod +x "$TEST_DIR/bin/curl"
+
 # A document fixture to bounce (--bounce-only skips compose so we drive only the
 # bounce loop for the reviewer/composer argv assertions; scenario 1 uses compose
 # to also cover the compose-phase leak-guard fallback).
@@ -271,15 +300,12 @@ else
 fi
 
 # ===========================================================================
-# Scenario 6: GLM endpoint credentials are child-scoped within ONE runner.
-# Pass 1 is glm and must receive the Z.AI endpoint/token. Pass 2 is plain Claude
-# in the same bouncer process and must receive neither variable. Separate runs
-# would not detect an export leak, so this scenario deliberately uses one
-# --agents glm,claude invocation with two sequential bounce passes.
+# Scenario 6: GLM uses the direct Z.AI request contract, then plain Claude runs
+# as pass 2 in the same process without receiving Anthropic gateway overrides.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
-claude_log="$TEST_DIR/s6_claude.log"; env_log="$TEST_DIR/s6_env.log"
-: > "$claude_log"; : > "$env_log"
+claude_log="$TEST_DIR/s6_claude.log"; env_log="$TEST_DIR/s6_env.log"; curl_log="$TEST_DIR/s6_curl.log"
+: > "$claude_log"; : > "$env_log"; : > "$curl_log"
 (
   unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN
   export ANTHROPIC_API_KEY="inherited-secret-sentinel"
@@ -293,6 +319,7 @@ claude_log="$TEST_DIR/s6_claude.log"; env_log="$TEST_DIR/s6_env.log"
   export ZAI_API_KEY="zai-hermetic-test-token"
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$claude_log" CLAUDE_ENV_LOG="$env_log"
+  export CURL_CALL_LOG="$curl_log"
   export CLAUDE_CLEAN_WITHOUT_ANTHROPIC=1
   export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs6"
   bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 2 \
@@ -300,35 +327,32 @@ claude_log="$TEST_DIR/s6_claude.log"; env_log="$TEST_DIR/s6_env.log"
 ) >"$TEST_DIR/s6.out" 2>&1
 s6_rc=$?
 
-# Flatten each delimited call block to one line so the env assertions remain
-# tied to the corresponding model argv rather than merely checking the file.
+# Flatten the one Claude call block to keep its env assertions together.
 awk '
   /^--- CALL ---$/ { block=""; next }
   /^--- END CALL ---$/ { print block; next }
   { block = block (block == "" ? "" : " | ") $0 }
 ' "$env_log" > "$TEST_DIR/s6_calls.log"
-s6_glm_call=$(grep -- '--model glm-5.3-flash' "$TEST_DIR/s6_calls.log" || true)
 s6_claude_call=$(grep -- '--model claude-opus-4-8' "$TEST_DIR/s6_calls.log" || true)
 s6_call_count=$(wc -l < "$TEST_DIR/s6_calls.log" | tr -d '\r\n ')
 s6_ok=true
 [[ "$s6_rc" -eq 0 ]] || s6_ok=false
-[[ "$s6_call_count" == "2" ]] || s6_ok=false
-printf '%s' "$s6_glm_call" | grep -Fq 'ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic' || s6_ok=false
-printf '%s' "$s6_glm_call" | grep -Fq 'ANTHROPIC_AUTH_TOKEN_PRESENT=1' || s6_ok=false
-printf '%s' "$s6_glm_call" | grep -Fq -- '--safe-mode' || s6_ok=false
-printf '%s' "$s6_glm_call" | grep -Fq -- '--tools=' || s6_ok=false
+[[ "$s6_call_count" == "1" ]] || s6_ok=false
+grep -Fxq 'MODEL=glm-5.3-flash' "$curl_log" || s6_ok=false
+grep -Fxq 'AUTH_PRESENT=1' "$curl_log" || s6_ok=false
+grep -Fxq 'PROMPT_PRESENT=1' "$curl_log" || s6_ok=false
 if printf '%s' "$s6_claude_call" | grep -Eq 'ANTHROPIC_(BASE_URL|AUTH_TOKEN_PRESENT)='; then s6_ok=false; fi
 for provider_var in \
   ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS CLAUDE_CODE_OAUTH_TOKEN \
   CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY; do
-  if printf '%s' "$s6_glm_call" | grep -Fq "${provider_var}_PRESENT=1"; then s6_ok=false; fi
   printf '%s' "$s6_claude_call" | grep -Fq "${provider_var}_PRESENT=1" || s6_ok=false
 done
 if [[ "$s6_ok" == true ]]; then
-  pass "GLM env scope: one glm,claude run gives Z.AI vars only to GLM, never the following Claude pass"
+  pass "GLM direct API: request carries model/auth/prompt; following Claude pass gets no gateway overrides"
 else
   fail "GLM env scope leaked or the single-run two-pass contract was not exercised"
   { echo "--- bouncer output ---"; cat "$TEST_DIR/s6.out"
+    echo "--- curl contract ---"; cat "$curl_log"
     echo "--- per-call env ---"; cat "$TEST_DIR/s6_calls.log"; } >&2
 fi
 
@@ -357,35 +381,35 @@ else
 fi
 
 # ===========================================================================
-# Scenario 8: WSL must die loudly before invoking the Windows Claude dispatch.
-# A Bash-side `env` prefix cannot cross cmd.exe, so continuing could otherwise
-# send a GLM-intended prompt to the operator's real Anthropic account.
+# Scenario 8: GLM's direct API works under WSL and never invokes cmd.exe.
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 cat > "$TEST_DIR/bin/cmd.exe" <<'STUB'
 #!/usr/bin/env bash
-echo "cmd.exe must not be invoked for a GLM seat" >&2
+echo "cmd.exe must not be invoked for a direct GLM seat" >&2
 exit 99
 STUB
 chmod +x "$TEST_DIR/bin/cmd.exe"
 : > "$TEST_DIR/s8_claude.log"
+: > "$TEST_DIR/s8_curl.log"
 s8_rc=0
 (
   export ZAI_API_KEY="zai-hermetic-test-token"
   export WSL_DISTRO_NAME="co-evolve-test-wsl"
   export PATH="$TEST_DIR/bin:$PATH"
   export CLAUDE_ARGV_LOG="$TEST_DIR/s8_claude.log"
+  export CURL_CALL_LOG="$TEST_DIR/s8_curl.log" CURL_STUB_CLEAN=1
   export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs8"
   bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
     --agents glm,claude "$DOC"
 ) >"$TEST_DIR/s8.out" 2>&1 || s8_rc=$?
-if [[ "$s8_rc" -ne 0 ]] \
-   && grep -Fq 'ERROR: glm seat unsupported under WSL claude dispatch' "$TEST_DIR/s8.out" \
+if [[ "$s8_rc" -eq 0 ]] \
+   && grep -Fxq 'MODEL=glm-5.3-flash' "$TEST_DIR/s8_curl.log" \
    && [[ ! -s "$TEST_DIR/s8_claude.log" ]]; then
-  pass "GLM WSL guard: dies loudly before cmd.exe or Claude dispatch"
+  pass "GLM direct API: WSL path uses curl and never invokes cmd.exe or Claude"
 else
-  fail "GLM WSL guard did not fail before agent dispatch"
-  { cat "$TEST_DIR/s8.out"; cat "$TEST_DIR/s8_claude.log"; } >&2
+  fail "GLM direct API did not remain independent of WSL Claude dispatch"
+  { cat "$TEST_DIR/s8.out"; cat "$TEST_DIR/s8_claude.log"; cat "$TEST_DIR/s8_curl.log"; } >&2
 fi
 
 # ===========================================================================
@@ -399,24 +423,23 @@ s9_ok=true
 for override in opus best claude-reviewer-xyz; do
   safe_name=${override//[^a-zA-Z0-9]/_}
   claude_log="$TEST_DIR/s9_${safe_name}_claude.log"
-  : > "$claude_log"
+  curl_log="$TEST_DIR/s9_${safe_name}_curl.log"
+  : > "$claude_log"; : > "$curl_log"
   (
     unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
     unset COMPOSER_MODEL COMPOSER_EFFORT REVIEWER_MODEL REVIEWER_EFFORT
     export ZAI_API_KEY="zai-hermetic-test-token"
     export PATH="$TEST_DIR/bin:$PATH"
     export CLAUDE_ARGV_LOG="$claude_log"
+    export CURL_CALL_LOG="$curl_log"
     export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs9_${safe_name}"
     bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
       --agents glm,claude --reviewer-model "$override" \
       --reviewer-effort high "$DOC"
   ) >"$TEST_DIR/s9_${safe_name}.out" 2>&1 || true
 
-  glm_argv=$(grep -- '--model glm-5.3-flash' "$claude_log" | head -1 || true)
   run_log=$(ls -dt "$TEST_DIR"/runs9_${safe_name}/co-evolve-*/run.log 2>/dev/null | head -1)
-  if [[ -z "$glm_argv" ]] \
-     || printf '%s' "$glm_argv" | grep -Fq -- '--effort high' \
-     || grep -Fq -- "--model $override" "$claude_log" \
+  if ! grep -Fxq 'MODEL=glm-5.3-flash' "$curl_log" \
      || [[ -z "$run_log" ]] \
      || ! grep -Fq 'Seat:  glm:glm-5.3-flash@default' "$run_log"; then
     s9_ok=false

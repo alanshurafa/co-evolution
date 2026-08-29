@@ -242,7 +242,7 @@ test("glm accepts only the targeted .env.local key without mutating process.env"
   }
 });
 
-test("glm rejects WSL Windows dispatch before spawn", () => {
+test("glm direct API accepts WSL without Windows Claude dispatch", () => {
   const work = mkdtempSync(join(tmpdir(), "mcp-glm-wsl-"));
   const originalPath = process.env.PATH;
   const originalKey = process.env.ZAI_API_KEY;
@@ -255,17 +255,12 @@ test("glm rejects WSL Windows dispatch before spawn", () => {
     writeFileSync(join(binDir, `claude${suffix}`), "exit 0\n");
     chmodSync(join(binDir, `cmd.exe${suffix}`), 0o755);
     chmodSync(join(binDir, `claude${suffix}`), 0o755);
-    process.env.PATH = binDir;
+    process.env.PATH = `${binDir}${delimiter}${originalPath}`;
     process.env.ZAI_API_KEY = "test-only-key";
     process.env.WSL_DISTRO_NAME = "test";
 
-    assert.throws(
-      () => runtimePrerequisites(prerequisiteOptions(work, "glm", "claude")),
-      (error: unknown) =>
-        error instanceof BounceError &&
-        error.code === "missing_prerequisite" &&
-        error.message === "glm seat unsupported under WSL claude dispatch",
-    );
+    const childEnv = runtimePrerequisites(prerequisiteOptions(work, "glm", "claude"));
+    assert.equal(childEnv.ZAI_API_KEY, "test-only-key");
   } finally {
     process.env.PATH = originalPath;
     if (originalKey === undefined) delete process.env.ZAI_API_KEY;
@@ -276,22 +271,19 @@ test("glm rejects WSL Windows dispatch before spawn", () => {
   }
 });
 
-test("glm rejects the Windows System32 WSL launcher before spawn", () => {
+test("glm direct API ignores the Windows System32 WSL launcher", () => {
   const work = mkdtempSync(join(tmpdir(), "mcp-glm-wsl-launcher-"));
+  const originalKey = process.env.ZAI_API_KEY;
   try {
-    assert.throws(
-      () =>
-        runtimePrerequisites(
-          prerequisiteOptions(work, "glm", "claude"),
-          "C:\\Windows\\System32\\bash.exe",
-        ),
-      (error: unknown) =>
-        error instanceof BounceError &&
-        error.code === "missing_prerequisite" &&
-        error.message === "glm seat unsupported under WSL claude dispatch" &&
-        error.runDir === null,
+    process.env.ZAI_API_KEY = "test-only-key";
+    const childEnv = runtimePrerequisites(
+      prerequisiteOptions(work, "glm", "claude"),
+      "C:\\Windows\\System32\\bash.exe",
     );
+    assert.equal(childEnv.ZAI_API_KEY, "test-only-key");
   } finally {
+    if (originalKey === undefined) delete process.env.ZAI_API_KEY;
+    else process.env.ZAI_API_KEY = originalKey;
     rmSync(work, { recursive: true, force: true });
   }
 });
