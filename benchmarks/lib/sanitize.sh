@@ -122,9 +122,8 @@ sanitize_doc() {
 leak_check() {
   local file="${1:?leak_check requires a file}"
   local banned_file="${2:?leak_check requires a banned-token file}"
-  local hits=0 lineno=0
-  local token token_lc line line_lc
-  local -a tokens=()
+  local token
+  local -i ntokens=0
 
   [[ -f "$file" ]] || die "leak_check: file not found: $file"
   [[ -f "$banned_file" ]] || die "leak_check: banned-token file not found: $banned_file"
@@ -134,27 +133,32 @@ leak_check() {
     token="${token%"${token##*[![:space:]]}"}"
     [[ -z "$token" ]] && continue
     [[ "$token" == \#* ]] && continue
-    tokens+=("$token")
+    ntokens+=1
   done < "$banned_file"
 
-  if (( ${#tokens[@]} == 0 )); then
+  if (( ntokens == 0 )); then
     die "leak_check: $banned_file lists no tokens — refusing to certify a document against an empty list"
   fi
 
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    lineno=$((lineno + 1))
-    line="${line%$'\r'}"
-    line_lc=$(printf '%s' "$line" | tr '[:upper:]' '[:lower:]')
-    for token in "${tokens[@]}"; do
-      token_lc=$(printf '%s' "$token" | tr '[:upper:]' '[:lower:]')
-      if [[ "$line_lc" == *"$token_lc"* ]]; then
-        printf '%s: line %s: %s\n' "$token" "$lineno" "$line"
-        hits=$((hits + 1))
-      fi
-    done
-  done < "$file"
-
-  (( hits == 0 ))
+  # Single awk pass: one process total regardless of document or list size.
+  # The earlier per-(line x token) shell loop forked tr for every pair and
+  # cost ~2s per document line — a full batch would have spent an hour here
+  # before the first judge call.
+  awk '
+    FNR == NR {
+      sub(/\r$/, ""); sub(/[[:space:]]+$/, "")
+      if ($0 == "" || $0 ~ /^#/) next
+      orig[++n] = $0; lc[n] = tolower($0)
+      next
+    }
+    {
+      sub(/\r$/, "")
+      low = tolower($0)
+      for (i = 1; i <= n; i++)
+        if (index(low, lc[i])) { printf "%s: line %d: %s\n", orig[i], FNR, $0; hits++ }
+    }
+    END { exit hits > 0 ? 1 : 0 }
+  ' "$banned_file" "$file"
 }
 
 # --- Self-test ---------------------------------------------------------------

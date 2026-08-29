@@ -1,0 +1,29 @@
+# Hermetic condition manifest for tests/smoke.sh — A, B and D only.
+#
+# Same schema and the same flag surface as benchmarks/conditions.yaml, minus
+# the panel condition (which needs run-panel.sh) and minus --claude-model,
+# which the PATH-shadowed stub ignores anyway. No GLM calls, so nothing here
+# touches the quota ledger; the pending-quota path has its own manifest.
+schema: bench-conditions/1.0
+
+conditions:
+  - id: A
+    label: solo
+    kind: solo
+    description: One stubbed compose call using the bouncer's compose prompt.
+    model: claude-fable-5
+    glm_calls_per_run: 0
+
+  - id: B
+    label: codex-bounce
+    kind: bouncer
+    description: Cross-vendor bounce against the stubbed claude and codex CLIs.
+    args: ["--vanilla", "--agents", "claude,codex"]
+    glm_calls_per_run: 0
+
+  - id: D
+    label: self-bounce
+    kind: bouncer
+    description: Same-model control bounce against the stubbed claude CLI.
+    args: ["--vanilla", "--agents", "claude,claude"]
+    glm_calls_per_run: 0
