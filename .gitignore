@@ -56,3 +56,6 @@ mcp/vendor/
 benchmarks/results/
 benchmarks/corpus/selection-log.json
 tests/.run-ledger/
+
+# Machine-local operational notes (private paths, spend, secrets workflow)
+.planning/local/
