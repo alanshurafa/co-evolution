@@ -1,0 +1,52 @@
+# Condition manifest for the co-evolution benchmark suite.
+#
+# Each entry is one plan-composition treatment run once per corpus task.
+# Adding a condition (e.g. a GLM-only bounce, an adversarial B) is one new
+# entry here, zero code — run-benchmark.sh dispatches on `kind`.
+#
+# glm_calls_per_run feeds the GLM quota ledger (results/<batch>/glm-ledger.json)
+# so the orchestrator can defer GLM-needing cells when the free-tier budget
+# for the day is spent, per PREREGISTRATION.md judge coverage.
+schema: bench-conditions/1.0
+
+conditions:
+  - id: A
+    label: solo
+    kind: solo
+    description: >-
+      Single invoke_claude call on the fable-5 seat, using the byte-identical
+      compose prompt the bouncer builds (co-evolve-bouncer.sh:785-787). No
+      second pass, no critique, no revision.
+    model: claude-fable-5
+    glm_calls_per_run: 0
+
+  - id: B
+    label: codex-bounce
+    kind: bouncer
+    description: >-
+      Cross-vendor bounce: Fable composes, Codex critiques and revises. Final
+      document is Codex-revised (co-evolve-bouncer.sh seat semantics, odd
+      passes review / even passes compose). Primary treatment under test.
+    args: ["--vanilla", "--agents", "claude,codex", "--claude-model", "fable"]
+    glm_calls_per_run: 0
+
+  - id: C
+    label: panel
+    kind: panel
+    description: >-
+      Fable composes; codex, glm, and kimi each critique independently with
+      no rewrite access; Fable synthesizes a final revision accepting or
+      rejecting each critique point on its merits. Exploratory condition.
+    reviewers: [codex, glm, kimi]
+    glm_calls_per_run: 1
+
+  - id: D
+    label: self-bounce
+    kind: bouncer
+    description: >-
+      Self-critique control: same mechanics as B but both bounce seats are
+      Fable (--agents claude,claude), holding pass count constant. Isolates
+      "any second pass helps" from "cross-vendor helps" — B-vs-D is the
+      pre-registered secondary comparison.
+    args: ["--vanilla", "--agents", "claude,claude", "--claude-model", "fable"]
+    glm_calls_per_run: 0
