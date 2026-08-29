@@ -684,7 +684,7 @@ apply_role_seat() {
       export CODEX_REASONING_EFFORT="${effort:-$CODEX_EFFORT_BASE}"
       ;;
     glm)
-      case "$model" in gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
       GLM_MODEL="$(resolve_claude_model_alias "${model:-$GLM_MODEL_BASE}")"
       GLM_EFFORT="${effort:-$GLM_EFFORT_BASE}"
       ;;
@@ -721,7 +721,7 @@ resolve_role_seat_string() {
       if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="(inherit:${CODEX_EFFORT_BASE:-default})"; fi
       ;;
     glm)
-      case "$model" in gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
+      case "$model" in fable|best|opus|claude-*|gpt-*|codex*|kimi-*) model=""; effort="" ;; esac
       model_str="$(resolve_claude_model_alias "${model:-$GLM_MODEL_BASE}")"
       if [[ -n "$effort" ]]; then effort_str="$effort"; else effort_str="${GLM_EFFORT_BASE:-default}"; fi
       ;;
