@@ -106,6 +106,42 @@ else
   fail "S5: empty output -> expected rc 1, got $rc"
 fi
 
+# Scenario P1: a provider API error emitted on stdout with exit zero is fatal.
+# Live GLM smoke exposed this exact Z.AI shape; accepting it as a document made
+# a 429 response appear to converge successfully.
+TOTAL=$((TOTAL + 1))
+out="$TEST_DIR/s6-out.md"; err="$TEST_DIR/s6-err.log"
+printf '%s\n' 'API Error: Request rejected (429) · [1113][Insufficient balance or no resource package. Please recharge.]' > "$out"
+: > "$err"
+rc=0; validate_agent_artifact "$out" "$err" glm >/dev/null 2>&1 || rc=$?
+if [[ "$rc" -eq 2 ]]; then
+  pass "P1: short provider API error in output -> rc 2 (cannot become a document)"
+else
+  fail "P1: provider API error -> expected rc 2, got $rc"
+fi
+
+# Scenario P2: a substantive document may legitimately discuss the literal
+# provider-error banner. The short-output bound prevents that prose from
+# becoming a false positive.
+TOTAL=$((TOTAL + 1))
+out="$TEST_DIR/s7-out.md"; err="$TEST_DIR/s7-err.log"
+{
+  printf '# Provider Failure Handling\n\n'
+  printf 'The adapter may receive a line beginning with API Error: when an upstream\n'
+  printf 'service rejects a request. The controller must classify that short payload\n'
+  printf 'as a failure while preserving legitimate operational documentation like\n'
+  printf 'this page. '
+  for i in $(seq 1 60); do printf 'detail%d ' "$i"; done
+  printf '\n'
+} > "$out"
+: > "$err"
+rc=0; validate_agent_artifact "$out" "$err" glm >/dev/null 2>&1 || rc=$?
+if [[ "$rc" -eq 0 ]]; then
+  pass "P2: long document discussing provider API errors -> rc 0"
+else
+  fail "P2: legitimate provider-error documentation -> expected rc 0, got $rc"
+fi
+
 # ---------------------------------------------------------------------------
 # R-2b: agent_auth_failed (the dev-review.sh execute/verify auth gate, distinct
 # from lib's validate_agent_artifact). Regression for the false positive where a
