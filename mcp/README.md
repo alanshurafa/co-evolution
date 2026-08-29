@@ -23,11 +23,13 @@ npm i -g @alanshurafa/co-evolution-mcp
 | bash | running the bouncer | ships with macOS/Linux; Windows: [Git for Windows](https://gitforwindows.org/) |
 | `claude` CLI (logged in) | the default reviewer agent | [docs.claude.com/claude-code/install](https://docs.claude.com/claude-code/install), then run `claude` once to log in |
 | `codex` CLI | the default composer agent (skippable: set both agents to `claude`) | [github.com/openai/codex](https://github.com/openai/codex) |
-| `jq` *(optional)* | per-run state + behavior scores | [jqlang.org/download](https://jqlang.org/download/) |
+| `jq` *(optional except required by `kimi`)* | raw Kimi Markdown extraction; per-run state + behavior scores | [jqlang.org/download](https://jqlang.org/download/) |
 | `yq` v4+, mikefarah build *(optional)* | the deterministic scorer | [github.com/mikefarah/yq](https://github.com/mikefarah/yq) |
 
-Missing optional tools never fail a call — you get the bounced document and
-a `receipts_note` telling you what to install for the full scorecard.
+Missing optional tools never fail a call: you get the bounced document and a
+`receipts_note` telling you what to install for the full scorecard. The `kimi`
+seat is the exception because it needs `jq` to extract raw assistant Markdown
+from Kimi's stream output.
 
 ## Client configuration
 

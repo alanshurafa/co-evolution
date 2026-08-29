@@ -24,11 +24,16 @@
 #      bouncer. Claude argv shows the base default model (claude-opus-4-8).
 #   4. --reviewer-model flag beats the REVIEWER_MODEL env var (flag last-wins).
 #   5. --help documents the four new per-role flags and offers no global --effort.
+#   9. Claude-only reviewer model aliases never reach a GLM seat; the complete
+#      model/effort pair falls back to GLM defaults in both the banner and argv.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line per
-# invocation) to phase-agnostic logs; assertions grep the logs. Both stubs drain
-# stdin via a read-loop (NOT `cat`) to avoid SIGPIPE against the runner's stdin
-# producer under strict-mode bash. Same discipline as preset-expansion-simulation.
+# invocation) to phase-agnostic logs; assertions grep the logs. The claude stub
+# can also record each call's ANTHROPIC_* environment in delimited blocks, which
+# lets the GLM -> Claude regression inspect two sequential passes from one runner
+# process. Both stubs drain stdin via a read-loop (NOT `cat`) to avoid SIGPIPE
+# against the runner's stdin producer under strict-mode bash. Same discipline as
+# preset-expansion-simulation.
 
 set -uo pipefail
 
@@ -61,9 +66,29 @@ for arg in "$@"; do
   esac
 done
 [[ -n "${CLAUDE_ARGV_LOG:-}" ]] && printf '%s\n' "$*" >> "$CLAUDE_ARGV_LOG"
+if [[ -n "${CLAUDE_ENV_LOG:-}" ]]; then
+  {
+    printf '%s\n' '--- CALL ---'
+    printf 'ARGV=%s\n' "$*"
+    # Record only the two scoping signals under test. Never dump the wider
+    # ANTHROPIC_* environment: a developer may carry a real API key there.
+    [[ -n "${ANTHROPIC_BASE_URL+x}" ]] && \
+      printf 'ANTHROPIC_BASE_URL=%s\n' "$ANTHROPIC_BASE_URL"
+    [[ -n "${ANTHROPIC_AUTH_TOKEN+x}" ]] && \
+      printf '%s\n' 'ANTHROPIC_AUTH_TOKEN_PRESENT=1'
+    for provider_var in \
+      ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS CLAUDE_CODE_OAUTH_TOKEN \
+      CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY; do
+      [[ -n "${!provider_var+x}" ]] && printf '%s_PRESENT=1\n' "$provider_var"
+    done
+    printf '%s\n' '--- END CALL ---'
+  } >> "$CLAUDE_ENV_LOG"
+fi
 while IFS= read -r _line; do :; done   # drain stdin, no SIGPIPE
 echo "Stub reviewer/composer body with plenty of plain words to clear the bouncer minimum word count and any downstream size or auth check applied to it."
-echo "[CONTESTED] one open marker so the loop advances into the codex composer pass."
+if [[ "${CLAUDE_CLEAN_WITHOUT_ANTHROPIC:-}" != "1" || -n "${ANTHROPIC_BASE_URL:-}" ]]; then
+  echo "[CONTESTED] one open marker so the loop advances into the next composer pass."
+fi
 STUB
 chmod +x "$TEST_DIR/bin/claude"
 
@@ -243,6 +268,167 @@ if [[ "$h5_ok" == true ]]; then
 else
   fail "--help missing a per-role flag or leaks a global --effort"
   printf '%s\n' "$help_out" | grep -E -- '--(composer|reviewer|effort)' >&2 || true
+fi
+
+# ===========================================================================
+# Scenario 6: GLM endpoint credentials are child-scoped within ONE runner.
+# Pass 1 is glm and must receive the Z.AI endpoint/token. Pass 2 is plain Claude
+# in the same bouncer process and must receive neither variable. Separate runs
+# would not detect an export leak, so this scenario deliberately uses one
+# --agents glm,claude invocation with two sequential bounce passes.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+claude_log="$TEST_DIR/s6_claude.log"; env_log="$TEST_DIR/s6_env.log"
+: > "$claude_log"; : > "$env_log"
+(
+  unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN
+  export ANTHROPIC_API_KEY="inherited-secret-sentinel"
+  export ANTHROPIC_CUSTOM_HEADERS="x-secret: inherited-sentinel"
+  export CLAUDE_CODE_OAUTH_TOKEN="inherited-oauth-sentinel"
+  export CLAUDE_CODE_USE_BEDROCK=1
+  export CLAUDE_CODE_USE_VERTEX=1
+  export CLAUDE_CODE_USE_FOUNDRY=1
+  unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+  unset COMPOSER_MODEL COMPOSER_EFFORT REVIEWER_MODEL REVIEWER_EFFORT
+  export ZAI_API_KEY="zai-hermetic-test-token"
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$claude_log" CLAUDE_ENV_LOG="$env_log"
+  export CLAUDE_CLEAN_WITHOUT_ANTHROPIC=1
+  export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs6"
+  bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 2 \
+    --agents glm,claude "$DOC"
+) >"$TEST_DIR/s6.out" 2>&1
+s6_rc=$?
+
+# Flatten each delimited call block to one line so the env assertions remain
+# tied to the corresponding model argv rather than merely checking the file.
+awk '
+  /^--- CALL ---$/ { block=""; next }
+  /^--- END CALL ---$/ { print block; next }
+  { block = block (block == "" ? "" : " | ") $0 }
+' "$env_log" > "$TEST_DIR/s6_calls.log"
+s6_glm_call=$(grep -- '--model glm-5.3-flash' "$TEST_DIR/s6_calls.log" || true)
+s6_claude_call=$(grep -- '--model claude-opus-4-8' "$TEST_DIR/s6_calls.log" || true)
+s6_call_count=$(wc -l < "$TEST_DIR/s6_calls.log" | tr -d '\r\n ')
+s6_ok=true
+[[ "$s6_rc" -eq 0 ]] || s6_ok=false
+[[ "$s6_call_count" == "2" ]] || s6_ok=false
+printf '%s' "$s6_glm_call" | grep -Fq 'ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic' || s6_ok=false
+printf '%s' "$s6_glm_call" | grep -Fq 'ANTHROPIC_AUTH_TOKEN_PRESENT=1' || s6_ok=false
+printf '%s' "$s6_glm_call" | grep -Fq -- '--safe-mode' || s6_ok=false
+printf '%s' "$s6_glm_call" | grep -Fq -- '--tools=' || s6_ok=false
+if printf '%s' "$s6_claude_call" | grep -Eq 'ANTHROPIC_(BASE_URL|AUTH_TOKEN_PRESENT)='; then s6_ok=false; fi
+for provider_var in \
+  ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS CLAUDE_CODE_OAUTH_TOKEN \
+  CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY; do
+  if printf '%s' "$s6_glm_call" | grep -Fq "${provider_var}_PRESENT=1"; then s6_ok=false; fi
+  printf '%s' "$s6_claude_call" | grep -Fq "${provider_var}_PRESENT=1" || s6_ok=false
+done
+if [[ "$s6_ok" == true ]]; then
+  pass "GLM env scope: one glm,claude run gives Z.AI vars only to GLM, never the following Claude pass"
+else
+  fail "GLM env scope leaked or the single-run two-pass contract was not exercised"
+  { echo "--- bouncer output ---"; cat "$TEST_DIR/s6.out"
+    echo "--- per-call env ---"; cat "$TEST_DIR/s6_calls.log"; } >&2
+fi
+
+# ===========================================================================
+# Scenario 7: an unknown agent fails from an explicit case arm before any agent
+# process starts. This locks out the historical binary "codex else claude"
+# fallback that could silently reinterpret a typo as a Claude seat.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+: > "$TEST_DIR/s7_claude.log"
+s7_rc=0
+(
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$TEST_DIR/s7_claude.log"
+  export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs7"
+  bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
+    --agents claude,nonsense "$DOC"
+) >"$TEST_DIR/s7.out" 2>&1 || s7_rc=$?
+if [[ "$s7_rc" -ne 0 ]] \
+   && grep -Fq 'ERROR: Unknown agent: nonsense' "$TEST_DIR/s7.out" \
+   && [[ ! -s "$TEST_DIR/s7_claude.log" ]]; then
+  pass "unknown agent: claude,nonsense dies explicitly before invoking Claude"
+else
+  fail "unknown agent did not die from the explicit case path"
+  { cat "$TEST_DIR/s7.out"; cat "$TEST_DIR/s7_claude.log"; } >&2
+fi
+
+# ===========================================================================
+# Scenario 8: WSL must die loudly before invoking the Windows Claude dispatch.
+# A Bash-side `env` prefix cannot cross cmd.exe, so continuing could otherwise
+# send a GLM-intended prompt to the operator's real Anthropic account.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+cat > "$TEST_DIR/bin/cmd.exe" <<'STUB'
+#!/usr/bin/env bash
+echo "cmd.exe must not be invoked for a GLM seat" >&2
+exit 99
+STUB
+chmod +x "$TEST_DIR/bin/cmd.exe"
+: > "$TEST_DIR/s8_claude.log"
+s8_rc=0
+(
+  export ZAI_API_KEY="zai-hermetic-test-token"
+  export WSL_DISTRO_NAME="co-evolve-test-wsl"
+  export PATH="$TEST_DIR/bin:$PATH"
+  export CLAUDE_ARGV_LOG="$TEST_DIR/s8_claude.log"
+  export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs8"
+  bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
+    --agents glm,claude "$DOC"
+) >"$TEST_DIR/s8.out" 2>&1 || s8_rc=$?
+if [[ "$s8_rc" -ne 0 ]] \
+   && grep -Fq 'ERROR: glm seat unsupported under WSL claude dispatch' "$TEST_DIR/s8.out" \
+   && [[ ! -s "$TEST_DIR/s8_claude.log" ]]; then
+  pass "GLM WSL guard: dies loudly before cmd.exe or Claude dispatch"
+else
+  fail "GLM WSL guard did not fail before agent dispatch"
+  { cat "$TEST_DIR/s8.out"; cat "$TEST_DIR/s8_claude.log"; } >&2
+fi
+
+# ===========================================================================
+# Scenario 9: Claude-only role overrides must never reach a GLM seat. GLM uses
+# the Claude CLI only as an Anthropic-protocol transport; aliases such as opus,
+# best, and claude-* are not valid Z.AI model ids. Drop the whole model/effort
+# pair so both the displayed seat and invoked argv fall back consistently.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+s9_ok=true
+for override in opus best claude-reviewer-xyz; do
+  safe_name=${override//[^a-zA-Z0-9]/_}
+  claude_log="$TEST_DIR/s9_${safe_name}_claude.log"
+  : > "$claude_log"
+  (
+    unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+    unset COMPOSER_MODEL COMPOSER_EFFORT REVIEWER_MODEL REVIEWER_EFFORT
+    export ZAI_API_KEY="zai-hermetic-test-token"
+    export PATH="$TEST_DIR/bin:$PATH"
+    export CLAUDE_ARGV_LOG="$claude_log"
+    export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs9_${safe_name}"
+    bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
+      --agents glm,claude --reviewer-model "$override" \
+      --reviewer-effort high "$DOC"
+  ) >"$TEST_DIR/s9_${safe_name}.out" 2>&1 || true
+
+  glm_argv=$(grep -- '--model glm-5.3-flash' "$claude_log" | head -1 || true)
+  run_log=$(ls -dt "$TEST_DIR"/runs9_${safe_name}/co-evolve-*/run.log 2>/dev/null | head -1)
+  if [[ -z "$glm_argv" ]] \
+     || printf '%s' "$glm_argv" | grep -Fq -- '--effort high' \
+     || grep -Fq -- "--model $override" "$claude_log" \
+     || [[ -z "$run_log" ]] \
+     || ! grep -Fq 'Seat:  glm:glm-5.3-flash@default' "$run_log"; then
+    s9_ok=false
+  fi
+done
+if [[ "$s9_ok" == true ]]; then
+  pass "GLM role guard: Claude aliases drop the full model/effort pair and fall back to glm-5.3-flash"
+else
+  fail "Claude-only model/effort override leaked into a GLM seat"
+  for file in "$TEST_DIR"/s9_*_claude.log "$TEST_DIR"/s9_*.out; do
+    [[ -f "$file" ]] && { echo "--- $file ---"; cat "$file"; }
+  done >&2
 fi
 
 # --- summary ----------------------------------------------------------------

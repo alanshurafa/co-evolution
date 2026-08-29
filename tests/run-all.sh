@@ -45,10 +45,20 @@ export GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null
 # --- suite list ----------------------------------------------------------------
 SLOW_SUITES="pr-emitter-simulation.sh code-proposer-simulation.sh"
 
-declare -a SUITES=()
+# Seat integrations are explicit gates: keep them in the aggregate even if the
+# general simulation glob or their filenames change later. The live GLM gate is
+# safe here because it skips unless CO_EVOLVE_LIVE_GLM_TEST=1 is set.
+declare -a SUITES=(
+  "$SCRIPT_DIR/glm-launcher-simulation.sh"
+  "$SCRIPT_DIR/kimi-seat-simulation.sh"
+  "$SCRIPT_DIR/live-glm-seat-simulation.sh"
+)
 for t in "$SCRIPT_DIR"/*-simulation.sh; do
   [[ -f "$t" ]] || continue
   base=$(basename "$t")
+  case "$base" in
+    glm-launcher-simulation.sh|kimi-seat-simulation.sh|live-glm-seat-simulation.sh) continue ;;
+  esac
   if [[ "$QUICK" == true ]] && printf '%s' "$SLOW_SUITES" | grep -qF "$base"; then
     continue
   fi

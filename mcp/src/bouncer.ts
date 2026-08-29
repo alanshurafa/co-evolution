@@ -3,24 +3,31 @@
 // directory the bouncer creates is the durable artifact trail.
 import { spawn } from "node:child_process";
 import {
+  accessSync,
+  constants,
   existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LineBuffer, progressMessage } from "./progress.js";
+import { findOnPath } from "./preflight.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // dist/src/ -> package root -> vendor/co-evolution/
 export const VENDOR_ROOT = resolve(HERE, "..", "..", "vendor", "co-evolution");
 
+export const AGENTS = ["claude", "codex", "glm", "kimi"] as const;
+export type Agent = (typeof AGENTS)[number];
+
 export interface BounceOptions {
   documentPath: string;
   maxBounces: number;
-  reviewerAgent: "claude" | "codex";
-  composerAgent: "claude" | "codex";
+  reviewerAgent: Agent;
+  composerAgent: Agent;
   outputPath: string;
   runsDir: string;
   onProgress?: (message: string) => void;
@@ -50,9 +57,191 @@ export class BounceError extends Error {
     message: string,
     public readonly stderrTail: string,
     public readonly runDir: string | null,
+    public readonly code?: "missing_prerequisite" | "unknown_agent",
+    public readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
+}
+
+function isAgent(value: string): value is Agent {
+  return (AGENTS as readonly string[]).includes(value);
+}
+
+function readable(path: string): boolean {
+  try {
+    accessSync(path, constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function executable(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function namedEnvValue(path: string, name: string): string | null {
+  if (!readable(path)) return null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const assignment = new RegExp(
+    `^\\s*(?:export\\s+)?${escaped}\\s*=\\s*(.*?)\\s*$`,
+  );
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const match = assignment.exec(line);
+    if (!match) continue;
+    let value = match[1].trim();
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+    return value.length > 0 ? value : null;
+  }
+  return null;
+}
+
+function runtimeError(
+  agent: string,
+  missing: string,
+  message: string,
+): BounceError {
+  return new BounceError(message, message, null, "missing_prerequisite", {
+    agent,
+    missing: [missing],
+  });
+}
+
+function findBash(): string | null {
+  if (process.platform === "win32") {
+    const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
+    const gitBash = join(programFiles, "Git", "bin", "bash.exe");
+    if (executable(gitBash)) return gitBash;
+  }
+  return findOnPath("bash");
+}
+
+function isWslLauncher(bashPath: string | null): boolean {
+  return /[/\\]windows[/\\]system32[/\\]bash\.exe$/i.test(bashPath ?? "");
+}
+
+function pathForBash(path: string, bashPath: string | null): string {
+  if (process.platform !== "win32") return path;
+  const forward = path.replaceAll("\\", "/");
+  // Windows' system bash.exe is the WSL launcher, which needs /mnt/<drive>.
+  if (isWslLauncher(bashPath)) {
+    return forward.replace(/^([A-Za-z]):\//, (_, drive: string) =>
+      `/mnt/${drive.toLowerCase()}/`
+    );
+  }
+  return forward;
+}
+
+/** Validate new-seat requirements and return the child-only environment. */
+export function runtimePrerequisites(
+  opts: BounceOptions,
+  bashPath: string | null = findBash(),
+): NodeJS.ProcessEnv {
+  const childEnv: NodeJS.ProcessEnv = { ...process.env };
+  const agents = [opts.reviewerAgent as string, opts.composerAgent as string];
+  for (const agent of agents) {
+    if (!isAgent(agent)) {
+      throw new BounceError(
+        `Unknown agent: ${agent}`,
+        `Unknown agent: ${agent}`,
+        null,
+        "unknown_agent",
+        { agent },
+      );
+    }
+  }
+
+  if (agents.includes("glm")) {
+    if (
+      (process.env.WSL_DISTRO_NAME && findOnPath("cmd.exe")) ||
+      isWslLauncher(bashPath)
+    ) {
+      throw runtimeError(
+        "glm",
+        "native_claude_dispatch",
+        "glm seat unsupported under WSL claude dispatch",
+      );
+    }
+    if (!findOnPath("claude")) {
+      throw runtimeError(
+        "glm",
+        "claude",
+        "glm seat requires the claude CLI on PATH",
+      );
+    }
+
+    let key = process.env.ZAI_API_KEY?.trim() || null;
+    if (!key) {
+      const candidates = [
+        resolve(process.cwd(), ".env.local"),
+        resolve(dirname(opts.documentPath), ".env.local"),
+      ];
+      for (const candidate of new Set(candidates)) {
+        key = namedEnvValue(candidate, "ZAI_API_KEY");
+        if (key) break;
+      }
+    }
+    if (!key) {
+      throw runtimeError(
+        "glm",
+        "ZAI_API_KEY",
+        "glm seat requires ZAI_API_KEY in the process environment or targeted .env.local",
+      );
+    }
+    // Child-scoped only. Never write this back to process.env or error output.
+    childEnv.ZAI_API_KEY = key;
+  }
+
+  if (agents.includes("kimi")) {
+    const home = process.env.HOME || process.env.USERPROFILE || homedir();
+    const portable = [
+      join(home, ".kimi-code", "bin", "kimi"),
+      join(home, ".kimi-code", "bin", "kimi.exe"),
+    ].find(executable);
+    if (!findOnPath("kimi") && !portable) {
+      throw runtimeError(
+        "kimi",
+        "kimi",
+        "kimi seat requires the kimi CLI on PATH (or under ~/.kimi-code/bin)",
+      );
+    }
+    if (!findOnPath("jq")) {
+      throw runtimeError(
+        "kimi",
+        "jq",
+        "kimi seat requires jq to extract raw assistant Markdown from stream-json output",
+      );
+    }
+    if (!readable(join(home, ".kimi-code", "config.toml"))) {
+      throw runtimeError(
+        "kimi",
+        "~/.kimi-code/config.toml",
+        "kimi seat requires readable Kimi config at ~/.kimi-code/config.toml",
+      );
+    }
+    if (!readable(join(home, ".kimi-code", "credentials", "kimi-code.json"))) {
+      throw runtimeError(
+        "kimi",
+        "kimi_login",
+        "kimi seat is not logged in; run 'kimi login --region mainland-cn'",
+      );
+    }
+    if (!childEnv.HOME) childEnv.HOME = home;
+  }
+
+  return childEnv;
 }
 
 function listRunDirs(runsRoot: string): Set<string> {
@@ -105,12 +294,16 @@ export async function runBounce(opts: BounceOptions): Promise<BounceResult> {
     );
   }
 
+  // Keep every new-seat failure ahead of directory creation and child spawn.
+  const bashPath = findBash();
+  const childEnv = runtimePrerequisites(opts, bashPath);
+
   mkdirSync(opts.runsDir, { recursive: true });
   const before = listRunDirs(opts.runsDir);
   const startedAt = Date.now();
 
   const args = [
-    bouncer,
+    pathForBash(bouncer, bashPath),
     "--vanilla",
     "--bounce-only",
     "--bounces",
@@ -118,13 +311,16 @@ export async function runBounce(opts: BounceOptions): Promise<BounceResult> {
     "--agents",
     `${opts.reviewerAgent},${opts.composerAgent}`,
     "--output",
-    opts.outputPath,
-    opts.documentPath,
+    pathForBash(opts.outputPath, bashPath),
+    pathForBash(opts.documentPath, bashPath),
   ];
 
-  const child = spawn("bash", args, {
+  const child = spawn(bashPath ?? "bash", args, {
     cwd: dirname(opts.documentPath),
-    env: { ...process.env, CO_EVOLVE_RUNS_DIR: opts.runsDir },
+    env: {
+      ...childEnv,
+      CO_EVOLVE_RUNS_DIR: pathForBash(opts.runsDir, bashPath),
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
 

@@ -15,7 +15,8 @@ const INSTALL: Record<string, string> = {
   bash: "macOS/Linux ship bash; on Windows install Git for Windows (https://gitforwindows.org/) and run your MCP client where Git Bash is on PATH",
   claude: "https://docs.claude.com/claude-code/install — then run `claude` once interactively to log in",
   codex: "https://github.com/openai/codex — required only when an agent argument selects codex",
-  jq: "https://jqlang.org/download/ — enables state.json + behavior scores on each run",
+  kimi: "https://github.com/MoonshotAI/kimi-code — install Kimi Code, then run `kimi login --region mainland-cn`",
+  jq: "https://jqlang.org/download/ — required by the kimi seat; otherwise enables state.json + behavior scores",
   yq: "https://github.com/mikefarah/yq (the Go build, v4+) — enables the deterministic scorer",
 };
 
@@ -40,7 +41,11 @@ export function findOnPath(cmd: string): string | null {
 }
 
 export function preflight(agents: string[]): PreflightResult {
-  const required = new Set<string>(["bash", "claude"]);
+  const required = new Set<string>(["bash"]);
+  const legacyOnly = agents.every((agent) => agent === "claude" || agent === "codex");
+  if (legacyOnly || agents.includes("claude") || agents.includes("glm")) {
+    required.add("claude");
+  }
   if (agents.includes("codex")) required.add("codex");
 
   const missing = [...required].filter((cmd) => findOnPath(cmd) === null);
