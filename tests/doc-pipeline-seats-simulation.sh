@@ -24,6 +24,8 @@
 #      bouncer. Claude argv shows the base default model (claude-opus-4-8).
 #   4. --reviewer-model flag beats the REVIEWER_MODEL env var (flag last-wins).
 #   5. --help documents the four new per-role flags and offers no global --effort.
+#   9. Claude-only reviewer model aliases never reach a GLM seat; the complete
+#      model/effort pair falls back to GLM defaults in both the banner and argv.
 #
 # Pattern: PATH-injected claude + codex stubs append their full argv (one line per
 # invocation) to phase-agnostic logs; assertions grep the logs. The claude stub
@@ -384,6 +386,49 @@ if [[ "$s8_rc" -ne 0 ]] \
 else
   fail "GLM WSL guard did not fail before agent dispatch"
   { cat "$TEST_DIR/s8.out"; cat "$TEST_DIR/s8_claude.log"; } >&2
+fi
+
+# ===========================================================================
+# Scenario 9: Claude-only role overrides must never reach a GLM seat. GLM uses
+# the Claude CLI only as an Anthropic-protocol transport; aliases such as opus,
+# best, and claude-* are not valid Z.AI model ids. Drop the whole model/effort
+# pair so both the displayed seat and invoked argv fall back consistently.
+# ===========================================================================
+TOTAL=$((TOTAL + 1))
+s9_ok=true
+for override in opus best claude-reviewer-xyz; do
+  safe_name=${override//[^a-zA-Z0-9]/_}
+  claude_log="$TEST_DIR/s9_${safe_name}_claude.log"
+  : > "$claude_log"
+  (
+    unset CLAUDE_MODEL CLAUDE_EFFORT CODEX_MODEL CODEX_REASONING_EFFORT
+    unset COMPOSER_MODEL COMPOSER_EFFORT REVIEWER_MODEL REVIEWER_EFFORT
+    export ZAI_API_KEY="zai-hermetic-test-token"
+    export PATH="$TEST_DIR/bin:$PATH"
+    export CLAUDE_ARGV_LOG="$claude_log"
+    export CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs9_${safe_name}"
+    bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
+      --agents glm,claude --reviewer-model "$override" \
+      --reviewer-effort high "$DOC"
+  ) >"$TEST_DIR/s9_${safe_name}.out" 2>&1 || true
+
+  glm_argv=$(grep -- '--model glm-5.3-flash' "$claude_log" | head -1 || true)
+  run_log=$(ls -dt "$TEST_DIR"/runs9_${safe_name}/co-evolve-*/run.log 2>/dev/null | head -1)
+  if [[ -z "$glm_argv" ]] \
+     || printf '%s' "$glm_argv" | grep -Fq -- '--effort high' \
+     || grep -Fq -- "--model $override" "$claude_log" \
+     || [[ -z "$run_log" ]] \
+     || ! grep -Fq 'Seat:  glm:glm-5.3-flash@default' "$run_log"; then
+    s9_ok=false
+  fi
+done
+if [[ "$s9_ok" == true ]]; then
+  pass "GLM role guard: Claude aliases drop the full model/effort pair and fall back to glm-5.3-flash"
+else
+  fail "Claude-only model/effort override leaked into a GLM seat"
+  for file in "$TEST_DIR"/s9_*_claude.log "$TEST_DIR"/s9_*.out; do
+    [[ -f "$file" ]] && { echo "--- $file ---"; cat "$file"; }
+  done >&2
 fi
 
 # --- summary ----------------------------------------------------------------
