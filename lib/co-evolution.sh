@@ -144,12 +144,12 @@ seat_prereqs_ok() {
         SEAT_PREREQ_ERROR="glm seat requires ZAI_API_KEY (set it in the environment or .env.local)"
         return 1
       fi
-      if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="glm seat unsupported under WSL claude dispatch"
+      if ! command -v curl >/dev/null 2>&1; then
+        SEAT_PREREQ_ERROR="glm seat requires curl for the direct Z.AI API"
         return 1
       fi
-      if ! command -v claude >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="glm seat requires the claude CLI on PATH"
+      if ! command -v jq >/dev/null 2>&1; then
+        SEAT_PREREQ_ERROR="glm seat requires jq for Z.AI request and response handling"
         return 1
       fi
       return 0
@@ -531,15 +531,6 @@ invoke_claude() {
   else
     tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
   fi
-  if [[ "$dispatch" == "glm" ]]; then
-    [[ "$writable" == "false" ]] || die "glm seat does not support writable phases"
-    # Kimi and GLM are external-vendor document seats. Unlike the legacy
-    # Claude text path, GLM must not retain Read/agent/skill tools that could
-    # expose local files to the Z.AI endpoint. The attached-empty form avoids
-    # Claude CLI's variadic `--tools ""` parser bug.
-    tool_flags=(--safe-mode --tools=)
-  fi
-
   # v1.5: model + optional reasoning effort. CLAUDE_EFFORT defaults empty (OFF)
   # so model_flags is exactly `--model "$CLAUDE_MODEL"` and argv is byte-identical
   # to the prior single-flag form. The --effort element is appended only when set.
@@ -564,26 +555,9 @@ invoke_claude() {
   local output_format=text
   [[ "$capture_json" == "true" ]] && output_format=json
 
-  if [[ "$dispatch" == "glm" && -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    # Bash-side env prefixes do not cross `cmd.exe /c`; continuing here could
-    # silently bill the operator's real Anthropic account.
-    die "glm seat unsupported under WSL claude dispatch"
-  elif [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
     cmd=(cmd.exe /c claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
-  elif [[ "$dispatch" == "glm" ]]; then
-    # The Z.AI overrides are part of this child command only. Do not export
-    # them: a later plain-Claude pass runs in this same bouncer process.
-    cmd=(env
-      -u ANTHROPIC_API_KEY
-      -u ANTHROPIC_CUSTOM_HEADERS
-      -u CLAUDE_CODE_OAUTH_TOKEN
-      -u CLAUDE_CODE_USE_BEDROCK
-      -u CLAUDE_CODE_USE_VERTEX
-      -u CLAUDE_CODE_USE_FOUNDRY
-      "ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic"
-      "ANTHROPIC_AUTH_TOKEN=${ZAI_API_KEY}"
-      claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
   else
     cmd=(claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
   fi
@@ -630,18 +604,65 @@ invoke_glm() (
   local output_file="$2"
   local stderr_file="$3"
   local writable="${4:-false}"
+  local request_file response_file config_file
+  local curl_rc=0 message
 
   [[ -n "${ZAI_API_KEY:-}" ]] || die "glm seat requires ZAI_API_KEY"
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    die "glm seat unsupported under WSL claude dispatch"
+  [[ "$writable" == "false" ]] || die "glm seat does not support writable phases"
+  command -v curl >/dev/null 2>&1 || die "glm seat requires curl"
+  command -v jq >/dev/null 2>&1 || die "glm seat requires jq"
+
+  request_file=$(mktemp -t glm-request-XXXXXX.json)
+  response_file=$(mktemp -t glm-response-XXXXXX.json)
+  config_file=$(mktemp -t glm-curl-XXXXXX.conf)
+  trap 'rm -f "$request_file" "$response_file" "$config_file"' EXIT
+
+  # Send only the protocol prompt. Claude Code's internal system messages are
+  # incompatible with this document seat and were observed replacing a valid
+  # response with <system-warning>/<system-reminder> metadata. Z.AI's documented
+  # Chat Completions endpoint avoids that extra agent layer entirely.
+  jq -Rs --arg model "${GLM_MODEL:-glm-5.3-flash}" '{
+      model: $model,
+      messages: [{role: "user", content: .}],
+      stream: false,
+      temperature: 0
+    }' "$prompt_file" > "$request_file"
+
+  # Keep the bearer token out of argv and logs. curl reads it from a mode-600
+  # temporary config file that this adapter removes on every exit path.
+  {
+    printf 'url = "https://api.z.ai/api/paas/v4/chat/completions"\n'
+    printf 'request = "POST"\n'
+    printf 'header = "Authorization: Bearer %s"\n' "$ZAI_API_KEY"
+    printf 'header = "Content-Type: application/json"\n'
+    printf 'header = "Accept-Language: en-US,en"\n'
+    printf 'data-binary = "@-"\n'
+    printf 'silent\nshow-error\nfail-with-body\nmax-time = 600\n'
+  } > "$config_file"
+  chmod 600 "$config_file"
+
+  curl --config "$config_file" < "$request_file" > "$response_file" 2> "$stderr_file" || curl_rc=$?
+  if (( curl_rc == 0 )) \
+     && jq -e '.choices[0].message.content | type == "string" and length > 0' \
+          "$response_file" >/dev/null 2>&1; then
+    jq -r '.choices[0].message.content' "$response_file" > "$output_file"
+    if [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]]; then
+      jq '{
+            input_tokens: (.usage.prompt_tokens // null),
+            output_tokens: (.usage.completion_tokens // null),
+            cache_read_input_tokens: (.usage.prompt_tokens_details.cached_tokens // null),
+            cache_creation_input_tokens: null,
+            total_cost_usd: null,
+            source: "zai-chat-completions"
+          }' "$response_file" > "${output_file}.usage.json" 2>/dev/null || true
+    fi
+    return 0
   fi
 
-  # Keep the Claude CLI's model/effort globals scoped to this adapter. The
-  # endpoint credentials are added by invoke_claude as an `env ... claude`
-  # prefix on the actual child command, never as shell exports.
-  CLAUDE_MODEL="${GLM_MODEL:-glm-5.3-flash}"
-  CLAUDE_EFFORT="${GLM_EFFORT:-}"
-  invoke_claude "$prompt_file" "$output_file" "$stderr_file" "$writable" glm
+  message=$(jq -r '.error.message // .message // empty' "$response_file" 2>/dev/null || true)
+  [[ -n "$message" ]] || message="Z.AI request failed (curl exit $curl_rc)"
+  printf 'API Error: %s\n' "$message" > "$output_file"
+  return 0
 )
 
 # Kimi Code v0.39.1 (verified 2026-08-28): -p is non-interactive but auto-approves

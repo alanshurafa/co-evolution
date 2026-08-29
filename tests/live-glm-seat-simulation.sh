@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opt-in end-to-end GLM seat smoke. This may spend Z.AI free-tier requests and
+# Opt-in end-to-end GLM seat smoke. This may spend Z.AI balance or package quota and
 # therefore skips unless the operator explicitly sets CO_EVOLVE_LIVE_GLM_TEST=1.
 
 set -uo pipefail
