@@ -43,7 +43,11 @@ content='Kimi returns a complete revised Markdown document with enough ordinary 
 "$REAL_JQ" -n --arg content "\$content" '{model:"kimi-k3",choices:[{message:{content:\$content},finish_reason:"stop"}],usage:{prompt_tokens:10,completion_tokens:10}}'
 STUB
 chmod +x "$TEST_DIR/bin/curl"
-ln -s "$REAL_JQ" "$TEST_DIR/bin/jq" 2>/dev/null || cp "$REAL_JQ" "$TEST_DIR/bin/jq"
+cat > "$TEST_DIR/bin/jq" <<STUB
+#!/usr/bin/env bash
+exec "$REAL_JQ" "\$@"
+STUB
+chmod +x "$TEST_DIR/bin/jq"
 
 DOC="$TEST_DIR/doc.md"
 cat > "$DOC" <<'DOC'
@@ -57,6 +61,7 @@ run_kimi() {
   local runs_dir="$1" out_file="$2"
   shift 2
   PATH="$TEST_DIR/bin:$PATH" KIMI_CURL_LOG="$TEST_DIR/curl.log" \
+    KIMI_STUB_ERROR="${KIMI_STUB_ERROR:-}" \
     CO_EVOLVE_RUNS_DIR="$runs_dir" \
     bash "$BOUNCER" --vanilla --no-report --bounce-only --bounces 1 \
       --agents kimi,claude "$DOC" "$@" > "$out_file" 2>&1
