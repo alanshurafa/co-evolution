@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# STUB CLI -- DO NOT INVOKE IN PRODUCTION
+#
+# Hermetic test double for the `claude` CLI, PATH-shadowed by
+# benchmarks/tests/smoke.sh. No network, no model, no cost. Follows the
+# fake-runner pattern from evals/tests/fake-runner.sh: loud stderr banner on
+# every invocation, deterministic output, greppable provenance in the artifact.
+#
+# Reads the prompt on stdin. Honours only --output-format (text|json); every
+# other flag co-evolution.sh passes is accepted and ignored.
+#
+# Output selection (this is what makes the bounce loop reach pass 2):
+#   compose prompt ("Respond to the following...")  -> clean plan
+#   bounce prompt, document has no [CONTESTED]      -> plan + one [CONTESTED]
+#   bounce prompt, document already has [CONTESTED] -> clean plan (resolves it)
+# so pass 1 (reviewer) opens a marker, pass 2 (composer, codex in B / claude in
+# D) closes it, and the run converges naturally after two passes.
+
+set -euo pipefail
+
+echo 'STUB CLAUDE -- DO NOT INVOKE IN PRODUCTION' >&2
+
+output_format="text"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output-format) output_format="${2:-text}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+prompt=$(cat)
+
+if [[ -n "${BENCH_STUB_CALLS:-}" ]]; then
+  printf 'claude\n' >> "$BENCH_STUB_CALLS"
+fi
+
+read -r -d '' PLAN <<'PLAN_EOF' || true
+# Delivery Scheduling Plan
+
+## Measurement
+
+Record hourly sell-through per product per location for two weeks using the
+existing till exports. Treat a product as sold out when its count reaches zero
+before closing, and log the hour. That gives a demand curve per location that
+the production order can be fitted against rather than guessed at.
+
+## Production order
+
+Set each morning's production quantity from the trailing two-week median for
+that weekday, rounded up to the nearest tray, with a fixed ten percent buffer
+for the two highest-variance products. Review the multipliers monthly.
+
+## Timetable
+
+Run two delivery waves. The first leaves the kitchen ninety minutes before the
+earliest shop opening and covers the full opening allocation. The second leaves
+at midday and carries the top-selling items only, sized from the morning's
+actual sell-through rather than the forecast.
+
+## Shortfall handling
+
+When production falls short, allocate proportionally to forecast demand instead
+of first-come loading, and notify the affected shops before the van leaves so
+they can adjust their own display and pre-order handling.
+
+## Verification
+
+Track two numbers weekly: stockout hours per location and units discarded at
+close. The overhaul has worked if stockout hours fall while discards stay flat
+or fall. Review at four weeks and revert the second wave if neither moves.
+PLAN_EOF
+
+marker_line='[CONTESTED] The midday second wave assumes van capacity that has not been verified against the current fleet.'
+
+document="${prompt##*## DOCUMENT TO REVIEW}"
+
+if [[ "$prompt" == "Respond to the following"* ]]; then
+  body="$PLAN"
+elif [[ "$document" == *"[CONTESTED]"* ]]; then
+  body="$PLAN
+
+## HUMAN SUMMARY
+
+- Pass resolved the open disagreement about van capacity."
+else
+  body="$PLAN
+
+## Open questions
+
+$marker_line
+
+## HUMAN SUMMARY
+
+- Pass raised one disagreement about the midday wave."
+fi
+
+if [[ "$output_format" == "json" ]]; then
+  jq -n --arg result "$body" '{
+    type: "result",
+    subtype: "success",
+    is_error: false,
+    result: $result,
+    total_cost_usd: 0.0123,
+    usage: {
+      input_tokens: 1200,
+      output_tokens: 480,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0
+    },
+    stub: "benchmarks/tests/fixtures/orchestrator/bin/claude"
+  }'
+else
+  printf '%s\n' "$body"
+fi

@@ -55,3 +55,4 @@ mcp/vendor/
 # Benchmark suite run outputs and scrubbed-source-path selection log
 benchmarks/results/
 benchmarks/corpus/selection-log.json
+tests/.run-ledger/

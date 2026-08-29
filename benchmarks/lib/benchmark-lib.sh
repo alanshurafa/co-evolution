@@ -127,6 +127,21 @@ _bench_body() {
   ' "$file"
 }
 
+# bench_task_body FILE → the canonical task-body transform every condition's
+# compose prompt is built from: frontmatter removed, leading/trailing blank
+# lines trimmed, interior blank runs kept. A/B/D consume it via <cell>/in.md
+# (run-benchmark.sh write_cell_input) and C via run-panel.sh; both MUST use
+# this function — a divergent copy is a byte-parity confound in the primary
+# comparison, not a style issue.
+bench_task_body() {
+  local file="${1:?bench_task_body requires a file}"
+
+  _bench_body "$file" \
+    | awk 'NF { blank = 0; if (!seen) seen = 1 }
+           !NF { if (!seen) next; blank++; next }
+           seen { while (blank-- > 0) print ""; print }'
+}
+
 # bench_fm_get FILE KEY → prints the frontmatter value for KEY (empty string
 # when absent). Returns 1 when the file has no frontmatter at all, so callers
 # can distinguish "no frontmatter" from "key missing".

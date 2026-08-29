@@ -19,3 +19,7 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.md text eol=lf
+
+# The frozen benchmark banned-token list is byte-compared by the leak gate —
+# keep plain-text protocol files LF everywhere too.
+*.txt text eol=lf
