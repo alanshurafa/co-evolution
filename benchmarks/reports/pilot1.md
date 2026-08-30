@@ -1,6 +1,6 @@
 # Co-Evolution Benchmark — Batch `pilot1`
 
-Generated 2026-08-30T19:31:15Z by `benchmarks/report.sh`.
+Generated 2026-08-30T19:45:12Z by `benchmarks/report.sh`.
 Judges reported separately and never adjudicated into one score.
 
 ## 0. Data completeness

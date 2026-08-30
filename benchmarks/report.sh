@@ -131,7 +131,11 @@ for task in "${TASKS[@]}"; do
     CONDS+=("$c")
   done < <(list_subdirs "$BATCH_DIR/$task" judging)
 done
-mapfile -t CONDS < <(printf '%s\n' ${CONDS[@]+"${CONDS[@]}"} | LC_ALL=C sort -u | sed '/^$/d')
+SORTED_CONDS=()
+while IFS= read -r c; do
+  [[ -n "$c" ]] && SORTED_CONDS+=("$c")
+done < <(printf '%s\n' ${CONDS[@]+"${CONDS[@]}"} | LC_ALL=C sort -u | sed '/^$/d')
+CONDS=("${SORTED_CONDS[@]}")
 
 # --- Verdict lookup -----------------------------------------------------------
 

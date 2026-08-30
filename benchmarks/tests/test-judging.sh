@@ -193,10 +193,12 @@ stub_calls() { [[ -f "$1" ]] && wc -l < "$1" | tr -d '[:space:]' || printf '0'; 
 
 # --- S1: syntax ---------------------------------------------------------------
 TOTAL=$((TOTAL + 1))
-if bash -n "$JUDGE_MATRIX" && bash -n "$BENCH_DIR/report.sh"; then
-  pass "S1: judge-matrix.sh and report.sh parse clean"
+if bash -n "$JUDGE_MATRIX" && bash -n "$BENCH_DIR/report.sh" \
+   && ! grep -nE '^[[:space:]]*(mapfile|readarray)([[:space:]]|$)' \
+        "$JUDGE_MATRIX" "$BENCH_DIR/report.sh" >/dev/null 2>&1; then
+  pass "S1: judge-matrix.sh and report.sh parse clean without Bash-4-only mapfile"
 else
-  fail "S1: bash -n failed"
+  fail "S1: syntax failed or Bash-4-only mapfile/readarray is present"
 fi
 
 # --- S2: honest judge, agreement in both orders -> a winner -------------------
