@@ -1,0 +1,13 @@
+# Hermetic condition manifest for the panel + GLM-quota paths in
+# tests/smoke.sh. One GLM call per run, so this manifest exercises both the
+# ledger debit (with budget) and the pending-quota park (with --glm-budget 0).
+# The harness itself is stubbed via BENCH_PANEL_SCRIPT.
+schema: bench-conditions/1.0
+
+conditions:
+  - id: C
+    label: panel
+    kind: panel
+    description: Stubbed panel harness; one GLM call charged to the ledger.
+    reviewers: [codex, glm, kimi]
+    glm_calls_per_run: 1

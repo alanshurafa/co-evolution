@@ -81,6 +81,14 @@ TEST_DIR=$(mktemp -d -p "$REPO_ROOT/tests" ".sim-code-XXXXXX")
 # target location when invoked from inside proposer.sh's subshell.
 export TEST_DIR
 
+# Scope every sandbox this run creates to a private TMPDIR. proposer.sh puts
+# sandboxes at ${TMPDIR:-/tmp}/pel-code-sandbox-*, and the machine-global /tmp
+# let any concurrent suite's orphan-cleanup glob delete a live sandbox
+# mid-canary (run-all --jobs collision, 2026-08-29). The cleanup glob below
+# then also self-scopes to this run's dirs only.
+export TMPDIR="$TEST_DIR/tmp"
+mkdir -p "$TMPDIR"
+
 cleanup() {
   # Belt-and-suspenders: clean any leftover pel-code-sandbox-* worktrees from
   # happy-path scenarios whose trap-EXIT from proposer.sh may not have fully

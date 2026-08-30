@@ -1,0 +1,29 @@
+# Frozen leak-check list for the co-evolution benchmark suite (sanitize.sh,
+# judge-matrix.sh). Matched case-insensitively as substrings against every
+# sanitized final.md before it reaches a judge. Frozen before the first
+# verdict per PREREGISTRATION.md; any post-freeze change invalidates the
+# batch (start a new batch id). The corpus linter (run-benchmark.sh --check)
+# also checks task prompts against this same list, so a task that happens to
+# contain one of these strings can't quietly void its own judged pairs.
+CONTESTED
+CLARIFY
+HUMAN SUMMARY
+co-evolve
+CO-EVOLVE:STUCK
+bounce pass
+panel critique
+synthesized from
+Reviewer 1
+Reviewer 2
+Reviewer 3
+adjudicat
+codex
+glm-
+kimi
+claude
+fable
+opus
+gpt-5
+anthropic
+openai
+z.ai

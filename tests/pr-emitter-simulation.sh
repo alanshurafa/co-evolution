@@ -52,7 +52,10 @@ cleanup() {
   # Belt-and-suspenders: clean orphan pel-*-sandbox-* and pel-emitter-work-* dirs
   # if emitter EXIT trap failed to fire on mid-scenario aborts.
   local orphan b
-  for orphan in "${TMPDIR:-/tmp}"/pel-score-sandbox-* "${TMPDIR:-/tmp}"/pel-emitter-work-* "${TMPDIR:-/tmp}"/pel-code-sandbox-* "${TMPDIR:-/tmp}"/co-evolve-dry-*; do
+  # pel-code-sandbox-* deliberately NOT cleaned here: this suite never creates
+  # them, and the glob deleted a concurrently-running code-proposer suite's
+  # live sandbox mid-canary (found via run-all --jobs collisions, 2026-08-29).
+  for orphan in "${TMPDIR:-/tmp}"/pel-score-sandbox-* "${TMPDIR:-/tmp}"/pel-emitter-work-* "${TMPDIR:-/tmp}"/co-evolve-dry-*; do
     [[ -e "$orphan" ]] || continue
     git -C "$REPO_ROOT" worktree remove --force "$orphan" 2>/dev/null || true
     rm -rf "$orphan" 2>/dev/null || true
