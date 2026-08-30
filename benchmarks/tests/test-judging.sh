@@ -2,8 +2,9 @@
 
 # benchmarks/tests/test-judging.sh — contract tests for benchmarks/judge-matrix.sh.
 #
-# Fully stubbed: every judge CLI is a PATH-shadowed shell script with canned
-# verdicts (the evals/tests/test-judge-lib-extraction.sh pattern), so this suite
+# Fully stubbed: every judge CLI and the direct Z.AI HTTP call is PATH-shadowed
+# by a shell script with canned verdicts (the judge-lib extraction pattern), so
+# this suite
 # makes no live model calls and costs $0. No live-model assertions exist here by
 # design — a judging harness that can only be verified by spending money is a
 # harness nobody re-verifies.
@@ -99,6 +100,33 @@ STUB
   chmod +x "$1/codex"
 }
 
+mk_curl_stub() { # $1 = dir, $2 = behavior (honest|biased|liar|authfail)
+  mkdir -p "$1"
+  cat > "$1/curl" <<STUB
+#!/usr/bin/env bash
+for a in "\$@"; do [[ "\$a" == "--version" ]] && { echo "curl 9.9.9 (stub)"; exit 0; }; done
+request=\$(cat)
+input=\$(printf '%s' "\$request" | jq -r '.messages[0].content // ""')
+[[ -n "\${STUB_LOG:-}" ]] && printf 'glm %s\n' "$2" >> "\$STUB_LOG"
+behavior="$2"
+if [[ "\$behavior" == "authfail" ]]; then
+  printf '{"error":{"message":"Invalid Authentication"}}\n'
+  exit 22
+fi
+a_part=\$(printf '%s' "\$input" | awk '/^## Plan A\$/{f=1;next} /^## Plan B\$/{f=0} f')
+b_part=\$(printf '%s' "\$input" | awk '/^## Plan B\$/{f=1;next} f')
+if [[ "\$behavior" == "biased" ]]; then
+  verdict='{"better":"A","confidence":"high","reasons":["the first plan reads better"],"evidence":[]}'
+else
+  if printf '%s' "\$a_part" | grep -q 'staged rollout behind a feature flag'; then winner=A; doc="\$a_part"; else winner=B; doc="\$b_part"; fi
+  if [[ "\$behavior" == "liar" ]]; then quote='this exact sentence appears nowhere in either plan at all'; else quote=\$(printf '%s' "\$doc" | grep -v '^#' | grep -v '^\$' | head -1 | cut -c1-60); fi
+  verdict=\$(jq -nc --arg w "\$winner" --arg q "\$quote" '{better:\$w,confidence:"high",reasons:["it is more actionable"],evidence:[{doc:\$w,quote:\$q}]}')
+fi
+jq -nc --arg c "\$verdict" '{choices:[{message:{content:\$c}}],usage:{prompt_tokens:11,completion_tokens:22}}'
+STUB
+  chmod +x "$1/curl"
+}
+
 BIN_HONEST="$TEST_DIR/bin-honest"
 BIN_BIASED="$TEST_DIR/bin-biased"
 BIN_LIAR="$TEST_DIR/bin-liar"
@@ -110,6 +138,11 @@ mk_claude_stub "$BIN_AUTHFAIL" authfail
 mk_codex_stub "$BIN_HONEST" "gpt-5.5"
 mk_codex_stub "$TEST_DIR/bin-badmodel" "gpt-4o-mini"
 mk_claude_stub "$TEST_DIR/bin-badmodel" honest
+mk_curl_stub "$BIN_HONEST" honest
+mk_curl_stub "$BIN_BIASED" biased
+mk_curl_stub "$BIN_LIAR" liar
+mk_curl_stub "$BIN_AUTHFAIL" authfail
+mk_curl_stub "$TEST_DIR/bin-badmodel" honest
 
 # --- Fixture batches ----------------------------------------------------------
 # cond→document mapping: A weak, B strong (the honest stub's winner), D neutral,

@@ -2,8 +2,9 @@
 # benchmarks/tests/test-panel.sh
 # Contract tests for benchmarks/run-panel.sh (benchmark condition C).
 #
-# Hermetic: every agent CLI is a PATH-shadowed stub (the evals/tests/fake-runner
-# pattern). No live model calls, no network, no cost. The stubs record each
+# Hermetic: every agent CLI and direct-provider HTTP call is PATH-shadowed by a
+# stub (the evals/tests/fake-runner pattern). No live model calls, no network,
+# no cost. The stubs record each
 # invocation to $STUB_LOG and their prompt to $STUB_STDIN_DIR so the tests can
 # assert BOTH what ran and what it was asked.
 #
@@ -60,9 +61,8 @@ check_nogrep() { # NAME FILE PATTERN
 STUB_BIN="$TEST_DIR/bin"
 mkdir -p "$STUB_BIN"
 
-# claude: serves three seats. The glm seat reaches this same binary because
-# invoke_glm dispatches through invoke_claude with an `env ... claude` prefix,
-# so the seat is identified by --model, and compose vs synthesis by the prompt.
+# claude: serves compose and synthesis. Direct GLM/Kimi calls use the curl stub
+# below, so compose vs synthesis is identified only from the prompt.
 cat > "$STUB_BIN/claude" <<'STUB'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -76,9 +76,7 @@ for a in "$@"; do
 done
 input=$(cat)
 
-if [[ "$model" == *glm* ]]; then
-  seat="glm"
-elif [[ "$input" == *"## YOUR DRAFT PLAN"* ]]; then
+if [[ "$input" == *"## YOUR DRAFT PLAN"* ]]; then
   seat="synthesis"
 else
   seat="compose"
@@ -102,10 +100,6 @@ emit() { # RESULT
 }
 
 case "$seat" in
-  glm)
-    if [[ "${STUB_GLM_MODE:-normal}" == "empty" ]]; then exit 0; fi
-    emit "1. **Claim** BETA-CRITIQUE-TOKEN: the cancellation path is undefined. 2. **Claim** the rollout has no exit criteria."
-    ;;
   compose)
     if [[ "${STUB_CLAUDE_MODE:-normal}" == "auth-fail" ]]; then
       emit "Not logged in · Please run /login"
@@ -150,28 +144,31 @@ fi
 printf '%s\n' "1. **Claim** ALPHA-CRITIQUE-TOKEN: cold-chain limits are asserted, not measured. 2. **Claim** no owner is named for the spreadsheet cutover." > "$out"
 STUB
 
-# kimi: invoke_kimi passes the prompt as an argv value to -p and reads
-# stream-json NDJSON from stdout, running from a throwaway CWD (hence the
-# absolute $STUB_LOG / $STUB_STDIN_DIR).
-cat > "$STUB_BIN/kimi" <<'STUB'
+# curl: serves the direct GLM and Kimi Chat Completions adapters. The request
+# body identifies the model and contains the prompt; the config remains opaque.
+cat > "$STUB_BIN/curl" <<'STUB'
 #!/usr/bin/env bash
 set -uo pipefail
-prompt=""; prev=""
 for a in "$@"; do
-  [[ "$prev" == "-p" ]] && prompt="$a"
-  prev="$a"
+  [[ "$a" == "--version" ]] && { printf 'curl 9.9.9 (stub)\n'; exit 0; }
 done
-printf '%s\n' "kimi" >> "$STUB_LOG"
-printf '%s' "$prompt" > "$STUB_STDIN_DIR/kimi.txt"
-if [[ "${STUB_KIMI_MODE:-normal}" == "empty" ]]; then
-  jq -nc '{role: "assistant", content: ""}'
-  exit 0
+request=$(cat)
+model=$(printf '%s' "$request" | jq -r '.model // ""')
+prompt=$(printf '%s' "$request" | jq -r '.messages[0].content // ""')
+if [[ "$model" == *glm* ]]; then seat=glm; mode="${STUB_GLM_MODE:-normal}"; else seat=kimi; mode="${STUB_KIMI_MODE:-normal}"; fi
+printf '%s\n' "$seat" >> "$STUB_LOG"
+printf '%s' "$prompt" > "$STUB_STDIN_DIR/$seat.txt"
+if [[ "$mode" == "empty" ]]; then
+  content=x
+elif [[ "$seat" == "glm" ]]; then
+  content='1. **Claim** BETA-CRITIQUE-TOKEN: the cancellation path is undefined. 2. **Claim** the rollout has no exit criteria.'
+else
+  content='1. **Claim** GAMMA-CRITIQUE-TOKEN: volunteer confirmation has no deadline. 2. **Claim** spoilage is not baselined before the change.'
 fi
-jq -nc --arg c '1. **Claim** GAMMA-CRITIQUE-TOKEN: volunteer confirmation has no deadline. 2. **Claim** spoilage is not baselined before the change.' \
-  '{role: "assistant", content: $c}'
+jq -nc --arg c "$content" '{choices:[{message:{content:$c}}],usage:{prompt_tokens:11,completion_tokens:22,prompt_tokens_details:{cached_tokens:0}}}'
 STUB
 
-chmod +x "$STUB_BIN/claude" "$STUB_BIN/codex" "$STUB_BIN/kimi"
+chmod +x "$STUB_BIN/claude" "$STUB_BIN/codex" "$STUB_BIN/curl"
 
 # --- Harness -----------------------------------------------------------------
 
@@ -195,6 +192,7 @@ run_panel() { # extra args...
   STUB_LOG="$STUB_LOG" \
   STUB_STDIN_DIR="$STUB_STDIN_DIR" \
   ZAI_API_KEY="test-key-not-real" \
+  KIMI_API_KEY="test-key-not-real" \
   bash "$RUN_PANEL" --out-dir "$OUT" "$@" > "$TEST_DIR/$SCENARIO.stdout" 2>&1
 }
 
@@ -245,11 +243,13 @@ check_eq "full: reviewer order preserved" "codex glm kimi" \
 check_eq "full: kimi_status ok" "ok" "$(jq -r '.kimi_status' "$OUT/panel-state.json")"
 check_eq "full: codex tokens mined from stderr" "1234" \
   "$(jq -r '.tokens.totals.codex_total_tokens' "$OUT/panel-state.json")"
-check_eq "full: three claude-family usage sidecars folded in" "3" \
+check_eq "full: two Claude usage sidecars folded in" "2" \
   "$(jq -r '[.tokens.phases[] | select(.source == "claude-json")] | length' "$OUT/panel-state.json")"
-check_eq "full: claude cost summed across seats" "true" \
-  "$(jq -r '.tokens.totals.claude_cost_usd > 0.02' "$OUT/panel-state.json")"
-check_eq "full: claude input tokens summed" "33" \
+check_eq "full: direct provider usage sidecars folded in" "2" \
+  "$(jq -r '[.tokens.phases[] | select(.source == "zai-chat-completions" or .source == "kimi-chat-completions")] | length' "$OUT/panel-state.json")"
+check_eq "full: claude cost summed across composer calls" "true" \
+  "$(jq -r '.tokens.totals.claude_cost_usd > 0.01' "$OUT/panel-state.json")"
+check_eq "full: claude input tokens summed" "22" \
   "$(jq -r '.tokens.totals.claude_input' "$OUT/panel-state.json")"
 
 check_eq "full: compose invoked once" "1" "$(seat_count compose)"
@@ -388,8 +388,8 @@ check_eq "subset: no glm sidecar in the tokens block" "2" \
 
 scenario allfail
 rc=0
-STUB_CODEX_MODE=empty STUB_GLM_MODE=empty STUB_KIMI_MODE=empty \
-  run_panel --task-file "$FIXTURES/task-basic.md" || rc=$?
+STUB_CODEX_MODE=empty \
+  run_panel --task-file "$FIXTURES/task-basic.md" --reviewers codex || rc=$?
 check_eq "allfail: exit 1" "1" "$rc"
 check_nofile "allfail: no final.md" "$OUT/final.md"
 check_eq "allfail: synthesis never invoked" "0" "$(seat_count synthesis)"
@@ -398,7 +398,7 @@ check_eq "allfail: degraded true" "true" "$(jq -r '.degraded' "$OUT/panel-state.
 check_eq "allfail: all critiques invalid" "true" \
   "$(jq -r '[.phases[] | select(.phase | startswith("critique-")) | .status] | all(. == "invalid")' "$OUT/panel-state.json")"
 check_file "allfail: compose artifact kept for resume" "$OUT/compose-output.md"
-check_eq "allfail: kimi_status invalid" "invalid" "$(jq -r '.kimi_status' "$OUT/panel-state.json")"
+check_eq "allfail: kimi_status absent" "null" "$(jq -r '.kimi_status' "$OUT/panel-state.json")"
 
 # --- 7. Auth failures → exit 4, artifact withheld ----------------------------
 

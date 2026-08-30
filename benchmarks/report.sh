@@ -599,7 +599,7 @@ emit ""
 # --- 6. Process stats + cost --------------------------------------------------
 emit "## 6. Process stats and cost"
 emit ""
-emit "| Condition | Cells | Mean words | Mean wall s | Converged | Adjudicated | Stuck | GLM calls | Claude/GLM cost USD |"
+emit "| Condition | Cells | Mean words | Mean wall s | Converged | Adjudicated | Stuck | GLM calls | Captured cost USD |"
 emit "|---|---|---|---|---|---|---|---|---|"
 for cond in ${CONDS[@]+"${CONDS[@]}"}; do
   cells=0; words=0; wall=0; conv=0; adj=0; stuck=0; glm=0
@@ -626,9 +626,9 @@ for cond in ${CONDS[@]+"${CONDS[@]}"}; do
   emit "| \`$cond\` | $cells | $(( cells > 0 ? words / cells : 0 )) | $(( cells > 0 ? wall / cells : 0 )) | $conv | $adj | $stuck | $glm | $cost |"
 done
 emit ""
-emit "Costs are the token sidecars' \`total_cost_usd\` for the Claude and GLM seats"
-emit "only. Codex and Kimi have no sidecar, so their spend appears as call counts"
-emit "and wall clock, never as dollars — the cost column is a floor, not a total."
+emit "Costs sum any token sidecar \`total_cost_usd\` values. Claude reports that"
+emit "field; the direct GLM and Kimi sidecars report tokens but no dollar price,"
+emit "and Codex has no sidecar. The cost column is therefore a floor, not a total."
 emit ""
 emit "Judging cost is not itemized here: the judge CLIs are invoked in text/schema"
 emit "mode without token capture. Judging volume is $EXPECTED_PAIRS pairs x 2 trials x"
