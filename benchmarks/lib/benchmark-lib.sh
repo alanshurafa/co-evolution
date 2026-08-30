@@ -366,8 +366,9 @@ bench_lint_corpus() {
     fi
 
     # Kimi arithmetic (plan's Corpus section): the worst-case critique prompt is
-    # persona template + composed plan + slack, and invoke_kimi DIES above 12000
-    # bytes on Windows. 11500 keeps a margin so condition C stays homogeneous.
+    # persona template + composed plan + slack. The frozen design uses 11500 as
+    # its registered ceiling, so preserve that limit after the direct-API move
+    # to keep condition C homogeneous with the pre-registered pilot.
     # 7.5 bytes/word is computed as (words * 15 + 1) / 2 to stay in integer bash.
     if [[ -n "$words" ]]; then
       worst_case=$(( (words * 15 + 1) / 2 + persona_bytes + 500 ))

@@ -22,7 +22,7 @@
 #   contract. judge_invoke_trial hardcodes the claude CLI argv, so the codex and
 #   glm seats use bench_invoke_{codex,glm}_trial — a documented parallel of its
 #   2-attempt parse loop, sharing bench_parse_verdict and the same
-#   file_contains_auth_failure gate.
+#   file_contains_auth_failure gate. GLM uses the direct Z.AI HTTP adapter.
 # - Blinding for the benchmark is benchmarks/lib/sanitize.sh's sanitize_doc,
 #   not judge_blind: sanitize_doc is the frozen, wider rule set (benchmark
 #   tells, H1 normalization, footer removal) and leak_check is the fail-closed
@@ -142,8 +142,9 @@ sha256_of() {
 
 judge_cli_for() {
   case "$1" in
-    fable|glm) printf '%s' "claude" ;;
-    codex)     printf '%s' "codex" ;;
+    fable) printf '%s' "claude" ;;
+    codex) printf '%s' "codex" ;;
+    glm)   printf '%s' "curl" ;;
     *) die "unknown judge seat '$1' (expected fable, codex, or glm)" ;;
   esac
 }
@@ -327,7 +328,7 @@ preflight() {
     effort="$(judge_effort_for "$seat")"
     assert_concrete_model "$seat" "$model"
     [[ "$seat" != "glm" || -n "${ZAI_API_KEY:-}" ]] \
-      || die "judge seat 'glm' requires ZAI_API_KEY (the seat runs the claude CLI against Z.AI)"
+      || die "judge seat 'glm' requires ZAI_API_KEY (the seat calls the Z.AI API directly)"
 
     version=$("$cli" --version 2>/dev/null | head -1 | tr -d '\r') || version=""
     [[ -n "$version" ]] || version="unknown"
@@ -577,7 +578,7 @@ bench_invoke_glm_trial() {
       invoke_glm "$prompt_file" "$raw" "$errf" false
     ) || true
     if file_contains_auth_failure "$raw" || file_contains_auth_failure "$errf"; then
-      log "ERROR: glm judge (claude CLI against Z.AI) is not authenticated — check ZAI_API_KEY, then re-run."
+      log "ERROR: glm judge (direct Z.AI API) is not authenticated — check ZAI_API_KEY, then re-run."
       return 1
     fi
     bench_parse_verdict "$raw" "$out" && return 0

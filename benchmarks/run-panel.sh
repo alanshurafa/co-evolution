@@ -30,9 +30,9 @@ set -euo pipefail
 # - The synthesis prompt labels critiques "Reviewer N" in --reviewers order and
 #   never names a vendor: the synthesis must stay blind to who said what, and
 #   vendor strings must not reach final.md where the judge would see them.
-# - invoke_kimi DIES above 12000 prompt bytes on Windows (lib/co-evolution.sh:676),
-#   which would kill the whole panel. The size gate below measures the assembled
-#   prompt BEFORE invoking and skips the seat instead.
+# - The frozen benchmark design caps Kimi critique prompts at 11500 bytes. The
+#   direct Kimi API no longer has the old Windows argv ceiling, but preserving
+#   the registered gate keeps previously linted cells comparable.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/benchmark-lib.sh
@@ -44,8 +44,7 @@ OUT_DIR=""
 REVIEWERS_CSV="codex,glm,kimi"
 COMPOSER_MODEL_ARG="fable"
 
-# Kimi's hard ceiling is 12000 bytes; 11500 keeps a margin for the argv quoting
-# expansion invoke_kimi warns about. Same number the corpus linter budgets to.
+# Registered Kimi prompt ceiling; the corpus linter uses the same number.
 : "${PANEL_KIMI_MAX_BYTES:=11500}"
 
 PANEL_EXIT_OK=0
@@ -114,6 +113,16 @@ for _r in ${_reviewer_fields[@]+"${_reviewer_fields[@]}"}; do
 done
 (( ${#REVIEWERS[@]} > 0 )) || die "--reviewers must name at least one reviewer"
 
+# GLM and Kimi are direct HTTP seats. Fail before compose spends anything if
+# their shared transport is unavailable; otherwise invoke_* would die inside a
+# reviewer phase and the panel could misclassify a missing dependency as an
+# invalid critique.
+case ",${REVIEWERS_CSV}," in
+  *,glm,*|*,kimi,*)
+    command -v curl >/dev/null 2>&1 || die "glm/kimi panel reviewers require curl"
+    ;;
+esac
+
 COMPOSER_MODEL="$(resolve_claude_model_alias "$COMPOSER_MODEL_ARG")"
 
 # COMPOSE-PROMPT PARITY: conditions A, B and D compose from `<cell>/in.md`,
@@ -157,7 +166,7 @@ panel_reviewer_model() {
   case "$1" in
     codex) printf '%s' "${CODEX_MODEL:-(inherit:CLI-config)}" ;;
     glm)   printf '%s' "${GLM_MODEL:-glm-5.3-flash}" ;;
-    kimi)  printf '%s' "${KIMI_MODEL:-kimi-code/k3}" ;;
+    kimi)  printf '%s' "${KIMI_MODEL:-kimi-k3}" ;;
     *)     printf '%s' "unknown" ;;
   esac
 }
@@ -185,15 +194,16 @@ panel_phase_add() {
 # from the sidecars on disk rather than accumulated in memory, so a resumed run
 # still reports the phases it reused.
 #
-# The GLM seat's sidecar carries source "claude-json" because invoke_glm
-# dispatches through invoke_claude — its tokens land in the claude_* totals,
-# exactly as they do for a bouncer run with a glm seat.
+# Direct-provider sidecars remain phase-level provenance. Claude totals include
+# only the compose and synthesis calls; GLM and Kimi retain their own source
+# labels so they cannot be misreported as Anthropic usage.
 panel_tokens_json() {
   local phases='{}' tmp sidecar phase tokens_val i
-  local -a sidecar_phases=(compose critique-glm synthesis)
+  local -a sidecar_phases=(compose critique-glm critique-kimi synthesis)
   local -a sidecar_files=(
     "$OUT_DIR/compose-output.md.usage.json"
     "$OUT_DIR/critique-glm.md.usage.json"
+    "$OUT_DIR/critique-kimi.md.usage.json"
     "$OUT_DIR/.synthesis-output.md.usage.json"
   )
 
@@ -441,8 +451,7 @@ panel_run_critique() {
     || die "critique/${reviewer}: could not write $prompt_file"
   prompt_bytes=$(panel_bytes "$prompt_file")
 
-  # Size gate — kimi only, and BEFORE the invoke: invoke_kimi calls die() above
-  # 12000 bytes, which would take the whole panel down instead of one seat.
+  # Registered size gate — Kimi only, before the direct API call.
   if [[ "$reviewer" == "kimi" ]] && (( prompt_bytes > PANEL_KIMI_MAX_BYTES )); then
     local reason="prompt is ${prompt_bytes} bytes (limit ${PANEL_KIMI_MAX_BYTES})"
     printf 'SKIPPED: kimi critique not attempted.\nreason: size\ndetail: %s\n' "$reason" \
@@ -462,11 +471,11 @@ panel_run_critique() {
     panel_exit "$PANEL_EXIT_RETRY" retryable \
       "critique/glm: ZAI_API_KEY is not set; re-run once the seat is configured."
   fi
-  if [[ "$reviewer" == "kimi" ]] && ! find_kimi_cli >/dev/null 2>&1; then
+  if [[ "$reviewer" == "kimi" && -z "${KIMI_API_KEY:-}" ]]; then
     panel_phase_add "critique-kimi" kimi "$model" retryable "$started" "$(panel_now)" \
-      "$prompt_bytes" 0 "kimi CLI not found on PATH or under ~/.kimi-code/bin"
+      "$prompt_bytes" 0 "KIMI_API_KEY is not set"
     panel_exit "$PANEL_EXIT_RETRY" retryable \
-      "critique/kimi: kimi CLI not found; re-run once the seat is installed."
+      "critique/kimi: KIMI_API_KEY is not set; re-run once the seat is configured."
   fi
 
   log "critique/${reviewer}: $model (${prompt_bytes} bytes)"
@@ -484,6 +493,7 @@ panel_run_critique() {
       invoke_glm "$prompt_file" "$artifact" "$stderr_file" false || true
       ;;
     kimi)
+      local CO_EVOLVE_TOKEN_CAPTURE=1
       invoke_kimi "$prompt_file" "$artifact" "$stderr_file" || true
       ;;
   esac
