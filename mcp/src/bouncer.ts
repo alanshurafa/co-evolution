@@ -10,7 +10,6 @@ import {
   readdirSync,
   readFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LineBuffer, progressMessage } from "./progress.js";
@@ -164,21 +163,18 @@ export function runtimePrerequisites(
   }
 
   if (agents.includes("glm")) {
-    if (
-      (process.env.WSL_DISTRO_NAME && findOnPath("cmd.exe")) ||
-      isWslLauncher(bashPath)
-    ) {
+    if (!findOnPath("curl")) {
       throw runtimeError(
         "glm",
-        "native_claude_dispatch",
-        "glm seat unsupported under WSL claude dispatch",
+        "curl",
+        "glm seat requires curl for the direct Z.AI API",
       );
     }
-    if (!findOnPath("claude")) {
+    if (!findOnPath("jq")) {
       throw runtimeError(
         "glm",
-        "claude",
-        "glm seat requires the claude CLI on PATH",
+        "jq",
+        "glm seat requires jq for Z.AI request and response handling",
       );
     }
 
@@ -205,40 +201,40 @@ export function runtimePrerequisites(
   }
 
   if (agents.includes("kimi")) {
-    const home = process.env.HOME || process.env.USERPROFILE || homedir();
-    const portable = [
-      join(home, ".kimi-code", "bin", "kimi"),
-      join(home, ".kimi-code", "bin", "kimi.exe"),
-    ].find(executable);
-    if (!findOnPath("kimi") && !portable) {
+    if (!findOnPath("curl")) {
       throw runtimeError(
         "kimi",
-        "kimi",
-        "kimi seat requires the kimi CLI on PATH (or under ~/.kimi-code/bin)",
+        "curl",
+        "kimi seat requires curl for the direct Kimi API",
       );
     }
     if (!findOnPath("jq")) {
       throw runtimeError(
         "kimi",
         "jq",
-        "kimi seat requires jq to extract raw assistant Markdown from stream-json output",
+        "kimi seat requires jq for Kimi request and response handling",
       );
     }
-    if (!readable(join(home, ".kimi-code", "config.toml"))) {
+
+    let key = process.env.KIMI_API_KEY?.trim() || null;
+    if (!key) {
+      const candidates = [
+        resolve(process.cwd(), ".env.local"),
+        resolve(dirname(opts.documentPath), ".env.local"),
+      ];
+      for (const candidate of new Set(candidates)) {
+        key = namedEnvValue(candidate, "KIMI_API_KEY");
+        if (key) break;
+      }
+    }
+    if (!key) {
       throw runtimeError(
         "kimi",
-        "~/.kimi-code/config.toml",
-        "kimi seat requires readable Kimi config at ~/.kimi-code/config.toml",
+        "KIMI_API_KEY",
+        "kimi seat requires KIMI_API_KEY in the process environment or targeted .env.local",
       );
     }
-    if (!readable(join(home, ".kimi-code", "credentials", "kimi-code.json"))) {
-      throw runtimeError(
-        "kimi",
-        "kimi_login",
-        "kimi seat is not logged in; run 'kimi login --region mainland-cn'",
-      );
-    }
-    if (!childEnv.HOME) childEnv.HOME = home;
+    childEnv.KIMI_API_KEY = key;
   }
 
   return childEnv;
