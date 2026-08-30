@@ -233,7 +233,11 @@ else
 fi
 (( ${#CONDS[@]} > 0 )) || die "no conditions resolved (checked --conditions, conditions.yaml, and the batch tree)"
 # Deterministic pair ordering everywhere downstream.
-mapfile -t CONDS < <(printf '%s\n' "${CONDS[@]}" | LC_ALL=C sort -u)
+SORTED_CONDS=()
+while IFS= read -r c; do
+  [[ -n "$c" ]] && SORTED_CONDS+=("$c")
+done < <(printf '%s\n' "${CONDS[@]}" | LC_ALL=C sort -u)
+CONDS=("${SORTED_CONDS[@]}")
 
 # --- Generation-completeness gate --------------------------------------------
 # Judging starts only after ALL generation cells are complete (single freeze
