@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# STUB CLI -- DO NOT INVOKE IN PRODUCTION
+#
+# Hermetic test double for the `codex` CLI, PATH-shadowed by
+# benchmarks/tests/smoke.sh. invoke_codex (lib/co-evolution.sh:721) calls this
+# as `codex exec --full-auto --skip-git-repo-check -C <dir> -o <file>` with the
+# prompt on stdin, discards stdout and captures stderr — so the document goes
+# to the -o path and the token line goes to stderr, where collect_token_usage
+# picks it up as the pass's codex-stderr phase entry.
+#
+# Always emits a marker-free revision: it plays the even-pass composer that
+# closes the [CONTESTED] the stubbed reviewer opened.
+
+set -euo pipefail
+
+echo 'STUB CODEX -- DO NOT INVOKE IN PRODUCTION' >&2
+
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o) out="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+cat > /dev/null   # drain the prompt on stdin
+
+if [[ -n "${BENCH_STUB_CALLS:-}" ]]; then
+  printf 'codex\n' >> "$BENCH_STUB_CALLS"
+fi
+
+if [[ -z "$out" ]]; then
+  echo 'stub codex: no -o output path given' >&2
+  exit 1
+fi
+
+cat > "$out" <<'DOC_EOF'
+# Delivery Scheduling Plan
+
+## Measurement
+
+Record hourly sell-through per product per location for two weeks using the
+existing till exports. Treat a product as sold out when its count reaches zero
+before closing, and log the hour.
+
+## Production order
+
+Set each morning's production quantity from the trailing two-week median for
+that weekday, rounded up to the nearest tray, with a fixed ten percent buffer
+for the two highest-variance products.
+
+## Timetable
+
+Run two delivery waves. The first leaves ninety minutes before the earliest
+shop opening. The second leaves at midday carrying top sellers only, sized from
+the morning's actual sell-through. Van capacity for the second wave is confirmed
+against the current three-van fleet before the timetable is published, which
+settles the capacity question raised in review.
+
+## Shortfall handling
+
+Allocate proportionally to forecast demand instead of first-come loading, and
+notify affected shops before the van leaves.
+
+## Verification
+
+Track stockout hours per location and units discarded at close, weekly. The
+overhaul has worked if stockout hours fall while discards stay flat or fall.
+Review at four weeks.
+
+## HUMAN SUMMARY
+
+- Revision confirmed fleet capacity and closed the open disagreement.
+DOC_EOF
+
+printf 'tokens used\n2048\n' >&2

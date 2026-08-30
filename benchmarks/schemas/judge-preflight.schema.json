@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkJudgePreflightProbe",
+  "description": "Minimal probe payload used by benchmarks/judge-matrix.sh to resolve the codex judge's actual model before the first verdict. The CLI's own stderr preamble is preferred when it names a model; this self-report is the fallback.",
+  "type": "object",
+  "required": ["model", "ok"],
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "The exact model id this run is executing as."
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "Always true; present so the schema has a second required field."
+    }
+  }
+}
