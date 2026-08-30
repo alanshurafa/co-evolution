@@ -90,7 +90,7 @@ resolve_claude_model_alias() {
 # never rewrite CLAUDE_MODEL for a later plain-Claude pass in the same process.
 : "${GLM_MODEL:=glm-5.3-flash}"
 : "${GLM_EFFORT:=}"
-: "${KIMI_MODEL:=kimi-code/k3}"
+: "${KIMI_MODEL:=kimi-k3}"
 
 # Classify the supported document-pipeline seat names. Keep this case-driven:
 # callers must never treat an unknown future seat as Claude by default.
@@ -144,32 +144,27 @@ seat_prereqs_ok() {
         SEAT_PREREQ_ERROR="glm seat requires ZAI_API_KEY (set it in the environment or .env.local)"
         return 1
       fi
-      if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="glm seat unsupported under WSL claude dispatch"
+      if ! command -v curl >/dev/null 2>&1; then
+        SEAT_PREREQ_ERROR="glm seat requires curl for the direct Z.AI API"
         return 1
       fi
-      if ! command -v claude >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="glm seat requires the claude CLI on PATH"
+      if ! command -v jq >/dev/null 2>&1; then
+        SEAT_PREREQ_ERROR="glm seat requires jq for Z.AI request and response handling"
         return 1
       fi
       return 0
       ;;
     kimi)
-      if ! find_kimi_cli >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="kimi seat requires the kimi CLI on PATH (or under ~/.kimi-code/bin)"
+      if [[ -z "${KIMI_API_KEY:-}" ]]; then
+        SEAT_PREREQ_ERROR="kimi seat requires KIMI_API_KEY (set it in the environment or .env.local)"
+        return 1
+      fi
+      if ! command -v curl >/dev/null 2>&1; then
+        SEAT_PREREQ_ERROR="kimi seat requires curl for the direct Kimi API"
         return 1
       fi
       if ! command -v jq >/dev/null 2>&1; then
-        SEAT_PREREQ_ERROR="kimi seat requires jq to extract raw assistant Markdown from stream-json output"
-        return 1
-      fi
-      kimi_root="${HOME:-}/.kimi-code"
-      if [[ -z "${HOME:-}" || ! -r "$kimi_root/config.toml" ]]; then
-        SEAT_PREREQ_ERROR="kimi seat requires readable Kimi config at ~/.kimi-code/config.toml"
-        return 1
-      fi
-      if [[ ! -r "$kimi_root/credentials/kimi-code.json" ]]; then
-        SEAT_PREREQ_ERROR="kimi seat is not logged in; run 'kimi login --region mainland-cn'"
+        SEAT_PREREQ_ERROR="kimi seat requires jq for Kimi request and response handling"
         return 1
       fi
       return 0
@@ -531,15 +526,6 @@ invoke_claude() {
   else
     tool_flags=(--disallowedTools "Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch")
   fi
-  if [[ "$dispatch" == "glm" ]]; then
-    [[ "$writable" == "false" ]] || die "glm seat does not support writable phases"
-    # Kimi and GLM are external-vendor document seats. Unlike the legacy
-    # Claude text path, GLM must not retain Read/agent/skill tools that could
-    # expose local files to the Z.AI endpoint. The attached-empty form avoids
-    # Claude CLI's variadic `--tools ""` parser bug.
-    tool_flags=(--safe-mode --tools=)
-  fi
-
   # v1.5: model + optional reasoning effort. CLAUDE_EFFORT defaults empty (OFF)
   # so model_flags is exactly `--model "$CLAUDE_MODEL"` and argv is byte-identical
   # to the prior single-flag form. The --effort element is appended only when set.
@@ -564,26 +550,9 @@ invoke_claude() {
   local output_format=text
   [[ "$capture_json" == "true" ]] && output_format=json
 
-  if [[ "$dispatch" == "glm" && -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    # Bash-side env prefixes do not cross `cmd.exe /c`; continuing here could
-    # silently bill the operator's real Anthropic account.
-    die "glm seat unsupported under WSL claude dispatch"
-  elif [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
     # Under WSL, reuse the Windows Claude session because WSL and Windows keep separate auth state.
     cmd=(cmd.exe /c claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
-  elif [[ "$dispatch" == "glm" ]]; then
-    # The Z.AI overrides are part of this child command only. Do not export
-    # them: a later plain-Claude pass runs in this same bouncer process.
-    cmd=(env
-      -u ANTHROPIC_API_KEY
-      -u ANTHROPIC_CUSTOM_HEADERS
-      -u CLAUDE_CODE_OAUTH_TOKEN
-      -u CLAUDE_CODE_USE_BEDROCK
-      -u CLAUDE_CODE_USE_VERTEX
-      -u CLAUDE_CODE_USE_FOUNDRY
-      "ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic"
-      "ANTHROPIC_AUTH_TOKEN=${ZAI_API_KEY}"
-      claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
   else
     cmd=(claude -p --output-format "$output_format" "${model_flags[@]}" "${tool_flags[@]}")
   fi
@@ -630,92 +599,124 @@ invoke_glm() (
   local output_file="$2"
   local stderr_file="$3"
   local writable="${4:-false}"
+  local request_file response_file config_file
+  local curl_rc=0 message
 
   [[ -n "${ZAI_API_KEY:-}" ]] || die "glm seat requires ZAI_API_KEY"
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1; then
-    die "glm seat unsupported under WSL claude dispatch"
+  [[ "$writable" == "false" ]] || die "glm seat does not support writable phases"
+  command -v curl >/dev/null 2>&1 || die "glm seat requires curl"
+  command -v jq >/dev/null 2>&1 || die "glm seat requires jq"
+
+  request_file=$(mktemp -t glm-request-XXXXXX.json)
+  response_file=$(mktemp -t glm-response-XXXXXX.json)
+  config_file=$(mktemp -t glm-curl-XXXXXX.conf)
+  trap 'rm -f "$request_file" "$response_file" "$config_file"' EXIT
+
+  # Send only the protocol prompt. Claude Code's internal system messages are
+  # incompatible with this document seat and were observed replacing a valid
+  # response with <system-warning>/<system-reminder> metadata. Z.AI's documented
+  # Chat Completions endpoint avoids that extra agent layer entirely.
+  jq -Rs --arg model "${GLM_MODEL:-glm-5.3-flash}" '{
+      model: $model,
+      messages: [{role: "user", content: .}],
+      stream: false,
+      temperature: 0
+    }' "$prompt_file" > "$request_file"
+
+  # Keep the bearer token out of argv and logs. curl reads it from a mode-600
+  # temporary config file that this adapter removes on every exit path.
+  {
+    printf 'url = "https://api.z.ai/api/paas/v4/chat/completions"\n'
+    printf 'request = "POST"\n'
+    printf 'header = "Authorization: Bearer %s"\n' "$ZAI_API_KEY"
+    printf 'header = "Content-Type: application/json"\n'
+    printf 'header = "Accept-Language: en-US,en"\n'
+    printf 'data-binary = "@-"\n'
+    printf 'silent\nshow-error\nfail-with-body\nmax-time = 600\n'
+  } > "$config_file"
+  chmod 600 "$config_file"
+
+  curl --config "$config_file" < "$request_file" > "$response_file" 2> "$stderr_file" || curl_rc=$?
+  if (( curl_rc == 0 )) \
+     && jq -e '.choices[0].message.content | type == "string" and length > 0' \
+          "$response_file" >/dev/null 2>&1; then
+    jq -r '.choices[0].message.content' "$response_file" > "$output_file"
+    if [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]]; then
+      jq '{
+            input_tokens: (.usage.prompt_tokens // null),
+            output_tokens: (.usage.completion_tokens // null),
+            cache_read_input_tokens: (.usage.prompt_tokens_details.cached_tokens // null),
+            cache_creation_input_tokens: null,
+            total_cost_usd: null,
+            source: "zai-chat-completions"
+          }' "$response_file" > "${output_file}.usage.json" 2>/dev/null || true
+    fi
+    return 0
   fi
 
-  # Keep the Claude CLI's model/effort globals scoped to this adapter. The
-  # endpoint credentials are added by invoke_claude as an `env ... claude`
-  # prefix on the actual child command, never as shell exports.
-  CLAUDE_MODEL="${GLM_MODEL:-glm-5.3-flash}"
-  CLAUDE_EFFORT="${GLM_EFFORT:-}"
-  invoke_claude "$prompt_file" "$output_file" "$stderr_file" "$writable" glm
+  message=$(jq -r '.error.message // .message // empty' "$response_file" 2>/dev/null || true)
+  [[ -n "$message" ]] || message="Z.AI request failed (curl exit $curl_rc)"
+  printf 'API Error: %s\n' "$message" > "$output_file"
+  return 0
 )
 
-# Kimi Code v0.39.1 (verified 2026-08-28): -p is non-interactive but auto-approves
-# tool calls, cannot combine with --plan, and text output is transcript-formatted
-# rather than raw Markdown. Run from a disposable project whose supported local
-# config exposes no tools, request NDJSON, reject any tool activity defensively,
-# and extract the last assistant content. Login is `kimi login --region
-# mainland-cn`; seat_prereqs_ok checks its files without a live model call.
 invoke_kimi() (
   local prompt_file="$1"
   local output_file="$2"
   local stderr_file="$3"
-  local kimi_cli
-  local prompt
-  local kimi_workdir
-  local stream_file
-  local kernel
-  local prompt_bytes
-  local kimi_rc=0
+  local request_file response_file config_file
+  local curl_rc=0 message
 
-  kimi_cli=$(find_kimi_cli) || die "kimi CLI not found; add it to PATH or install it under ~/.kimi-code/bin"
-  command -v jq >/dev/null 2>&1 || die "kimi seat requires jq to extract raw assistant Markdown from stream-json output"
-  prompt=$(cat "$prompt_file")
-  kernel=$(uname -s 2>/dev/null || true)
-  case "$kernel" in
-    MINGW*|MSYS*|CYGWIN*)
-      # Kimi 0.39.1 has no stdin/prompt-file mode. Stay comfortably below the
-      # native Windows CreateProcess 32,767 UTF-16 command-line ceiling after
-      # accounting for executable/options plus worst-case quote/backslash
-      # expansion (which can nearly double the prompt on Windows).
-      prompt_bytes=$(printf '%s' "$prompt" | LC_ALL=C wc -c | tr -d '[:space:]')
-      if (( prompt_bytes > 12000 )); then
-        die "kimi seat prompt exceeds the safe Windows command-line limit (12000 bytes); shorten the document or use another seat"
-      fi
-      ;;
-  esac
-  kimi_workdir=$(mktemp -d -t co-evolve-kimi-XXXXXX) || die "could not create isolated Kimi work directory"
-  stream_file="$kimi_workdir/stream.ndjson"
-  trap 'rm -rf -- "$kimi_workdir"' EXIT
+  [[ -n "${KIMI_API_KEY:-}" ]] || die "kimi seat requires KIMI_API_KEY"
+  command -v curl >/dev/null 2>&1 || die "kimi seat requires curl"
+  command -v jq >/dev/null 2>&1 || die "kimi seat requires jq"
 
-  mkdir -p "$kimi_workdir/.kimi-code"
-  cat > "$kimi_workdir/.kimi-code/local.toml" <<'KIMI_NO_TOOLS'
-# Kimi's documented non-matching allowlist sentinel. An empty list means no
-# restriction, so do not replace this with enabled = [].
-[tools]
-enabled = ["*"]
-KIMI_NO_TOOLS
+  request_file=$(mktemp -t kimi-request-XXXXXX.json)
+  response_file=$(mktemp -t kimi-response-XXXXXX.json)
+  config_file=$(mktemp -t kimi-curl-XXXXXX.conf)
+  trap 'rm -f "$request_file" "$response_file" "$config_file"' EXIT
 
-  (
-    cd "$kimi_workdir"
-    "$kimi_cli" -m "${KIMI_MODEL:-kimi-code/k3}" -p "$prompt" --output-format stream-json
-  ) > "$stream_file" 2> "$stderr_file" || kimi_rc=$?
+  # The document seat calls Kimi's model API directly. Kimi Code's -p agent
+  # loop auto-runs Read/Write tools, which violates the no-tools seat boundary.
+  jq -Rs --arg model "${KIMI_MODEL:-kimi-k3}" '{
+      model: $model,
+      messages: [{role: "user", content: .}],
+      stream: false,
+      temperature: 1
+    }' "$prompt_file" > "$request_file"
 
-  if (( kimi_rc != 0 )); then
-    printf 'kimi seat refused partial output: CLI exited %s\n' "$kimi_rc" >> "$stderr_file"
-    : > "$output_file"
+  {
+    printf 'url = "https://api.moonshot.ai/v1/chat/completions"\n'
+    printf 'request = "POST"\n'
+    printf 'header = "Authorization: Bearer %s"\n' "$KIMI_API_KEY"
+    printf 'header = "Content-Type: application/json"\n'
+    printf 'data-binary = "@-"\n'
+    printf 'silent\nshow-error\nfail-with-body\nmax-time = 600\n'
+  } > "$config_file"
+  chmod 600 "$config_file"
+
+  curl --config "$config_file" < "$request_file" > "$response_file" 2> "$stderr_file" || curl_rc=$?
+  if (( curl_rc == 0 )) \
+     && jq -e '.choices[0].message.content | type == "string" and length > 0' \
+          "$response_file" >/dev/null 2>&1; then
+    jq -r '.choices[0].message.content' "$response_file" > "$output_file"
+    if [[ "${CO_EVOLVE_TOKEN_CAPTURE:-}" == "1" ]]; then
+      jq '{
+            input_tokens: (.usage.prompt_tokens // null),
+            output_tokens: (.usage.completion_tokens // null),
+            cache_read_input_tokens: (.usage.prompt_tokens_details.cached_tokens // null),
+            cache_creation_input_tokens: null,
+            total_cost_usd: null,
+            source: "kimi-chat-completions"
+          }' "$response_file" > "${output_file}.usage.json" 2>/dev/null || true
+    fi
     return 0
   fi
 
-  # The local policy should make tool activity impossible. Fail closed if the
-  # CLI ever changes that behavior or emits malformed/non-NDJSON output.
-  if ! jq -e -s \
-    'all(.[]; .role != "tool" and ((.tool_calls? // []) | length == 0))' \
-    "$stream_file" >/dev/null 2>> "$stderr_file"; then
-    printf '%s\n' 'kimi seat refused output: tool activity or invalid stream-json detected' >> "$stderr_file"
-    : > "$output_file"
-    return 0
-  fi
-
-  if ! jq -s -r -j \
-    '[.[] | select(.role == "assistant") | .content? | select(type == "string" and length > 0)] | last // empty' \
-    "$stream_file" > "$output_file" 2>> "$stderr_file"; then
-    : > "$output_file"
-  fi
+  message=$(jq -r '.error.message // .message // empty' "$response_file" 2>/dev/null || true)
+  [[ -n "$message" ]] || message="Kimi request failed (curl exit $curl_rc)"
+  printf 'API Error: %s\n' "$message" > "$output_file"
+  return 0
 )
 
 invoke_codex() {
@@ -883,7 +884,21 @@ file_contains_error_payload() {
 
   [[ -s "$file_path" ]] || return 1
 
-  grep -qiE '^(Error|ERROR|fatal|Fatal):|^Internal Server Error$|^Bad Gateway$|^Service Unavailable$|rate limit exceeded|context deadline exceeded|timed out|connection (reset|refused)|ECONNREFUSED|ENOTFOUND|Traceback \(most recent call last\):' "$file_path"
+  grep -qiE '^(API Error|Error|ERROR|fatal|Fatal):|^Internal Server Error$|^Bad Gateway$|^Service Unavailable$|rate limit exceeded|context deadline exceeded|timed out|connection (reset|refused)|ECONNREFUSED|ENOTFOUND|Traceback \(most recent call last\):' "$file_path"
+}
+
+# Provider CLIs sometimes print a short API-error sentence to stdout and still
+# exit zero. Without a content gate, the bouncer can install that sentence as
+# the document and report false convergence. Keep this deliberately narrow:
+# consult the broad error-payload matcher only for short outputs, so a real
+# document that discusses or quotes provider errors is not rejected.
+output_is_provider_failure() {
+  local file_path="$1"
+  local words
+
+  [[ -s "$file_path" ]] || return 1
+  words=$(wc -w < "$file_path" | tr -d '\r\n ')
+  (( words < 50 )) && file_contains_error_payload "$file_path"
 }
 
 # R-1/R-2 (v1.3 Phase 1): classify an agent invocation's outcome BEFORE the
@@ -912,6 +927,11 @@ validate_agent_artifact() {
   # keeps the short+loose catch for a bare banner the anchor excludes (C-8).
   if output_is_auth_failure "$output_file"; then
     log " ERROR: ${agent_name} returned an authentication failure, not a document. Run \`${agent_name}\` interactively to log in, then re-run."
+    return 2
+  fi
+
+  if output_is_provider_failure "$output_file"; then
+    log " ERROR: ${agent_name} returned a provider/API failure, not a document. Inspect the captured output and provider account status before re-running."
     return 2
   fi
 
