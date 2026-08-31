@@ -9,6 +9,12 @@ BOUNCER="$REPO_ROOT/co-evolve-bouncer.sh"
 TEST_DIR="$(mktemp -d -t kimi-seat-XXXXXX)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 
+# The bouncer also reads seat keys from the repo's .env.local, which on a
+# developer machine holds a real KIMI_API_KEY and would defeat the missing-key
+# scenario below. Point every scenario at a path that does not exist so the
+# fixture, not the machine, decides which keys are present.
+export CO_EVOLVE_ENV_FILE="$TEST_DIR/absent.env"
+
 TOTAL=0
 FAILURES=0
 pass() { printf 'PASS: %s\n' "$1"; }
