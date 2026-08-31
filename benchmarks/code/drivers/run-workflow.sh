@@ -12,6 +12,7 @@ INPUT_JSON=""
 PREDICTIONS=""
 MAX_CLAUDE=""
 DRY_RUN=false
+RESUME=false
 CLAUDE_MODEL="${CODE_BENCH_CLAUDE_MODEL:-fable}"
 CODEX_MODEL_LOCAL="${CODE_BENCH_CODEX_MODEL:-gpt-5.6-sol}"
 CLAUDE_EFFORT_LOCAL="${CODE_BENCH_CLAUDE_EFFORT:-medium}"
@@ -24,6 +25,7 @@ while (( $# > 0 )); do
     --predictions) PREDICTIONS="${2:?--predictions needs a value}"; shift 2 ;;
     --max-claude-dispatches) MAX_CLAUDE="${2:?--max-claude-dispatches needs a value}"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
+    --resume) RESUME=true; shift ;;
     *) code_die "unknown workflow option: $1"; exit 2 ;;
   esac
 done
@@ -129,6 +131,8 @@ run_fable() {
   command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
   (cd "$workspace" && "${cmd[@]}" < "$prompt") \
     > "$logs/$phase.json" 2> "$logs/$phase.stderr.log"
+  jq -e '.type == "result" and .is_error == false and (.result | type == "string")' \
+    "$logs/$phase.json" >/dev/null || { code_die "$phase did not produce a successful Claude result"; return 1; }
 }
 
 run_codex_repair() {
@@ -151,7 +155,13 @@ run_codex_critique() {
 }
 
 write_implement_prompt "$cell/implement-prompt.md"
-run_fable fable-implement "$cell/implement-prompt.md"
+if [[ "$RESUME" == true ]] \
+   && jq -e '.type == "result" and .is_error == false' "$logs/fable-implement.json" >/dev/null 2>&1 \
+   && [[ -n "$(git -C "$workspace" diff --name-only)" ]]; then
+  printf 'REUSED: fable-implement\n'
+else
+  run_fable fable-implement "$cell/implement-prompt.md"
+fi
 
 case "$condition" in
   B)
@@ -168,11 +178,30 @@ case "$condition" in
       printf '\n## ISSUE\n\n'; cat "$task_file"
       printf '\n## CANDIDATE PATCH\n\n'; head -c 120000 "$cell/candidate.patch"
     } > "$cell/critique-prompt.md"
-    run_codex_critique "$cell/critique-prompt.md" "$reviews/reviewer-1.md"
+    if [[ "$RESUME" == true && -s "$reviews/reviewer-1.md" ]] \
+       && ! output_is_provider_failure "$reviews/reviewer-1.md"; then
+      printf 'REUSED: codex-critique\n'
+    else
+      run_codex_critique "$cell/critique-prompt.md" "$reviews/reviewer-1.md"
+    fi
     [[ -n "${ZAI_API_KEY:-}" ]] || { code_die "condition C requires ZAI_API_KEY"; exit 1; }
     [[ -n "${KIMI_API_KEY:-}" ]] || { code_die "condition C requires KIMI_API_KEY"; exit 1; }
-    invoke_glm "$cell/critique-prompt.md" "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" false
-    invoke_kimi "$cell/critique-prompt.md" "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log"
+    if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null 2>&1; then
+      rm -f "$reviews/reviewer-2.md"
+      invoke_glm "$cell/critique-prompt.md" "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" false
+    else
+      printf 'REUSED: glm-critique\n'
+    fi
+    validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null \
+      || { code_die "GLM critique is not a valid artifact"; exit 1; }
+    if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" kimi >/dev/null 2>&1; then
+      rm -f "$reviews/reviewer-3.md"
+      invoke_kimi "$cell/critique-prompt.md" "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log"
+    else
+      printf 'REUSED: kimi-critique\n'
+    fi
+    validate_agent_artifact "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" kimi >/dev/null \
+      || { code_die "Kimi critique is not a valid artifact"; exit 1; }
     {
       printf '%s\n' "Re-open the current implementation and evaluate the three anonymous reviews below. Decide every finding on its merits, repair accepted issues, and run relevant tests. Do not commit."
       printf '\n## ISSUE\n\n'; cat "$task_file"
