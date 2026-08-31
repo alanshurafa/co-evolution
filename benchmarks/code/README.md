@@ -60,6 +60,15 @@ Live phases default to medium reasoning and a 900-second timeout. Override with
 `CODE_BENCH_CLAUDE_EFFORT`, `CODE_BENCH_CODEX_EFFORT`, and
 `CODE_BENCH_PHASE_TIMEOUT`; changing these values creates a different treatment
 and must be recorded in the run manifest.
+Direct GLM and Kimi critiques run with bounded reasoning: GLM at
+`reasoning_effort=low` (`CODE_BENCH_GLM_REASONING_EFFORT`) and Kimi with
+thinking off (`CODE_BENCH_KIMI_THINKING`), under a 2500-token output cap
+(`CODE_BENCH_CRITIC_MAX_TOKENS`). Both providers bill reasoning tokens against
+`max_tokens`, so an unbounded critic can spend the whole budget before writing
+any content and return an empty response. Each critic gets
+`CODE_BENCH_CRITIC_ATTEMPTS` attempts (default 3) spaced by
+`CODE_BENCH_CRITIC_RETRY_DELAY` seconds; an artifact still invalid after the
+last attempt fails the cell instead of reaching the final repair.
 
 `run-workflow --resume` reuses a successful Fable implementation and valid
 critic artifacts. Provider-error text is rejected before the final Fable repair,
