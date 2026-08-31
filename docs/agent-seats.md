@@ -45,6 +45,11 @@ Account creation, key entry, and interactive login remain manual steps.
    and add an
    `op://Development/...` reference to `.env.fill`. One key works on both machines.
 
+`CO_EVOLVE_ENV_FILE` overrides which file the bouncer reads these keys from.
+Point it at another env file to run against a different account, or at a path
+that does not exist to check that a seat fails closed on a machine that already
+has a key on disk.
+
 ### Kimi Platform account + API key
 
 Create or log into [Kimi Platform](https://platform.kimi.ai/), add API balance,
