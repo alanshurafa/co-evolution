@@ -1,0 +1,14 @@
+diff --git a/swebench/harness/run_evaluation.py b/swebench/harness/run_evaluation.py
+--- a/swebench/harness/run_evaluation.py
++++ b/swebench/harness/run_evaluation.py
+@@ -359,5 +359,9 @@ def run_instance(
+         eval_file = Path(log_dir / "eval.sh")
+-        eval_file.write_text(_inject_asset_restore(test_spec.eval_script, restore_cmds))
++        eval_file.write_text(
++            _inject_asset_restore(test_spec.eval_script, restore_cmds),
++            encoding="utf-8",
++            newline="\n",
++        )
+         logger.info(
+             f"Eval script for {instance_id} written to {eval_file}; copying to container..."
+         )

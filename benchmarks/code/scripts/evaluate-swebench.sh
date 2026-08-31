@@ -13,11 +13,18 @@ CACHE="$CODE_BENCH_RESULTS_ROOT/.cache"
 if [[ -x "$CACHE/venv/Scripts/swebench.exe" ]]; then CLI="$CACHE/venv/Scripts/swebench.exe"; else CLI="$CACHE/venv/bin/swebench"; fi
 
 [[ -x "$CLI" ]] || { code_die "SWE-bench is not installed; run code-bench.sh setup --install"; exit 1; }
+# Python on Windows otherwise inherits CP1252 for pathlib.write_text(), which
+# cannot encode some Unicode symbols present in official evaluation scripts.
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+export HF_HUB_DISABLE_SYMLINKS_WARNING=1
 if command -v timeout >/dev/null 2>&1; then
   timeout 10 docker info >/dev/null 2>&1 || { code_die "Docker engine is not running"; exit 1; }
 else
   docker info >/dev/null 2>&1 || { code_die "Docker engine is not running"; exit 1; }
 fi
+EVAL_ROOT="$CODE_BENCH_RESULTS_ROOT/evaluation"
+mkdir -p "$EVAL_ROOT"
 
 case "$MODE" in
   gold)
@@ -27,14 +34,16 @@ case "$MODE" in
     jq -e --arg id "$instance" '.instances[] | select(.instance_id == $id)' "$subset" >/dev/null \
       || { code_die "gold instance is outside frozen subset: $instance"; exit 1; }
     run_id="gold-canary-$(date -u +%Y%m%dT%H%M%SZ)"
-    "$CLI" eval verified --gold -i "$instance" --run-id "$run_id" -j 1
+    (cd "$EVAL_ROOT" && "$CLI" eval verified --gold -i "$instance" --run-id "$run_id" -j 1)
     ;;
   predictions)
     predictions="${1:-}"
     [[ -n "$predictions" ]] || { code_die "predictions mode needs a JSONL file"; exit 2; }
     bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
+    predictions_dir=$(cd "$(dirname "$predictions")" && pwd -P)
+    predictions="$predictions_dir/$(basename "$predictions")"
     run_id="code-bench-$(date -u +%Y%m%dT%H%M%SZ)"
-    "$CLI" eval verified -p "$predictions" --run-id "$run_id" -j "${CODE_BENCH_EVAL_JOBS:-1}"
+    (cd "$EVAL_ROOT" && "$CLI" eval verified -p "$predictions" --run-id "$run_id" -j "${CODE_BENCH_EVAL_JOBS:-1}")
     ;;
   *)
     code_die "usage: evaluate-swebench.sh gold [INSTANCE]|predictions FILE"; exit 2

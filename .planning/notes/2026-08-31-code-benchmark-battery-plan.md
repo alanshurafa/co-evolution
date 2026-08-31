@@ -55,3 +55,13 @@ tokens because Anthropic does not publish a fixed weekly token denominator.
 - The pinned metadata fetch contains only public task inputs, never gold data.
 - The official SWE-bench gold canary passes once Docker is running.
 - The repository aggregate test gate includes the new hermetic suite.
+
+## Execution result
+
+- Pinned SWE-bench source and CLI installed under the ignored results cache.
+- Windows compatibility patch forces LF for the Linux `eval.sh` file only.
+- Docker Desktop 29.6.2 official gold canary `sympy__sympy-20916` completed
+  and resolved 1/1 with zero infrastructure, ambiguous, or evaluator errors.
+- Hermetic code-benchmark suite passed 14/14; repository aggregate passed
+  42/42 after isolating the intentionally installed private Kimi key.
+- No live Fable, Codex, GLM, or Kimi benchmark calls were made during setup.
