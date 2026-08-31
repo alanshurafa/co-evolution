@@ -18,6 +18,11 @@ CODEX_MODEL_LOCAL="${CODE_BENCH_CODEX_MODEL:-gpt-5.6-sol}"
 CLAUDE_EFFORT_LOCAL="${CODE_BENCH_CLAUDE_EFFORT:-medium}"
 CODEX_EFFORT_LOCAL="${CODE_BENCH_CODEX_EFFORT:-medium}"
 PHASE_TIMEOUT="${CODE_BENCH_PHASE_TIMEOUT:-900}"
+CRITIC_MAX_TOKENS="${CODE_BENCH_CRITIC_MAX_TOKENS:-2500}"
+GLM_CRITIC_REASONING="${CODE_BENCH_GLM_REASONING_EFFORT:-low}"
+KIMI_CRITIC_THINKING="${CODE_BENCH_KIMI_THINKING:-disabled}"
+CRITIC_ATTEMPTS="${CODE_BENCH_CRITIC_ATTEMPTS:-3}"
+CRITIC_RETRY_DELAY="${CODE_BENCH_CRITIC_RETRY_DELAY:-15}"
 
 while (( $# > 0 )); do
   case "$1" in
@@ -34,6 +39,9 @@ done
 [[ -n "$PREDICTIONS" ]] || { code_die "--predictions is required"; exit 2; }
 [[ "$MAX_CLAUDE" =~ ^[0-9]+$ ]] || { code_die "--max-claude-dispatches is required and must be an integer"; exit 2; }
 [[ "$PHASE_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { code_die "CODE_BENCH_PHASE_TIMEOUT must be positive"; exit 2; }
+[[ "$CRITIC_MAX_TOKENS" =~ ^[1-9][0-9]*$ ]] || { code_die "CODE_BENCH_CRITIC_MAX_TOKENS must be positive"; exit 2; }
+[[ "$CRITIC_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || { code_die "CODE_BENCH_CRITIC_ATTEMPTS must be positive"; exit 2; }
+[[ "$CRITIC_RETRY_DELAY" =~ ^[0-9]+$ ]] || { code_die "CODE_BENCH_CRITIC_RETRY_DELAY must be a non-negative integer"; exit 2; }
 
 instance=$(jq -r '.instance_id' "$INPUT_JSON" | tr -d '\r')
 condition=$(jq -r '.condition' "$INPUT_JSON" | tr -d '\r')
@@ -145,6 +153,31 @@ run_codex_repair() {
     < "$prompt" > "$logs/codex-repair.log" 2> "$logs/codex-repair.stderr.log"
 }
 
+# GLM and Kimi both reason by default and bill reasoning against max_tokens, so
+# the capped critic seats must bound reasoning too or they return an empty
+# content string. Bounded retries absorb a transient provider hang without
+# letting a structurally invalid artifact reach the final repair.
+run_direct_critic() {
+  local agent="$1" out="$2" err="$3" attempt=1
+  while (( attempt <= CRITIC_ATTEMPTS )); do
+    rm -f "$out"
+    case "$agent" in
+      glm) GLM_MAX_TOKENS="$CRITIC_MAX_TOKENS" GLM_REASONING_EFFORT="$GLM_CRITIC_REASONING" invoke_glm "$cell/critique-prompt.md" "$out" "$err" false ;;
+      kimi) KIMI_MAX_TOKENS="$CRITIC_MAX_TOKENS" KIMI_THINKING="$KIMI_CRITIC_THINKING" invoke_kimi "$cell/critique-prompt.md" "$out" "$err" ;;
+      *) code_die "unknown direct critic: $agent"; return 1 ;;
+    esac
+    if validate_agent_artifact "$out" "$err" "$agent" >/dev/null 2>&1; then
+      return 0
+    fi
+    printf 'RETRY: %s critique attempt %s produced an invalid artifact\n' "$agent" "$attempt" >&2
+    attempt=$((attempt + 1))
+    # Moonshot enforces org concurrency 1 and answers an overlapping call
+    # instantly, so an immediate retry just collides again. Back off first.
+    if (( attempt <= CRITIC_ATTEMPTS )); then sleep "$CRITIC_RETRY_DELAY"; fi
+  done
+  return 1
+}
+
 run_codex_critique() {
   local prompt="$1" out="$2"
   local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox read-only
@@ -187,16 +220,14 @@ case "$condition" in
     [[ -n "${ZAI_API_KEY:-}" ]] || { code_die "condition C requires ZAI_API_KEY"; exit 1; }
     [[ -n "${KIMI_API_KEY:-}" ]] || { code_die "condition C requires KIMI_API_KEY"; exit 1; }
     if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null 2>&1; then
-      rm -f "$reviews/reviewer-2.md"
-      invoke_glm "$cell/critique-prompt.md" "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" false
+      run_direct_critic glm "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" || true
     else
       printf 'REUSED: glm-critique\n'
     fi
     validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null \
       || { code_die "GLM critique is not a valid artifact"; exit 1; }
     if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" kimi >/dev/null 2>&1; then
-      rm -f "$reviews/reviewer-3.md"
-      invoke_kimi "$cell/critique-prompt.md" "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log"
+      run_direct_critic kimi "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" || true
     else
       printf 'REUSED: kimi-critique\n'
     fi
