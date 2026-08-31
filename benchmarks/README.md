@@ -1,5 +1,10 @@
 # Co-Evolution Benchmark Suite
 
+Repository-patch and coding-agent evaluation lives in
+[`benchmarks/code/`](code/README.md). It uses official deterministic evaluators
+and a separate compute-cap contract; this document continues to describe the
+plan-composition benchmark.
+
 Batch runbook for comparing plan-composition conditions (solo Fable, Codex
 bounce, panel critique, self-bounce control) on identical planning tasks,
 scored by three blind automated judges. See `PREREGISTRATION.md` for the

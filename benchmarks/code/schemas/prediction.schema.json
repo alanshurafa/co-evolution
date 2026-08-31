@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SWE-bench prediction record",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["instance_id", "model_name_or_path", "model_patch"],
+  "properties": {
+    "instance_id": {"type": "string", "minLength": 1},
+    "model_name_or_path": {"type": "string", "minLength": 1},
+    "model_patch": {"type": "string", "minLength": 1}
+  }
+}
