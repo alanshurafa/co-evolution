@@ -1,0 +1,29 @@
+{
+  "schema": "code-bench-conditions/1.0",
+  "conditions": [
+    {
+      "id": "A",
+      "label": "fable-solo",
+      "description": "Fable investigates, edits, and tests once.",
+      "dispatches": {"claude": 1, "codex": 0, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "B",
+      "label": "cross-vendor-bounce",
+      "description": "Fable implements; Codex reviews and repairs the patch.",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "C",
+      "label": "fable-led-panel",
+      "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
+      "dispatches": {"claude": 2, "codex": 1, "glm": 1, "kimi": 1}
+    },
+    {
+      "id": "D",
+      "label": "fable-self-bounce",
+      "description": "Fable implements and performs a second review/repair pass.",
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 0}
+    }
+  ]
+}

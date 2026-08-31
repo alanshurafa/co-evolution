@@ -1,0 +1,12 @@
+{
+  "schema": "code-bench-subset/1.0",
+  "id": "swebench-verified-canary",
+  "selection": "Choose the shortest public problem statement within each repository, then take the five shortest across repositories in the pinned 500-task dataset; frozen before any live run.",
+  "instances": [
+    {"instance_id": "sympy__sympy-20916", "repo": "sympy/sympy"},
+    {"instance_id": "django__django-16819", "repo": "django/django"},
+    {"instance_id": "scikit-learn__scikit-learn-14141", "repo": "scikit-learn/scikit-learn"},
+    {"instance_id": "astropy__astropy-7166", "repo": "astropy/astropy"},
+    {"instance_id": "pallets__flask-5014", "repo": "pallets/flask"}
+  ]
+}

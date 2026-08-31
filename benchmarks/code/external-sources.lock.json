@@ -1,0 +1,12 @@
+{
+  "schema": "code-bench-external-lock/1.0",
+  "swebench": {
+    "repository": "https://github.com/SWE-bench/SWE-bench.git",
+    "commit": "7a21e05772954cc81471ae19d56f436cecf43c54"
+  },
+  "dataset": {
+    "id": "princeton-nlp/SWE-bench_Verified",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "split": "test"
+  }
+}
