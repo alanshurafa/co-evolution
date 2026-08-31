@@ -61,6 +61,10 @@ Live phases default to medium reasoning and a 900-second timeout. Override with
 `CODE_BENCH_PHASE_TIMEOUT`; changing these values creates a different treatment
 and must be recorded in the run manifest.
 
+`run-workflow --resume` reuses a successful Fable implementation and valid
+critic artifacts. Provider-error text is rejected before the final Fable repair,
+so a transient GLM/Kimi failure cannot silently degrade the four-model treatment.
+
 ## Official evaluator
 
 Docker must be running. Validate the environment with a gold patch before
