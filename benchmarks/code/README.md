@@ -32,6 +32,8 @@ bash benchmarks/code/code-bench.sh setup --install
 These commands make no model calls. The installer pins both the official
 SWE-bench repository and dataset revisions from `external-sources.lock.json`.
 External files live under the ignored `benchmarks/results/code/` tree.
+On Windows, setup also applies the tracked LF-only compatibility patch under
+`patches/`; it changes only how the harness writes the Linux `eval.sh` file.
 
 ## Capped patch generation
 

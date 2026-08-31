@@ -44,10 +44,18 @@ code_check_manifests() {
     }
   jq -e '.schema == "code-bench-external-lock/1.0" and
          (.swebench.commit | test("^[0-9a-f]{40}$")) and
-         (.dataset.revision | test("^[0-9a-f]{40}$"))' \
+         (.dataset.revision | test("^[0-9a-f]{40}$")) and
+         (.compatibility_patches | type == "array" and length > 0) and
+         (all(.compatibility_patches[]; test("^patches/[A-Za-z0-9._-]+[.]patch$")))' \
     "$CODE_BENCH_DIR/external-sources.lock.json" >/dev/null || {
       printf 'CHECK FAIL: external-sources.lock.json\n' >&2; failures=$((failures + 1));
     }
+  while IFS= read -r patch_rel; do
+    [[ -f "$CODE_BENCH_DIR/$patch_rel" ]] || {
+      printf 'CHECK FAIL: compatibility patch missing: %s\n' "$patch_rel" >&2
+      failures=$((failures + 1))
+    }
+  done < <(jq -r '.compatibility_patches[]' "$CODE_BENCH_DIR/external-sources.lock.json" | tr -d '\r')
 
   while IFS= read -r suite_json; do
     subset=$(code_subset_path "$suite_json")
