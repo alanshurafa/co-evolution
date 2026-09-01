@@ -18,6 +18,10 @@ if [[ -x "$CACHE/venv/Scripts/swebench.exe" ]]; then CLI="$CACHE/venv/Scripts/sw
 export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
 export HF_HUB_DISABLE_SYMLINKS_WARNING=1
+# Unauthenticated Hub reads are rate-limited and the warning fires mid-run. A
+# token is optional; it is read from the seat env file and never echoed.
+code_load_env_key HF_TOKEN
+if [[ -n "${HF_TOKEN:-}" ]]; then export HF_TOKEN; fi
 if command -v timeout >/dev/null 2>&1; then
   timeout 10 docker info >/dev/null 2>&1 || { code_die "Docker engine is not running"; exit 1; }
 else

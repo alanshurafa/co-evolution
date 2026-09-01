@@ -7,7 +7,7 @@
       "split": "test",
       "subset_file": "subsets/swebench-verified-canary.json",
       "task_count": 5,
-      "default_conditions": ["A", "B", "C", "D"]
+      "default_conditions": ["A", "B", "C", "D", "E", "F", "G"]
     }
   ]
 }
