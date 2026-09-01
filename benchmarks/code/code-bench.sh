@@ -31,6 +31,9 @@ case "$COMMAND" in
   run-workflow)
     exec bash "$SCRIPT_DIR/drivers/run-workflow.sh" "$@"
     ;;
+  run-single-shot)
+    exec bash "$SCRIPT_DIR/drivers/run-single-shot.sh" "$@"
+    ;;
   run-canary)
     exec bash "$SCRIPT_DIR/scripts/run-canary.sh" "$@"
     ;;
@@ -53,6 +56,7 @@ usage: code-bench.sh COMMAND [options]
   setup --check|--install       inspect or install pinned SWE-bench tooling
   prepare-instance ID RUN COND  clone a clean public-input workspace
   run-workflow [options]        generate one capped condition prediction
+  run-single-shot [options]     generate one single-shot tier prediction
   run-canary [options]          run a batch with one aggregate Claude cap
   validate-predictions FILE     validate JSONL before official scoring
   gold-canary [INSTANCE]        verify the official evaluator with a gold patch

@@ -66,7 +66,7 @@ else
 fi
 
 TEST_RESULTS="$TMP/results"
-for condition in A B C D; do
+for condition in A B C D E F; do
   cell="$TEST_RESULTS/runs/test/sympy__sympy-20916/$condition"
   mkdir -p "$cell/workspace/.git" "$TEST_RESULTS/predictions/test"
   printf 'task\n' > "$cell/task.md"
@@ -117,6 +117,160 @@ rc=0
 bash "$RUNNER" run-canary --run-id dry-two --conditions A,B,C --task-limit 2 \
   --max-claude-dispatches 4 --dry-run >/dev/null 2>&1 || rc=$?
 if [[ "$rc" == 75 ]]; then pass "two-task A/B/C canary exceeds aggregate cap four"; else fail "two-task A/B/C canary exceeds aggregate cap four (rc=$rc)"; fi
+
+if jq -e 'all(.conditions[]; (.tier == "agentic") or (.tier == "single-shot"))' \
+     "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
+  pass "every condition declares a tier"
+else
+  fail "every condition declares a tier"
+fi
+
+if jq -e '[.conditions[] | select(.tier == "single-shot")]
+          | length > 0 and all(.[]; .dispatches.claude == 0 and .dispatches.codex == 0)' \
+     "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
+  pass "single-shot conditions spend no agentic dispatch"
+else
+  fail "single-shot conditions spend no agentic dispatch"
+fi
+
+refusal=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/F/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/F.jsonl" \
+  --max-claude-dispatches 0 --dry-run 2>&1 >/dev/null)
+rc=$?
+if (( rc != 0 )) && printf '%s' "$refusal" | grep -q 'run-single-shot.sh'; then
+  pass "agentic driver refuses a single-shot condition"
+else
+  fail "agentic driver refuses a single-shot condition (rc=$rc)"
+fi
+
+dry_f=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-single-shot \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/F/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/F.jsonl" \
+  --agent glm --dry-run 2>/dev/null)
+if [[ "$(printf '%s' "$dry_f" | jq -r '.tier')" == "single-shot" \
+   && "$(printf '%s' "$dry_f" | jq -r '.executed')" == false ]]; then
+  pass "single-shot dry-run reports its tier and executes nothing"
+else
+  fail "single-shot dry-run reports its tier and executes nothing"
+fi
+
+if CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-single-shot \
+     --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/F/input.json" \
+     --predictions "$TEST_RESULTS/predictions/test/F.jsonl" \
+     --agent kimi --dry-run >/dev/null 2>&1; then
+  fail "single-shot driver rejects an undeclared agent"
+else
+  pass "single-shot driver rejects an undeclared agent"
+fi
+
+if CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-single-shot \
+     --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/A/input.json" \
+     --predictions "$TEST_RESULTS/predictions/test/A.jsonl" \
+     --agent glm --dry-run >/dev/null 2>&1; then
+  fail "single-shot driver rejects an agentic condition"
+else
+  pass "single-shot driver rejects an agentic condition"
+fi
+
+EXTRACT="$CODE_DIR/scripts/extract-diff.sh"
+FIX="$TMP/fixture"
+mkdir -p "$FIX"
+git -C "$FIX" init -q
+printf 'alpha\nbeta\ngamma\n' > "$FIX/sample.txt"
+git -C "$FIX" add sample.txt >/dev/null 2>&1
+git -C "$FIX" -c user.email=t@e -c user.name=t commit -qm seed >/dev/null 2>&1
+printf 'alpha\nBETA\ngamma\n' > "$FIX/sample.txt"
+git -C "$FIX" diff > "$TMP/real.patch"
+git -C "$FIX" checkout -- sample.txt
+
+{
+  printf 'Here is the fix you asked for.\n\n'
+  printf '%s\n' '```diff'
+  cat "$TMP/real.patch"
+  printf '%s\n' '```'
+  printf '\nLet me know if you want tests as well.\n'
+} > "$TMP/fenced-response.md"
+if bash "$EXTRACT" "$TMP/fenced-response.md" "$TMP/fenced.patch" >/dev/null 2>&1 \
+   && git -C "$FIX" apply --check "$TMP/fenced.patch" >/dev/null 2>&1; then
+  pass "fenced diff extracts and applies"
+else
+  fail "fenced diff extracts and applies"
+fi
+
+{
+  cat "$TMP/real.patch"
+  printf 'That should resolve the reported behaviour.\n'
+} > "$TMP/bare-response.md"
+if bash "$EXTRACT" "$TMP/bare-response.md" "$TMP/bare.patch" >/dev/null 2>&1 \
+   && git -C "$FIX" apply --check "$TMP/bare.patch" >/dev/null 2>&1 \
+   && ! grep -q 'reported behaviour' "$TMP/bare.patch"; then
+  pass "unfenced diff extracts without trailing prose"
+else
+  fail "unfenced diff extracts without trailing prose"
+fi
+
+printf 'I could not reproduce the issue.\n' > "$TMP/no-diff.md"
+if bash "$EXTRACT" "$TMP/no-diff.md" "$TMP/none.patch" >/dev/null 2>&1; then
+  fail "response without a diff is rejected"
+else
+  pass "response without a diff is rejected"
+fi
+
+# The single-shot gate applies with --recount because chat models routinely get
+# the @@ line counts wrong while proposing a correct edit. Strict apply rejects
+# such a patch; --recount accepts it without altering a single edited line.
+miscounted="$TMP/miscounted.patch"
+sed 's/^@@ -1,3 +1,3 @@/@@ -1,9 +1,9 @@/' "$TMP/real.patch" > "$miscounted"
+strict_rc=0
+git -C "$FIX" apply --check "$miscounted" >/dev/null 2>&1 || strict_rc=$?
+recount_rc=0
+git -C "$FIX" apply --check --recount "$miscounted" >/dev/null 2>&1 || recount_rc=$?
+if (( strict_rc != 0 )) && (( recount_rc == 0 )); then
+  pass "--recount rescues a miscounted hunk header"
+else
+  fail "--recount rescues a miscounted hunk header (strict=$strict_rc recount=$recount_rc)"
+fi
+
+if grep -q 'apply --check --recount' "$CODE_DIR/drivers/run-single-shot.sh"; then
+  pass "single-shot driver gates with --recount"
+else
+  fail "single-shot driver gates with --recount"
+fi
+
+STATUS_TEST="$TMP/status/battery.txt"
+if ( set -e
+     source "$CODE_DIR/lib/code-bench-lib.sh"
+     code_status_init "$STATUS_TEST" alpha
+     code_status_append "$STATUS_TEST" alpha "cells=1/5"
+   ) >/dev/null 2>&1 && grep -q '^writer=alpha .*cells=1/5' "$STATUS_TEST"; then
+  pass "status lines carry their writer"
+else
+  fail "status lines carry their writer"
+fi
+
+if ( source "$CODE_DIR/lib/code-bench-lib.sh"
+     code_status_append "$STATUS_TEST" beta "cells=2/5"
+   ) >/dev/null 2>&1; then
+  fail "a second writer cannot append to another writer's status file"
+else
+  pass "a second writer cannot append to another writer's status file"
+fi
+
+sandbox_default=$( source "$CODE_DIR/lib/code-bench-lib.sh"; code_codex_sandbox )
+if [[ "$sandbox_default" == "workspace-write" ]]; then
+  pass "codex sandbox defaults to workspace-write"
+else
+  fail "codex sandbox defaults to workspace-write"
+fi
+
+if ( source "$CODE_DIR/lib/code-bench-lib.sh"
+     CODE_BENCH_CODEX_SANDBOX=wide-open code_codex_sandbox
+   ) >/dev/null 2>&1; then
+  fail "codex sandbox rejects an unknown mode"
+else
+  pass "codex sandbox rejects an unknown mode"
+fi
 
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi

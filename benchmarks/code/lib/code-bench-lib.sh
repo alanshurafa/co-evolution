@@ -32,6 +32,8 @@ code_check_manifests() {
          (.conditions | length > 0) and
          ([.conditions[].id] | length == (unique | length)) and
          (all(.conditions[]; (.dispatches | keys) == ["claude","codex","glm","kimi"])) and
+         (all(.conditions[]; (.label | type == "string" and length > 0))) and
+         (all(.conditions[]; .tier == "agentic" or .tier == "single-shot")) and
          ([.conditions[].dispatches[] | type == "number" and . >= 0 and floor == .] | all)' \
     "$CODE_BENCH_DIR/conditions.json" >/dev/null || {
       printf 'CHECK FAIL: conditions.json\n' >&2; failures=$((failures + 1));
@@ -87,4 +89,59 @@ code_check_manifests() {
 
   (( failures == 0 )) || return 1
   printf 'CHECK: code benchmark manifests PASS\n'
+}
+
+# Codex 0.144.5 on Windows degrades `--sandbox workspace-write` to read-only,
+# so the write phases refuse every edit and a repair arm silently goes inert.
+# The mode is a treatment-relevant fact, so it is a gated variable rather than
+# a constant: elevated access is acceptable only because benchmark workspaces
+# are disposable clones under the ignored results tree.
+code_codex_sandbox() {
+  local mode="${CODE_BENCH_CODEX_SANDBOX:-workspace-write}"
+  case "$mode" in
+    read-only|workspace-write|danger-full-access) ;;
+    *) code_die "CODE_BENCH_CODEX_SANDBOX must be read-only, workspace-write, or danger-full-access"; return 1 ;;
+  esac
+  printf '%s' "$mode"
+}
+
+# Reads one key from the seat env file without ever echoing its value. Honours
+# CO_EVOLVE_ENV_FILE so a test can point at a fixture instead of the real file.
+code_load_env_key() {
+  local name="$1" env_file line value
+  env_file="${CO_EVOLVE_ENV_FILE:-$CODE_BENCH_REPO_ROOT/.env.local}"
+  [[ -z "${!name:-}" && -r "$env_file" ]] || return 0
+  line=$(grep -m 1 -E "^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=" "$env_file" 2>/dev/null || true)
+  [[ -n "$line" ]] || return 0
+  value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  [[ -n "$value" ]] && printf -v "$name" '%s' "$value"
+}
+
+# Two orchestrators once appended to the same status file and the resulting
+# timeline described neither run. A status file now belongs to exactly one
+# writer: the owner is recorded on creation, every line carries writer=, and a
+# second writer is refused instead of interleaving.
+code_status_init() {
+  local file="$1" writer="$2"
+  [[ -n "$file" && -n "$writer" ]] || { code_die "code_status_init needs FILE WRITER"; return 1; }
+  [[ "$writer" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "writer id must be filesystem-safe: $writer"; return 1; }
+  mkdir -p "$(dirname "$file")"
+  if [[ -f "$file.writer" ]] && [[ "$(cat "$file.writer")" != "$writer" ]]; then
+    code_die "status file $file already belongs to writer $(cat "$file.writer"); use your own file"
+    return 1
+  fi
+  printf '%s' "$writer" > "$file.writer"
+  printf 'writer=%s state=running started=%s\n' "$writer" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$file"
+}
+
+code_status_append() {
+  local file="$1" writer="$2"; shift 2
+  [[ -f "$file.writer" ]] || { code_die "status file $file has no owner; call code_status_init first"; return 1; }
+  [[ "$(cat "$file.writer")" == "$writer" ]] \
+    || { code_die "writer $writer may not append to $file (owner $(cat "$file.writer"))"; return 1; }
+  printf 'writer=%s at=%s %s\n' "$writer" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$file"
 }

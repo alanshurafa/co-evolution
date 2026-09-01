@@ -23,6 +23,7 @@ GLM_CRITIC_REASONING="${CODE_BENCH_GLM_REASONING_EFFORT:-low}"
 KIMI_CRITIC_THINKING="${CODE_BENCH_KIMI_THINKING:-disabled}"
 CRITIC_ATTEMPTS="${CODE_BENCH_CRITIC_ATTEMPTS:-3}"
 CRITIC_RETRY_DELAY="${CODE_BENCH_CRITIC_RETRY_DELAY:-15}"
+CODEX_SANDBOX=$(code_codex_sandbox) || exit 2
 
 while (( $# > 0 )); do
   case "$1" in
@@ -76,6 +77,8 @@ case "$condition" in
   B) phases="fable-implement,codex-repair" ;;
   C) phases="fable-implement,codex-critique,glm-critique,kimi-critique,fable-repair" ;;
   D) phases="fable-implement,fable-self-repair" ;;
+  E) phases="codex-implement" ;;
+  F|G) code_die "single-shot conditions run through run-single-shot.sh"; exit 2 ;;
 esac
 if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg phases "$phases" \
@@ -91,20 +94,8 @@ fi
 command -v claude >/dev/null 2>&1 || { code_die "claude CLI is required"; exit 1; }
 command -v codex >/dev/null 2>&1 || { code_die "codex CLI is required"; exit 1; }
 
-load_named_key() {
-  local name="$1" env_file="$CODE_BENCH_REPO_ROOT/.env.local" line="" value=""
-  [[ -z "${!name:-}" && -r "$env_file" ]] || return 0
-  line=$(grep -m 1 -E "^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=" "$env_file" 2>/dev/null || true)
-  [[ -n "$line" ]] || return 0
-  value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-  case "$value" in
-    \"*\") value="${value#\"}"; value="${value%\"}" ;;
-    \'*\') value="${value#\'}"; value="${value%\'}" ;;
-  esac
-  [[ -n "$value" ]] && printf -v "$name" '%s' "$value"
-}
-load_named_key ZAI_API_KEY
-load_named_key KIMI_API_KEY
+code_load_env_key ZAI_API_KEY
+code_load_env_key KIMI_API_KEY
 
 cell="$input_dir"
 logs="$cell/logs"
@@ -113,10 +104,12 @@ mkdir -p "$logs" "$reviews"
 jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg claude_model "$CLAUDE_MODEL" --arg claude_effort "$CLAUDE_EFFORT_LOCAL" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
+  --arg codex_sandbox "$CODEX_SANDBOX" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
   '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,
     models:{claude:$claude_model,codex:$codex_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
+    sandbox:{codex:$codex_sandbox},
     phase_timeout_seconds:$phase_timeout,declared_claude_dispatches:$declared_claude}' \
   > "$cell/run-manifest.json"
 
@@ -145,12 +138,22 @@ run_fable() {
 
 run_codex_repair() {
   local prompt="$1"
-  local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox workspace-write
+  local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox "$CODEX_SANDBOX"
     --ephemeral --ignore-user-config -c approval_policy="never"
     -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" -)
   command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
   "${cmd[@]}" \
     < "$prompt" > "$logs/codex-repair.log" 2> "$logs/codex-repair.stderr.log"
+}
+
+run_codex_implement() {
+  local prompt="$1"
+  local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox "$CODEX_SANDBOX"
+    --ephemeral --ignore-user-config -c approval_policy="never"
+    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" -)
+  command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
+  "${cmd[@]}" \
+    < "$prompt" > "$logs/codex-implement.log" 2> "$logs/codex-implement.stderr.log"
 }
 
 # GLM and Kimi both reason by default and bill reasoning against max_tokens, so
@@ -188,7 +191,13 @@ run_codex_critique() {
 }
 
 write_implement_prompt "$cell/implement-prompt.md"
-if [[ "$RESUME" == true ]] \
+if [[ "$condition" == E ]]; then
+  if [[ "$RESUME" == true && -n "$(git -C "$workspace" diff --name-only)" ]]; then
+    printf 'REUSED: codex-implement\n'
+  else
+    run_codex_implement "$cell/implement-prompt.md"
+  fi
+elif [[ "$RESUME" == true ]] \
    && jq -e '.type == "result" and .is_error == false' "$logs/fable-implement.json" >/dev/null 2>&1 \
    && [[ -n "$(git -C "$workspace" diff --name-only)" ]]; then
   printf 'REUSED: fable-implement\n'

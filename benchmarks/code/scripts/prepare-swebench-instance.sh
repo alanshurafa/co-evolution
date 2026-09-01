@@ -13,7 +13,9 @@ CONDITION="${3:-}"
   code_die "usage: prepare-swebench-instance.sh INSTANCE RUN_ID CONDITION"; exit 2;
 }
 [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "unsafe run id: $RUN_ID"; exit 2; }
-[[ "$CONDITION" =~ ^[A-D]$ ]] || { code_die "condition must be A, B, C, or D"; exit 2; }
+[[ "$CONDITION" =~ ^[A-Za-z0-9_-]+$ ]] || { code_die "unsafe condition id: $CONDITION"; exit 2; }
+jq -e --arg id "$CONDITION" 'any(.conditions[]; .id == $id)' "$CODE_DIR/conditions.json" >/dev/null \
+  || { code_die "unknown condition: $CONDITION"; exit 2; }
 
 METADATA="$CODE_BENCH_RESULTS_ROOT/metadata/swebench-verified-canary.json"
 [[ -f "$METADATA" ]] || { code_die "public metadata is absent; run code-bench.sh fetch-metadata"; exit 1; }

@@ -17,8 +17,27 @@ and [Harbor Terminal-Bench](https://www.harborframework.com/docs/tutorials/runni
 - **Future lanes:** Aider Polyglot, Terminal-Bench, and a private recent-issue
   set can plug into the same prediction and reporting contract.
 
-The four conditions are declared in `conditions.json`. Condition D is retained
-as a self-bounce control even when the product question focuses on A/B/C.
+The conditions are declared in `conditions.json`, each with a `tier`:
+
+| Id | Label | Tier | What runs |
+|---|---|---|---|
+| A | fable-solo | agentic | Fable implements once |
+| B | cross-vendor-bounce | agentic | Fable implements; Codex repairs |
+| C | fable-led-panel | agentic | Fable implements; Codex/GLM/Kimi critique; Fable repairs |
+| D | fable-self-bounce | agentic | Fable implements, then reviews and repairs its own patch |
+| E | codex-solo | agentic | Codex implements once |
+| F | glm-solo-single-shot | single-shot | GLM sees the issue plus retrieved context, returns one diff |
+| G | kimi-solo-single-shot | single-shot | Kimi sees the issue plus retrieved context, returns one diff |
+
+D is retained as a self-bounce control even when the product question focuses
+on A/B/C. E is the comparator that makes B's repair arm interpretable.
+
+**The tier is not cosmetic.** Agentic conditions run a coding agent with file
+tools and test execution. GLM and Kimi are reachable here only as chat
+completions, so F and G get one prompt and one answer: no file reads, no test
+runs, no second look. A single-shot number is not a like-for-like result
+against an agentic one and must never be reported beside one without the
+label.
 
 ## Zero-compute setup
 
@@ -55,6 +74,53 @@ provider. Condition C labels its three critiques anonymously and gives Fable
 the final repair decision. If `ANTHROPIC_API_KEY` is present, live generation
 fails closed so Claude Console credits cannot be charged accidentally instead
 of the Max subscription.
+
+### Codex sandbox mode
+
+Codex 0.144.5 on Windows accepts `--sandbox workspace-write` and then reports
+`sandbox: read-only`, so every write is refused and a repair arm silently goes
+inert while still producing a plausible review. `CODE_BENCH_CODEX_SANDBOX`
+selects the mode; it defaults to `workspace-write` and the driver records the
+value it used in each cell's `run-manifest.json`, because the mode changes what
+the treatment actually is.
+
+```bash
+CODE_BENCH_CODEX_SANDBOX=danger-full-access bash benchmarks/code/code-bench.sh run-workflow ...
+```
+
+Elevated access is defensible only because a benchmark workspace is a
+throwaway clone under the ignored `benchmarks/results/code/runs/` tree. Do not
+set it for anything else.
+
+### Single-shot tier
+
+```bash
+bash benchmarks/code/code-bench.sh run-single-shot \
+  --input "$input" \
+  --predictions benchmarks/results/code/predictions/matrix/F.jsonl \
+  --agent glm
+```
+
+`scripts/select-context.py` picks the files the prompt shows, deterministically
+and from public inputs only: paths named in the issue rank first, then files
+matched by the issue's rarest identifiers, with tests and examples at half
+weight. The model returns a unified diff, `scripts/extract-diff.sh` pulls it
+out of the prose, and `git apply --check --recount` gates it; a rejected diff is
+fed back with the apply error for up to `CODE_BENCH_SINGLE_SHOT_ATTEMPTS` tries
+(default 3). `--recount` recomputes the `@@` line counts from the hunk body and
+changes no line of the proposed edit. Without it the gate scores the model's
+line arithmetic rather than its patch, which is an artefact of asking for a diff
+at all: the agentic conditions edit files directly and never write a hunk
+header. Measured on the first two GLM cells, the strict gate rejected every
+attempt while `--recount` accepted the first.
+
+A cell that never produces an applicable patch writes `outcome.json` and
+contributes no prediction rather than a broken one.
+
+`CODE_BENCH_SINGLE_SHOT_MAX_TOKENS` defaults to 32000. Both providers bill
+reasoning against `max_tokens`, and on this prompt shape GLM spends roughly
+19k reasoning tokens before it writes anything, so a smaller budget returns
+`finish_reason=length` with empty content every single time.
 
 Live phases default to medium reasoning and a 900-second timeout. Override with
 `CODE_BENCH_CLAUDE_EFFORT`, `CODE_BENCH_CODEX_EFFORT`, and
@@ -93,6 +159,18 @@ Prediction JSONL uses the official SWE-bench fields:
 
 Gold patches and hidden tests are never stored in this repository or supplied
 to a generation workflow.
+
+## Results site
+
+```bash
+bash benchmarks/site/aggregate.sh
+```
+
+Builds `benchmarks/results/code/site/leaderboard.json` from the evaluator
+reports, the evaluator's own per-instance verdicts, and the run manifests. Each
+row carries the report file it came from and each task carries the
+`report.json` that decided it, so every number on the published page can be
+checked against a file on disk. The page renders that JSON and nothing else.
 
 ## Compute contract
 
