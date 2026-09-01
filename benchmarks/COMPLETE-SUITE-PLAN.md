@@ -1,66 +1,71 @@
 # Complete Testing Suite — Fix & Finish Plan
 
-Drafted 2026-09-01 (Fable seat). Execute from this file in a fresh Opus session.
-Scope: every benchmark surface in this repo, not just one pipeline. The two
-surfaces measure different things and both ship on one results site:
+Drafted 2026-09-01 (Fable seat), amended same day for the standardized-only
+measurement policy. Execute from this file in a fresh Opus session.
 
-| Surface | What it measures | State today |
-|---|---|---|
-| S1 Code (SWE-bench battery, `benchmarks/code/`) | Do bounce/panel pipelines produce patches that resolve real issues? | Partial: B 5/5 (repair arm inert), C 4/5. A, D, solos unrun |
-| S2 Documents (bounce protocol, `benchmarks/`) | Do they produce better plans/documents? Pre-registered, 3-judge | Batch b1 complete: 8x4 cells, 48 verdicts/judge. B-vs-A: no evidence (4/8). 3 judge-defect cells |
-| S3 Regression (tests/run-all.sh) | Harness stays trustworthy | 42/42 green |
+## Measurement policy (Alan, 2026-09-01 — supersedes prior scope)
+
+All pipeline comparison and ALL shared or published reporting uses
+standardized, publicly recognized benchmarks scored by their official
+evaluators — currently SWE-bench Verified on the pinned official harness.
+Homegrown corpora and judge panels (the bounce-protocol document benchmark,
+its 3-judge protocol, blind-judge calibration) are RETIRED from measurement
+and from every shared surface. Existing internal results are archived in
+place and never published. Rationale: results on a benchmark nobody outside
+this repo has seen are not comparable and not worth sharing; common tests
+with common baselines are.
+
+Boundary: the hermetic regression suite (`tests/run-all.sh`, 42 suites) is
+engineering QA that gates harness correctness — it is not a benchmark, its
+results are not comparison data, and it stays.
+
+| Surface | Status under policy |
+|---|---|
+| S1 Code — SWE-bench Verified battery (`benchmarks/code/`) | The measurement surface. Partial: B 5/5 (repair arm inert), C 4/5. A, D, solos unrun |
+| S2 Documents — bounce-protocol suite (`benchmarks/`) | RETIRED. Batch b1 complete on disk; archive as internal evidence, no further spend, never on the shared site |
+| S3 Regression — `tests/run-all.sh` | QA gate, 42/42 green. Not reported as benchmark data |
 
 ## Issues ledger
 
-Every problem hit so far, with disposition. Fixed items stay listed so the
-executing session does not re-litigate them.
-
-| # | Issue | Surface | Status |
-|---|---|---|---|
-| 1 | GLM/Kimi bill reasoning against `max_tokens`; capped critics returned empty content | S1 | FIXED `735722f` (bounded reasoning, retry+backoff) |
-| 2 | kimi-seat test could not simulate a missing key on a machine with a real key | S3 | FIXED `5cf451c` (`CO_EVOLVE_ENV_FILE`) |
-| 3 | Codex refuses all writes on Windows despite `--sandbox workspace-write`; B repair arm never engaged, Codex-solo blocked | S1 | OPEN — Phase 0.1 |
-| 4 | Conditions A and D never run on code; solos never run | S1 | OPEN — Phase 1 |
-| 5 | B scored with inert repair arm: 5/5 is really Fable-solo | S1 | OPEN — re-run after 0.1 |
-| 6 | GLM/Kimi have no agent loop (chat seats only) — cannot run solo cells as-is | S1 | OPEN — Phase 1.5 |
-| 7 | Judge `position_biased` verdicts discard t1/t7 primary-judge cells | S2 | OPEN — Phase 2.1 |
-| 8 | `sanitize-leak` on t2 invalidates that task's comparisons | S2 | OPEN — Phase 2.1 |
-| 9 | Codex judge favors B (codex-revised output) 7/0 while fable judge says 4/1 — self-preference confound | S2 | OPEN — report labeling, Phase 3 |
-| 10 | Two orchestrators wrote one status file (b1 watchdog stamped `B_resolved=` into the SWE status) | S1/S2 | OPEN — Phase 0.2 |
-| 11 | 5-task code subset: one task = 20 points; B/C gap is one task | S1 | OPEN — Phase 4 decides scale-up |
-| 12 | HF Hub unauthenticated-rate-limit warnings during evaluation | S1 | OPEN — minor, Phase 0.3 |
-| 13 | Evaluator leaves 5 images per run (`Unremoved images: 5`) | S1 | OPEN — hygiene, Phase 0.3; never auto-delete other projects' images |
+| # | Issue | Status |
+|---|---|---|
+| 1 | GLM/Kimi bill reasoning against `max_tokens`; capped critics returned empty content | FIXED `735722f` |
+| 2 | kimi-seat test could not simulate a missing key with a real key on disk | FIXED `5cf451c` |
+| 3 | Codex refuses all writes on Windows despite `--sandbox workspace-write` | OPEN — Phase 0.1 |
+| 4 | Conditions A and D never run on code; solos never run | OPEN — Phase 1 |
+| 5 | B scored with inert repair arm: 5/5 is really Fable-solo | OPEN — re-run after 0.1 |
+| 6 | GLM/Kimi have no agent loop — solo cells need a single-shot harness | OPEN — Phase 1.5 |
+| 7 | Judge `position_biased` verdicts discard t1/t7 cells (doc suite) | CLOSED-RETIRED — surface withdrawn; no re-judging spend |
+| 8 | `sanitize-leak` on t2 (doc suite) | CLOSED-RETIRED — same |
+| 9 | Codex-judge self-preference confound (doc suite) | CLOSED-RETIRED — same |
+| 10 | Two orchestrators wrote one status file (b1 watchdog stamped the SWE status) | OPEN — Phase 0.2 |
+| 11 | 5-task subset: one task = 20 points; B/C gap is one task | OPEN — Phase 4 decides scale |
+| 12 | HF Hub unauthenticated-rate-limit warnings during evaluation | OPEN — minor, Phase 0.3 |
+| 13 | Evaluator leaves 5 images per run | OPEN — hygiene, Phase 0.3, default OFF; never delete other projects' images |
 
 ## Phase 0 — Unblock the harness
 
 **0.1 Codex writable workspace (the critical fix).**
-Codex 0.144.5 on Windows degrades `workspace-write` to read-only (no
-Landlock/Seatbelt on win32). Fix sequence, stop at the first that passes:
-1. Probe `-s danger-full-access` with the existing 1-file throwaway-repo test
-   (prompt: replace file contents; assert the file changed).
+Codex 0.144.5 on Windows degrades `workspace-write` to read-only. Fix
+sequence, stop at the first that passes:
+1. Probe `-s danger-full-access` with the existing 1-file throwaway-repo test.
 2. If refused, probe `--dangerously-bypass-approvals-and-sandbox`.
 3. If neither, route codex through WSL against the same workspace path.
 
-Guardrails: full access is acceptable ONLY because benchmark workspaces are
-disposable clones under `benchmarks/results/code/runs/`; the driver already
-diffs nothing outside the workspace. Gate the elevated flag behind
-`CODE_BENCH_CODEX_SANDBOX` (default stays `workspace-write` so non-Windows
-hosts keep real sandboxing). Record the mode in `run-manifest.json` — it is a
-treatment-relevant fact.
+Guardrails: elevated access is acceptable ONLY because benchmark workspaces
+are disposable clones under `benchmarks/results/code/runs/`. Gate behind
+`CODE_BENCH_CODEX_SANDBOX` (default stays `workspace-write`); record the mode
+in `run-manifest.json` — treatment-relevant fact.
 Exit: driver-path probe edits a file; mode recorded in manifest.
 
-**0.2 Status-file single-writer.**
-The b1 orchestrator's `waiting-for-swe` watchdog wrote into
-`full-bc-status.txt`. Rule: one writer per status file; observers write their
-own files. Add a `writer=` tag to every status line both suites emit.
-Exit: grep shows tagged lines; watchdog writes `full-b1-status.txt` only.
+**0.2 Status-file single-writer.** One writer per status file; observers get
+their own files; every status line carries `writer=`.
+Exit: tagged lines present; no cross-suite writes.
 
-**0.3 Small hygiene.** Set `HF_TOKEN` via `.env.local` loader (never echo);
-add a post-eval `docker image prune` scoped by the evaluator's image-name
-prefix only, listed for approval as it deletes evidence-adjacent artifacts —
-default OFF.
+**0.3 Small hygiene.** `HF_TOKEN` via the `.env.local` loader (never echo).
+Image-prune stays default OFF.
 
-## Phase 1 — Complete the code matrix (frozen 5-task subset)
+## Phase 1 — Complete the code matrix (SWE-bench Verified, frozen 5-task subset)
 
 Order preserves pairing: never spend Fable dispatches on a condition whose
 comparator cannot run.
@@ -74,61 +79,56 @@ comparator cannot run.
 | 1.5 GLM solo + Kimi solo, single-shot tier | 10 API calls | cents | new harness |
 
 1.5 harness: issue text + `git grep`-selected file context in one prompt →
-unified diff out → `git apply --check` gate → prediction. No tool loop, no
-test execution. Label the tier "single-shot" on the site — it is a different
-class of attempt and must not sit unlabeled beside agentic rows.
-All cells scored by the official Docker evaluator; A reuses the existing
-`prepare-instance` flow; keep `--max-claude-dispatches` caps (A=1, D=2).
-Exit: every matrix row measured or explicitly marked blocked, zero
-infrastructure failures, prediction files validate 5/5 unique frozen IDs.
+unified diff → `git apply --check` gate → prediction. Label the tier
+"single-shot" everywhere — never unlabeled beside agentic rows.
+All cells scored by the official Docker evaluator; caps A=1, D=2 on
+`--max-claude-dispatches`.
+Exit: every matrix row measured or explicitly blocked; zero infrastructure
+failures; prediction files validate 5/5 unique frozen IDs.
 
-## Phase 2 — Close out the document suite
+## Phase 2 — Retire the homegrown document benchmark
 
-**2.1 Repair the judge panel, not the generations.** Generations are frozen
-and complete; only judging is defective. Fix sanitizer for the t2 leak;
-re-judge t1/t2/t7 with position-counterbalanced double passes (both A/B
-orders, verdict only when both orders agree; disagreement = non-decisive).
-Re-emit `reports/b1.md`. Do NOT regenerate any cell — the pre-registration
-forbids touching generation post-hoc.
-**2.2 Judge self-preference (issue 9).** No re-run needed: the report already
-never adjudicates across judges. Add the B-authorship note to the report and
-site so codex-judge B-favoritism is read as a confound, not confirmation.
-**2.3 Calibration baselines** for the blind judge (`evals/judge-bounce.sh`)
-remain unrun — schedule as its own small batch; without them, judge scores
-stay labeled uncalibrated.
-Exit: 48/48 usable primary-judge pairs or documented non-decisives; report
-regenerated with the same pre-registered decision rules.
+No model spend. Archive-only:
+1. Leave batch b1 results and `reports/b1.md` in place as internal evidence;
+   they are never published, linked, or summarized on any shared surface.
+2. Add a retirement note to `benchmarks/README.md` (doc-suite root): retired
+   from measurement 2026-09-01 per standardized-only policy; direct readers
+   to `benchmarks/code/` for the active benchmark.
+3. Cancel outstanding doc-suite work: t1/t2/t7 re-judging, sanitizer fix for
+   judging, blind-judge calibration baselines. Do not delete any code or
+   results — retire, don't destroy.
+Exit: retirement note committed; no doc-suite job scheduled anywhere.
 
-## Phase 3 — One results site for the whole suite
+## Phase 3 — Results site: standardized benchmarks only
 
-Extend the published artifact (same URL) from code-only to three sections:
-**Code** (the current leaderboard + new rows from Phase 1), **Documents**
-(b1 pre-registered outcomes, per-judge tables, confound labels), **Harness**
-(42-suite regression state, gold canary, adapter probes). One aggregator
-script (`benchmarks/site/aggregate.sh`) emits a single JSON from: evaluator
-report JSONs, `judge-matrix` outputs, `tests/.run-ledger`. The page reads
-one data blob; no hand-edited numbers. Validity language: pre-registration
-wording for S2; "frozen 5-task probe, not comparable to published SWE-bench
-Verified" for S1.
+Update the existing artifact (same URL). Two sections:
+1. **Leaderboard** — SWE-bench Verified frozen-subset matrix, all Phase 1
+   rows, coverage labels, per-task dots.
+2. **Methodology & integrity** — evaluator pin + gold canary 1/1, dispatch
+   counts, per-condition cost, harness commit, and the standing caveat:
+   frozen 5-task probe, not comparable to published full-500 scores.
+Remove nothing that is already standardized; add no homegrown-benchmark
+content. One aggregator script (`benchmarks/site/aggregate.sh`) builds a
+single JSON from evaluator reports + run logs; the page renders only that.
 Exit: site rebuilt from aggregator output alone; every number traceable to a
-file on disk.
+file on disk; zero references to the retired suite.
 
-## Phase 4 — Decide on scale, then gate
+## Phase 4 — Scale gate (go/no-go recommendation, never autonomous)
 
-With the full 7-row code matrix and repaired b1 report in hand, decide:
-- Code: expand frozen subset (25-50 tasks) only if a pipeline-vs-solo gap
-  survives the 5-task probe in either direction worth confirming.
-- Documents: the pre-registered held-out replication batch (b2) only if any
-  comparison leaves the "no evidence" band after Phase 2 re-judging.
-Both are cost gates — present as go/no-go with dollar estimates, not run
-autonomously.
+Present with dollar estimates, run nothing:
+- Expand the SWE-bench Verified subset (25-50 tasks) if any pipeline-vs-solo
+  gap from Phase 1 is worth confirming.
+- Candidate additional suites — standardized public benchmarks only, each
+  with an official pinned harness (e.g. SWE-bench Lite, Terminal-Bench,
+  Aider Polyglot, LiveCodeBench). No internal corpus is ever proposed.
+- Note for the document pipeline: it currently has NO standardized public
+  benchmark. Until one exists and is adopted at this gate, document-pipeline
+  quality claims stay unmeasured rather than internally measured.
 
 ## Budget & sequencing
 
-Phase 0 is hours, no model spend beyond two codex probes. Phase 1 ≈ 20 Fable
-dispatches (~$25-30 by observed per-phase costs), 10 codex cells inside the
-daily guard cap, GLM/Kimi in cents. Phase 2 is judging-only (~$5-10 API).
-Phases 1 and 2 run in parallel after Phase 0; Phase 3 after both; Phase 4 is
-a decision, not a run. Throughout: `.env.local`, results, workspaces, and
-trajectories stay uncommitted; no key values in logs; one writer per status
-file; evidence never deleted.
+Phase 0 is hours, two codex probes. Phase 1 ≈ 20 Fable dispatches (~$25-30),
+10 codex cells inside the daily guard cap, GLM/Kimi in cents. Phase 2 is a
+docs commit. Phase 3 after Phase 1. Phase 4 is a decision. Throughout:
+`.env.local`, results, workspaces, trajectories stay uncommitted; no key
+values in logs; one writer per status file; evidence never deleted.
