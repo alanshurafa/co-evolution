@@ -10,7 +10,7 @@
 # This gate pins:
 #   a. seat argv under the preset (composer claude --model claude-opus-4-8
 #      [the `best` alias resolved] --effort high; executor codex PINNED
-#      -c model=gpt-5.5 + -c model_reasoning_effort=xhigh [A-3]; verifier claude
+#      -c model=gpt-5.6-sol + -c model_reasoning_effort=xhigh [A-3]; verifier claude
 #      --effort max).
 #   b. claude-verifier verdict hardening: a verdict wrapped in markdown
 #      fences/prose lands in verdict.json jq-parseable (brace-block fallback).
@@ -25,13 +25,13 @@
 #      on a ChatGPT account); seat_models.verifier falls back to default.
 #   i. alias resolution: resolve_claude_model_alias maps best/opus ->
 #      claude-opus-4-8, keeps fable -> claude-fable-5, passes ids through.
-#   j. --preset claude-build: composer=codex gpt-5.5/xhigh, executor=claude
-#      best/high, verifier=codex gpt-5.5/xhigh, with no codex model leaking
+#   j. --preset claude-build: composer=codex gpt-5.6-sol/xhigh, executor=claude
+#      best/high, verifier=codex gpt-5.6-sol/xhigh, with no codex model leaking
 #      into the claude executor argv.
 #   k. bounce counterparty seat (A-8): BOUNCER_MODEL reaches the bounce reviewer
 #      argv and state.json seat_models.bouncer records it; no leak into codex.
 #   l. flag-over-preset precedence (H1): --model o4-mini --preset codex-build
-#      puts o4-mini (not gpt-5.5) in the executor codex argv, keeps the preset
+#      puts o4-mini (not gpt-5.6-sol) in the executor codex argv, keeps the preset
 #      xhigh effort, records codex:o4-mini@xhigh, and logs the override NOTE.
 #   m. warn-only side (H1): --claude-model with a preset stays shadowed by the
 #      preset claude pins (pre-existing precedence, unchanged) but WARNs.
@@ -277,23 +277,23 @@ a_ok=true
 # composer = claude with the `best` model alias resolved (-> claude-opus-4-8) + high effort.
 if ! grep -Eq -- '--model claude-opus-4-8' "$claude_log"; then a_ok=false; fi
 if ! grep -Eq -- '--effort high' "$claude_log"; then a_ok=false; fi
-# v1.5 Phase 1 (A-3): executor = codex PINNED to gpt-5.5 with xhigh effort.
-# The pin is the whole point of A-3 — both -c model=gpt-5.5 and the xhigh effort
+# v1.5 Phase 1 (A-3): executor = codex PINNED to gpt-5.6-sol with xhigh effort.
+# The pin is the whole point of A-3 — both -c model=gpt-5.6-sol and the xhigh effort
 # must reach the executor codex argv (was previously unpinned: model=CLI config).
-if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then a_ok=false; fi
+if ! grep -Eq -- '-c model=gpt-5.6-sol' "$codex_log"; then a_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then a_ok=false; fi
 # verifier = claude with max effort.
 if ! grep -Eq -- '--effort max' "$claude_log"; then a_ok=false; fi
 # v1.5 Phase 1 acceptance: a PRESET run's state.json must carry NO (default) seat
 # — every seat (incl. the A-8 bounce counterparty, codex here) is pinned concrete.
 if [[ -f "$a_run_dir/state.json" ]]; then
-  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.5@xhigh"' "$a_run_dir/state.json" >/dev/null 2>&1; then a_ok=false; fi
+  if ! jq -e '.seat_models.bouncer == "codex:gpt-5.6-sol@xhigh"' "$a_run_dir/state.json" >/dev/null 2>&1; then a_ok=false; fi
   if ! jq -e '[.seat_models[] | select(contains("(default)"))] | length == 0' "$a_run_dir/state.json" >/dev/null 2>&1; then a_ok=false; fi
 else
   a_ok=false
 fi
 if [[ "$a_ok" == true ]]; then
-  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.5/xhigh (A-3 pin), verifier claude/max, bouncer codex gpt-5.5/xhigh, no (default) seat"
+  pass "preset codex-build: composer best->opus/high, executor codex gpt-5.6-sol/xhigh (A-3 pin), verifier claude/max, bouncer codex gpt-5.6-sol/xhigh, no (default) seat"
 else
   fail "preset codex-build seat argv mismatch (claude_log + codex_log below)"
   { echo "--- claude argv ---"; cat "$claude_log"; echo "--- codex argv ---"; cat "$codex_log"; } >&2
@@ -527,11 +527,11 @@ j_claude_execute_argv=$(grep -- '--permission-mode bypassPermissions' "$claude_l
 j_codex_verify_argv=$(grep -- '--output-schema' "$codex_log" || true)
 j_ok=true
 
-# v1.5 Phase 1 (A-3): composer/verifier = codex PINNED to gpt-5.5 at xhigh.
-if ! grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then j_ok=false; fi
+# v1.5 Phase 1 (A-3): composer/verifier = codex PINNED to gpt-5.6-sol at xhigh.
+if ! grep -Eq -- '-c model=gpt-5.6-sol' "$codex_log"; then j_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then j_ok=false; fi
 if [[ -z "$j_codex_verify_argv" ]]; then j_ok=false; fi
-if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model=gpt-5.5'; then j_ok=false; fi
+if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model=gpt-5.6-sol'; then j_ok=false; fi
 if ! printf '%s' "$j_codex_verify_argv" | grep -Eq -- '-c model_reasoning_effort=xhigh'; then j_ok=false; fi
 
 # Executor = claude writable argv with best -> claude-opus-4-8 and effort high.
@@ -541,9 +541,9 @@ if ! printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--effort high'; then j_
 if printf '%s' "$j_claude_execute_argv" | grep -Eq -- '--model (gpt-|codex)'; then j_ok=false; fi
 
 if [[ -f "$j_run_dir/state.json" ]]; then
-  if ! jq -e '.seat_models.composer == "codex:gpt-5.5@xhigh"
+  if ! jq -e '.seat_models.composer == "codex:gpt-5.6-sol@xhigh"
               and .seat_models.executor == "opus:claude-opus-4-8@high"
-              and .seat_models.verifier == "codex:gpt-5.5@xhigh"' \
+              and .seat_models.verifier == "codex:gpt-5.6-sol@xhigh"' \
        "$j_run_dir/state.json" >/dev/null 2>&1; then
     j_ok=false
   fi
@@ -552,7 +552,7 @@ else
 fi
 
 if [[ "$j_ok" == true ]]; then
-  pass "preset claude-build: composer codex gpt-5.5/xhigh (A-3 pin), executor best->opus/high, verifier codex gpt-5.5/xhigh"
+  pass "preset claude-build: composer codex gpt-5.6-sol/xhigh (A-3 pin), executor best->opus/high, verifier codex gpt-5.6-sol/xhigh"
 else
   fail "preset claude-build seat argv mismatch (run dir: ${j_run_dir:-<none>})"
   { echo "--- claude execute argv ---"; printf '%s\n' "$j_claude_execute_argv"
@@ -608,10 +608,10 @@ fi
 # ===========================================================================
 # Scenario (l): v1.5 Phase 1 (H1) — an explicit --model beats the preset's
 # codex seat pins. `--model o4-mini --preset codex-build` (flag BEFORE preset,
-# the reported regression's exact shape) must put o4-mini, not gpt-5.5, in the
+# the reported regression's exact shape) must put o4-mini, not gpt-5.6-sol, in the
 # executor codex argv; the preset's xhigh EFFORT survives (master parity: the
 # flag never set efforts); state.json reports the post-precedence truth and the
-# override NOTE is logged. Preset-without-flag keeping gpt-5.5 = scenario (a).
+# override NOTE is logged. Preset-without-flag keeping gpt-5.6-sol = scenario (a).
 # ===========================================================================
 TOTAL=$((TOTAL + 1))
 repo=$(make_scratch_repo l)
@@ -627,19 +627,19 @@ l_run_dir="$TEST_DIR/run-l"
     --run-dir "$l_run_dir" --workdir "$repo" --timeout 60 -- "flag-over-preset precedence probe"
 ) >"$TEST_DIR/l.out" 2>&1 || true
 l_ok=true
-# Executor codex argv carries the FLAG model, the preset effort — and never gpt-5.5.
+# Executor codex argv carries the FLAG model, the preset effort — and never gpt-5.6-sol.
 if ! grep -Eq -- '-c model=o4-mini' "$codex_log"; then l_ok=false; fi
 if ! grep -Eq -- '-c model_reasoning_effort=xhigh' "$codex_log"; then l_ok=false; fi
-if grep -Eq -- '-c model=gpt-5.5' "$codex_log"; then l_ok=false; fi
+if grep -Eq -- '-c model=gpt-5.6-sol' "$codex_log"; then l_ok=false; fi
 if [[ -f "$l_run_dir/state.json" ]]; then
   if ! jq -e '.seat_models.executor == "codex:o4-mini@xhigh"' "$l_run_dir/state.json" >/dev/null 2>&1; then l_ok=false; fi
   # The override is surfaced, not silent.
-  if ! grep -Fq 'NOTE: preset executor codex model pin (gpt-5.5) overridden by explicit --model o4-mini' "$l_run_dir/run.log"; then l_ok=false; fi
+  if ! grep -Fq 'NOTE: preset executor codex model pin (gpt-5.6-sol) overridden by explicit --model o4-mini' "$l_run_dir/run.log"; then l_ok=false; fi
 else
   l_ok=false
 fi
 if [[ "$l_ok" == true ]]; then
-  pass "H1: --model o4-mini beats preset codex pins (argv o4-mini@xhigh, no gpt-5.5, NOTE logged)"
+  pass "H1: --model o4-mini beats preset codex pins (argv o4-mini@xhigh, no gpt-5.6-sol, NOTE logged)"
 else
   fail "H1 flag-over-preset precedence failed (run dir: ${l_run_dir:-<none>})"
   { echo "--- codex argv ---"; cat "$codex_log"
