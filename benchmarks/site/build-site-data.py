@@ -215,7 +215,10 @@ def cell_telemetry(cell_dir):
                 usage = data.get('usage') or {}
                 out['claude_output_tokens'] += int(usage.get('output_tokens') or 0)
                 out['claude_wall_seconds'] += int((data.get('duration_ms') or 0) / 1000)
-            elif name.startswith('codex-') and name.endswith('.log'):
+            elif (name.startswith('codex-') and name.endswith('.log')
+                  and not name.endswith('.stderr.log')):
+                # Each Codex phase writes both a transcript and a stderr log.
+                # Counting every .log double-counted every phase.
                 out['codex_phases'] += 1
     return out
 
