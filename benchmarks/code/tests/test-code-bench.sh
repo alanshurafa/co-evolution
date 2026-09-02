@@ -89,6 +89,19 @@ else
   fail "condition C dry-run exposes five phases and executes nothing"
 fi
 
+# A has no critics at all. An empty roster still has to serialize, or every solo
+# arm dies before it reaches the dry-run branch.
+dry_a=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/A/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/A.jsonl" \
+  --max-claude-dispatches 1 --dry-run 2>/dev/null)
+if [[ "$(printf '%s' "$dry_a" | jq -r '.phases | join(",")')" == "fable-implement" \
+   && "$(printf '%s' "$dry_a" | jq -r '.critics | length')" == 0 ]]; then
+  pass "a condition with no critics reports an empty roster"
+else
+  fail "a condition with no critics reports an empty roster"
+fi
+
 # H and I are C with the panel cut to one critic. The roster the driver reports
 # is the same string that drives the critique loop and the manifest, so an arm
 # that claimed one critic and ran another would fail here.
