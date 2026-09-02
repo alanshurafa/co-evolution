@@ -1,0 +1,8 @@
+{
+  "schema": "code-bench-subset/1.0",
+  "id": "swebench-verified-poc",
+  "selection": "One task drawn from the frozen canary: the smallest repository, so the Docker image builds fastest. This suite exists to prove every arm runs end to end and reaches the official evaluator. One task is not a score and must never be reported as one.",
+  "instances": [
+    {"instance_id": "pallets__flask-5014", "repo": "pallets/flask"}
+  ]
+}

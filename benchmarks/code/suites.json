@@ -27,6 +27,24 @@
       "default_conditions": [
         "B"
       ]
+    },
+    {
+      "id": "swebench-verified-poc",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "split": "test",
+      "subset_file": "subsets/swebench-verified-poc.json",
+      "task_count": 1,
+      "default_conditions": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I"
+      ]
     }
   ]
 }

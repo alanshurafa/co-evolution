@@ -72,18 +72,24 @@ if (( claude_needed > MAX_CLAUDE )); then
   exit 75
 fi
 
+# critics is the ordered reviewer roster. One list drives the critique loop, the
+# repair prompt, and the manifest, so a condition cannot declare one panel in
+# conditions.json and then run another.
 case "$condition" in
-  A) phases="fable-implement" ;;
-  B) phases="fable-implement,codex-repair" ;;
-  C) phases="fable-implement,codex-critique,glm-critique,kimi-critique,fable-repair" ;;
-  D) phases="fable-implement,fable-self-repair" ;;
-  E) phases="codex-implement" ;;
+  A) phases="fable-implement"; critics="" ;;
+  B) phases="fable-implement,codex-repair"; critics="" ;;
+  C) phases="fable-implement,codex-critique,glm-critique,kimi-critique,fable-repair"; critics="codex,glm,kimi" ;;
+  D) phases="fable-implement,fable-self-repair"; critics="" ;;
+  E) phases="codex-implement"; critics="" ;;
+  H) phases="fable-implement,glm-critique,fable-repair"; critics="glm" ;;
+  I) phases="fable-implement,kimi-critique,fable-repair"; critics="kimi" ;;
   F|G) code_die "single-shot conditions run through run-single-shot.sh"; exit 2 ;;
 esac
+critics_json=$(printf '%s' "$critics" | jq -R 'if . == "" then [] else split(",") end')
 if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg phases "$phases" \
-    --argjson claude "$claude_needed" \
-    '{instance:$instance,condition:$condition,phases:($phases|split(",")),declared_claude_dispatches:$claude,executed:false}'
+    --argjson critics "$critics_json" --argjson claude "$claude_needed" \
+    '{instance:$instance,condition:$condition,phases:($phases|split(",")),critics:$critics,declared_claude_dispatches:$claude,executed:false}'
   exit 0
 fi
 
@@ -104,12 +110,12 @@ mkdir -p "$logs" "$reviews"
 jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg claude_model "$CLAUDE_MODEL" --arg claude_effort "$CLAUDE_EFFORT_LOCAL" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
-  --arg codex_sandbox "$CODEX_SANDBOX" \
+  --arg codex_sandbox "$CODEX_SANDBOX" --argjson critics "$critics_json" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
   '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,
     models:{claude:$claude_model,codex:$codex_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
-    sandbox:{codex:$codex_sandbox},
+    sandbox:{codex:$codex_sandbox},critics:$critics,
     phase_timeout_seconds:$phase_timeout,declared_claude_dispatches:$declared_claude}' \
   > "$cell/run-manifest.json"
 
@@ -213,46 +219,47 @@ case "$condition" in
     } > "$cell/codex-repair-prompt.md"
     run_codex_repair "$cell/codex-repair-prompt.md"
     ;;
-  C)
+  C|H|I)
     git -C "$workspace" diff --binary > "$cell/candidate.patch"
     {
       printf '%s\n' "Critique the candidate patch for correctness, regressions, missing cases, and scope. Do not edit files. Return concrete findings only."
       printf '\n## ISSUE\n\n'; cat "$task_file"
       printf '\n## CANDIDATE PATCH\n\n'; head -c 120000 "$cell/candidate.patch"
     } > "$cell/critique-prompt.md"
-    if [[ "$RESUME" == true && -s "$reviews/reviewer-1.md" ]] \
-       && ! output_is_provider_failure "$reviews/reviewer-1.md"; then
-      printf 'REUSED: codex-critique\n'
-    else
-      run_codex_critique "$cell/critique-prompt.md" "$reviews/reviewer-1.md"
-    fi
-    [[ -n "${ZAI_API_KEY:-}" ]] || { code_die "condition C requires ZAI_API_KEY"; exit 1; }
-    [[ -n "${KIMI_API_KEY:-}" ]] || { code_die "condition C requires KIMI_API_KEY"; exit 1; }
-    if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null 2>&1; then
-      run_direct_critic glm "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" || true
-    else
-      printf 'REUSED: glm-critique\n'
-    fi
-    validate_agent_artifact "$reviews/reviewer-2.md" "$logs/glm-critique.stderr.log" glm >/dev/null \
-      || { code_die "GLM critique is not a valid artifact"; exit 1; }
-    if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" kimi >/dev/null 2>&1; then
-      run_direct_critic kimi "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" || true
-    else
-      printf 'REUSED: kimi-critique\n'
-    fi
-    validate_agent_artifact "$reviews/reviewer-3.md" "$logs/kimi-critique.stderr.log" kimi >/dev/null \
-      || { code_die "Kimi critique is not a valid artifact"; exit 1; }
-    {
-      printf '%s\n' "Re-open the current implementation and evaluate the three anonymous reviews below. Decide every finding on its merits, repair accepted issues, and run relevant tests. Do not commit."
-      printf '\n## ISSUE\n\n'; cat "$task_file"
-      reviewer_number=0
-      for review in "$reviews/reviewer-1.md" "$reviews/reviewer-2.md" "$reviews/reviewer-3.md"; do
-        reviewer_number=$((reviewer_number + 1))
-        printf '\n## REVIEWER %s\n\n' "$reviewer_number"
-        head -c 40000 "$review"
-        printf '\n'
-      done
-    } > "$cell/fable-repair-prompt.md"
+    review_files=()
+    reviewer_index=0
+    for critic in $(printf '%s' "$critics" | tr ',' ' '); do
+      reviewer_index=$((reviewer_index + 1))
+      review="$reviews/reviewer-$reviewer_index.md"
+      critic_err="$logs/$critic-critique.stderr.log"
+      case "$critic" in
+        codex)
+          if [[ "$RESUME" == true && -s "$review" ]] \
+             && ! output_is_provider_failure "$review"; then
+            printf 'REUSED: codex-critique\n'
+          else
+            run_codex_critique "$cell/critique-prompt.md" "$review"
+          fi
+          ;;
+        glm|kimi)
+          case "$critic" in
+            glm) key_name=ZAI_API_KEY; key_value="${ZAI_API_KEY:-}" ;;
+            kimi) key_name=KIMI_API_KEY; key_value="${KIMI_API_KEY:-}" ;;
+          esac
+          [[ -n "$key_value" ]] || { code_die "condition $condition requires $key_name"; exit 1; }
+          if [[ "$RESUME" != true ]] || ! validate_agent_artifact "$review" "$critic_err" "$critic" >/dev/null 2>&1; then
+            run_direct_critic "$critic" "$review" "$critic_err" || true
+          else
+            printf 'REUSED: %s-critique\n' "$critic"
+          fi
+          validate_agent_artifact "$review" "$critic_err" "$critic" >/dev/null \
+            || { code_die "$critic critique is not a valid artifact"; exit 1; }
+          ;;
+        *) code_die "unknown critic in roster: $critic"; exit 1 ;;
+      esac
+      review_files+=("$review")
+    done
+    code_write_repair_prompt "$cell/fable-repair-prompt.md" "$task_file" "${review_files[@]}"
     run_fable fable-repair "$cell/fable-repair-prompt.md"
     ;;
   D)
