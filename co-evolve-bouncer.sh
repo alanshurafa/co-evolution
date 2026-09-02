@@ -330,15 +330,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Document seats may receive keys through this worktree's gitignored .env.local.
-# Read only the named keys; sourcing the file would import unrelated settings into
+# Read only the named key; sourcing the file would import unrelated settings into
 # the long-lived bouncer process. The value remains a shell variable and is
 # never exported — invoke_glm reads it into a mode-600 temporary curl config.
-load_zai_api_key_from_env_local() {
-  local env_file="$SCRIPT_DIR/.env.local"
+# CO_EVOLVE_ENV_FILE overrides which file is read, so a caller can point at a
+# different env file — or at a path that does not exist, which is the only way
+# to prove a seat fails without its key on a machine that has one on disk.
+load_api_key_from_env_local() {
+  local name="$1"
+  local env_file="${CO_EVOLVE_ENV_FILE:-$SCRIPT_DIR/.env.local}"
   local line="" value=""
 
-  [[ -z "${ZAI_API_KEY:-}" && -r "$env_file" ]] || return 0
-  line=$(grep -m 1 -E '^[[:space:]]*(export[[:space:]]+)?ZAI_API_KEY[[:space:]]*=' "$env_file" 2>/dev/null || true)
+  [[ -z "${!name:-}" && -r "$env_file" ]] || return 0
+  line=$(grep -m 1 -E "^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=" "$env_file" 2>/dev/null || true)
   [[ -n "$line" ]] || return 0
 
   value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
@@ -346,30 +350,16 @@ load_zai_api_key_from_env_local() {
     \"*\") value="${value#\"}"; value="${value%\"}" ;;
     \'*\') value="${value#\'}"; value="${value%\'}" ;;
   esac
-  [[ -n "$value" ]] && ZAI_API_KEY="$value"
-}
-
-load_kimi_api_key_from_env_local() {
-  local env_file="$SCRIPT_DIR/.env.local"
-  local line="" value=""
-
-  [[ -z "${KIMI_API_KEY:-}" && -r "$env_file" ]] || return 0
-  line=$(grep -m 1 -E '^[[:space:]]*(export[[:space:]]+)?KIMI_API_KEY[[:space:]]*=' "$env_file" 2>/dev/null || true)
-  [[ -n "$line" ]] || return 0
-
-  value=$(printf '%s' "$line" | sed -e 's/^[^=]*=//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-  case "$value" in
-    \"*\") value="${value#\"}"; value="${value%\"}" ;;
-    \'*\') value="${value#\'}"; value="${value%\'}" ;;
-  esac
-  [[ -n "$value" ]] && KIMI_API_KEY="$value"
+  if [[ -n "$value" ]]; then
+    printf -v "$name" '%s' "$value"
+  fi
 }
 
 # Order is intentional: a key present only in .env.local must be loaded before
 # the per-seat prerequisite checks. Unknown agents also fail here, before a run
 # directory or any paid/live compose call is created.
-load_zai_api_key_from_env_local
-load_kimi_api_key_from_env_local
+load_api_key_from_env_local ZAI_API_KEY
+load_api_key_from_env_local KIMI_API_KEY
 for _seat_agent in "$AGENT_A" "$AGENT_B"; do
   if ! seat_prereqs_ok "$_seat_agent"; then
     die "$SEAT_PREREQ_ERROR"
