@@ -210,9 +210,8 @@ Ordered by payoff per hour. Each wave is independently mergeable.
 
 ### Things Alan did not ask about but should be in scope
 
-- **Flake detection.** Nothing records whether a suite has ever flaked.
-  Add `--repeat N` to `run-all.sh` and a nightly scheduled run (cheap, no
-  spend) that reports suites with <100% pass rate.
+- **Flake detection.** Declined by Alan (no scheduled runs). Optional
+  `--repeat N` on `run-all.sh` for manual use only.
 - **CI path filtering.** A docs-only PR still runs the full 17-min matrix.
   Add `paths-ignore` for `docs/**`, `*.md` (keep the `docs-sync` suite
   reachable via a small separate job).
@@ -233,7 +232,8 @@ Ordered by payoff per hour. Each wave is independently mergeable.
 2. Wave 2 lands as one PR per batch of ~8 suites.
 3. Wave 5 lands before the paid full benchmark batch.
 4. Benchmark cells run in parallel, default `--jobs 2`, revisit if rate-limited.
-5. Flake nightly: pending (Alan asked for a clearer explanation).
+5. Flake nightly: NO (Alan, 2026-09-02). Do not add scheduled suite runs;
+   flake detection stays manual via `run-all.sh --repeat` if ever needed.
 6. Weak assertions: during the Wave 2 migration, workers replace an assertion
    with `harness_assert_*` only where the intended check is unambiguous;
    every other weak check is listed in `tests/ASSERTION-TRIAGE.md` and fixed
