@@ -13,6 +13,16 @@ code_require() {
   command -v "$1" >/dev/null 2>&1 || code_die "$1 is required"
 }
 
+# Which suite the commands operate on. The canary stays the default so every
+# existing invocation keeps working; a larger suite is opt-in per command.
+code_suite_id() {
+  printf '%s' "${CODE_BENCH_SUITE:-swebench-verified-canary}"
+}
+
+code_metadata_path() {
+  printf '%s/metadata/%s.json' "$CODE_BENCH_RESULTS_ROOT" "$(code_suite_id)"
+}
+
 code_suite_json() {
   local suite="$1"
   jq -ce --arg id "$suite" '.suites[] | select(.id == $id)' "$CODE_BENCH_DIR/suites.json"
@@ -68,10 +78,15 @@ code_check_manifests() {
     fi
     if ! jq -e '.schema == "code-bench-subset/1.0" and
                 (.instances | length > 0) and
-                ([.instances[].instance_id] | length == (unique | length)) and
-                ([.instances[].repo] | length == (unique | length))' "$subset" >/dev/null; then
+                ([.instances[].instance_id] | length == (unique | length))' "$subset" >/dev/null; then
       printf 'CHECK FAIL: malformed or duplicate subset entries: %s\n' "$subset" >&2
       failures=$((failures + 1)); continue
+    fi
+    if printf '%s' "$suite_json" | jq -e '.require_unique_repos == true' >/dev/null 2>&1; then
+      if ! jq -e '[.instances[].repo] | length == (unique | length)' "$subset" >/dev/null; then
+        printf 'CHECK FAIL: suite requires one task per repository: %s\n' "$subset" >&2
+        failures=$((failures + 1)); continue
+      fi
     fi
     count=$(jq '.instances | length' "$subset" | tr -d '\r')
     if [[ "$count" != "$declared" ]]; then
