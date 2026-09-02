@@ -33,6 +33,8 @@ COMPOSITION = {
     'E': 'codex implements',
     'F': 'glm answers once, from retrieved context',
     'G': 'kimi answers once, from retrieved context',
+    'H': 'fable implements → glm critiques once → fable repairs',
+    'I': 'fable implements → kimi critiques once → fable repairs',
 }
 
 
