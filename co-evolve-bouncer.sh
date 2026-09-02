@@ -810,7 +810,7 @@ ${CONTEXT_BLOCK}${INPUT_CONTENT}"
   log " Agent: $AGENT_A"
   log " Seat:  $(resolve_role_seat_string composer "$AGENT_A")"
   # v1.5 Phase 1 (M2): the composer seat override can be shaped for the OTHER
-  # agent kind (e.g. COMPOSER_MODEL=gpt-5.5 while the compose phase runs on
+  # agent kind (e.g. COMPOSER_MODEL=gpt-5.6-sol while the compose phase runs on
   # claude). apply_role_seat's leak guard drops it correctly — but used to do so
   # silently. Surface the drop with an explicit one-liner so the operator sees
   # why the compose phase is not using their composer override.
