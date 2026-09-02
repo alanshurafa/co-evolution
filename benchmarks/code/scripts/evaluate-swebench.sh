@@ -8,7 +8,7 @@ source "$CODE_DIR/lib/code-bench-lib.sh"
 
 MODE="${1:-}"
 shift || true
-SUITE="swebench-verified-canary"
+SUITE=$(code_suite_id)
 CACHE="$CODE_BENCH_RESULTS_ROOT/.cache"
 if [[ -x "$CACHE/venv/Scripts/swebench.exe" ]]; then CLI="$CACHE/venv/Scripts/swebench.exe"; else CLI="$CACHE/venv/bin/swebench"; fi
 

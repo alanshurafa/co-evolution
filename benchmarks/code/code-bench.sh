@@ -16,11 +16,15 @@ case "$COMMAND" in
     exec bash "$SCRIPT_DIR/estimate-compute.sh" "$@"
     ;;
   fetch-metadata)
-    suite_json=$(code_suite_json "swebench-verified-canary")
+    suite_json=$(code_suite_json "$(code_suite_id)")
     subset=$(code_subset_path "$suite_json")
-    output="$CODE_BENCH_RESULTS_ROOT/metadata/swebench-verified-canary.json"
+    output=$(code_metadata_path)
     exec python "$SCRIPT_DIR/scripts/fetch-swebench-metadata.py" \
       --subset "$subset" --lock "$SCRIPT_DIR/external-sources.lock.json" --output "$output"
+    ;;
+  draw-subset)
+    exec python "$SCRIPT_DIR/scripts/draw-subset.py" \
+      --lock "$SCRIPT_DIR/external-sources.lock.json" "$@"
     ;;
   setup)
     exec bash "$SCRIPT_DIR/scripts/setup-swebench.sh" "$@"
@@ -52,7 +56,8 @@ usage: code-bench.sh COMMAND [options]
 
   check                         validate checked-in manifests
   estimate [options]            report declared provider dispatches
-  fetch-metadata                cache public inputs for the frozen subset
+  fetch-metadata                cache public inputs for the active suite
+  draw-subset [options]         draw a reproducible random subset
   setup --check|--install       inspect or install pinned SWE-bench tooling
   prepare-instance ID RUN COND  clone a clean public-input workspace
   run-workflow [options]        generate one capped condition prediction
