@@ -127,21 +127,22 @@ Seats and defaults (env/flag overridable; state.json `seat_models` must always s
 
 | Work | Component | Model |
 |------|-----------|-------|
-| Code execution + mechanical verify | dev-review executor seat (`codex exec`) | `gpt-5.5` @ `xhigh` — pinned in presets, not inherited from local config.toml |
+| Code execution + mechanical verify | dev-review executor seat (`codex exec`) | `gpt-5.6-sol` @ `xhigh` — pinned in presets, not inherited from local config.toml |
 | Plan composition | dev-review composer seat / document composer role | `best` alias → `claude-opus-4-8` @ high |
-| Verification verdicts | dev-review verifier seat | codex-build: opus @ max; claude-build: `gpt-5.5` @ xhigh |
-| Bounce critique (document pipeline reviewer role) | co-evolve-bouncer | `gpt-5.5` @ xhigh via codex (cross-vendor disagreement is the point) |
+| Verification verdicts | dev-review verifier seat | codex-build: opus @ max; claude-build: `gpt-5.6-sol` @ xhigh |
+| Bounce critique (document pipeline reviewer role) | co-evolve-bouncer | `gpt-5.6-sol` @ xhigh via codex (cross-vendor disagreement is the point) |
 | Accept / bounce / escalate decisions, adjudication passes | orchestrating session | fable-5 preferred, opus-4.8 acceptable |
-| Plan review before execution | session or `/codex:adversarial-review` | fable-5 or opus-4.8; optionally add a gpt-5.5 pass as an independent second perspective |
+| Plan review before execution | session or `/codex:adversarial-review` | fable-5 or opus-4.8; optionally add a gpt-5.6-sol pass as an independent second perspective |
 | Blind quality judging | `evals/judge-bounce.sh` | fable-5 @ high (existing default) |
 | Glue/scout subagents inside Claude Code | Agent tool | sonnet-5; **Haiku is not used anywhere in this repo** (workspace-level Haiku automations elsewhere are unaffected) |
 
 Rules:
 - These are defaults, not limits. Standing permission: if a cheaper model's output misses the bar, redo with a smarter model without asking. Judge the output, not the price tag.
 - When axes conflict on anything that ships: intelligence > taste > cost. Cost is a tie-breaker only.
-- Bulk/mechanical work (clear-spec implementation, migrations, data transforms) → gpt-5.5. It is cheap under the Codex plan but **not free**: the codex-guard daily cap applies; batch calls, never poll-loop them.
+- Bulk/mechanical work (clear-spec implementation, migrations, data transforms) → gpt-5.6-sol. It is cheap under the Codex plan but **not free**: the codex-guard daily cap applies; batch calls, never poll-loop them.
 - Anything user-facing (docs prose, README, API/CLI surface design) needs high taste → opus-4.8 or fable-5 authors/reviews it.
-- gpt-5.5 is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
+- gpt-5.6-sol is reachable only through the Codex CLI (`codex exec`, `codex review`). Inside Agent/Workflow calls (model param takes Claude models only), use the wrapper pattern: a thin sonnet wrapper agent (effort low) that writes a self-contained codex prompt, runs `codex exec` via Bash (`-s read-only` for investigation work), and returns only the final message.
+- Codex always runs at the highest available model/reasoning level; bump the pin (dev-review presets + docs + docs-sync test) when OpenAI ships a new top level.
 
 ### Seat selection
 
@@ -164,11 +165,11 @@ The table below is a worked result of the procedure, not a canonical assignment.
 |------|---------------|--------|
 | Adjudicator / orchestrator | session Claude (fable-5 or opus-4.8) | Holds the full context and meets the trust bar |
 | Composer | `claude` (`best` resolves to opus-4.8) | Strong fit for user-facing prose |
-| Primary reviewer | `codex` (`gpt-5.5` at xhigh) | Different vendor from the default composer |
+| Primary reviewer | `codex` (`gpt-5.6-sol` at xhigh) | Different vendor from the default composer |
 | Extra reviewer | `glm` (`glm-5.3-flash`) | Low-cost cross-vendor critique through Z.AI |
 | Alternate extra reviewer | `kimi` (Kimi K3) | Another free cross-vendor critique when a second read helps |
 
-The dev-review executor and verifier do not change. Code execution stays on `codex` (`gpt-5.5`), with verification on opus or `gpt-5.5` according to the preset. GLM and Kimi are document-pipeline seats in this phase; they do not enter the execution or verification paths. See [docs/agent-seats.md](docs/agent-seats.md) for account, launcher, and web chat setup.
+The dev-review executor and verifier do not change. Code execution stays on `codex` (`gpt-5.6-sol`), with verification on opus or `gpt-5.6-sol` according to the preset. GLM and Kimi are document-pipeline seats in this phase; they do not enter the execution or verification paths. See [docs/agent-seats.md](docs/agent-seats.md) for account, launcher, and web chat setup.
 
 ## Token Discipline
 
