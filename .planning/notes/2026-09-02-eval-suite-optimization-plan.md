@@ -1,6 +1,6 @@
 # Eval Suite Optimization Plan (2026-09-02)
 
-Status: APPROVED 2026-09-02 (Alan). Decisions recorded under "Decisions"; Wave 1 in progress.
+Status: APPROVED 2026-09-02 (Alan). Wave 1 MERGED (PR #55). Next: Wave 3.0 (report.sh) then Wave 2, in a fresh Opus session.
 Branch: `claude/eval-suite-optimization-ae8364`.
 
 ## What "the eval suite" is
@@ -144,6 +144,11 @@ Ordered by payoff per hour. Each wave is independently mergeable.
 - W1.5 Publish per-suite timings as a CI artifact (the `.result` files
   already carry elapsed seconds; just upload the ledger dir).
 - Verify: three green CI runs with windows under the target.
+- **Result (PR #55, 2026-09-02):** CI windows 17m24s -> 9m00s, ubuntu 81s ->
+  36s, macos 2m42s -> 3m10s (serial, unchanged). Local 1555s -> 750s at
+  `--jobs 4` with longest-first scheduling. Windows misses the 6-min target;
+  its critical path is `test-report.sh` at 264s (CI ledger artifact), then
+  code-proposer 186s, pr-emitter 138s. Wave 3.0 is the next lever.
 
 ### Wave 2: shared harness library
 
