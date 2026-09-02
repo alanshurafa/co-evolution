@@ -9,7 +9,12 @@ name: ci
 on:
   push:
     branches: [master]
+    paths-ignore: ['docs/**', '.planning/**', 'README.md', 'notesforhumans.md', 'llms.txt', 'CITATION.cff', 'LICENSE']
   pull_request:
+    paths-ignore: ['docs/**', '.planning/**', 'README.md', 'notesforhumans.md', 'llms.txt', 'CITATION.cff', 'LICENSE']
+
+env:
+  YQ_VERSION: v4.44.3
 
 jobs:
   test:
@@ -21,6 +26,14 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      # yq is pinned: `releases/latest` silently re-versions the toolchain under
+      # us, so a green run yesterday says nothing about today's.
+      - name: Cache mikefarah yq
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin
+          key: yq-${{ matrix.os }}-${{ env.YQ_VERSION }}
 
       - name: Install mikefarah yq
         shell: bash
@@ -35,8 +48,11 @@ jobs:
           esac
           dest="$HOME/.local/bin/yq"
           [[ "$asset" == *.exe ]] && dest="$HOME/.local/bin/yq.exe"
-          curl -sSL -o "$dest" "https://github.com/mikefarah/yq/releases/latest/download/$asset"
-          chmod +x "$dest"
+          if [[ ! -x "$dest" ]]; then
+            curl -sSL -o "$dest" \
+              "https://github.com/mikefarah/yq/releases/download/$YQ_VERSION/$asset"
+            chmod +x "$dest"
+          fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Doctor (diagnostic only — agent CLIs are stubbed in tests)
@@ -53,7 +69,25 @@ jobs:
 
       - name: Run full test suite
         shell: bash
-        run: bash tests/run-all.sh
+        run: |
+          set -euo pipefail
+          # macOS ships bash 3.2, which has no `wait -n`; run-all.sh would fall
+          # back to serial anyway, so ask for it directly and keep the log clean.
+          jobs_flag="--jobs 4"
+          case "$(uname -s)" in
+            Darwin) jobs_flag="" ;;
+          esac
+          bash tests/run-all.sh $jobs_flag --ledger "$RUNNER_TEMP/run-ledger"
+
+      # The ledger holds a .log and a .result (with elapsed seconds) per suite —
+      # the only record of where a slow or failed run spent its time.
+      - name: Upload run ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-ledger-${{ matrix.os }}
+          path: ${{ runner.temp }}/run-ledger
+          if-no-files-found: warn
 
   mcp:
     strategy:
