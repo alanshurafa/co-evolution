@@ -527,6 +527,51 @@ def findings(data):
         '</div></section>')
 
 
+NUMBER_WORDS = {1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six',
+                7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten'}
+
+
+def count_phrase(count, noun, cap=True):
+    """"Nine configurations" — spelled out where English prefers it."""
+    word = NUMBER_WORDS.get(count, str(count))
+    if not cap:
+        word = word.lower()
+    return esc('%s %s%s' % (word, noun, '' if count == 1 else 's'))
+
+
+def caveat(data):
+    """The standing warning above the table, sized to what actually ran.
+
+    A one-task run is a proof that the pipeline works, not a measurement, and
+    the page has to say so in its own voice rather than leave a reader to infer
+    it from the denominator.
+    """
+    task_count = data['suite']['task_count']
+    paragraphs = []
+    if task_count == 1:
+        paragraphs.append(
+            'Proof of concept: one SWE-bench Verified task, not a score. This run exists '
+            'to show that every configuration executes end to end and reaches the official '
+            'evaluator. A single task cannot separate two pipelines, and no row here should '
+            'be read as evidence that one configuration is better than another. Frozen '
+            '50-task results for arm B are internal until the comparison arms run.')
+    else:
+        points = 100.0 / task_count
+        paragraphs.append(
+            '%d tasks is a probe, not a ranking. One task is %d points, so a one-task gap '
+            'between two rows is well inside what a %d-task sample produces by chance.'
+            % (task_count, round(points), task_count))
+    paragraphs.append(
+        'These numbers are not comparable to published full-500 SWE-bench Verified scores: '
+        'the subset is fixed and was chosen for the harness, not drawn at random.')
+    paragraphs.append(
+        'The two tiers are listed separately because they are not the same test. An agentic '
+        'row had file tools and could run the test suite; a single-shot row got one prompt '
+        'and answered once.')
+    return ('<div class="callout"><h2>Read this before the table</h2>%s</div>'
+            % ''.join('<p>%s</p>' % esc(text) for text in paragraphs))
+
+
 def build(data):
     harness = data['harness']
     gold = data['gold_canary'] or {}
@@ -548,25 +593,19 @@ def build(data):
         '<span>Built %s</span></div>'
         '<h1>Co-Evolution Code Battery</h1>'
         '<p class="standfirst">Does putting a second model in the loop produce better patches '
-        'than one model working alone? Seven configurations, five pinned SWE-bench Verified '
-        'tasks, every patch scored by the official evaluator in Docker.</p>'
+        'than one model working alone? %s, %s, every patch scored by the official '
+        'evaluator in Docker.</p>'
         '<div class="runmeta"><span>fable @ medium</span><span>gpt-5.6-sol @ medium</span>'
         '<span>glm-5.3-flash @ effort:low</span><span>kimi-k3 @ thinking:off</span>'
         '<span>phase timeout 900s</span><span>gold canary %s/%s</span>'
         '<span>harness %s</span></div></header>'
         % (suite['task_count'], esc(data['generated_at']),
+           count_phrase(len(rows), 'configuration'),
+           count_phrase(suite['task_count'], 'pinned SWE-bench Verified task', cap=False),
            esc(gold.get('resolved')), esc(gold.get('submitted')),
            esc((harness.get('repo_commit') or '')[:7])))
 
-    parts.append(
-        '<div class="callout"><h2>Read this before the table</h2>'
-        '<p>Five tasks is a probe, not a ranking. One task is 20 points, so a one-task gap '
-        'between two rows is well inside what a five-task sample produces by chance. '
-        'These numbers are also not comparable to published full-500 SWE-bench Verified '
-        'scores: the subset is fixed and was chosen for the harness, not drawn at random.</p>'
-        '<p>The two tiers are listed separately because they are not the same test. An agentic '
-        'row had file tools and could run the test suite; a single-shot row got one prompt and '
-        'answered once.</p></div>')
+    parts.append(caveat(data))
 
     parts.append(tiles(data))
 
@@ -615,7 +654,8 @@ def build(data):
             'Kimi are reachable here only as chat completions. Their cells receive the issue plus '
             'a deterministic file selection and return one diff, gated by '
             '<span class="mono">git apply --check --recount</span>. A cell that never produced an '
-            'applicable patch contributes no prediction and still counts against the five tasks. '
+            'applicable patch contributes no prediction and still counts against the '
+            'subset\'s ' + str(suite['task_count']) + '. '
             '<span class="mono">--recount</span> recomputes the hunk line counts and changes no '
             'line of the proposed edit: without it the gate scores a chat model\'s ability to '
             'count lines, which the agentic arms never have to do because they edit files '

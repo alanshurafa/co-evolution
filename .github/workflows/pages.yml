@@ -1,0 +1,51 @@
+# Publishes the rendered benchmark results page.
+#
+# This workflow only deploys files already committed under
+# benchmarks/site/public/. It never runs a benchmark, calls a model, or
+# recomputes a number, so what a reviewer sees in the diff is exactly what goes
+# live. Regenerate the page locally with benchmarks/site/aggregate.sh and commit
+# the result.
+name: pages
+
+on:
+  push:
+    branches: [master]
+    paths: ['benchmarks/site/public/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one in flight: a half-deployed
+# Pages site serves a mix of two builds.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage the published page as the site root
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -f benchmarks/site/public/leaderboard.html ]] \
+            || { echo "no rendered page to publish"; exit 1; }
+          mkdir -p _site
+          cp benchmarks/site/public/* _site/
+          cp benchmarks/site/public/leaderboard.html _site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -85,7 +85,10 @@ case "$condition" in
   I) phases="fable-implement,kimi-critique,fable-repair"; critics="kimi" ;;
   F|G) code_die "single-shot conditions run through run-single-shot.sh"; exit 2 ;;
 esac
-critics_json=$(printf '%s' "$critics" | jq -R 'if . == "" then [] else split(",") end')
+# jq -R reads no lines from empty input and would emit nothing at all, so the
+# roster is built from an argument rather than from stdin.
+critics_json=$(jq -cn --arg roster "$critics" \
+  'if $roster == "" then [] else ($roster | split(",")) end')
 if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg phases "$phases" \
     --argjson critics "$critics_json" --argjson claude "$claude_needed" \

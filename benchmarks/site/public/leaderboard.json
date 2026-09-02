@@ -1,0 +1,482 @@
+{
+  "schema": "code-bench-site/1.0",
+  "generated_at": "2026-09-02T22:41:58Z",
+  "harness": {
+    "repo_commit": "e7c5953e16b6093c97cb4930d88be23beeca123f",
+    "working_tree_dirty": false,
+    "swebench_commit": "7a21e05772954cc81471ae19d56f436cecf43c54",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "lock_file": "benchmarks/code/external-sources.lock.json"
+  },
+  "suite": {
+    "id": "swebench-verified-poc",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "split": "test",
+    "task_count": 1,
+    "subset_file": "benchmarks/code/subsets/swebench-verified-poc.json",
+    "instances": [
+      {
+        "instance_id": "pallets__flask-5014",
+        "repo": "pallets/flask"
+      }
+    ]
+  },
+  "gold_canary": {
+    "run_id": "gold-canary-20260831T130008Z",
+    "report_file": "benchmarks/results/code/evaluation/gold.gold-canary-20260831T130008Z.json",
+    "submitted": 1,
+    "resolved": 1
+  },
+  "rows": [
+    {
+      "condition": "A",
+      "label": "fable-solo",
+      "tier": "agentic",
+      "description": "Fable investigates, edits, and tests once.",
+      "declared_dispatches": {
+        "claude": 1,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260902T221122Z.json",
+      "evaluator_run_id": "code-bench-20260902T221122Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221122Z/co-evolution-condition-A/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/A"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 1,
+        "claude_cost_usd": 2.4518,
+        "claude_output_tokens": 18823,
+        "claude_wall_seconds": 417,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "workspace-write"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "B",
+      "label": "cross-vendor-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Codex reviews and repairs the patch.",
+      "declared_dispatches": {
+        "claude": 1,
+        "codex": 1,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260902T221156Z.json",
+      "evaluator_run_id": "code-bench-20260902T221156Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221156Z/co-evolution-condition-B/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/B"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 1,
+        "claude_cost_usd": 1.8773,
+        "claude_output_tokens": 17371,
+        "claude_wall_seconds": 307,
+        "codex_phases": 1,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "C",
+      "label": "fable-led-panel",
+      "tier": "agentic",
+      "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 1,
+        "glm": 1,
+        "kimi": 1
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260902T221229Z.json",
+      "evaluator_run_id": "code-bench-20260902T221229Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221229Z/co-evolution-condition-C/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/C"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 2,
+        "claude_cost_usd": 6.6624,
+        "claude_output_tokens": 60072,
+        "claude_wall_seconds": 1168,
+        "codex_phases": 1,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "workspace-write"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "D",
+      "label": "fable-self-bounce",
+      "tier": "agentic",
+      "description": "Fable implements and performs a second review/repair pass.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260902T221304Z.json",
+      "evaluator_run_id": "code-bench-20260902T221304Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221304Z/co-evolution-condition-D/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/D"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 2,
+        "claude_cost_usd": 3.9241,
+        "claude_output_tokens": 32690,
+        "claude_wall_seconds": 817,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "workspace-write"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "E",
+      "label": "codex-solo",
+      "tier": "agentic",
+      "description": "Codex investigates, edits, and tests once.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 1,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260902T221343Z.json",
+      "evaluator_run_id": "code-bench-20260902T221343Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221343Z/co-evolution-condition-E/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/E"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 1,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "F",
+      "label": "glm-solo-single-shot",
+      "tier": "single-shot",
+      "description": "GLM receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 0,
+        "glm": 1,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260902T221418Z.json",
+      "evaluator_run_id": "code-bench-20260902T221418Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221418Z/co-evolution-condition-F/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/F"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [],
+        "single_shot_attempts": [
+          1
+        ]
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "G",
+      "label": "kimi-solo-single-shot",
+      "tier": "single-shot",
+      "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 1
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260902T221452Z.json",
+      "evaluator_run_id": "code-bench-20260902T221452Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221452Z/co-evolution-condition-G/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/G"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [],
+        "single_shot_attempts": [
+          1
+        ]
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "H",
+      "label": "fable-glm-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; GLM returns one single-shot critique with no agent loop; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 1,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-H.code-bench-20260902T222442Z.json",
+      "evaluator_run_id": "code-bench-20260902T222442Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T222442Z/co-evolution-condition-H/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/H"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 2,
+        "claude_cost_usd": 3.3927,
+        "claude_output_tokens": 30640,
+        "claude_wall_seconds": 628,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    },
+    {
+      "condition": "I",
+      "label": "fable-kimi-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Kimi returns one single-shot critique with no agent loop; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 1
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-I.code-bench-20260902T222512Z.json",
+      "evaluator_run_id": "code-bench-20260902T222512Z",
+      "submitted": 1,
+      "resolved": 1,
+      "per_task": [
+        {
+          "instance_id": "pallets__flask-5014",
+          "repo": "pallets/flask",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T222512Z/co-evolution-condition-I/pallets__flask-5014/report.json",
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/I"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 2,
+        "claude_cost_usd": 3.656,
+        "claude_output_tokens": 29285,
+        "claude_wall_seconds": 640,
+        "codex_phases": 0,
+        "cells_linked": 1,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": []
+      },
+      "dataset_total_instances": 500
+    }
+  ],
+  "superseded_reports": [
+    {
+      "condition": "A",
+      "evaluator_run_id": "code-bench-20260901T151007Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260901T151007Z.json"
+    },
+    {
+      "condition": "B",
+      "evaluator_run_id": "code-bench-20260831T205027Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260831T205027Z.json"
+    },
+    {
+      "condition": "B",
+      "evaluator_run_id": "code-bench-20260831T235501Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260831T235501Z.json"
+    },
+    {
+      "condition": "B",
+      "evaluator_run_id": "code-bench-20260901T163754Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260901T163754Z.json"
+    },
+    {
+      "condition": "B",
+      "evaluator_run_id": "code-bench-20260901T223410Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260901T223410Z.json"
+    },
+    {
+      "condition": "C",
+      "evaluator_run_id": "code-bench-20260901T000746Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260901T000746Z.json"
+    },
+    {
+      "condition": "D",
+      "evaluator_run_id": "code-bench-20260901T160935Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260901T160935Z.json"
+    },
+    {
+      "condition": "E",
+      "evaluator_run_id": "code-bench-20260901T151934Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260901T151934Z.json"
+    },
+    {
+      "condition": "F",
+      "evaluator_run_id": "code-bench-20260901T155052Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260901T155052Z.json"
+    },
+    {
+      "condition": "G",
+      "evaluator_run_id": "code-bench-20260901T160000Z",
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260901T160000Z.json"
+    }
+  ],
+  "caveat": "Frozen five-task probe of SWE-bench Verified, scored by the official evaluator. One task is 20 points; these numbers are not comparable to published full-500 SWE-bench Verified scores."
+}
