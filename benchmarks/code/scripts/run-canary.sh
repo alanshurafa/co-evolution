@@ -10,6 +10,7 @@ RUN_ID=""
 CONDITIONS="A,B,C"
 TASK_LIMIT=1
 TASK=""
+SHARD_SPEC=""
 MAX_CLAUDE=""
 DRY_RUN=false
 SUITE=$(code_suite_id)
@@ -20,6 +21,7 @@ while (( $# > 0 )); do
     --conditions) CONDITIONS="${2:?--conditions needs a value}"; shift 2 ;;
     --task-limit) TASK_LIMIT="${2:?--task-limit needs a value}"; shift 2 ;;
     --task) TASK="${2:?--task needs a value}"; shift 2 ;;
+    --shard) SHARD_SPEC="${2:?--shard needs N/M}"; shift 2 ;;
     --max-claude-dispatches) MAX_CLAUDE="${2:?--max-claude-dispatches needs a value}"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     *) code_die "unknown canary option: $1"; exit 2 ;;
@@ -29,6 +31,21 @@ done
 [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "--run-id is required and must be filesystem-safe"; exit 2; }
 [[ "$TASK_LIMIT" =~ ^[1-9][0-9]*$ ]] || { code_die "--task-limit must be positive"; exit 2; }
 [[ "$MAX_CLAUDE" =~ ^[0-9]+$ ]] || { code_die "--max-claude-dispatches is required"; exit 2; }
+
+# --shard N/M splits the subset across M processes that run at the same time.
+# Shards take disjoint instances, so their cell directories never collide, and
+# each writes its own prediction file because concurrent appends to one file
+# interleave. Wall clock falls by roughly M; provider concurrency rises by M,
+# which is the real limit on how far this can be pushed.
+SHARD_INDEX=0
+SHARD_COUNT=1
+if [[ -n "$SHARD_SPEC" ]]; then
+  [[ "$SHARD_SPEC" =~ ^[0-9]+/[0-9]+$ ]] || { code_die "--shard must look like N/M"; exit 2; }
+  SHARD_INDEX="${SHARD_SPEC%%/*}"
+  SHARD_COUNT="${SHARD_SPEC##*/}"
+  (( SHARD_COUNT >= 1 )) || { code_die "--shard M must be at least 1"; exit 2; }
+  (( SHARD_INDEX < SHARD_COUNT )) || { code_die "--shard N must be less than M"; exit 2; }
+fi
 
 suite_json=$(code_suite_json "$SUITE")
 subset=$(code_subset_path "$suite_json")
@@ -63,13 +80,26 @@ task_index=0
 while IFS= read -r instance; do
   task_index=$((task_index + 1))
   (( task_index <= TASK_LIMIT )) || break
+  (( (task_index - 1) % SHARD_COUNT == SHARD_INDEX )) || continue
   for condition in $(printf '%s' "$CONDITIONS" | tr ',' ' '); do
     cell="$runs_root/$instance/$condition"
+    if (( SHARD_COUNT > 1 )); then
+      pred_file="$pred_dir/$condition.s$SHARD_INDEX.jsonl"
+    else
+      pred_file="$pred_dir/$condition.jsonl"
+    fi
     # A fifty-task batch is hours long, so it has to be restartable. A cell that
     # already holds a prediction is finished and is left alone; a cell without
     # one is an abandoned clone from an interrupted attempt, and re-preparing it
     # is the only way forward because prepare refuses an existing directory.
     if [[ -f "$cell/prediction.json" ]]; then
+      # The cell is the record of truth; the prediction file is a projection of
+      # it. Re-link a finished cell whose line is missing, so a resume under a
+      # different shard layout still yields complete prediction files.
+      if ! jq -e --arg id "$instance" 'select(.instance_id == $id)' "$pred_file" \
+           >/dev/null 2>&1; then
+        jq -c . "$cell/prediction.json" >> "$pred_file"
+      fi
       printf 'SKIP: %s/%s already has a prediction\n' "$instance" "$condition"
       skipped_cells=$((skipped_cells + 1)); continue
     fi
@@ -94,12 +124,12 @@ while IFS= read -r instance; do
          | map(select(.value > 0)) | .[0].key' \
         "$CODE_DIR/conditions.json" | tr -d '\r')
       bash "$CODE_DIR/drivers/run-single-shot.sh" --input "$input" \
-        --predictions "$pred_dir/$condition.jsonl" --agent "$agent" || cell_rc=$?
+        --predictions "$pred_file" --agent "$agent" || cell_rc=$?
     else
       per_condition=$(jq -r --arg id "$condition" '.conditions[] | select(.id == $id) | .dispatches.claude' \
         "$CODE_DIR/conditions.json" | tr -d '\r')
       bash "$CODE_DIR/drivers/run-workflow.sh" --input "$input" \
-        --predictions "$pred_dir/$condition.jsonl" \
+        --predictions "$pred_file" \
         --max-claude-dispatches "$per_condition" || cell_rc=$?
     fi
     if (( cell_rc != 0 )); then
@@ -112,8 +142,15 @@ while IFS= read -r instance; do
 done < <(if [[ -n "$TASK" ]]; then printf '%s\n' "$TASK"
          else jq -r '.instances[].instance_id' "$subset" | tr -d '\r'; fi)
 
+# Validate only this shard's own files. A sibling shard is still appending to
+# its own, and validating a file mid-write reports a failure that is not real.
 shopt -s nullglob
-for predictions in "$pred_dir"/*.jsonl; do
+if (( SHARD_COUNT > 1 )); then
+  validate_glob=("$pred_dir"/*.s"$SHARD_INDEX".jsonl)
+else
+  validate_glob=("$pred_dir"/*.jsonl)
+fi
+for predictions in "${validate_glob[@]}"; do
   bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
 done
 printf 'COMPLETE: %s cell(s) generated, %s reused, %s failed -> %s\n' \
