@@ -1,5 +1,33 @@
 # Co-Evolution Benchmark Suite
 
+## Retired from measurement, 2026-09-01
+
+The plan-composition benchmark described below no longer measures anything.
+Measurement and every shared report now use standardized, publicly recognized
+benchmarks scored by their official evaluators — currently SWE-bench Verified
+on the pinned official harness in [`benchmarks/code/`](code/README.md). Go
+there for the active benchmark.
+
+A result on a corpus and a judge panel that exist only in this repository
+cannot be compared against anything anyone else has run, so it is not worth
+publishing. The batch b1 results and `reports/b1.md` stay on disk as internal
+evidence of what was built; they are never published, linked, or summarized on
+a shared surface. The outstanding work on this suite — re-judging the
+position-biased cells, the sanitizer fix for judging, and blind-judge
+calibration baselines — is cancelled rather than deferred.
+
+Nothing here is deleted. The runbook below still describes what the scripts do
+if you need to read or re-derive an archived batch. Do not schedule new
+batches, and do not add this suite's numbers to any published page.
+
+A future benchmark may be added only if it is a standardized public suite with
+an official pinned evaluator.
+
+---
+
+The rest of this document is the archived runbook for the retired
+plan-composition benchmark.
+
 Batch runbook for comparing plan-composition conditions (solo Fable, Codex
 bounce, panel critique, self-bounce control) on identical planning tasks,
 scored by three blind automated judges. See `PREREGISTRATION.md` for the

@@ -59,3 +59,7 @@ tests/.run-ledger/
 
 # Machine-local operational notes (private paths, spend, secrets workflow)
 .planning/local/
+
+# Python bytecode caches
+__pycache__/
+*.pyc

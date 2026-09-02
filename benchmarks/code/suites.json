@@ -1,0 +1,32 @@
+{
+  "schema": "code-bench-suites/1.0",
+  "suites": [
+    {
+      "id": "swebench-verified-canary",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "split": "test",
+      "subset_file": "subsets/swebench-verified-canary.json",
+      "task_count": 5,
+      "default_conditions": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "require_unique_repos": true
+    },
+    {
+      "id": "swebench-verified-random50",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "split": "test",
+      "subset_file": "subsets/swebench-verified-random50.json",
+      "task_count": 50,
+      "default_conditions": [
+        "B"
+      ]
+    }
+  ]
+}

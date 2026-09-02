@@ -1,0 +1,54 @@
+{
+  "schema": "code-bench-conditions/1.0",
+  "conditions": [
+    {
+      "id": "A",
+      "label": "fable-solo",
+      "tier": "agentic",
+      "description": "Fable investigates, edits, and tests once.",
+      "dispatches": {"claude": 1, "codex": 0, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "B",
+      "label": "cross-vendor-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Codex reviews and repairs the patch.",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "C",
+      "label": "fable-led-panel",
+      "tier": "agentic",
+      "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
+      "dispatches": {"claude": 2, "codex": 1, "glm": 1, "kimi": 1}
+    },
+    {
+      "id": "D",
+      "label": "fable-self-bounce",
+      "tier": "agentic",
+      "description": "Fable implements and performs a second review/repair pass.",
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "E",
+      "label": "codex-solo",
+      "tier": "agentic",
+      "description": "Codex investigates, edits, and tests once.",
+      "dispatches": {"claude": 0, "codex": 1, "glm": 0, "kimi": 0}
+    },
+    {
+      "id": "F",
+      "label": "glm-solo-single-shot",
+      "tier": "single-shot",
+      "description": "GLM receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "dispatches": {"claude": 0, "codex": 0, "glm": 1, "kimi": 0}
+    },
+    {
+      "id": "G",
+      "label": "kimi-solo-single-shot",
+      "tier": "single-shot",
+      "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "dispatches": {"claude": 0, "codex": 0, "glm": 0, "kimi": 1}
+    }
+  ]
+}

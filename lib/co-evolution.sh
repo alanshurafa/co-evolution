@@ -600,12 +600,22 @@ invoke_glm() (
   local stderr_file="$3"
   local writable="${4:-false}"
   local request_file response_file config_file
-  local curl_rc=0 message
+  local curl_rc=0 message reasoning_effort
 
   [[ -n "${ZAI_API_KEY:-}" ]] || die "glm seat requires ZAI_API_KEY"
   [[ "$writable" == "false" ]] || die "glm seat does not support writable phases"
   command -v curl >/dev/null 2>&1 || die "glm seat requires curl"
   command -v jq >/dev/null 2>&1 || die "glm seat requires jq"
+  # glm-5.3-flash always reasons and Z.AI bills reasoning against max_tokens, so
+  # a capped caller gets finish_reason="length" with an empty content string
+  # unless the reasoning is bounded too. Z.AI rejects "disabled" and "medium";
+  # low, high, and max are the only accepted levels. Unset keeps the provider
+  # default, which is what the document seats have always sent.
+  reasoning_effort="${GLM_REASONING_EFFORT:-}"
+  case "$reasoning_effort" in
+    ""|low|high|max) ;;
+    *) die "glm seat: GLM_REASONING_EFFORT must be empty, low, high, or max" ;;
+  esac
 
   request_file=$(mktemp -t glm-request-XXXXXX.json)
   response_file=$(mktemp -t glm-response-XXXXXX.json)
@@ -616,12 +626,16 @@ invoke_glm() (
   # incompatible with this document seat and were observed replacing a valid
   # response with <system-warning>/<system-reminder> metadata. Z.AI's documented
   # Chat Completions endpoint avoids that extra agent layer entirely.
-  jq -Rs --arg model "${GLM_MODEL:-glm-5.3-flash}" '{
+  jq -Rs --arg model "${GLM_MODEL:-glm-5.3-flash}" --argjson max_tokens "${GLM_MAX_TOKENS:-0}" \
+     --arg reasoning_effort "$reasoning_effort" '{
       model: $model,
       messages: [{role: "user", content: .}],
       stream: false,
       temperature: 0
-    }' "$prompt_file" > "$request_file"
+    }
+    + (if $max_tokens > 0 then {max_tokens: $max_tokens} else {} end)
+    + (if $reasoning_effort != "" then {reasoning_effort: $reasoning_effort} else {} end)' \
+     "$prompt_file" > "$request_file"
 
   # Keep the bearer token out of argv and logs. curl reads it from a mode-600
   # temporary config file that this adapter removes on every exit path.
@@ -665,11 +679,23 @@ invoke_kimi() (
   local output_file="$2"
   local stderr_file="$3"
   local request_file response_file config_file
-  local curl_rc=0 message
+  local curl_rc=0 message thinking temperature
 
   [[ -n "${KIMI_API_KEY:-}" ]] || die "kimi seat requires KIMI_API_KEY"
   command -v curl >/dev/null 2>&1 || die "kimi seat requires curl"
   command -v jq >/dev/null 2>&1 || die "kimi seat requires jq"
+  # kimi-k3 reasons by default and Moonshot bills reasoning against max_tokens,
+  # so a capped caller gets finish_reason="length" with empty content. Setting
+  # KIMI_THINKING=disabled selects the non-thinking mode, which the API accepts
+  # only at temperature 0.6 (thinking mode only accepts 1). Unset is the
+  # provider default and leaves the document seats byte-identical.
+  thinking="${KIMI_THINKING:-}"
+  case "$thinking" in
+    "") temperature="${KIMI_TEMPERATURE:-1}" ;;
+    disabled) temperature="${KIMI_TEMPERATURE:-0.6}" ;;
+    *) die "kimi seat: KIMI_THINKING must be empty or disabled" ;;
+  esac
+  [[ "$temperature" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "kimi seat: KIMI_TEMPERATURE must be a number"
 
   request_file=$(mktemp -t kimi-request-XXXXXX.json)
   response_file=$(mktemp -t kimi-response-XXXXXX.json)
@@ -678,12 +704,16 @@ invoke_kimi() (
 
   # The document seat calls Kimi's model API directly. Kimi Code's -p agent
   # loop auto-runs Read/Write tools, which violates the no-tools seat boundary.
-  jq -Rs --arg model "${KIMI_MODEL:-kimi-k3}" '{
+  jq -Rs --arg model "${KIMI_MODEL:-kimi-k3}" --argjson max_tokens "${KIMI_MAX_TOKENS:-0}" \
+     --argjson temperature "$temperature" --arg thinking "$thinking" '{
       model: $model,
       messages: [{role: "user", content: .}],
       stream: false,
-      temperature: 1
-    }' "$prompt_file" > "$request_file"
+      temperature: $temperature
+    }
+    + (if $max_tokens > 0 then {max_tokens: $max_tokens} else {} end)
+    + (if $thinking != "" then {thinking: {type: $thinking}} else {} end)' \
+     "$prompt_file" > "$request_file"
 
   {
     printf 'url = "https://api.moonshot.ai/v1/chat/completions"\n'
