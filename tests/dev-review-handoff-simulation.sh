@@ -315,7 +315,7 @@ STUB
 chmod +x "$TEST_DIR/bin-seat/claude" "$TEST_DIR/bin-seat/codex"
 STUB_EXIT=0
 s7_rc=0
-COMPOSER_MODEL="gpt-5.5" COMPOSER_EFFORT="xhigh" \
+COMPOSER_MODEL="gpt-5.6-sol" COMPOSER_EFFORT="xhigh" \
 REVIEWER_MODEL="claude-sonnet-4-5" REVIEWER_EFFORT="low" \
 CO_EVOLVE_DEV_REVIEW_SCRIPT="$ENGINE_STUB" \
 CO_EVOLVE_RUNS_DIR="$TEST_DIR/runs" \
@@ -328,7 +328,7 @@ if [[ ! -f "$ARGV_FILE" ]]; then
   note_fail "S7: engine stub never invoked"; cat "$TEST_DIR/out-s7.log"
 else
   # No engine flag may carry the doc-pipeline seat model ids.
-  if grep -qxF -- "gpt-5.5" "$ARGV_FILE" || grep -qxF -- "claude-sonnet-4-5" "$ARGV_FILE"; then
+  if grep -qxF -- "gpt-5.6-sol" "$ARGV_FILE" || grep -qxF -- "claude-sonnet-4-5" "$ARGV_FILE"; then
     note_fail "S7: a doc-pipeline seat (COMPOSER_MODEL/REVIEWER_MODEL) leaked into engine argv"
   else
     note_pass "S7: COMPOSER_MODEL/REVIEWER_MODEL not forwarded to engine argv"
@@ -338,7 +338,7 @@ else
   if argv_has "--claude-model"; then
     cm=$(awk 'prev=="--claude-model"{print; exit} {prev=$0}' "$ARGV_FILE")
     note_pass "S7: base --claude-model forwarded to engine ($cm)"
-    if [[ "$cm" == "gpt-5.5" || "$cm" == "claude-sonnet-4-5" ]]; then
+    if [[ "$cm" == "gpt-5.6-sol" || "$cm" == "claude-sonnet-4-5" ]]; then
       note_fail "S7: forwarded --claude-model carries a doc-role seat value ($cm)"
     else
       note_pass "S7: forwarded --claude-model is the base choice, not a seat"
@@ -358,8 +358,8 @@ else
     env_is "CLAUDE_EFFORT" "low" \
       && note_fail "S7: reviewer effort 'low' leaked into engine env" \
       || note_pass "S7: env CLAUDE_EFFORT does not carry the reviewer seat effort"
-    env_is "CODEX_MODEL" "gpt-5.5" \
-      && note_fail "S7: composer model 'gpt-5.5' leaked into engine env" \
+    env_is "CODEX_MODEL" "gpt-5.6-sol" \
+      && note_fail "S7: composer model 'gpt-5.6-sol' leaked into engine env" \
       || note_pass "S7: env CODEX_MODEL does not carry the composer seat model"
     env_is "CODEX_REASONING_EFFORT" "xhigh" \
       && note_fail "S7: composer effort 'xhigh' leaked into engine env" \

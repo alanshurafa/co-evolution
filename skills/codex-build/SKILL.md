@@ -191,7 +191,7 @@ Fill the brackets from Step 1:
 - `--timeout` defaults to 1800s; raise it for large tasks.
 
 The preset expands to: composer = Opus (high),
-executor = Codex (xhigh, model pinned to `gpt-5.5`),
+executor = Codex (xhigh, model pinned to `gpt-5.6-sol`),
 verifier = Opus (max), `--verify` on, bounces 2,
 revise-loop 1. The two Claude seats default through the `best` alias (currently
 `claude-opus-4-8`), so a future model bump is a one-line edit in
