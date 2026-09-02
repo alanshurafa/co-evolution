@@ -38,10 +38,25 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export REPO_ROOT
 
-# TEST_DIR under REPO_ROOT so proposer path-containment checks accept fixture
-# paths. Same posture as Phase 5/6/7 simulations.
-TEST_DIR=$(mktemp -d -p "$REPO_ROOT/tests" ".sim-pr-emitter-XXXXXX")
+# TEST_DIR scratch lives under system temp: pr-emitter.sh has no
+# REPO_ROOT-containment check of its own, and every path this suite passes
+# through to it (PEL_EVAL_REPORT, PEL_RUN_EVALS_OVERRIDE) is always a real
+# tests/fixtures/... path under REPO_ROOT, never TEST_DIR-derived. Keeping
+# scratch in-repo was only a collision + git-status-dirt hazard (W1.2,
+# 2026-09-02 eval-suite-optimization-plan.md).
+TEST_DIR=$(mktemp -d -t pr-emitter-sim-XXXXXX)
 export TEST_DIR
+
+# Scope every sandbox this run creates to a private TMPDIR. pr-emitter.sh
+# creates EMITTER_SANDBOX / EMITTER_WORKDIR / DRY_STUB_BIN at
+# ${TMPDIR:-/tmp}/pel-score-sandbox-*, pel-emitter-work-*, and
+# co-evolve-dry-* respectively (all via `mktemp -d -t`, which honors
+# TMPDIR). With the machine-global /tmp, a concurrently-running suite's
+# orphan-cleanup glob could delete THIS run's live sandbox (run-all --jobs
+# hazard, W1.3). The cleanup glob below is scoped to this run's TMPDIR
+# only, so it can no longer touch another run's dirs.
+export TMPDIR="$TEST_DIR/tmp"
+mkdir -p "$TMPDIR"
 
 # All PR branches we create during the simulation live under this prefix so
 # the EXIT trap can deterministically delete them without touching other

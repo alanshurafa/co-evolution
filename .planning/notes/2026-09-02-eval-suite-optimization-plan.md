@@ -1,6 +1,6 @@
 # Eval Suite Optimization Plan (2026-09-02)
 
-Status: DRAFT, awaiting Alan's answers to the open questions at the bottom.
+Status: APPROVED 2026-09-02 (Alan). Decisions recorded under "Decisions"; Wave 1 in progress.
 Branch: `claude/eval-suite-optimization-ae8364`.
 
 ## What "the eval suite" is
@@ -80,7 +80,12 @@ was not on anyone's slow list. It runs `report.sh` only 4 times, but
    default.
 6. **Assertion quality.** 157 raw `grep -q` checks and 15 exit-code-only
    checks; not yet triaged for trivially-true patterns.
-7. **Hermetic HOME is only enforced by `run-all.sh`.** Suites run directly
+7. **`pr-emitter` cache key depends on the working tree.** Its
+   `compute_emitter_cache_key` hashes the repo's dirty diff, so any file
+   edit elsewhere during a run (a parallel worker, an editor autosave)
+   flips Scenario C. Observed 2026-09-02 during Wave 1. Fix in Wave 3: pin
+   the key to the suite's own scratch repo, not the host tree.
+8. **Hermetic HOME is only enforced by `run-all.sh`.** Suites run directly
    (`bash tests/foo-simulation.sh`) fall through to the host git config.
 
 ### B. Eval scorer pipeline (`evals/`)
@@ -217,7 +222,20 @@ Ordered by payoff per hour. Each wave is independently mergeable.
   `benchmarks` `wall_secs` should all emit the same `{name, elapsed_secs,
   status}` shape so a single script can chart them.
 
-## Open questions for Alan
+## Decisions (Alan, 2026-09-02)
+
+1. Keep Windows in the PR matrix; parallelize; target under 6 min.
+2. Wave 2 lands as one PR per batch of ~8 suites.
+3. Wave 5 lands before the paid full benchmark batch.
+4. Benchmark cells run in parallel, default `--jobs 2`, revisit if rate-limited.
+5. Flake nightly: pending (Alan asked for a clearer explanation).
+6. Weak assertions: during the Wave 2 migration, workers replace an assertion
+   with `harness_assert_*` only where the intended check is unambiguous;
+   every other weak check is listed in `tests/ASSERTION-TRIAGE.md` and fixed
+   in a follow-up PR. Rationale: keeps migration PRs mechanical and
+   reviewable, but still captures the audit while the file is open.
+
+## Open questions for Alan (original)
 
 1. **CI target.** Is "windows under 6 min, ubuntu under 1 min" the right
    bar, or do you want to drop Windows from the PR matrix and run it only
