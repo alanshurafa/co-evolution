@@ -207,6 +207,21 @@ else
   fail "the canary runner routes single-shot cells to their own driver"
 fi
 
+# A fifty-task batch is hours long. One arm that produces no patch is a zero for
+# that arm, and an abort there discards every remaining cell in the run.
+RESUME_ROOT="$TMP/resume"
+mkdir -p "$RESUME_ROOT/runs/resume-test/pallets__flask-5014/A"
+printf '{}\n' > "$RESUME_ROOT/runs/resume-test/pallets__flask-5014/A/prediction.json"
+resume_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$RESUME_ROOT" \
+  bash "$RUNNER" run-canary --run-id resume-test --task pallets__flask-5014 \
+  --conditions A --max-claude-dispatches 1 2>&1)
+if printf '%s' "$resume_out" | grep -q 'SKIP: pallets__flask-5014/A already has a prediction' \
+   && printf '%s' "$resume_out" | grep -q '0 cell(s) generated, 1 reused, 0 failed'; then
+  pass "a cell with a prediction is reused instead of rerun"
+else
+  fail "a cell with a prediction is reused instead of rerun"
+fi
+
 if jq -e 'all(.conditions[]; (.tier == "agentic") or (.tier == "single-shot"))' \
      "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
   pass "every condition declares a tier"
