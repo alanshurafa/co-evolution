@@ -136,6 +136,32 @@ code_load_env_key() {
   [[ -n "$value" ]] && printf -v "$name" '%s' "$value"
 }
 
+# The bounce conditions differ only in how many critics they run, so the repair
+# prompt takes however many reviews were produced: three for the full panel, one
+# for a single-critic bounce. Reviews stay anonymous and numbered so the
+# repairing agent weighs each finding on merit rather than on its author.
+code_write_repair_prompt() {
+  local out="$1" task_file="$2"
+  shift 2
+  local review number=0
+  (( $# > 0 )) || { code_die "code_write_repair_prompt needs at least one review"; return 1; }
+  {
+    if (( $# == 1 )); then
+      printf '%s\n' "Re-open the current implementation and evaluate the anonymous review below. Decide every finding on its merits, repair accepted issues, and run relevant tests. Do not commit."
+    else
+      printf 'Re-open the current implementation and evaluate the %s anonymous reviews below. Decide every finding on its merits, repair accepted issues, and run relevant tests. Do not commit.\n' "$#"
+    fi
+    printf '\n## ISSUE\n\n'
+    cat "$task_file"
+    for review in "$@"; do
+      number=$((number + 1))
+      printf '\n## REVIEWER %s\n\n' "$number"
+      head -c 40000 "$review"
+      printf '\n'
+    done
+  } > "$out"
+}
+
 # Two orchestrators once appended to the same status file and the resulting
 # timeline described neither run. A status file now belongs to exactly one
 # writer: the owner is recorded on creation, every line carries writer=, and a

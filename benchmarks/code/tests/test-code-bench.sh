@@ -66,7 +66,7 @@ else
 fi
 
 TEST_RESULTS="$TMP/results"
-for condition in A B C D E F; do
+for condition in A B C D E F H I; do
   cell="$TEST_RESULTS/runs/test/sympy__sympy-20916/$condition"
   mkdir -p "$cell/workspace/.git" "$TEST_RESULTS/predictions/test"
   printf 'task\n' > "$cell/task.md"
@@ -82,10 +82,66 @@ dry_c=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
   --max-claude-dispatches 2 --dry-run 2>/dev/null)
 if [[ "$(printf '%s' "$dry_c" | jq -r '.executed')" == false \
    && "$(printf '%s' "$dry_c" | jq -r '.phases | length')" == 5 \
+   && "$(printf '%s' "$dry_c" | jq -r '.critics | join(",")')" == "codex,glm,kimi" \
    && "$(printf '%s' "$dry_c" | jq -r '.declared_claude_dispatches')" == 2 ]]; then
   pass "condition C dry-run exposes five phases and executes nothing"
 else
   fail "condition C dry-run exposes five phases and executes nothing"
+fi
+
+# H and I are C with the panel cut to one critic. The roster the driver reports
+# is the same string that drives the critique loop and the manifest, so an arm
+# that claimed one critic and ran another would fail here.
+for arm in H:glm I:kimi; do
+  arm_condition="${arm%%:*}"
+  arm_critic="${arm##*:}"
+  dry_arm=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+    --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/$arm_condition/input.json" \
+    --predictions "$TEST_RESULTS/predictions/test/$arm_condition.jsonl" \
+    --max-claude-dispatches 2 --dry-run 2>/dev/null)
+  if [[ "$(printf '%s' "$dry_arm" | jq -r '.phases | join(",")')" == "fable-implement,$arm_critic-critique,fable-repair" \
+     && "$(printf '%s' "$dry_arm" | jq -r '.critics | join(",")')" == "$arm_critic" \
+     && "$(printf '%s' "$dry_arm" | jq -r '.declared_claude_dispatches')" == 2 ]]; then
+    pass "condition $arm_condition bounces through a single $arm_critic critic"
+  else
+    fail "condition $arm_condition bounces through a single $arm_critic critic"
+  fi
+done
+
+if grep -q 'critics:\$critics' "$CODE_DIR/drivers/run-workflow.sh"; then
+  pass "the run manifest records the critic roster"
+else
+  fail "the run manifest records the critic roster"
+fi
+
+REPAIR="$TMP/repair"
+mkdir -p "$REPAIR"
+printf 'the issue\n' > "$REPAIR/task.md"
+printf 'finding one\n' > "$REPAIR/r1.md"
+printf 'finding two\n' > "$REPAIR/r2.md"
+printf 'finding three\n' > "$REPAIR/r3.md"
+( source "$CODE_DIR/lib/code-bench-lib.sh"
+  code_write_repair_prompt "$REPAIR/one.md" "$REPAIR/task.md" "$REPAIR/r1.md"
+  code_write_repair_prompt "$REPAIR/three.md" "$REPAIR/task.md" \
+    "$REPAIR/r1.md" "$REPAIR/r2.md" "$REPAIR/r3.md"
+) >/dev/null 2>&1
+one_kept=$(grep -c 'finding one' "$REPAIR/one.md" | tr -d '[:space:]')
+two_leaked=$(grep -c 'finding two' "$REPAIR/one.md" | tr -d '[:space:]')
+if [[ "$(grep -c '^## REVIEWER ' "$REPAIR/one.md" | tr -d '[:space:]')" == 1 \
+   && "$(grep -c '^## REVIEWER ' "$REPAIR/three.md" | tr -d '[:space:]')" == 3 \
+   && "$(grep -c '^## REVIEWER 3$' "$REPAIR/three.md" | tr -d '[:space:]')" == 1 \
+   && "$one_kept" == 1 && "$two_leaked" == 0 ]]; then
+  pass "repair prompt carries one reviewer section per review"
+else
+  fail "repair prompt carries one reviewer section per review"
+fi
+
+if ( source "$CODE_DIR/lib/code-bench-lib.sh"
+     code_write_repair_prompt "$REPAIR/none.md" "$REPAIR/task.md"
+   ) >/dev/null 2>&1; then
+  fail "repair prompt refuses an empty review list"
+else
+  pass "repair prompt refuses an empty review list"
 fi
 
 rc=0
@@ -117,6 +173,26 @@ rc=0
 bash "$RUNNER" run-canary --run-id dry-two --conditions A,B,C --task-limit 2 \
   --max-claude-dispatches 4 --dry-run >/dev/null 2>&1 || rc=$?
 if [[ "$rc" == 75 ]]; then pass "two-task A/B/C canary exceeds aggregate cap four"; else fail "two-task A/B/C canary exceeds aggregate cap four (rc=$rc)"; fi
+
+if bash "$RUNNER" run-canary --run-id dry-poc --task pallets__flask-5014 \
+     --conditions A,B,C,D,E,F,G,H,I --max-claude-dispatches 10 --dry-run >/dev/null 2>&1; then
+  pass "one named task across all nine arms fits ten Fable dispatches"
+else
+  fail "one named task across all nine arms fits ten Fable dispatches"
+fi
+
+if bash "$RUNNER" run-canary --run-id dry-unknown --task nosuch__repo-1 \
+     --conditions A --max-claude-dispatches 1 --dry-run >/dev/null 2>&1; then
+  fail "a task outside the suite is rejected"
+else
+  pass "a task outside the suite is rejected"
+fi
+
+if grep -q 'run-single-shot.sh' "$CODE_DIR/scripts/run-canary.sh"; then
+  pass "the canary runner routes single-shot cells to their own driver"
+else
+  fail "the canary runner routes single-shot cells to their own driver"
+fi
 
 if jq -e 'all(.conditions[]; (.tier == "agentic") or (.tier == "single-shot"))' \
      "$CODE_DIR/conditions.json" >/dev/null 2>&1; then

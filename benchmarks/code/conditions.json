@@ -49,6 +49,20 @@
       "tier": "single-shot",
       "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
       "dispatches": {"claude": 0, "codex": 0, "glm": 0, "kimi": 1}
+    },
+    {
+      "id": "H",
+      "label": "fable-glm-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; GLM returns one single-shot critique with no agent loop; Fable repairs.",
+      "dispatches": {"claude": 2, "codex": 0, "glm": 1, "kimi": 0}
+    },
+    {
+      "id": "I",
+      "label": "fable-kimi-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Kimi returns one single-shot critique with no agent loop; Fable repairs.",
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 1}
     }
   ]
 }

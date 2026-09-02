@@ -28,9 +28,18 @@ The conditions are declared in `conditions.json`, each with a `tier`:
 | E | codex-solo | agentic | Codex implements once |
 | F | glm-solo-single-shot | single-shot | GLM sees the issue plus retrieved context, returns one diff |
 | G | kimi-solo-single-shot | single-shot | Kimi sees the issue plus retrieved context, returns one diff |
+| H | fable-glm-bounce | agentic | Fable implements; GLM critiques once; Fable repairs |
+| I | fable-kimi-bounce | agentic | Fable implements; Kimi critiques once; Fable repairs |
 
 D is retained as a self-bounce control even when the product question focuses
 on A/B/C. E is the comparator that makes B's repair arm interpretable.
+
+H and I isolate one critic each out of C's three-model panel, which is what
+makes C's result attributable: if C beats B, H and I say whether a cheap
+cross-vendor critic accounts for the gain. Their critics are single-shot even
+though the arm is agentic — GLM and Kimi read the candidate patch in the prompt
+and answer once, with no file access and no test run. The repairing agent is
+Fable either way, so the arm stays agentic.
 
 **The tier is not cosmetic.** Agentic conditions run a coding agent with file
 tools and test execution. GLM and Kimi are reachable here only as chat
