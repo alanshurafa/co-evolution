@@ -15,6 +15,10 @@
 #                                    # every suite must have passed at least
 #                                    # once, not all in a single run
 #   --ledger DIR                     # ledger location (default tests/.run-ledger)
+#   --suite-timeout SECS             # kill a suite that runs longer (default 900;
+#                                    # needs GNU `timeout` — absent on stock macOS,
+#                                    # where suites run unbounded and one notice
+#                                    # is printed to stderr)
 #
 # Per-suite output always lands in the ledger dir as <suite>.log when a ledger
 # is active, so a failure's full output survives the run.
@@ -33,17 +37,32 @@ QUICK=false
 JOBS=1
 RESUME=false
 LEDGER_DIR="$SCRIPT_DIR/.run-ledger"
+SUITE_TIMEOUT=900
 while (( $# > 0 )); do
   case "$1" in
     --quick) QUICK=true ;;
     --jobs) shift; JOBS="${1:?--jobs requires a count}" ;;
     --resume) RESUME=true ;;
     --ledger) shift; LEDGER_DIR="${1:?--ledger requires a directory}" ;;
+    --suite-timeout) shift; SUITE_TIMEOUT="${1:?--suite-timeout requires seconds}" ;;
     *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
   esac
   shift
 done
 [[ "$JOBS" =~ ^[0-9]+$ ]] && (( JOBS >= 1 )) || { printf -- '--jobs must be a positive integer\n' >&2; exit 2; }
+[[ "$SUITE_TIMEOUT" =~ ^[0-9]+$ ]] && (( SUITE_TIMEOUT >= 1 )) || { printf -- '--suite-timeout must be a positive integer\n' >&2; exit 2; }
+
+# A wedged suite must not eat the whole CI budget, so each one runs under GNU
+# `timeout` when the host has it (Linux, Git Bash). Stock macOS ships no
+# `timeout`; there the suites run unbounded and the job-level timeout is the
+# only backstop, so say so once rather than pretending the cap is in force.
+declare -a TIMEOUT_PREFIX=()
+if command -v timeout > /dev/null 2>&1; then
+  TIMEOUT_PREFIX=(timeout "$SUITE_TIMEOUT")
+else
+  printf 'no `timeout` on this host; suites run without the %ss per-suite cap\n' \
+    "$SUITE_TIMEOUT" >&2
+fi
 
 # Parallel mode needs `wait -n` (bash 4.3+). Fall back rather than half-run.
 if (( JOBS > 1 )) && ! { wait -n 2>/dev/null || [[ $? -ne 2 ]]; }; then
@@ -139,12 +158,19 @@ run_one_suite() {
   start=$(date +%s)
   out_file="$TALLY_DIR/$name.log"
   rc=0
-  bash "$suite" < /dev/null > "$out_file" 2>&1 || rc=$?
+  # ${arr[@]+...} guard: bash 3.2 under set -u errors on empty-array expansion.
+  ${TIMEOUT_PREFIX[@]+"${TIMEOUT_PREFIX[@]}"} bash "$suite" < /dev/null > "$out_file" 2>&1 || rc=$?
   elapsed=$(( $(date +%s) - start ))
   last_line=$(tail -1 "$out_file" | head -c 100)
   if (( rc == 0 )); then
     printf 'PASS  %-50s %4ss  %s\n' "$name" "$elapsed" "$last_line"
     printf 'PASS %s\n' "$elapsed" > "$TALLY_DIR/$name.result"
+  elif (( rc == 124 )); then
+    # `timeout` exits 124 when it kills the child. Name the cap so the failure
+    # reads as "too slow", not "broken".
+    printf 'FAIL  %-50s %4ss  (timeout after %ss)\n' "$name" "$elapsed" "$SUITE_TIMEOUT"
+    printf 'FAIL 124 %s\n' "$elapsed" > "$TALLY_DIR/$name.result"
+    printf -- '------ %s timed out: partial output in %s ------\n' "$name" "$out_file"
   else
     printf 'FAIL  %-50s %4ss  (exit %d)\n' "$name" "$elapsed" "$rc"
     printf 'FAIL %s %s\n' "$rc" "$elapsed" > "$TALLY_DIR/$name.result"
@@ -185,6 +211,28 @@ if (( JOBS == 1 )); then
     run_one_suite "$suite" || true
   done
 else
+  # Longest-first scheduling: the alphabetical order puts the slowest suites
+  # (the eval/benchmark verifications appended last, plus the SLOW_SUITES)
+  # at the tail, so with N jobs the run ends waiting on one 4-minute suite
+  # while the other workers sit idle. Front-load the known heavyweights;
+  # everything else keeps its existing order. Measured 2026-09-02 (Windows,
+  # --jobs 4): test-report 279s, code-proposer 262s, pr-emitter 219s,
+  # marker-lifecycle 185s, smoke 100s+, preset-expansion 97s+.
+  LONG_FIRST="test-report.sh code-proposer-simulation.sh pr-emitter-simulation.sh marker-lifecycle-simulation.sh smoke.sh preset-expansion-simulation.sh dev-review-handoff-simulation.sh scorer-verification.sh"
+  declare -a ORDERED=()
+  for want in $LONG_FIRST; do
+    for suite in ${TODO[@]+"${TODO[@]}"}; do
+      [[ "$(basename "$suite")" == "$want" ]] && ORDERED+=("$suite")
+    done
+  done
+  for suite in ${TODO[@]+"${TODO[@]}"}; do
+    base=$(basename "$suite")
+    case " $LONG_FIRST " in
+      *" $base "*) ;;
+      *) ORDERED+=("$suite") ;;
+    esac
+  done
+  TODO=(${ORDERED[@]+"${ORDERED[@]}"})
   active=0
   for suite in ${TODO[@]+"${TODO[@]}"}; do
     if (( active >= JOBS )); then

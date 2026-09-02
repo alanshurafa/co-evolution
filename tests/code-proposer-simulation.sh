@@ -72,11 +72,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export REPO_ROOT
 
-# TEST_DIR must be INSIDE REPO_ROOT so proposer.sh's T-07-05 containment
-# check accepts fixture paths. Using /tmp (mktemp default) would make every
-# fixture "outside repo root" and die exit 1 before the scenario's true
-# failure mode is exercised. Same pattern as policy-proposer-simulation.sh.
-TEST_DIR=$(mktemp -d -p "$REPO_ROOT/tests" ".sim-code-XXXXXX")
+# TEST_DIR scratch lives under system temp, not REPO_ROOT/tests: nothing
+# this suite passes to proposer.sh's T-07-05 containment check is derived
+# from TEST_DIR — PEL_CODE_FEEDBACK is always a real tests/fixtures/...
+# path under REPO_ROOT (see scenarios below). Keeping scratch in-repo was
+# only a collision + git-status-dirt hazard (W1.2, 2026-09-02
+# eval-suite-optimization-plan.md). Unlike policy-proposer-simulation.sh,
+# this suite never writes a path that must itself resolve inside REPO_ROOT.
+TEST_DIR=$(mktemp -d -t code-proposer-sim-XXXXXX)
 # Export TEST_DIR so the PATH-injected git shim (below) can find its snapshot
 # target location when invoked from inside proposer.sh's subshell.
 export TEST_DIR

@@ -9,8 +9,8 @@ the code. This is intentionally the mirror of `codex-build`, with one important
 difference: Codex has no harness wake-on-exit. The Phase 1 mode is therefore
 blocking and synchronous.
 
-The preset expands to: composer = Codex (xhigh, model pinned to `gpt-5.5`),
-executor = Opus (best/high), verifier = Codex (xhigh, model pinned to `gpt-5.5`),
+The preset expands to: composer = Codex (xhigh, model pinned to `gpt-5.6-sol`),
+executor = Opus (best/high), verifier = Codex (xhigh, model pinned to `gpt-5.6-sol`),
 `--verify` on, bounces 2, revise-loop 1. The codex composer and verifier seats are
 model-pinned (A-3), so a preset run reproduces across machines rather than
 inheriting the local codex `config.toml`.

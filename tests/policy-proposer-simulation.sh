@@ -26,12 +26,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export REPO_ROOT
 
-# TEST_DIR must be INSIDE REPO_ROOT so proposer.sh's T-06-07 containment
-# check accepts fixture/test-policy paths that live under it. Using /tmp
-# (mktemp's default) would make every fixture "outside repo root" and the
-# proposer would die exit 1 before any scenario's true failure mode is
-# exercised. Create under tests/ so the gitignore-friendly prefix ".sim-"
-# makes it obvious this is scratch space.
+# TEST_DIR must stay INSIDE REPO_ROOT: PEL_POLICY_PATH (set below to
+# $TEST_DIR/policy-test-copy.yaml) is passed straight through to
+# proposer.sh, which enforces T-06-07 containment via validate_path_in_repo
+# — any PEL_POLICY_PATH that doesn't resolve under REPO_ROOT is rejected
+# before a scenario's true failure mode is exercised. Moving this scratch
+# dir to system temp (as done for code-proposer/pr-emitter per W1.2,
+# 2026-09-02 eval-suite-optimization-plan.md) would break every scenario at
+# that containment gate, so this is the genuinely-needs-in-repo exception.
+# Collision-safety instead comes from mktemp's atomic unique-name guarantee
+# (".sim-policy-XXXXXX") plus the EXIT trap below.
 TEST_DIR=$(mktemp -d -p "$REPO_ROOT/tests" ".sim-policy-XXXXXX")
 cleanup() { rm -rf "$TEST_DIR"; }
 trap cleanup EXIT

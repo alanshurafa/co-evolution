@@ -11,14 +11,14 @@
 # tokens out of each file and asserts they all agree on the same triples:
 #
 #   composer  = best (currently Opus), effort high
-#   executor  = Codex, effort xhigh, model pinned to gpt-5.5 (A-3)
+#   executor  = Codex, effort xhigh, model pinned to gpt-5.6-sol (A-3)
 #   verifier  = best (currently Opus), effort max
 #   bounces   = 2
 #
 #   claude-build:
-#   composer  = Codex, effort xhigh, model pinned to gpt-5.5 (A-3)
+#   composer  = Codex, effort xhigh, model pinned to gpt-5.6-sol (A-3)
 #   executor  = best (currently Opus), effort high
-#   verifier  = Codex, effort xhigh, model pinned to gpt-5.5 (A-3)
+#   verifier  = Codex, effort xhigh, model pinned to gpt-5.6-sol (A-3)
 #   bounces   = 2
 #
 # Pattern: pure-grep assertions over the real files (no agents, no stubs). Each
@@ -119,12 +119,12 @@ assert_text_grep "runner codex-build: executor effort xhigh (EXECUTOR_EFFORT:=xh
   "$CODEX_BUILD_ARM" 'EXECUTOR_EFFORT:=xhigh'
 assert_text_grep "runner codex-build: bounces pinned to 2 (BOUNCES=2)" \
   "$CODEX_BUILD_ARM" 'BOUNCES=2'
-# v1.5 Phase 1 (A-3): the codex executor seat is now MODEL-PINNED to gpt-5.5.
-assert_text_grep "runner codex-build: executor model pinned to gpt-5.5 (EXECUTOR_MODEL:=gpt-5.5)" \
-  "$CODEX_BUILD_ARM" 'EXECUTOR_MODEL:=gpt-5.5'
+# v1.5 Phase 1 (A-3): the codex executor seat is now MODEL-PINNED to gpt-5.6-sol.
+assert_text_grep "runner codex-build: executor model pinned to gpt-5.6-sol (EXECUTOR_MODEL:=gpt-5.6-sol)" \
+  "$CODEX_BUILD_ARM" 'EXECUTOR_MODEL:=gpt-5.6-sol'
 # v1.5 Phase 1 (A-8): the bounce counterparty (codex here) is pinned so no (default) seat.
-assert_text_grep "runner codex-build: bounce seat pinned to gpt-5.5 (BOUNCER_MODEL:=gpt-5.5)" \
-  "$CODEX_BUILD_ARM" 'BOUNCER_MODEL:=gpt-5.5'
+assert_text_grep "runner codex-build: bounce seat pinned to gpt-5.6-sol (BOUNCER_MODEL:=gpt-5.6-sol)" \
+  "$CODEX_BUILD_ARM" 'BOUNCER_MODEL:=gpt-5.6-sol'
 
 assert_text_grep "runner claude-build: composer codex / executor opus / verifier codex" \
   "$CLAUDE_BUILD_ARM" 'COMPOSER="codex"; EXECUTOR="opus"; VERIFIER_OVERRIDE="codex"'
@@ -138,11 +138,11 @@ assert_text_grep "runner claude-build: verifier effort xhigh (VERIFIER_EFFORT:=x
   "$CLAUDE_BUILD_ARM" 'VERIFIER_EFFORT:=xhigh'
 assert_text_grep "runner claude-build: bounces pinned to 2 (BOUNCES=2)" \
   "$CLAUDE_BUILD_ARM" 'BOUNCES=2'
-# v1.5 Phase 1 (A-3): the codex composer + verifier seats are now pinned to gpt-5.5.
-assert_text_grep "runner claude-build: composer model pinned to gpt-5.5 (COMPOSER_MODEL:=gpt-5.5)" \
-  "$CLAUDE_BUILD_ARM" 'COMPOSER_MODEL:=gpt-5.5'
-assert_text_grep "runner claude-build: verifier model pinned to gpt-5.5 (VERIFIER_MODEL:=gpt-5.5)" \
-  "$CLAUDE_BUILD_ARM" 'VERIFIER_MODEL:=gpt-5.5'
+# v1.5 Phase 1 (A-3): the codex composer + verifier seats are now pinned to gpt-5.6-sol.
+assert_text_grep "runner claude-build: composer model pinned to gpt-5.6-sol (COMPOSER_MODEL:=gpt-5.6-sol)" \
+  "$CLAUDE_BUILD_ARM" 'COMPOSER_MODEL:=gpt-5.6-sol'
+assert_text_grep "runner claude-build: verifier model pinned to gpt-5.6-sol (VERIFIER_MODEL:=gpt-5.6-sol)" \
+  "$CLAUDE_BUILD_ARM" 'VERIFIER_MODEL:=gpt-5.6-sol'
 # v1.5 Phase 1 (A-8): the bounce counterparty (opus here) is pinned so no (default) seat.
 assert_text_grep "runner claude-build: bounce seat pinned to best (BOUNCER_MODEL:=best)" \
   "$CLAUDE_BUILD_ARM" 'BOUNCER_MODEL:=best'
@@ -160,9 +160,9 @@ assert_grep "codex-build skill: verifier Opus at max" \
   "$CODEX_BUILD_SKILL" 'verifier = Opus \(max\)'
 assert_grep "codex-build skill: bounces 2" \
   "$CODEX_BUILD_SKILL" 'bounces 2'
-# v1.5 Phase 1 (A-3): executor codex model is now pinned to gpt-5.5 (was CLI config).
-assert_grep "codex-build skill: executor model pinned to gpt-5.5" \
-  "$CODEX_BUILD_SKILL" 'executor = Codex \(xhigh, model.*pinned to .?gpt-5\.5'
+# v1.5 Phase 1 (A-3): executor codex model is now pinned to gpt-5.6-sol (was CLI config).
+assert_grep "codex-build skill: executor model pinned to gpt-5.6-sol" \
+  "$CODEX_BUILD_SKILL" 'executor = Codex \(xhigh, model.*pinned to .?gpt-5.6-sol'
 
 # ===========================================================================
 # Group 3: dev-review/codex/claude-build.md must describe the SAME reverse
@@ -174,11 +174,11 @@ assert_grep "claude-build doc: executor Opus at best/high" \
   "$CLAUDE_BUILD_DOC" 'executor = Opus \(best/high\)'
 assert_grep "claude-build doc: verifier Codex at xhigh" \
   "$CLAUDE_BUILD_DOC" 'verifier = Codex \(xhigh'
-# v1.5 Phase 1 (A-3): codex composer + verifier models are now pinned to gpt-5.5.
-assert_grep "claude-build doc: composer codex model pinned to gpt-5.5" \
-  "$CLAUDE_BUILD_DOC" 'composer = Codex \(xhigh, model pinned to .?gpt-5\.5'
-assert_grep "claude-build doc: verifier codex model pinned to gpt-5.5" \
-  "$CLAUDE_BUILD_DOC" 'verifier = Codex \(xhigh, model pinned to .?gpt-5\.5'
+# v1.5 Phase 1 (A-3): codex composer + verifier models are now pinned to gpt-5.6-sol.
+assert_grep "claude-build doc: composer codex model pinned to gpt-5.6-sol" \
+  "$CLAUDE_BUILD_DOC" 'composer = Codex \(xhigh, model pinned to .?gpt-5.6-sol'
+assert_grep "claude-build doc: verifier codex model pinned to gpt-5.6-sol" \
+  "$CLAUDE_BUILD_DOC" 'verifier = Codex \(xhigh, model pinned to .?gpt-5.6-sol'
 assert_grep "claude-build doc: bounces 2" \
   "$CLAUDE_BUILD_DOC" 'bounces 2'
 assert_grep "claude-build doc: revise-loop 1" \
