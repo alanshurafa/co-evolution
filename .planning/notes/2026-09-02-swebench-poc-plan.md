@@ -1,8 +1,32 @@
 # SWE-bench proof-of-concept run: one task, every arm, published (2026-09-02)
 
-Status: APPROVED (Alan, 2026-09-02). Execute from this file in a fresh Opus
-session with Sonnet workers. Orientation: read `benchmarks/COMPLETE-SUITE-PLAN.md`
-(on branch `codex/code-benchmark-battery`) and `benchmarks/code/README.md` first.
+Status: EXECUTED 2026-09-02. All four phases complete. Page live at
+<https://alanshurafa.github.io/co-evolution/>. Nine arms on `pallets__flask-5014`,
+9/9 resolved by the official evaluator, zero infrastructure failures. Landed as
+PRs #57 (battery to master), #58 (arms H and I), #59 (results page + Pages
+workflow). Fable spend $21.96 against a $15 estimate.
+
+Four corrections to this plan, found in execution:
+
+- `evaluate-swebench.sh` and `validate-predictions.sh` take a predictions FILE,
+  not `--run-id`. Evaluation is nine invocations, one per condition, which is
+  also how the evaluator names its reports.
+- `run-canary.sh` had no `--task` flag and routed every condition to the agentic
+  driver, so the plan's own P2 command would have killed arms F and G. Both
+  fixed in #58.
+- A one-task run against the 5-task canary renders as "1 / 5". Added a
+  `swebench-verified-poc` suite so the denominator matches what ran.
+- Codex 0.144.5 on Windows accepts `--sandbox workspace-write` and enforces
+  read-only. Arms B and E had to be discarded and rerun under
+  `CODE_BENCH_CODEX_SANDBOX=danger-full-access`.
+
+Open follow-ups: `run-canary.sh` aborts the whole batch when one arm produces no
+patch instead of scoring it zero; Codex 0.144.5 -> 0.152.1 upgrade and a retest
+of `workspace-write` on Windows; charts and filters on the page once a suite has
+enough tasks to make them mean anything.
+
+Original orientation: read `benchmarks/COMPLETE-SUITE-PLAN.md` and
+`benchmarks/code/README.md`.
 
 ## Goal (Alan's words)
 
