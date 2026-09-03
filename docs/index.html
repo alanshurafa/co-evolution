@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Co-Evolution Benchmark Results</title>
+<meta name="description" content="Cost versus quality for plan-composition conditions in the co-evolution benchmark suite. Three judges reported separately, never adjudicated into one score.">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<a class="skip" href="#leaderboard">Skip to the leaderboard</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="suite-title">Co-Evolution Benchmark</h1>
+    <p class="standfirst" id="suite-summary"></p>
+    <div class="runmeta" id="runmeta"></div>
+  </div>
+</header>
+
+<nav class="toolbar">
+  <div class="wrap toolbar-inner">
+    <label class="field">
+      <span>Batch</span>
+      <select id="batch-select"></select>
+    </label>
+    <label class="field">
+      <span>Judge</span>
+      <select id="judge-select"></select>
+    </label>
+    <button type="button" id="theme-toggle" class="ghost" aria-live="polite">Theme</button>
+  </div>
+</nav>
+
+<main class="wrap" id="main">
+
+  <!-- Coverage comes before any result: a rate computed over missing data is
+       not the rate a reader assumes it is. -->
+  <section id="coverage" aria-labelledby="coverage-h">
+    <h2 id="coverage-h">Data completeness</h2>
+    <p class="lede">Read this before any number below it.</p>
+    <div id="coverage-body"></div>
+  </section>
+
+  <section id="prereg" aria-labelledby="prereg-h">
+    <h2 id="prereg-h">Pre-registered outcomes</h2>
+    <p class="lede" id="prereg-lede"></p>
+    <div id="prereg-body" class="cards"></div>
+  </section>
+
+  <section id="chart" aria-labelledby="chart-h">
+    <h2 id="chart-h">Cost versus quality</h2>
+    <p class="lede" id="chart-lede"></p>
+    <div class="chart-frame">
+      <div id="scatter" role="img" aria-labelledby="chart-h" aria-describedby="scatter-table-note"></div>
+    </div>
+    <p class="note" id="scatter-table-note">Every point is also a row in the leaderboard below, which is the accessible form of this chart.</p>
+    <div id="chart-legend" class="legend"></div>
+  </section>
+
+  <section id="leaderboard" aria-labelledby="leaderboard-h">
+    <h2 id="leaderboard-h">Leaderboard</h2>
+    <p class="lede" id="leaderboard-lede"></p>
+    <div class="scroll-x">
+      <table id="board">
+        <thead><tr id="board-head"></tr></thead>
+        <tbody id="board-body"></tbody>
+      </table>
+    </div>
+    <p class="note" id="metric-rubric"></p>
+  </section>
+
+  <section id="judges" aria-labelledby="judges-h">
+    <h2 id="judges-h">Judge integrity</h2>
+    <p class="lede">Judges are reported side by side and never adjudicated into a single score, per the pre-registration.</p>
+    <div class="scroll-x">
+      <table id="integrity">
+        <thead><tr id="integrity-head"></tr></thead>
+        <tbody id="integrity-body"></tbody>
+      </table>
+    </div>
+    <div id="agreement-body" class="cards"></div>
+  </section>
+
+  <section id="tasks" aria-labelledby="tasks-h">
+    <h2 id="tasks-h">Per-task drill-down</h2>
+    <p class="lede" id="tasks-lede"></p>
+    <label class="field inline">
+      <span>Task</span>
+      <select id="task-select"></select>
+    </label>
+    <div id="task-body"></div>
+  </section>
+
+  <section id="method" aria-labelledby="method-h">
+    <h2 id="method-h">How to read this</h2>
+    <div id="method-body"></div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p id="foot-provenance"></p>
+    <p>Built from run artifacts by <code>benchmarks/export-site-data.sh</code>. The page renders
+       <code>data/&lt;batch&gt;.json</code> and nothing else, so every number on it is traceable to a file
+       on disk. Prompts, plan text and transcripts are not published.</p>
+    <p><a href="https://github.com/alanshurafa/co-evolution">alanshurafa/co-evolution</a></p>
+  </div>
+</footer>
+
+<noscript>
+  <div class="wrap"><p class="callout warn">This page renders a JSON data file in the browser, so it needs
+  JavaScript. The same numbers are in the markdown report at
+  <code>benchmarks/reports/&lt;batch&gt;.md</code> in the repository.</p></div>
+</noscript>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
