@@ -11,6 +11,7 @@ CONDITIONS="A,B,C"
 TASK_LIMIT=1
 TASK=""
 SHARD_SPEC=""
+MODEL_TIER=$(code_model_tier)
 MAX_CLAUDE=""
 DRY_RUN=false
 SUITE=$(code_suite_id)
@@ -22,6 +23,7 @@ while (( $# > 0 )); do
     --task-limit) TASK_LIMIT="${2:?--task-limit needs a value}"; shift 2 ;;
     --task) TASK="${2:?--task needs a value}"; shift 2 ;;
     --shard) SHARD_SPEC="${2:?--shard needs N/M}"; shift 2 ;;
+    --models) MODEL_TIER="${2:?--models needs a tier}"; shift 2 ;;
     --max-claude-dispatches) MAX_CLAUDE="${2:?--max-claude-dispatches needs a value}"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     *) code_die "unknown canary option: $1"; exit 2 ;;
@@ -31,6 +33,9 @@ done
 [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "--run-id is required and must be filesystem-safe"; exit 2; }
 [[ "$TASK_LIMIT" =~ ^[1-9][0-9]*$ ]] || { code_die "--task-limit must be positive"; exit 2; }
 [[ "$MAX_CLAUDE" =~ ^[0-9]+$ ]] || { code_die "--max-claude-dispatches is required"; exit 2; }
+code_tier_is_valid "$MODEL_TIER" \
+  || { code_die "--models must be frontier, max, or light: $MODEL_TIER"; exit 2; }
+code_apply_model_tier "$MODEL_TIER" || exit 2
 
 # --shard N/M splits the subset across M processes that run at the same time.
 # Shards take disjoint instances, so their cell directories never collide, and
@@ -92,6 +97,16 @@ while IFS= read -r instance; do
     # already holds a prediction is finished and is left alone; a cell without
     # one is an abandoned clone from an interrupted attempt, and re-preparing it
     # is the only way forward because prepare refuses an existing directory.
+    # Reusing a cell built by a different model tier would put two experiments
+    # in one prediction file, and nothing downstream could tell them apart. Stop
+    # rather than resume: a tier change needs its own run id.
+    if [[ -f "$cell/run-manifest.json" ]]; then
+      cell_tier=$(jq -r '.model_tier // "frontier"' "$cell/run-manifest.json" | tr -d '\r')
+      if [[ "$cell_tier" != "$MODEL_TIER" ]]; then
+        code_die "cell $instance/$condition was run at tier $cell_tier, not $MODEL_TIER; use a new --run-id"
+        exit 1
+      fi
+    fi
     if [[ -f "$cell/prediction.json" ]]; then
       # The cell is the record of truth; the prediction file is a projection of
       # it. Re-link a finished cell whose line is missing, so a resume under a
