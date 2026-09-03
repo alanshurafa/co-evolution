@@ -57,9 +57,11 @@ code_apply_model_tier() {
   export CODE_BENCH_CLAUDE_MODEL="${CODE_BENCH_CLAUDE_MODEL:-$claude_model}"
   export CODE_BENCH_CODEX_MODEL="${CODE_BENCH_CODEX_MODEL:-$codex_model}"
   export CODE_BENCH_CODEX_EFFORT="${CODE_BENCH_CODEX_EFFORT:-$codex_effort}"
-  if [[ -n "$claude_effort" ]]; then
-    export CODE_BENCH_CLAUDE_EFFORT="${CODE_BENCH_CLAUDE_EFFORT:-$claude_effort}"
-  fi
+  # Assigned with "-" rather than ":-" so a tier can select an empty effort and
+  # have it stick. An empty value is the instruction to omit --effort entirely
+  # and let the model use its own default; ":-" would silently fall back to the
+  # driver's medium and the manifest would then record an effort never asked for.
+  export CODE_BENCH_CLAUDE_EFFORT="${CODE_BENCH_CLAUDE_EFFORT-$claude_effort}"
 }
 
 code_metadata_path() {

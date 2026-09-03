@@ -277,6 +277,19 @@ else
   fail "each model tier selects its own models"
 fi
 
+# The light tier asks for Sonnet's own default effort. If that arrives as the
+# driver's "medium" instead, the run is not the one the tier described and the
+# manifest records an effort nobody chose.
+light_effort=$( unset CODE_BENCH_CLAUDE_EFFORT
+                source "$CODE_DIR/lib/code-bench-lib.sh"
+                code_apply_model_tier light >/dev/null
+                printf '[%s]' "${CODE_BENCH_CLAUDE_EFFORT?unset}" )
+if [[ "$light_effort" == "[]" ]]; then
+  pass "the light tier leaves Claude effort to the model"
+else
+  fail "the light tier leaves Claude effort to the model (got $light_effort)"
+fi
+
 # An explicit override is a deliberate act and must outrank the tier default.
 override=$( unset CODE_BENCH_CODEX_MODEL
             source "$CODE_DIR/lib/code-bench-lib.sh"
