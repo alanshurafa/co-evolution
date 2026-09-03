@@ -84,6 +84,40 @@ the final repair decision. If `ANTHROPIC_API_KEY` is present, live generation
 fails closed so Claude Console credits cannot be charged accidentally instead
 of the Max subscription.
 
+### Model tiers
+
+`--models` selects a named configuration of the two primary seats. The point of
+a tier is to answer "does the bounce still pay off with cheaper models?" without
+hand-editing four environment variables and hoping you set the same ones next
+time.
+
+| Tier | Claude seat | Codex seat | GLM | Kimi |
+|---|---|---|---|---|
+| `frontier` (default) | `fable` @ medium | `gpt-5.6-sol` @ medium | `glm-5.3-flash` | `kimi-k3` |
+| `max` | `fable` @ high | `gpt-5.6-sol` @ xhigh | `glm-5.3-flash` | `kimi-k3` |
+| `light` | `sonnet` @ its own default | `gpt-5.6-terra` @ medium | `glm-5.3-flash` | `kimi-k3` |
+
+```bash
+bash benchmarks/code/code-bench.sh run-canary --run-id base50-light \
+  --models light --conditions A,B --task-limit 50 --max-claude-dispatches 100
+```
+
+**GLM and Kimi are the same model in every tier.** Holding the critic seats
+fixed is what makes a tier comparison mean something: the only thing that
+changes between `frontier` and `light` is the seat that has a cheaper sibling,
+so a difference in score is attributable to that seat rather than to four
+simultaneous changes.
+
+The tier is recorded in every cell's `run-manifest.json` and rendered on the
+results page, which reads the models out of the manifests rather than assuming
+the defaults. A run refuses to reuse a cell built at a different tier — mixing
+them would put two experiments in one prediction file with nothing downstream
+able to separate them — so a tier change needs its own `--run-id`.
+
+An explicitly set `CODE_BENCH_CLAUDE_MODEL`, `CODE_BENCH_CODEX_MODEL`,
+`CODE_BENCH_CLAUDE_EFFORT` or `CODE_BENCH_CODEX_EFFORT` outranks the tier, so a
+deliberate one-off override still works.
+
 ### Codex sandbox mode
 
 Codex 0.144.5 on Windows accepts `--sandbox workspace-write` and then reports

@@ -196,12 +196,28 @@ def cell_telemetry(cell_dir):
         'codex_tokens': 0,
         'single_shot_attempts': None,
         'sandbox': None,
+        'model_tier': None,
+        'models': {},
+        'effort': {},
     }
     manifest = os.path.join(cell_dir, 'run-manifest.json')
     if os.path.isfile(manifest):
         try:
             data = read_json(manifest)
             out['sandbox'] = (data.get('sandbox') or {}).get('codex')
+            # What actually ran, so the page states the configuration rather
+            # than assuming the default one.
+            models = data.get('models') or {}
+            effort = data.get('effort') or {}
+            out['model_tier'] = data.get('model_tier')
+            out['models'] = {
+                'claude': models.get('claude'),
+                'codex': models.get('codex'),
+                # A single-shot manifest names its one model directly.
+                'single_shot': data.get('model'),
+            }
+            out['effort'] = {'claude': effort.get('claude'),
+                             'codex': effort.get('codex')}
             out['schema'] = data.get('schema')
         except ValueError:
             pass
@@ -312,6 +328,13 @@ def main():
     cells = index_cells(runs_root)
     attempts_index = index_attempts(runs_root)
 
+    # What the run was actually configured with, gathered from the cells rather
+    # than assumed. A page that hardcodes its model names lies the first time
+    # someone runs a different tier.
+    configuration = {'tiers': set(), 'claude': set(), 'codex': set(),
+                     'single_shot': set(), 'claude_effort': set(),
+                     'codex_effort': set()}
+
     rows = []
     for condition in conditions:
         cond_id = condition['id']
@@ -398,6 +421,14 @@ def main():
                     row['telemetry']['codex_tokens'] += telemetry['codex_tokens']
                     if telemetry['sandbox']:
                         sandboxes.add(telemetry['sandbox'])
+                    if telemetry.get('model_tier'):
+                        configuration['tiers'].add(telemetry['model_tier'])
+                    for key, value in (telemetry.get('models') or {}).items():
+                        if value:
+                            configuration[key].add(value)
+                    for key, value in (telemetry.get('effort') or {}).items():
+                        if value:
+                            configuration[key + '_effort'].add(value)
                     if telemetry['single_shot_attempts'] is not None:
                         attempts.append(telemetry['single_shot_attempts'])
             row['telemetry']['sandbox_modes'] = sorted(sandboxes)
@@ -450,6 +481,8 @@ def main():
     payload = {
         'schema': 'code-bench-site/1.0',
         'generated_at': args.generated_at,
+        'configuration': {key: sorted(value)
+                          for key, value in configuration.items()},
         'harness': {
             'repo_commit': harness_commit(root),
             'working_tree_dirty': harness_dirty(root),
