@@ -290,6 +290,23 @@ else
   fail "the light tier leaves Claude effort to the model (got $light_effort)"
 fi
 
+# A ceiling that clips a model's tail measures the ceiling, not the model. The
+# cheaper tier needs the longer one because it iterates more per task.
+timeout_ok=true
+for spec in "frontier 900" "max 1800" "light 2400"; do
+  set -- $spec
+  got=$( unset CODE_BENCH_PHASE_TIMEOUT
+         source "$CODE_DIR/lib/code-bench-lib.sh"
+         code_apply_model_tier "$1" >/dev/null
+         printf '%s' "$CODE_BENCH_PHASE_TIMEOUT" )
+  [[ "$got" == "$2" ]] || { timeout_ok=false; printf 'tier %s timeout %s\n' "$1" "$got" >&2; }
+done
+if [[ "$timeout_ok" == true ]]; then
+  pass "each tier carries a phase timeout sized to its models"
+else
+  fail "each tier carries a phase timeout sized to its models"
+fi
+
 # An explicit override is a deliberate act and must outrank the tier default.
 override=$( unset CODE_BENCH_CODEX_MODEL
             source "$CODE_DIR/lib/code-bench-lib.sh"
