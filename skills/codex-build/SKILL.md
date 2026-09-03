@@ -19,7 +19,7 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 This is the **orchestration protocol** behind the "best Claude plans, Codex
 executes, best Claude reviews" model ladder. The session is the composer and the
 reviewer; Codex
-is the executor. The defining rule: **the session is NEVER kept busy while Codex
+is the executor. The defining rule: **the session is never kept busy while Codex
 grinds.** You kick the runner as a background task, end your turn, and the
 harness wakes you when it exits.
 
@@ -90,7 +90,7 @@ git -C "$(pwd)" status --short
 
 - **Clean tree** → kick with `--branch auto` (the runner cuts
   `dev-review/auto-<ts>-<slug>` off HEAD before execute).
-- **Dirty tree** → kick with `--worktree auto` (REQUIRED). A dirty tree
+- **Dirty tree** → kick with `--worktree auto` (required). A dirty tree
   otherwise makes the runner's verify phase silently skip: it returns early with
   `verification skipped - workdir had pre-existing uncommitted changes` because
   it cannot isolate this run's diff. `--worktree auto` gives Codex a clean
@@ -118,9 +118,9 @@ hand planning to Codex.
    PLAN_FILE="${TMPDIR:-/tmp}/codex-build-plan-$(date +%Y%m%d-%H%M%S).md"
    ```
 
-   **NEVER** write the plan inside the workdir. An untracked plan file there
+   **Never** write the plan inside the workdir. An untracked plan file there
    makes the runner's verify phase skip (`run left untracked files that cannot
-   be diffed automatically`). **NEVER** pass the plan path inside a prompt to
+   be diffed automatically`). **Never** pass the plan path inside a prompt to
    Codex — per repo convention the runner embeds plan content inline; the
    orchestrator is the sole owner of the canonical plan file.
 
