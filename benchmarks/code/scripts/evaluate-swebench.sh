@@ -43,10 +43,23 @@ case "$MODE" in
   predictions)
     predictions="${1:-}"
     [[ -n "$predictions" ]] || { code_die "predictions mode needs a JSONL file"; exit 2; }
+    shift || true
+    # The evaluator names its report after the run id and nothing else, so two
+    # benchmark runs of the same condition are indistinguishable afterwards and
+    # a page built from them silently mixes subsets. --label stamps the batch
+    # into the run id so a report can be traced back to the run that made it.
+    LABEL="code-bench"
+    while (( $# > 0 )); do
+      case "$1" in
+        --label) LABEL="${2:?--label needs a value}"; shift 2 ;;
+        *) code_die "unknown evaluate option: $1"; exit 2 ;;
+      esac
+    done
+    [[ "$LABEL" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "--label must be filesystem-safe"; exit 2; }
     bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
     predictions_dir=$(cd "$(dirname "$predictions")" && pwd -P)
     predictions="$predictions_dir/$(basename "$predictions")"
-    run_id="code-bench-$(date -u +%Y%m%dT%H%M%SZ)"
+    run_id="$LABEL-$(date -u +%Y%m%dT%H%M%SZ)"
     (cd "$EVAL_ROOT" && "$CLI" eval verified -p "$predictions" --run-id "$run_id" -j "${CODE_BENCH_EVAL_JOBS:-1}")
     ;;
   *)

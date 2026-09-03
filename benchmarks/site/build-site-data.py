@@ -53,14 +53,22 @@ def harness_dirty(root):
     return bool(proc.stdout.strip()) if proc.returncode == 0 else None
 
 
-def newest_reports(eval_dir):
-    """Latest evaluator report per condition, plus the ones it supersedes."""
+def newest_reports(eval_dir, run_label=None):
+    """Latest evaluator report per condition, plus the ones it supersedes.
+
+    A report is named only for the evaluator run that produced it, so reports
+    from two benchmark runs of the same condition are indistinguishable and a
+    page built across them silently mixes subsets. run_label restricts the scan
+    to one batch, which is what makes a per-run page possible.
+    """
     latest, superseded = {}, []
     for path in sorted(glob.glob(os.path.join(eval_dir, '*.json'))):
         match = REPORT_NAME_RE.match(os.path.basename(path))
         if not match:
             continue
         cond, run_id = match.group('cond'), match.group('run_id')
+        if run_label is not None and not run_id.startswith(run_label + '-'):
+            continue
         previous = latest.get(cond)
         if previous is None or run_id > previous[0]:
             if previous is not None:
@@ -184,6 +192,8 @@ def cell_telemetry(cell_dir):
         'claude_output_tokens': 0,
         'claude_wall_seconds': 0,
         'codex_phases': 0,
+        'codex_wall_seconds': 0,
+        'codex_tokens': 0,
         'single_shot_attempts': None,
         'sandbox': None,
     }
@@ -220,7 +230,53 @@ def cell_telemetry(cell_dir):
                 # Each Codex phase writes both a transcript and a stderr log.
                 # Counting every .log double-counted every phase.
                 out['codex_phases'] += 1
+            elif name.startswith('codex-') and name.endswith('.stderr.log'):
+                seconds, tokens = codex_effort(path)
+                out['codex_wall_seconds'] += seconds
+                out['codex_tokens'] += tokens
     return out
+
+
+CODEX_TS_RE = re.compile(r'^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.\d+)?Z')
+CODEX_TOKENS_RE = re.compile(r'^([\d,]+)$')
+
+
+def codex_effort(stderr_path):
+    """Wall seconds and token count for one Codex phase, from its own log.
+
+    The Codex CLI reports no cost, so tokens and elapsed time are the only
+    honest units of effort available for it. Both are read out of the log the
+    phase already wrote: the span between its first and last timestamp, and the
+    figure it prints under "tokens used".
+    """
+    first = last = None
+    tokens = 0
+    want_tokens = False
+    try:
+        with open(stderr_path, encoding='utf-8', errors='replace') as handle:
+            for line in handle:
+                match = CODEX_TS_RE.match(line)
+                if match:
+                    if first is None:
+                        first = match.group(1)
+                    last = match.group(1)
+                stripped = line.strip()
+                if want_tokens:
+                    count = CODEX_TOKENS_RE.match(stripped)
+                    if count:
+                        tokens += int(count.group(1).replace(',', ''))
+                    want_tokens = False
+                elif stripped == 'tokens used':
+                    want_tokens = True
+    except OSError:
+        return 0, 0
+    seconds = 0
+    if first and last and last >= first:
+        import datetime
+        fmt = '%Y-%m-%dT%H:%M:%S'
+        seconds = int((datetime.datetime.strptime(last, fmt)
+                       - datetime.datetime.strptime(first, fmt)).total_seconds())
+    return seconds, tokens
 
 
 def main():
@@ -231,6 +287,8 @@ def main():
     ap.add_argument('--output', required=True)
     ap.add_argument('--generated-at', required=True,
                     help='UTC timestamp supplied by the caller')
+    ap.add_argument('--run-label', default=None,
+                    help='only read evaluator reports from this labelled batch')
     args = ap.parse_args()
 
     root = os.path.abspath(args.repo_root)
@@ -250,7 +308,7 @@ def main():
     repos = {row['instance_id']: row['repo'] for row in subset['instances']}
     lock = read_json(os.path.join(code_dir, 'external-sources.lock.json'))
 
-    latest, superseded = newest_reports(eval_dir)
+    latest, superseded = newest_reports(eval_dir, args.run_label)
     cells = index_cells(runs_root)
     attempts_index = index_attempts(runs_root)
 
@@ -276,6 +334,8 @@ def main():
                 'claude_output_tokens': 0,
                 'claude_wall_seconds': 0,
                 'codex_phases': 0,
+                'codex_wall_seconds': 0,
+                'codex_tokens': 0,
                 'cells_linked': 0,
                 'sandbox_modes': [],
                 'single_shot_attempts': [],
@@ -334,6 +394,8 @@ def main():
                     row['telemetry']['claude_output_tokens'] += telemetry['claude_output_tokens']
                     row['telemetry']['claude_wall_seconds'] += telemetry['claude_wall_seconds']
                     row['telemetry']['codex_phases'] += telemetry['codex_phases']
+                    row['telemetry']['codex_wall_seconds'] += telemetry['codex_wall_seconds']
+                    row['telemetry']['codex_tokens'] += telemetry['codex_tokens']
                     if telemetry['sandbox']:
                         sandboxes.add(telemetry['sandbox'])
                     if telemetry['single_shot_attempts'] is not None:
@@ -354,6 +416,35 @@ def main():
                                  if attempt else None),
                 })
         row['telemetry']['claude_cost_usd'] = round(row['telemetry']['claude_cost_usd'], 4)
+
+        # A task the arm actually ran, whether or not it yielded a patch. The
+        # distinction matters: a task that ran and produced nothing is a zero,
+        # but a task that was never reached is not a result at all. Scoring an
+        # unreached task as zero understates an interrupted run as badly as
+        # dropping a failed one would flatter a finished one.
+        ran = [task for task in row['per_task']
+               if task['status'] in ('resolved', 'unresolved', 'no-patch')]
+        row['attempted_count'] = len(ran)
+        row['complete'] = len(ran) == len(instances)
+
+        # Effort per arm. Codex, GLM and Kimi report no cost, so an arm that
+        # uses them has a dollar figure covering only its Claude phases; saying
+        # so is the difference between a partial figure and a wrong one.
+        telemetry = row['telemetry']
+        telemetry['total_wall_seconds'] = (telemetry['claude_wall_seconds']
+                                           + telemetry['codex_wall_seconds'])
+        telemetry['cost_is_complete'] = (
+            telemetry['codex_phases'] == 0
+            and not telemetry['single_shot_attempts'])
+        resolved = row['resolved'] or 0
+        # No reported cost is not zero cost: Codex, GLM and Kimi bill elsewhere.
+        # Emitting 0.0 here would render as "$0.00 per resolved task", which
+        # reads as free rather than as unmeasured.
+        telemetry['cost_per_resolved'] = (
+            round(telemetry['claude_cost_usd'] / resolved, 4)
+            if resolved and telemetry['claude_cost_usd'] else None)
+        telemetry['seconds_per_resolved'] = (
+            round(telemetry['total_wall_seconds'] / resolved) if resolved else None)
         rows.append(row)
 
     payload = {
