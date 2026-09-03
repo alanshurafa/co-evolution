@@ -1,0 +1,19 @@
+{
+  "schema": "bench-pair/1.0",
+  "task_id": "t1",
+  "judge": "fable",
+  "judge_model": "fixture-fable",
+  "cli_version": "fixture 0.0.0",
+  "judged_at": "2026-01-01T00:00:00Z",
+  "prompt_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "cond_x": "B",
+  "cond_y": "D",
+  "verdict": "tie",
+  "doc_words": {
+    "x": 200,
+    "y": 150
+  },
+  "confidence_pair": "mixed",
+  "evidence_verified": false,
+  "trials": []
+}
