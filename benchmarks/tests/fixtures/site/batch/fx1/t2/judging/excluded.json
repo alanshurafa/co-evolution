@@ -1,0 +1,11 @@
+{
+  "schema": "bench-judge-excluded/1.0",
+  "task_id": "t2",
+  "excluded": [
+    {
+      "condition": "D",
+      "reason": "sanitize-leak",
+      "detail": "fixtures never carry a real leak path"
+    }
+  ]
+}
