@@ -39,24 +39,34 @@ code_tier_is_valid() {
 # named tier, leaving any value the caller set explicitly alone: a deliberate
 # one-off override must survive a tier selection.
 code_apply_model_tier() {
-  local tier="$1" claude_model claude_effort codex_model codex_effort
+  local tier="$1" claude_model claude_effort codex_model codex_effort phase_timeout
   case "$tier" in
     frontier)
       claude_model=fable;  claude_effort=medium
-      codex_model=gpt-5.6-sol;   codex_effort=medium ;;
+      codex_model=gpt-5.6-sol;   codex_effort=medium
+      phase_timeout=900 ;;
     max)
       claude_model=fable;  claude_effort=high
-      codex_model=gpt-5.6-sol;   codex_effort=xhigh ;;
+      codex_model=gpt-5.6-sol;   codex_effort=xhigh
+      phase_timeout=1800 ;;
     light)
       # Sonnet's own default effort; the CLI picks it when none is passed.
       claude_model=sonnet; claude_effort=""
-      codex_model=gpt-5.6-terra; codex_effort=medium ;;
+      codex_model=gpt-5.6-terra; codex_effort=medium
+      phase_timeout=2400 ;;
     *) code_die "unknown model tier: $tier"; return 1 ;;
   esac
   export CODE_BENCH_MODEL_TIER="$tier"
   export CODE_BENCH_CLAUDE_MODEL="${CODE_BENCH_CLAUDE_MODEL:-$claude_model}"
   export CODE_BENCH_CODEX_MODEL="${CODE_BENCH_CODEX_MODEL:-$codex_model}"
   export CODE_BENCH_CODEX_EFFORT="${CODE_BENCH_CODEX_EFFORT:-$codex_effort}"
+  # A phase timeout is a property of the model, not of the harness. Measured on
+  # the 50-task subset, Fable's implement phase has a median of 302s, but
+  # Sonnet's is 372s with a p90 of 742s against a 900s ceiling: the cheaper model
+  # iterates more, and 13 of 100 cells were killed mid-work. A timeout that
+  # clips the tail does not measure a model, it measures the ceiling, and those
+  # cells then look like failures the model never had.
+  export CODE_BENCH_PHASE_TIMEOUT="${CODE_BENCH_PHASE_TIMEOUT:-$phase_timeout}"
   # Assigned with "-" rather than ":-" so a tier can select an empty effort and
   # have it stick. An empty value is the instruction to omit --effort entirely
   # and let the model use its own default; ":-" would silently fall back to the
