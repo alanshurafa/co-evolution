@@ -1,0 +1,30 @@
+# Fixture condition manifest for benchmarks/tests/test-site-export.sh.
+# Three conditions, one of each kind, so the export's YAML reader is exercised
+# on a solo `model`, a bouncer `args` list whose --agents value contains the
+# same comma the inline list uses as a separator, and a panel `reviewers` list.
+schema: bench-conditions/1.0
+
+conditions:
+  - id: A
+    label: solo
+    kind: solo
+    description: >-
+      Single composer call, no second pass.
+    model: claude-fable-5
+    glm_calls_per_run: 0
+
+  - id: B
+    label: codex-bounce
+    kind: bouncer
+    description: >-
+      Cross-vendor bounce: composer then a second-vendor reviser.
+    args: ["--vanilla", "--agents", "claude,codex", "--claude-model", "fable"]
+    glm_calls_per_run: 0
+
+  - id: D
+    label: self-bounce
+    kind: bouncer
+    description: >-
+      Self-critique control at the same pass count.
+    args: ["--vanilla", "--agents", "claude,claude", "--claude-model", "fable"]
+    glm_calls_per_run: 0
