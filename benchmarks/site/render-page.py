@@ -52,6 +52,57 @@ def dots(per_task):
     return '<div class="dots">%s</div>' % ''.join(cells)
 
 
+def denominator(row, task_count):
+    """What a row's score is out of.
+
+    A finished arm is scored against the whole subset, so a task it failed to
+    submit counts against it. An arm still in progress is scored against what it
+    has actually run, because the tasks it has not reached yet are not failures
+    and must not be counted as any kind of result.
+    """
+    if row.get('complete', True):
+        return task_count
+    return row.get('attempted_count') or 0
+
+
+def duration(seconds):
+    if not seconds:
+        return None
+    hours, rest = divmod(int(seconds), 3600)
+    minutes = rest // 60
+    if hours:
+        return '%dh %02dm' % (hours, minutes)
+    if minutes:
+        return '%dm' % minutes
+    return '%ds' % int(seconds)
+
+
+def effort_cells(row):
+    """Wall time, cost, and cost per resolved task for one arm."""
+    telemetry = row['telemetry']
+    if not (row['measured'] or row.get('attempted')):
+        blank = '<td class="num" data-sort="-1">—</td>'
+        return blank * 3
+    seconds = telemetry.get('total_wall_seconds') or 0
+    cost = telemetry.get('claude_cost_usd') or 0
+    per = telemetry.get('cost_per_resolved')
+    partial = not telemetry.get('cost_is_complete', True)
+    # A provider that reports no cost must not read as free. The dagger marks a
+    # figure that covers only the Claude phases of an arm that used others.
+    mark = '<span class="partial" title="Claude phases only; Codex, GLM and Kimi report no cost">†</span>' if partial else ''
+    time_cell = ('<td class="num" data-sort="%d">%s</td>' % (seconds, esc(duration(seconds)))
+                 if seconds else '<td class="num" data-sort="0">—</td>')
+    if cost:
+        cost_cell = '<td class="num" data-sort="%.2f">$%.2f%s</td>' % (cost, cost, mark)
+    else:
+        cost_cell = '<td class="num" data-sort="0">no CLI figure</td>'
+    if per:
+        per_cell = '<td class="num" data-sort="%.2f">$%.2f%s</td>' % (per, per, mark)
+    else:
+        per_cell = '<td class="num" data-sort="-1">—</td>'
+    return time_cell + cost_cell + per_cell
+
+
 def score_cell(row, task_count):
     if not row['measured']:
         # An arm that ran and produced nothing scorable scores zero. Only an arm
@@ -81,6 +132,11 @@ def coverage_chip(row, task_count):
         if row.get('attempted'):
             return '<span class="chip bad">ran, no scorable patch</span>'
         return '<span class="chip none">no data</span>'
+    # An unfinished arm is reported as unfinished, never as a low score. The
+    # chip says how much of the subset it has actually run.
+    if not row.get('complete', True):
+        return ('<span class="chip warn">in progress · %d of %d tasks run</span>'
+                % (row.get('attempted_count') or 0, task_count))
     linked = row['telemetry']['cells_linked']
     submitted = row['submitted'] or 0
     if submitted < task_count:
@@ -104,26 +160,21 @@ def leaderboard_table(rows, table_id, task_count):
         klass = '' if (row['measured'] or row.get('attempted')) else ' class="absent"'
         telemetry = row['telemetry']
         claude_calls = telemetry['claude_dispatches']
-        seconds = telemetry['claude_wall_seconds']
-        cost = telemetry['claude_cost_usd']
         codex_phases = telemetry['codex_phases']
         if row['measured'] or row.get('attempted'):
             calls_cell = num_cell(claude_calls if claude_calls else 0)
-            time_cell = ('<td class="num" data-sort="%d">%s s</td>' % (seconds, f'{seconds:,}')
-                         if seconds else '<td class="num" data-sort="0">—</td>')
-            cost_cell = ('<td class="num" data-sort="%.2f">$%.2f</td>' % (cost, cost)
-                         if cost else '<td class="num" data-sort="0">no CLI figure</td>')
             codex_cell = num_cell(codex_phases if codex_phases else 0)
         else:
-            calls_cell = time_cell = cost_cell = codex_cell = '<td class="num" data-sort="-1">—</td>'
+            calls_cell = codex_cell = '<td class="num" data-sort="-1">—</td>'
         body.append(
             '<tr%s><td><div class="pipeline">'
             '<span class="name">%s · %s</span>'
-            '<span class="comp">%s</span></div></td>%s<td>%s</td>%s%s%s%s<td>%s</td></tr>'
+            '<span class="comp">%s</span></div></td>%s<td>%s</td>%s%s%s<td>%s</td></tr>'
             % (klass, esc(row['condition']), esc(row['label']),
                esc(COMPOSITION.get(row['condition'], row['description'])),
-               score_cell(row, task_count), dots(row['per_task']),
-               calls_cell, codex_cell, time_cell, cost_cell, coverage_chip(row, task_count)))
+               score_cell(row, denominator(row, task_count)), dots(row['per_task']),
+               calls_cell, codex_cell, effort_cells(row),
+               coverage_chip(row, task_count)))
     return (
         '<div class="scroller"><table id="%s"><thead><tr>'
         '<th class="sortable" data-type="text">Pipeline</th>'
@@ -131,8 +182,9 @@ def leaderboard_table(rows, table_id, task_count):
         '<th>Per task</th>'
         '<th class="sortable" data-type="num">Fable calls</th>'
         '<th class="sortable" data-type="num">Codex phases</th>'
-        '<th class="sortable" data-type="num">Fable time</th>'
+        '<th class="sortable" data-type="num">Wall time</th>'
         '<th class="sortable" data-type="num">Reported cost</th>'
+        '<th class="sortable" data-type="num">Cost / resolved</th>'
         '<th>Coverage</th>'
         '</tr></thead><tbody>%s</tbody></table></div>'
     ) % (esc(table_id), ''.join(body))
@@ -205,15 +257,18 @@ def tiles(data):
     measured = [r for r in rows if r['measured'] or r.get('attempted')]
     scored_cells = sum(r['submitted'] or 0 for r in measured)
     claude_calls = sum(r['telemetry']['claude_dispatches'] for r in measured)
-    claude_seconds = sum(r['telemetry']['claude_wall_seconds'] for r in measured)
+    wall_seconds = sum(r['telemetry'].get('total_wall_seconds') or 0 for r in measured)
     cost = sum(r['telemetry']['claude_cost_usd'] for r in measured)
+    resolved = sum(r['resolved'] or 0 for r in measured)
+    per_resolved = ('$%.2f' % (cost / resolved)) if resolved and cost else '—'
     items = [
         ('Configurations', '%d <span class="of">/ %d</span>' % (len(measured), len(rows)),
          'measured on this subset'),
         ('Tasks per cell', str(data['suite']['task_count']), 'frozen subset'),
         ('Scored cells', str(scored_cells), 'official evaluator, Docker'),
-        ('Fable dispatches', str(claude_calls), '%s s of model time' % f'{claude_seconds:,}'),
-        ('Reported cost', '$%.2f' % cost, 'CLI figure, Max plan'),
+        ('Fable dispatches', str(claude_calls), 'across every measured arm'),
+        ('Wall time', esc(duration(wall_seconds) or '—'), 'model time, all providers'),
+        ('Cost per resolved', per_resolved, 'Claude phases only'),
     ]
     return '<div class="tiles">%s</div>' % ''.join(
         '<div class="tile"><span class="k">%s</span><span class="v">%s</span>'
@@ -330,6 +385,7 @@ STYLE = """
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: var(--surface-sunk); }
   .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .partial { color: var(--caveat); font-weight: 600; margin-left: .15rem; cursor: help; }
   .mono { font-family: var(--f-mono); font-size: .82rem; }
   td.repo { font-family: var(--f-mono); font-size: .78rem; color: var(--ink-faint); }
   .tierflag { font-family: var(--f-mono); font-size: .6rem; color: var(--caveat);
@@ -547,7 +603,24 @@ def caveat(data):
     it from the denominator.
     """
     task_count = data['suite']['task_count']
+    rows = data.get('rows') or []
+    running = [r for r in rows
+               if (r['measured'] or r.get('attempted')) and not r.get('complete', True)]
     paragraphs = []
+    if running:
+        counts = sorted({r.get('attempted_count') or 0 for r in running})
+        spread = (counts[0] != counts[-1])
+        paragraphs.append(
+            'This run is unfinished. Each arm is scored against the tasks it has actually '
+            'run, not against the full subset, because a task an arm has not reached yet '
+            'is not a failure. Nothing here is a final score.')
+        if spread:
+            paragraphs.append(
+                'The arms have run different numbers of tasks so far (%d to %d of %d), so '
+                'the percentages are not directly comparable to each other. Read the '
+                'task-by-task table below for any head-to-head comparison; it is the only '
+                'view here that holds the task set fixed.'
+                % (counts[0], counts[-1], task_count))
     if task_count == 1:
         paragraphs.append(
             'Proof of concept: one SWE-bench Verified task, not a score. This run exists '
@@ -572,7 +645,19 @@ def caveat(data):
             % ''.join('<p>%s</p>' % esc(text) for text in paragraphs))
 
 
-def build(data):
+def nav_links(also):
+    """Links to the project's other published runs.
+
+    Each run is its own page because each is a different subset; without a link
+    between them a reader who lands on one has no way to discover the others.
+    """
+    if not also:
+        return ''
+    return ''.join('<span><a href="%s">%s</a></span>' % (esc(href), esc(label))
+                   for label, href in also)
+
+
+def build(data, also=()):
     harness = data['harness']
     gold = data['gold_canary'] or {}
     suite = data['suite']
@@ -590,7 +675,7 @@ def build(data):
         '<header class="masthead">'
         '<div class="eyebrow"><span>SWE-bench Verified · %d-task frozen subset</span>'
         '<span>Official pinned evaluator, Docker</span>'
-        '<span>Built %s</span></div>'
+        '<span>Built %s</span>%s</div>'
         '<h1>Co-Evolution Code Battery</h1>'
         '<p class="standfirst">Does putting a second model in the loop produce better patches '
         'than one model working alone? %s, %s, every patch scored by the official '
@@ -599,7 +684,7 @@ def build(data):
         '<span>glm-5.3-flash @ effort:low</span><span>kimi-k3 @ thinking:off</span>'
         '<span>phase timeout 900s</span><span>gold canary %s/%s</span>'
         '<span>harness %s</span></div></header>'
-        % (suite['task_count'], esc(data['generated_at']),
+        % (suite['task_count'], esc(data['generated_at']), nav_links(also),
            count_phrase(len(rows), 'configuration'),
            count_phrase(suite['task_count'], 'pinned SWE-bench Verified task', cap=False),
            esc(gold.get('resolved')), esc(gold.get('submitted')),
@@ -704,10 +789,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', required=True)
     ap.add_argument('--output', required=True)
+    ap.add_argument('--also', action='append', default=[], metavar='LABEL=HREF',
+                    help='link to another published run, repeatable')
     args = ap.parse_args()
+    also = []
+    for item in args.also:
+        label, _, href = item.partition('=')
+        if label and href:
+            also.append((label, href))
     with open(args.data, encoding='utf-8') as handle:
         data = json.load(handle)
-    page = build(data)
+    page = build(data, also)
     page = page.replace('<table id="board-', '<table data-sortable id="board-')
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, 'w', encoding='utf-8', newline='\n') as handle:

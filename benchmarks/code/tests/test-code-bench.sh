@@ -207,6 +207,55 @@ else
   fail "the canary runner routes single-shot cells to their own driver"
 fi
 
+# A fifty-task batch is hours long. One arm that produces no patch is a zero for
+# that arm, and an abort there discards every remaining cell in the run.
+RESUME_ROOT="$TMP/resume"
+mkdir -p "$RESUME_ROOT/runs/resume-test/pallets__flask-5014/A"
+jq -n '{instance_id:"pallets__flask-5014",model_name_or_path:"co-evolution-condition-A",
+        model_patch:"diff --git a/a.py b/a.py\n"}' \
+  > "$RESUME_ROOT/runs/resume-test/pallets__flask-5014/A/prediction.json"
+resume_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$RESUME_ROOT" \
+  bash "$RUNNER" run-canary --run-id resume-test --task pallets__flask-5014 \
+  --conditions A --max-claude-dispatches 1 2>&1)
+if printf '%s' "$resume_out" | grep -q 'SKIP: pallets__flask-5014/A already has a prediction' \
+   && printf '%s' "$resume_out" | grep -q '0 cell(s) generated, 1 reused, 0 failed'; then
+  pass "a cell with a prediction is reused instead of rerun"
+else
+  fail "a cell with a prediction is reused instead of rerun"
+fi
+
+# Shards must partition the subset: every instance claimed by exactly one shard,
+# or a parallel run silently double-spends on some tasks and skips others.
+SHARD_ROOT="$TMP/shard"
+while IFS= read -r inst; do
+  mkdir -p "$SHARD_ROOT/runs/shard-test/$inst/A"
+  jq -n --arg id "$inst" '{instance_id:$id,model_name_or_path:"x",model_patch:"diff\n"}' \
+    > "$SHARD_ROOT/runs/shard-test/$inst/A/prediction.json"
+done < <(jq -r '.instances[].instance_id' "$CODE_DIR/subsets/swebench-verified-canary.json" | tr -d '\r')
+shard_total=0
+shard_ok=true
+for s in 0 1; do
+  out=$(CODE_BENCH_RESULTS_ROOT="$SHARD_ROOT" bash "$RUNNER" run-canary \
+    --run-id shard-test --shard "$s/2" --task-limit 5 --conditions A \
+    --max-claude-dispatches 5 2>&1)
+  n=$(printf '%s' "$out" | grep -c '^SKIP: ')
+  shard_total=$((shard_total + n))
+  # 5 instances over 2 shards is 3 and 2; neither may be empty or take them all.
+  if (( n == 0 || n == 5 )); then shard_ok=false; fi
+done
+if [[ "$shard_ok" == true ]] && (( shard_total == 5 )); then
+  pass "shards partition the subset exactly once each"
+else
+  fail "shards partition the subset exactly once each (total=$shard_total)"
+fi
+
+if bash "$RUNNER" run-canary --run-id bad-shard --shard 3/2 --conditions A \
+     --max-claude-dispatches 1 --dry-run >/dev/null 2>&1; then
+  fail "a shard index outside its count is rejected"
+else
+  pass "a shard index outside its count is rejected"
+fi
+
 if jq -e 'all(.conditions[]; (.tier == "agentic") or (.tier == "single-shot"))' \
      "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
   pass "every condition declares a tier"
