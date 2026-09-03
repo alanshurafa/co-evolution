@@ -527,7 +527,7 @@ Show marker count and proceed to Step 5b.
 ### Marker staleness rule:
 
 If a [CONTESTED] or [CLARIFY] marker has survived 2 passes without being resolved,
-the agent on the current pass MUST make a decision and remove it. This is enforced
+the agent on the current pass must make a decision and remove it. This is enforced
 by the bounce protocol template, not by the orchestrator.
 
 ## Step 5b: Display Refined Plan
