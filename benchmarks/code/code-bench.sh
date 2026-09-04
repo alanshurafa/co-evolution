@@ -26,6 +26,11 @@ case "$COMMAND" in
     exec python "$SCRIPT_DIR/scripts/draw-subset.py" \
       --lock "$SCRIPT_DIR/external-sources.lock.json" "$@"
     ;;
+  annotate-difficulty)
+    # Public dataset field only; no gold patch or hidden test is read.
+    exec python "$SCRIPT_DIR/scripts/annotate-difficulty.py" \
+      --lock "$SCRIPT_DIR/external-sources.lock.json" "$@"
+    ;;
   setup)
     exec bash "$SCRIPT_DIR/scripts/setup-swebench.sh" "$@"
     ;;
@@ -58,6 +63,7 @@ usage: code-bench.sh COMMAND [options]
   estimate [options]            report declared provider dispatches
   fetch-metadata                cache public inputs for the active suite
   draw-subset [options]         draw a reproducible random subset
+  annotate-difficulty --subset F  write Verified difficulty labels into a subset
   setup --check|--install       inspect or install pinned SWE-bench tooling
   prepare-instance ID RUN COND  clone a clean public-input workspace
   run-workflow [options]        generate one capped condition prediction

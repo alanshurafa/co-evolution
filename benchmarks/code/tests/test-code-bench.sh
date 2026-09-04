@@ -581,6 +581,53 @@ else
   pass "prepare rejects seed zero"
 fi
 
+
+# --- T0.3: difficulty labels --------------------------------------------------
+if jq -e '.annotations.difficulty.source and (.instances | all(.difficulty | type == "string"))' \
+     "$CODE_DIR/subsets/swebench-verified-random50.json" >/dev/null 2>&1; then
+  pass "the random50 subset carries a Verified difficulty label per task"
+else
+  fail "the random50 subset carries a Verified difficulty label per task"
+fi
+
+# A label outside the four buckets must fail the manifest check rather than
+# silently vanish from every by-difficulty bucket on the page.
+BAD_SUBSET="$TMP/bad-subset"
+mkdir -p "$BAD_SUBSET/subsets" "$BAD_SUBSET/lib" "$BAD_SUBSET/patches"
+cp "$CODE_DIR/conditions.json" "$CODE_DIR/suites.json" "$CODE_DIR/external-sources.lock.json" "$BAD_SUBSET/"
+cp "$CODE_DIR/patches/"* "$BAD_SUBSET/patches/"
+cp "$CODE_DIR/subsets/"* "$BAD_SUBSET/subsets/"
+cp "$CODE_DIR/lib/code-bench-lib.sh" "$BAD_SUBSET/lib/"
+jq '.instances[0].difficulty = "trivial"' "$CODE_DIR/subsets/swebench-verified-canary.json" \
+  > "$BAD_SUBSET/subsets/swebench-verified-canary.json"
+if ( source "$BAD_SUBSET/lib/code-bench-lib.sh"; code_check_manifests ) >/dev/null 2>&1; then
+  fail "a difficulty label outside the four buckets fails the check"
+else
+  pass "a difficulty label outside the four buckets fails the check"
+fi
+
+# The annotator reads a public field only and refuses to leave a task unlabeled.
+ANN="$TMP/annotate"
+mkdir -p "$ANN"
+jq '{schema, suite_id, instances: [.instances[0], .instances[1]]}' \
+  "$CODE_DIR/subsets/swebench-verified-canary.json" > "$ANN/subset.json"
+jq -n '{"sympy__sympy-20916": "<15 min fix", "django__django-16819": "1-4 hours"}' > "$ANN/labels.json"
+if python "$CODE_DIR/scripts/annotate-difficulty.py" --lock "$CODE_DIR/external-sources.lock.json" \
+     --subset "$ANN/subset.json" --labels-json "$ANN/labels.json" >/dev/null 2>&1 \
+   && jq -e '.instances[1].difficulty == "1-4 hours" and .annotations.difficulty.counts["1-4 hours"] == 1' \
+        "$ANN/subset.json" >/dev/null; then
+  pass "the annotator writes labels and bucket counts into the subset"
+else
+  fail "the annotator writes labels and bucket counts into the subset"
+fi
+jq -n '{"sympy__sympy-20916": "<15 min fix"}' > "$ANN/partial.json"
+if python "$CODE_DIR/scripts/annotate-difficulty.py" --lock "$CODE_DIR/external-sources.lock.json" \
+     --subset "$ANN/subset.json" --labels-json "$ANN/partial.json" >/dev/null 2>&1; then
+  fail "the annotator refuses to leave a task unlabeled"
+else
+  pass "the annotator refuses to leave a task unlabeled"
+fi
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'

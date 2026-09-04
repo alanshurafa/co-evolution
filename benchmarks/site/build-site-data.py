@@ -414,6 +414,7 @@ def main():
     subset = read_json(subset_path)
     instances = [row['instance_id'] for row in subset['instances']]
     repos = {row['instance_id']: row['repo'] for row in subset['instances']}
+    difficulties = {row['instance_id']: row.get('difficulty') for row in subset['instances']}
     lock = read_json(os.path.join(code_dir, 'external-sources.lock.json'))
     pricing_path = os.path.join(code_dir, 'pricing.json')
     pricing = pricing_mod.load_pricing(pricing_path)
@@ -628,7 +629,10 @@ def main():
             'split': suite['split'],
             'task_count': suite['task_count'],
             'subset_file': rel(root, subset_path),
-            'instances': [{'instance_id': i, 'repo': repos[i]} for i in instances],
+            'sampling': subset.get('sampling'),
+            'difficulty_annotation': (subset.get('annotations') or {}).get('difficulty'),
+            'instances': [{'instance_id': i, 'repo': repos[i],
+                           'difficulty': difficulties.get(i)} for i in instances],
         },
         'gold_canary': gold_canary(eval_dir),
         'rows': rows,

@@ -3,6 +3,31 @@
   "id": "swebench-verified-poc",
   "selection": "One task drawn from the frozen canary: the smallest repository, so the Docker image builds fastest. This suite exists to prove every arm runs end to end and reaches the official evaluator. One task is not a score and must never be reported as one.",
   "instances": [
-    {"instance_id": "pallets__flask-5014", "repo": "pallets/flask"}
-  ]
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "difficulty": "<15 min fix"
+    }
+  ],
+  "annotations": {
+    "difficulty": {
+      "source": "datasets-server.huggingface.co rows API, field `difficulty`",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "fetched_on": "2026-09-04",
+      "buckets": [
+        "<15 min fix",
+        "15 min - 1 hour",
+        "1-4 hours",
+        ">4 hours"
+      ],
+      "counts": {
+        "<15 min fix": 1,
+        "15 min - 1 hour": 0,
+        "1-4 hours": 0,
+        ">4 hours": 0
+      },
+      "note": "Human time-to-fix estimate shipped with SWE-bench Verified. A public field, not a gold patch or hidden test."
+    }
+  }
 }
