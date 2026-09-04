@@ -80,17 +80,30 @@ fi
 
 # critics is the ordered reviewer roster. One list drives the critique loop, the
 # repair prompt, and the manifest, so a condition cannot declare one panel in
-# conditions.json and then run another.
+# conditions.json and then run another. The phase list here is the executable
+# plan; conditions.json carries the same list and a test asserts they agree.
 case "$condition" in
   A) phases="fable-implement"; critics="" ;;
-  B) phases="fable-implement,codex-repair"; critics="" ;;
+  B|M|N) phases="fable-implement,codex-repair"; critics="" ;;
   C) phases="fable-implement,codex-critique,glm-critique,kimi-critique,fable-repair"; critics="codex,glm,kimi" ;;
   D) phases="fable-implement,fable-self-repair"; critics="" ;;
   E) phases="codex-implement"; critics="" ;;
   H) phases="fable-implement,glm-critique,fable-repair"; critics="glm" ;;
   I) phases="fable-implement,kimi-critique,fable-repair"; critics="kimi" ;;
+  J|O) phases="codex-implement,fable-repair"; critics="" ;;
+  K) phases="codex-implement,codex-repair"; critics="" ;;
+  L) phases="fable-implement,fable-implement-2,select-best-of-2"; critics="" ;;
+  P) phases="fable-implement,codex-repair,codex-repair-2"; critics="" ;;
   F|G) code_die "single-shot conditions run through run-single-shot.sh"; exit 2 ;;
+  *) code_die "condition $condition has no phase plan in run-workflow.sh"; exit 2 ;;
 esac
+# A condition may pin its seats regardless of tier: that is what a mixed-tier
+# arm is. The pin outranks the tier and the manifest records what ran.
+seat_claude=$(printf '%s' "$condition_json" | jq -r '.seats.claude // empty' | tr -d '\r')
+seat_codex=$(printf '%s' "$condition_json" | jq -r '.seats.codex // empty' | tr -d '\r')
+[[ -z "$seat_claude" ]] || CLAUDE_MODEL="$seat_claude"
+[[ -z "$seat_codex" ]] || CODEX_MODEL_LOCAL="$seat_codex"
+seats_json=$(printf '%s' "$condition_json" | jq -c '.seats // {}')
 # jq -R reads no lines from empty input and would emit nothing at all, so the
 # roster is built from an argument rather than from stdin.
 critics_json=$(jq -cn --arg roster "$critics" \
@@ -99,8 +112,10 @@ if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg phases "$phases" \
     --argjson critics "$critics_json" --argjson claude "$claude_needed" \
     --argjson seed "$seed" --arg cell "$cell_name" \
+    --arg claude_model "$CLAUDE_MODEL" --arg codex_model "$CODEX_MODEL_LOCAL" --argjson seats "$seats_json" \
     '{instance:$instance,condition:$condition,seed:$seed,cell:$cell,
       model_name_or_path:("co-evolution-condition-" + $cell),
+      models:{claude:$claude_model,codex:$codex_model},seats:$seats,
       phases:($phases|split(",")),critics:$critics,declared_claude_dispatches:$claude,executed:false}'
   exit 0
 fi
@@ -138,13 +153,15 @@ jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
   --arg glm_model "${GLM_MODEL:-glm-5.3-flash}" --arg kimi_model "${KIMI_MODEL:-kimi-k3}" \
   --arg codex_sandbox "$CODEX_SANDBOX" --argjson critics "$critics_json" \
-  --arg model_tier "$MODEL_TIER" --argjson seed "$seed" \
+  --arg model_tier "$MODEL_TIER" --argjson seed "$seed" --argjson seats "$seats_json" \
+  --arg phases "$phases" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
   '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,seed:$seed,
     model_tier:$model_tier,
     models:{claude:$claude_model,codex:$codex_model,glm:$glm_model,kimi:$kimi_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
-    sandbox:{codex:$codex_sandbox},critics:$critics,
+    sandbox:{codex:$codex_sandbox},critics:$critics,seats:$seats,
+    phases:($phases|split(",")),
     versions:{claude:$claude_version,codex:$codex_version},
     harness:{commit:$harness_commit,dirty:$harness_dirty},
     phase_timeout_seconds:$phase_timeout,declared_claude_dispatches:$declared_claude}' \
@@ -236,28 +253,78 @@ write_implement_prompt "$cell/implement-prompt.md"
 snapshot_implementation() {
   git -C "$workspace" diff --binary > "$cell/implement.patch"
 }
-if [[ "$condition" == E ]]; then
-  if [[ "$RESUME" == true && -n "$(git -C "$workspace" diff --name-only)" ]]; then
-    printf 'REUSED: codex-implement\n'
-  else
-    run_codex_implement "$cell/implement-prompt.md"
-  fi
-elif [[ "$RESUME" == true ]] \
-   && jq -e '.type == "result" and .is_error == false' "$logs/fable-implement.json" >/dev/null 2>&1 \
-   && [[ -n "$(git -C "$workspace" diff --name-only)" ]]; then
-  printf 'REUSED: fable-implement\n'
-else
-  run_fable fable-implement "$cell/implement-prompt.md"
-fi
+reset_workspace() {
+  git -C "$workspace" checkout -q -- . 2>/dev/null
+  git -C "$workspace" clean -fdq 2>/dev/null
+}
+write_cross_repair_prompt() {
+  local out="$1"
+  {
+    printf '%s\n' "Review the current uncommitted implementation for the issue below. Inspect the diff and repository, correct defects, and run relevant tests. Do not commit."
+    printf '\n## ISSUE\n\n'; cat "$task_file"
+  } > "$out"
+}
+case "$phases" in
+  codex-implement*)
+    if [[ "$RESUME" == true && -n "$(git -C "$workspace" diff --name-only)" ]]; then
+      printf 'REUSED: codex-implement\n'
+    else
+      run_codex_implement "$cell/implement-prompt.md"
+    fi
+    ;;
+  *)
+    if [[ "$RESUME" == true ]] \
+       && jq -e '.type == "result" and .is_error == false' "$logs/fable-implement.json" >/dev/null 2>&1 \
+       && [[ -n "$(git -C "$workspace" diff --name-only)" ]]; then
+      printf 'REUSED: fable-implement\n'
+    else
+      run_fable fable-implement "$cell/implement-prompt.md"
+    fi
+    ;;
+esac
 snapshot_implementation
 
 case "$condition" in
-  B)
-    {
-      printf '%s\n' "Review the current uncommitted implementation for the issue below. Inspect the diff and repository, correct defects, and run relevant tests. Do not commit."
-      printf '\n## ISSUE\n\n'; cat "$task_file"
-    } > "$cell/codex-repair-prompt.md"
+  B|M|N)
+    write_cross_repair_prompt "$cell/codex-repair-prompt.md"
     run_codex_repair "$cell/codex-repair-prompt.md"
+    ;;
+  P)
+    # Two rounds: the second review sees the first round's repaired patch.
+    write_cross_repair_prompt "$cell/codex-repair-prompt.md"
+    run_codex_repair "$cell/codex-repair-prompt.md"
+    git -C "$workspace" diff --binary > "$cell/round-1.patch"
+    run_codex_phase codex-repair-2 "$cell/codex-repair-prompt.md"
+    ;;
+  K)
+    write_cross_repair_prompt "$cell/codex-repair-prompt.md"
+    run_codex_repair "$cell/codex-repair-prompt.md"
+    ;;
+  J|O)
+    # Fable reviews another vendor's patch with the same instruction Codex
+    # gets in B, so the two directions of the bounce differ only in who
+    # sits in which seat.
+    write_cross_repair_prompt "$cell/fable-repair-prompt.md"
+    run_fable fable-repair "$cell/fable-repair-prompt.md"
+    ;;
+  L)
+    # Two independent implementations of the same prompt, each from a clean
+    # tree, then the repository's own tests choose. The first candidate is
+    # the snapshot already taken; the tree is reset before the second so
+    # nothing of the first leaks into it.
+    cp "$cell/implement.patch" "$cell/candidate-1.patch"
+    reset_workspace
+    if [[ "$RESUME" == true && -s "$cell/candidate-2.patch" ]]; then
+      printf 'REUSED: fable-implement-2\n'
+    else
+      run_fable fable-implement-2 "$cell/implement-prompt.md"
+      git -C "$workspace" diff --binary > "$cell/candidate-2.patch"
+      reset_workspace
+    fi
+    bash "$CODE_DIR/scripts/select-best-of-k.sh" --workspace "$workspace" \
+      --output "$cell/selection.json" --timeout "$PHASE_TIMEOUT" \
+      "$cell/candidate-1.patch" "$cell/candidate-2.patch" > "$logs/select-best-of-2.log" 2>&1 \
+      || printf 'SELECTOR: no candidate applied; scoring as no patch\n' >&2
     ;;
   C|H|I)
     git -C "$workspace" diff --binary > "$cell/candidate.patch"
@@ -314,8 +381,9 @@ esac
 patch="$cell/final.patch"
 git -C "$workspace" diff --binary > "$patch"
 # Did the review/repair stage change the patch at all? Recorded for every arm
-# with a stage after the implementer, by content hash of the two patches.
-if [[ "$phases" == *,* ]]; then
+# with a review or repair stage after the implementer, by content hash of the
+# two patches. A best-of-k selector is not a repair and gets selection.json.
+if [[ "$phases" == *repair* ]]; then
   before_hash=$(code_sha256 "$cell/implement.patch")
   after_hash=$(code_sha256 "$patch")
   jq -n --arg before "$before_hash" --arg after "$after_hash" --arg phases "$phases" \

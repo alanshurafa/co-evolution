@@ -30,9 +30,28 @@ The conditions are declared in `conditions.json`, each with a `tier`:
 | G | kimi-solo-single-shot | single-shot | Kimi sees the issue plus retrieved context, returns one diff |
 | H | fable-glm-bounce | agentic | Fable implements; GLM critiques once; Fable repairs |
 | I | fable-kimi-bounce | agentic | Fable implements; Kimi critiques once; Fable repairs |
+| J | codex-implements-fable-repairs | agentic | Reverse of B: Codex implements; Fable repairs |
+| K | codex-self-bounce | agentic | Codex implements, then reviews and repairs its own patch |
+| L | fable-best-of-2 | agentic | Two independent Fable implementations; the repo's own tests pick one |
+| M | sonnet-to-sol-bounce | agentic, mixed tier | Sonnet implements; gpt-5.6-sol repairs |
+| N | fable-to-terra-bounce | agentic, mixed tier | Fable implements; gpt-5.6-terra repairs |
+| O | sol-implements-fable-repairs | agentic, mixed tier | gpt-5.6-sol implements; Fable repairs |
+| P | cross-vendor-bounce-2-rounds | agentic | B, then Codex reviews and repairs a second time |
+
+"Fable" and "Codex" in the labels name the seat, not a fixed model: the tier
+(`--models`) decides which model fills each seat, and the results page names
+the model that actually ran. M, N and O pin their seats in `conditions.json`
+regardless of tier, which is what makes them mixed-tier arms. Every condition
+also declares its `phases`; the driver's phase plan must match, and a test
+checks that it does.
 
 D is retained as a self-bounce control even when the product question focuses
-on A/B/C. E is the comparator that makes B's repair arm interpretable.
+on A/B/C. E is the comparator that makes B's repair arm interpretable. J and K
+mirror B and D for the Codex seat: if B's gain comes from the reviewer being
+stronger than the author, J should lose it. L is the equal-cost baseline for
+any two-dispatch arm: two implementations chosen by the repository's tests
+(`scripts/select-best-of-k.sh`, no model in the loop) is what a review pass
+has to beat at the same spend.
 
 H and I isolate one critic each out of C's three-model panel, which is what
 makes C's result attributable: if C beats B, H and I say whether a cheap
