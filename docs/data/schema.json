@@ -1,0 +1,367 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://alanshurafa.github.io/co-evolution/plans/data/schema.json",
+  "title": "BenchmarkSiteBatch",
+  "description": "One benchmark batch, reduced to the fields the static results site renders. Written only by benchmarks/export-site-data.sh from run artifacts. Publishable fields only: scores, costs, model and condition names, judge tallies, task ids and difficulty. additionalProperties is false throughout, so a prompt, plan, transcript, judge reason or evidence quote added upstream fails validation instead of reaching the page.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "batch", "generated_at", "suite", "metric", "cost", "completeness", "conditions", "preregistered", "integrity", "agreement", "length_bias", "tasks"],
+  "properties": {
+    "schema": { "const": "bench-site/1.0" },
+    "batch": { "type": "string", "description": "Batch id, matching the results/<batch> directory name." },
+    "generated_at": { "type": "string", "description": "UTC ISO-8601 timestamp of the export." },
+
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "primary_judge", "judges"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "primary_judge": { "type": "string" },
+        "preregistration": { "type": "string", "description": "Repo-relative path to the frozen pre-registration." },
+        "report": { "type": "string", "description": "Repo-relative path to the markdown report for this batch." },
+        "judges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "model": { "type": "string" },
+              "cli_version": { "type": "string" },
+              "effort": { "type": "string" },
+              "model_assert": { "type": "string", "description": "Whether the judge model was verified from CLI output or only configured." }
+            }
+          }
+        }
+      }
+    },
+
+    "metric": {
+      "type": "object",
+      "description": "The suite's own scoring rubric. The site reads its axis labels and bounds from here rather than hardcoding a metric, so a suite scored some other way publishes with its own rubric.",
+      "additionalProperties": false,
+      "required": ["id", "label", "unit", "min", "max", "higher_is_better", "rubric"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "axis_label": { "type": "string" },
+        "unit": { "type": "string", "enum": ["percent", "ratio", "count", "usd"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "parity": { "type": ["number", "null"], "description": "Value at which a condition is level with the field, drawn as a reference line. Null when the metric has no such point." },
+        "higher_is_better": { "type": "boolean" },
+        "per_judge": { "type": "boolean" },
+        "rubric": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "unit", "note"],
+      "properties": {
+        "label": { "type": "string" },
+        "axis_label": { "type": "string" },
+        "unit": { "type": "string", "enum": ["usd"] },
+        "note": { "type": "string" }
+      }
+    },
+
+    "completeness": {
+      "type": "object",
+      "description": "Coverage, rendered above every number on the page.",
+      "additionalProperties": false,
+      "required": ["tasks", "task_ids", "conditions", "condition_ids", "judges_requested", "judges_with_verdicts", "expected_pairs_per_judge", "generation_cells_complete", "incomplete_cells", "degraded_cells", "per_judge"],
+      "properties": {
+        "tasks": { "type": "integer", "minimum": 0 },
+        "task_ids": { "type": "array", "items": { "type": "string" } },
+        "conditions": { "type": "integer", "minimum": 0 },
+        "condition_ids": { "type": "array", "items": { "type": "string" } },
+        "judges_requested": { "type": "array", "items": { "type": "string" } },
+        "judges_with_verdicts": { "type": "array", "items": { "type": "string" } },
+        "expected_pairs_per_judge": { "type": "integer", "minimum": 0 },
+        "generation_cells_complete": { "type": "boolean" },
+        "incomplete_cells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cell", "status"],
+            "properties": { "cell": { "type": "string" }, "status": { "type": "string" } }
+          }
+        },
+        "degraded_cells": { "type": "array", "items": { "type": "string" } },
+        "excluded_documents": {
+          "type": "array",
+          "description": "Documents dropped before judging, typically by the sanitizer. Carries the reason only; the leak file's path is local and is not published.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task", "condition", "why"],
+            "properties": {
+              "task": { "type": "string" },
+              "condition": { "type": "string" },
+              "why": { "type": "string" }
+            }
+          }
+        },
+        "per_judge": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["judge", "verdict_files", "expected_pairs", "unjudged"],
+            "properties": {
+              "judge": { "type": "string" },
+              "verdict_files": { "type": "integer", "minimum": 0 },
+              "expected_pairs": { "type": "integer", "minimum": 0 },
+              "unjudged": { "type": "integer" }
+            }
+          }
+        },
+        "note": { "type": "string" }
+      }
+    },
+
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "kind", "models", "cells", "captured_cost_usd", "per_judge"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "kind": { "type": "string" },
+          "description": { "type": "string", "description": "Copied from benchmarks/conditions.yaml, which is already public in the repo. Describes the treatment, never a task prompt." },
+          "glm_calls_per_run": { "type": "integer", "minimum": 0 },
+          "seats": { "type": "array", "items": { "type": "string" } },
+          "models": { "type": "array", "items": { "type": "string" } },
+          "cells": { "type": "integer", "minimum": 0 },
+          "mean_words": { "type": "integer", "minimum": 0 },
+          "mean_wall_secs": { "type": "integer", "minimum": 0 },
+          "converged": { "type": "integer", "minimum": 0 },
+          "adjudicated": { "type": "integer", "minimum": 0 },
+          "stuck": { "type": "integer", "minimum": 0 },
+          "glm_calls": { "type": "integer", "minimum": 0 },
+          "captured_cost_usd": { "type": "number", "minimum": 0 },
+          "per_judge": {
+            "type": "object",
+            "description": "Keyed by judge id. Judges are never collapsed into one score.",
+            "additionalProperties": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["wins", "comparisons", "score"],
+              "properties": {
+                "wins": { "type": "number", "minimum": 0 },
+                "comparisons": { "type": "integer", "minimum": 0 },
+                "score": { "type": ["number", "null"] },
+                "bt_strength": { "type": ["number", "null"] },
+                "decisive_wins": { "type": "integer", "minimum": 0 },
+                "decisive_losses": { "type": "integer", "minimum": 0 },
+                "ties": { "type": "integer", "minimum": 0 },
+                "position_biased": { "type": "integer", "minimum": 0 },
+                "excluded": { "type": "integer", "minimum": 0 },
+                "missing": { "type": "integer" },
+                "vs": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["wins", "n", "rate"],
+                    "properties": {
+                      "wins": { "type": "number" },
+                      "n": { "type": "integer", "minimum": 0 },
+                      "rate": { "type": ["number", "null"] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "preregistered": {
+      "type": "array",
+      "description": "Only the comparisons frozen in PREREGISTRATION.md before generation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["treatment", "baseline", "label", "primary", "per_judge", "per_task"],
+        "properties": {
+          "treatment": { "type": "string" },
+          "baseline": { "type": "string" },
+          "label": { "type": "string" },
+          "primary": { "type": "boolean" },
+          "per_judge": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["judge", "treatment_wins", "baseline_wins", "non_decisive", "missing"],
+              "properties": {
+                "judge": { "type": "string" },
+                "treatment_wins": { "type": "integer", "minimum": 0 },
+                "baseline_wins": { "type": "integer", "minimum": 0 },
+                "non_decisive": { "type": "integer", "minimum": 0 },
+                "missing": { "type": "integer", "minimum": 0 }
+              }
+            }
+          },
+          "per_task": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["task", "difficulty", "verdict"],
+              "properties": {
+                "task": { "type": "string" },
+                "difficulty": { "type": "string" },
+                "verdict": { "type": "string", "description": "A condition id when the pair was decisive, otherwise the non-decisive verdict: tie, position_biased, invalid-evidence, sanitize-leak or missing." }
+              }
+            }
+          },
+          "per_difficulty": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["difficulty", "tasks"],
+              "properties": {
+                "difficulty": { "type": "string" },
+                "tasks": { "type": "integer", "minimum": 0 },
+                "treatment_wins": { "type": "integer", "minimum": 0 },
+                "baseline_wins": { "type": "integer", "minimum": 0 },
+                "other": { "type": "integer", "minimum": 0 }
+              }
+            }
+          },
+          "sign_test": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["judge", "wins", "tasks", "outcome"],
+            "properties": {
+              "judge": { "type": "string" },
+              "wins": { "type": "integer", "minimum": 0 },
+              "tasks": { "type": "integer", "minimum": 0 },
+              "threshold_helps": { "type": "integer" },
+              "threshold_directional": { "type": "integer" },
+              "prereg_n": { "type": "integer" },
+              "outcome": { "type": "string", "enum": ["helps", "directional", "no-evidence"] },
+              "n_caveat": { "type": "boolean", "description": "True when the batch's task count differs from the N the frozen thresholds were written for." },
+              "missing_caveat": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+
+    "integrity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["judge", "pairs", "decisive"],
+        "properties": {
+          "judge": { "type": "string" },
+          "pairs": { "type": "integer", "minimum": 0 },
+          "decisive": { "type": "integer", "minimum": 0 },
+          "ties": { "type": "integer", "minimum": 0 },
+          "position_biased": { "type": "integer", "minimum": 0 },
+          "invalid_evidence": { "type": "integer", "minimum": 0 },
+          "sanitize_leak": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+
+    "agreement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comparable_pairs", "unanimous", "unanimous_decisive"],
+      "properties": {
+        "comparable_pairs": { "type": "integer", "minimum": 0 },
+        "unanimous": { "type": "integer", "minimum": 0 },
+        "unanimous_decisive": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "length_bias": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["judge", "longer_won", "comparable_decisive"],
+        "properties": {
+          "judge": { "type": "string" },
+          "longer_won": { "type": "integer", "minimum": 0 },
+          "comparable_decisive": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "difficulty", "cells", "pairs"],
+        "properties": {
+          "id": { "type": "string" },
+          "difficulty": { "type": "string" },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["status"],
+              "properties": {
+                "status": { "type": "string" },
+                "degraded": { "type": "boolean" },
+                "words": { "type": "integer", "minimum": 0 },
+                "wall_secs": { "type": "integer", "minimum": 0 },
+                "glm_calls": { "type": "integer", "minimum": 0 },
+                "convergence_status": { "type": ["string", "null"] },
+                "cost_usd": { "type": "number", "minimum": 0 }
+              }
+            }
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y", "judges"],
+              "properties": {
+                "x": { "type": "string" },
+                "y": { "type": "string" },
+                "judges": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["outcome"],
+                    "properties": {
+                      "outcome": { "type": "string", "enum": ["decisive", "tie", "position_biased", "invalid-evidence", "sanitize-leak", "missing"] },
+                      "winner": { "type": ["string", "null"] },
+                      "words_x": { "type": "integer", "minimum": 0 },
+                      "words_y": { "type": "integer", "minimum": 0 },
+                      "confidence": { "type": "string" },
+                      "evidence_verified": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

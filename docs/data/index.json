@@ -1,0 +1,20 @@
+{
+  "schema": "bench-site-index/1.0",
+  "generated_at": "2026-09-03T20:51:34Z",
+  "default_batch": "b1",
+  "batches": [
+    {
+      "batch": "b1",
+      "title": "Co-Evolution Plan Benchmark",
+      "suite": "plan-composition",
+      "generated_at": "2026-09-03T20:51:34Z",
+      "metric": "Win rate",
+      "metric_unit": "percent",
+      "tasks": 8,
+      "conditions": 4,
+      "judges": 3,
+      "complete": true,
+      "file": "data/b1.json"
+    }
+  ]
+}
