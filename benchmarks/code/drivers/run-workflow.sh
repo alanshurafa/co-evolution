@@ -49,8 +49,11 @@ done
 
 instance=$(jq -r '.instance_id' "$INPUT_JSON" | tr -d '\r')
 condition=$(jq -r '.condition' "$INPUT_JSON" | tr -d '\r')
+seed=$(jq -r '.seed // 1' "$INPUT_JSON" | tr -d '\r')
 workspace=$(jq -r '.workspace' "$INPUT_JSON" | tr -d '\r')
 task_file=$(jq -r '.task_file' "$INPUT_JSON" | tr -d '\r')
+[[ "$seed" =~ ^[1-9][0-9]*$ ]] || { code_die "input.json seed must be a positive integer"; exit 2; }
+cell_name=$(code_cell_name "$condition" "$seed")
 [[ -d "$workspace/.git" && -f "$task_file" ]] || { code_die "prepared workspace or task file is missing"; exit 1; }
 
 results_root=$(cd "$CODE_BENCH_RESULTS_ROOT" && pwd -P)
@@ -95,7 +98,10 @@ critics_json=$(jq -cn --arg roster "$critics" \
 if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg phases "$phases" \
     --argjson critics "$critics_json" --argjson claude "$claude_needed" \
-    '{instance:$instance,condition:$condition,phases:($phases|split(",")),critics:$critics,declared_claude_dispatches:$claude,executed:false}'
+    --argjson seed "$seed" --arg cell "$cell_name" \
+    '{instance:$instance,condition:$condition,seed:$seed,cell:$cell,
+      model_name_or_path:("co-evolution-condition-" + $cell),
+      phases:($phases|split(",")),critics:$critics,declared_claude_dispatches:$claude,executed:false}'
   exit 0
 fi
 
@@ -122,9 +128,9 @@ jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
   --arg glm_model "${GLM_MODEL:-glm-5.3-flash}" --arg kimi_model "${KIMI_MODEL:-kimi-k3}" \
   --arg codex_sandbox "$CODEX_SANDBOX" --argjson critics "$critics_json" \
-  --arg model_tier "$MODEL_TIER" \
+  --arg model_tier "$MODEL_TIER" --argjson seed "$seed" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
-  '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,
+  '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,seed:$seed,
     model_tier:$model_tier,
     models:{claude:$claude_model,codex:$codex_model,glm:$glm_model,kimi:$kimi_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
@@ -288,7 +294,7 @@ patch="$cell/final.patch"
 git -C "$workspace" diff --binary > "$patch"
 [[ -s "$patch" ]] || { code_die "workflow produced an empty patch"; exit 1; }
 record="$cell/prediction.json"
-jq -n --arg instance_id "$instance" --arg model "co-evolution-condition-$condition" \
+jq -n --arg instance_id "$instance" --arg model "co-evolution-condition-$cell_name" \
   --rawfile model_patch "$patch" \
   '{instance_id:$instance_id,model_name_or_path:$model,model_patch:$model_patch}' > "$record"
 jq -c . "$record" >> "$PREDICTIONS"

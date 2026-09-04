@@ -9,11 +9,13 @@ source "$CODE_DIR/lib/code-bench-lib.sh"
 INSTANCE="${1:-}"
 RUN_ID="${2:-}"
 CONDITION="${3:-}"
+SEED="${4:-1}"
 [[ -n "$INSTANCE" && -n "$RUN_ID" && -n "$CONDITION" ]] || {
-  code_die "usage: prepare-swebench-instance.sh INSTANCE RUN_ID CONDITION"; exit 2;
+  code_die "usage: prepare-swebench-instance.sh INSTANCE RUN_ID CONDITION [SEED]"; exit 2;
 }
 [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "unsafe run id: $RUN_ID"; exit 2; }
 [[ "$CONDITION" =~ ^[A-Za-z0-9_-]+$ ]] || { code_die "unsafe condition id: $CONDITION"; exit 2; }
+[[ "$SEED" =~ ^[1-9][0-9]*$ ]] || { code_die "seed must be a positive integer: $SEED"; exit 2; }
 jq -e --arg id "$CONDITION" 'any(.conditions[]; .id == $id)' "$CODE_DIR/conditions.json" >/dev/null \
   || { code_die "unknown condition: $CONDITION"; exit 2; }
 
@@ -26,7 +28,11 @@ base_commit=$(printf '%s' "$row" | jq -r '.base_commit' | tr -d '\r')
 [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { code_die "unsafe repository id: $repo"; exit 1; }
 [[ "$base_commit" =~ ^[0-9a-f]{40}$ ]] || { code_die "unsafe base commit for $INSTANCE"; exit 1; }
 
-CELL="$CODE_BENCH_RESULTS_ROOT/runs/$RUN_ID/$INSTANCE/$CONDITION"
+# A cell is keyed by (task, condition, seed). Seed 1 keeps the bare condition
+# name so every existing run stays addressable; a repeat gets a .rN suffix on
+# the same level, which keeps the three-deep runs/RUN/TASK/CELL layout every
+# reader of the tree already relies on.
+CELL="$CODE_BENCH_RESULTS_ROOT/runs/$RUN_ID/$INSTANCE/$(code_cell_name "$CONDITION" "$SEED")"
 WORKSPACE="$CELL/workspace"
 TASK_FILE="$CELL/task.md"
 if [[ -e "$CELL" ]]; then
@@ -62,8 +68,8 @@ printf '%s\n' "$row" | jq -r '.problem_statement' > "$TASK_FILE"
 jq -n \
   --arg instance_id "$INSTANCE" --arg condition "$CONDITION" \
   --arg repo "$repo" --arg base_commit "$base_commit" \
-  --arg workspace "$WORKSPACE" --arg task_file "$TASK_FILE" \
+  --arg workspace "$WORKSPACE" --arg task_file "$TASK_FILE" --argjson seed "$SEED" \
   '{schema:"code-bench-cell-input/1.0", instance_id:$instance_id,
-    condition:$condition, repo:$repo, base_commit:$base_commit,
+    condition:$condition, seed:$seed, repo:$repo, base_commit:$base_commit,
     workspace:$workspace, task_file:$task_file}' > "$CELL/input.json"
 printf '%s\n' "$CELL/input.json"

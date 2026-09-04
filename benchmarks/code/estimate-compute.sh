@@ -9,6 +9,7 @@ SUITE="swebench-verified-canary"
 CONDITIONS=""
 MAX_CLAUDE=""
 TASK_LIMIT=""
+REPEAT=1
 JSON=false
 
 while (( $# > 0 )); do
@@ -17,6 +18,7 @@ while (( $# > 0 )); do
     --conditions) CONDITIONS="${2:?--conditions needs a value}"; shift 2 ;;
     --max-claude-dispatches) MAX_CLAUDE="${2:?--max-claude-dispatches needs a value}"; shift 2 ;;
     --task-limit) TASK_LIMIT="${2:?--task-limit needs a value}"; shift 2 ;;
+    --repeat) REPEAT="${2:?--repeat needs a count}"; shift 2 ;;
     --json) JSON=true; shift ;;
     *) code_die "unknown estimate option: $1"; exit 2 ;;
   esac
@@ -30,6 +32,8 @@ if [[ -n "$TASK_LIMIT" ]]; then
   (( TASK_LIMIT <= tasks )) || { code_die "--task-limit $TASK_LIMIT exceeds suite size $tasks"; exit 2; }
   tasks="$TASK_LIMIT"
 fi
+
+[[ "$REPEAT" =~ ^[1-9][0-9]*$ ]] || { code_die "--repeat must be a positive integer"; exit 2; }
 
 if [[ -z "$CONDITIONS" ]]; then
   CONDITIONS=$(printf '%s' "$suite_json" | jq -r '.default_conditions | join(",")' | tr -d '\r')
@@ -45,14 +49,15 @@ for condition in $CONDITIONS; do
 done
 IFS=$old_ifs
 
-summary=$(jq -cn --arg suite "$SUITE" --argjson tasks "$tasks" --argjson conditions "$selected" '
-  def total($p): ([$conditions[].dispatches[$p]] | add // 0) * $tasks;
+summary=$(jq -cn --arg suite "$SUITE" --argjson tasks "$tasks" --argjson conditions "$selected"   --argjson repeat "$REPEAT" '
+  def total($p): ([$conditions[].dispatches[$p]] | add // 0) * $tasks * $repeat;
   {
     schema: "code-bench-compute-estimate/1.0",
     suite: $suite,
     tasks: $tasks,
+    seeds: $repeat,
     conditions: [$conditions[].id],
-    cells: ($tasks * ($conditions | length)),
+    cells: ($tasks * ($conditions | length) * $repeat),
     declared_dispatches: {
       claude: total("claude"), codex: total("codex"),
       glm: total("glm"), kimi: total("kimi")

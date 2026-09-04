@@ -28,8 +28,12 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pricing as pricing_mod  # noqa: E402
 
+# A seed>1 cell names its prediction co-evolution-condition-B.r2, and the
+# evaluator names the report after that, so the seed is recoverable from the
+# report file name alone.
 REPORT_NAME_RE = re.compile(
-    r'^co-evolution-condition-(?P<cond>[A-Za-z0-9_-]+)\.(?P<run_id>.+)\.json$')
+    r'^co-evolution-condition-(?P<cond>[A-Za-z0-9_-]+?)(?:\.r(?P<seed>\d+))?\.(?P<run_id>[^.]+)\.json$')
+MODEL_NAME_RE = re.compile(r'^co-evolution-condition-(?P<cond>[A-Za-z0-9_-]+?)(?:\.r(?P<seed>\d+))?$')
 GOLD_NAME_RE = re.compile(r'^gold\.(?P<run_id>.+)\.json$')
 
 
@@ -92,19 +96,21 @@ def newest_reports(eval_dir, run_label=None):
         if not match:
             continue
         cond, run_id = match.group('cond'), match.group('run_id')
+        seed = int(match.group('seed') or 1)
         # The label is everything before the final "-"; the evaluator's
         # timestamp suffix contains none. A prefix test would make "base50"
         # match "base50-light-2026...", so a frontier page would silently
         # render light-tier results.
         if run_label is not None and run_id.rsplit('-', 1)[0] != run_label:
             continue
-        previous = latest.get(cond)
+        key = (cond, seed)
+        previous = latest.get(key)
         if previous is None or run_id > previous[0]:
             if previous is not None:
-                superseded.append((cond, previous[0], previous[1]))
-            latest[cond] = (run_id, path)
+                superseded.append((cond, seed, previous[0], previous[1]))
+            latest[key] = (run_id, path)
         else:
-            superseded.append((cond, run_id, path))
+            superseded.append((cond, seed, run_id, path))
     return latest, superseded
 
 
@@ -185,10 +191,10 @@ def index_cells(runs_root, run_id=None):
             record = read_json(path)
         except ValueError:
             continue
-        model = record.get('model_name_or_path', '')
-        if not model.startswith('co-evolution-condition-'):
+        match = MODEL_NAME_RE.match(record.get('model_name_or_path', ''))
+        if not match:
             continue
-        key = (model[len('co-evolution-condition-'):],
+        key = (match.group('cond'), int(match.group('seed') or 1),
                record.get('instance_id'),
                (record.get('model_patch') or '').strip())
         index[key] = os.path.dirname(path)
@@ -209,7 +215,7 @@ def index_attempts(runs_root, run_id=None):
             record = read_json(path)
         except ValueError:
             continue
-        key = (record.get('condition'), record.get('instance'))
+        key = (record.get('condition'), int(record.get('seed') or 1), record.get('instance'))
         attempts[key] = {
             'outcome': record.get('outcome'),
             'attempts': record.get('attempts'),
@@ -468,7 +474,7 @@ def main():
             },
         }
         precision_parts = []
-        entry = latest.get(cond_id)
+        entry = latest.get((cond_id, 1))
         if entry is not None:
             run_id, report_path = entry
             report = read_json(report_path)
@@ -487,7 +493,7 @@ def main():
             for instance in instances:
                 verdict = verdicts.get(instance)
                 if verdict is None:
-                    attempt = attempts_index.get((cond_id, instance))
+                    attempt = attempts_index.get((cond_id, 1, instance))
                     row['per_task'].append({
                         'instance_id': instance, 'repo': repos[instance],
                         'status': 'no-patch' if attempt else 'not-submitted',
@@ -499,7 +505,7 @@ def main():
                     if attempt:
                         row['attempted'] = True
                     continue
-                cell = cells.get((cond_id, instance,
+                cell = cells.get((cond_id, 1, instance,
                                   (patches.get(instance) or '').strip()))
                 task = {
                     'instance_id': instance,
@@ -540,7 +546,7 @@ def main():
             row['telemetry']['single_shot_attempts'] = attempts
         else:
             for instance in instances:
-                attempt = attempts_index.get((cond_id, instance))
+                attempt = attempts_index.get((cond_id, 1, instance))
                 if attempt:
                     row['attempted'] = True
                 row['per_task'].append({
@@ -627,8 +633,9 @@ def main():
         'gold_canary': gold_canary(eval_dir),
         'rows': rows,
         'superseded_reports': [
-            {'condition': cond, 'evaluator_run_id': run_id, 'report_file': rel(root, path)}
-            for cond, run_id, path in sorted(superseded)
+            {'condition': cond, 'seed': seed, 'evaluator_run_id': run_id,
+             'report_file': rel(root, path)}
+            for cond, seed, run_id, path in sorted(superseded)
         ],
         'caveat': ('Frozen five-task probe of SWE-bench Verified, scored by the '
                    'official evaluator. One task is 20 points; these numbers are '
