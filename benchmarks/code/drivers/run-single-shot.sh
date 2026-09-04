@@ -111,11 +111,12 @@ case "$AGENT" in
 esac
 jq -n --arg instance "$instance" --arg condition "$condition" --arg agent "$AGENT" \
   --arg tier "$tier" --arg label "$label" --arg model "$model_name" \
+  --arg model_tier "$(code_model_tier)" \
   --argjson max_tokens "$MAX_TOKENS" --argjson attempts "$ATTEMPTS" \
   --argjson context_files "$CONTEXT_FILES" --argjson context_bytes "$CONTEXT_BYTES" \
   --rawfile context "$context_list" \
   '{schema:"code-bench-single-shot/1.0",instance:$instance,condition:$condition,
-    tier:$tier,label:$label,agent:$agent,model:$model,
+    tier:$tier,label:$label,agent:$agent,model:$model,model_tier:$model_tier,
     output_max_tokens:$max_tokens,apply_attempts:$attempts,
     retrieval:{max_files:$context_files,max_bytes_per_file:$context_bytes,
                selected:($context|split("\n")|map(select(length>0)))}}' \

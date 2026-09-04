@@ -645,6 +645,31 @@ def caveat(data):
             % ''.join('<p>%s</p>' % esc(text) for text in paragraphs))
 
 
+def run_config_chips(data):
+    """The models this run actually used, read from its own cell manifests.
+
+    Hardcoding the model names here was a latent lie: the first run at a
+    different tier would have published a page claiming it ran the default one.
+    """
+    config = data.get('configuration') or {}
+    chips = []
+    tiers = config.get('tiers') or []
+    if tiers:
+        chips.append('tier: %s' % ', '.join(tiers))
+    for key, effort_key in (('claude', 'claude_effort'), ('codex', 'codex_effort')):
+        models = config.get(key) or []
+        if not models:
+            continue
+        efforts = config.get(effort_key) or []
+        chips.append('%s%s' % (', '.join(models),
+                               (' @ ' + ', '.join(efforts)) if efforts else ''))
+    for model in config.get('single_shot') or []:
+        chips.append(model)
+    if not chips:
+        return ''
+    return ''.join('<span>%s</span>' % esc(chip) for chip in chips)
+
+
 def nav_links(also):
     """Links to the project's other published runs.
 
@@ -680,13 +705,13 @@ def build(data, also=()):
         '<p class="standfirst">Does putting a second model in the loop produce better patches '
         'than one model working alone? %s, %s, every patch scored by the official '
         'evaluator in Docker.</p>'
-        '<div class="runmeta"><span>fable @ medium</span><span>gpt-5.6-sol @ medium</span>'
-        '<span>glm-5.3-flash @ effort:low</span><span>kimi-k3 @ thinking:off</span>'
+        '<div class="runmeta">%s'
         '<span>phase timeout 900s</span><span>gold canary %s/%s</span>'
         '<span>harness %s</span></div></header>'
         % (suite['task_count'], esc(data['generated_at']), nav_links(also),
            count_phrase(len(rows), 'configuration'),
            count_phrase(suite['task_count'], 'pinned SWE-bench Verified task', cap=False),
+           run_config_chips(data),
            esc(gold.get('resolved')), esc(gold.get('submitted')),
            esc((harness.get('repo_commit') or '')[:7])))
 

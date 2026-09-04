@@ -15,7 +15,10 @@ DRY_RUN=false
 RESUME=false
 CLAUDE_MODEL="${CODE_BENCH_CLAUDE_MODEL:-fable}"
 CODEX_MODEL_LOCAL="${CODE_BENCH_CODEX_MODEL:-gpt-5.6-sol}"
-CLAUDE_EFFORT_LOCAL="${CODE_BENCH_CLAUDE_EFFORT:-medium}"
+# Empty means "let the CLI choose", which is how a tier asks for a model's own
+# default effort instead of imposing one that model may not accept.
+CLAUDE_EFFORT_LOCAL="${CODE_BENCH_CLAUDE_EFFORT-medium}"
+MODEL_TIER=$(code_model_tier)
 CODEX_EFFORT_LOCAL="${CODE_BENCH_CODEX_EFFORT:-medium}"
 PHASE_TIMEOUT="${CODE_BENCH_PHASE_TIMEOUT:-900}"
 CRITIC_MAX_TOKENS="${CODE_BENCH_CRITIC_MAX_TOKENS:-2500}"
@@ -114,8 +117,10 @@ jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg claude_model "$CLAUDE_MODEL" --arg claude_effort "$CLAUDE_EFFORT_LOCAL" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
   --arg codex_sandbox "$CODEX_SANDBOX" --argjson critics "$critics_json" \
+  --arg model_tier "$MODEL_TIER" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
   '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,
+    model_tier:$model_tier,
     models:{claude:$claude_model,codex:$codex_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
     sandbox:{codex:$codex_sandbox},critics:$critics,
@@ -135,8 +140,9 @@ write_implement_prompt() {
 
 run_fable() {
   local phase="$1" prompt="$2"
-  local -a cmd=(claude -p --model "$CLAUDE_MODEL" --effort "$CLAUDE_EFFORT_LOCAL"
-    --safe-mode --permission-mode auto --tools "Bash,Read,Edit,Write,Glob,Grep"
+  local -a cmd=(claude -p --model "$CLAUDE_MODEL")
+  [[ -n "$CLAUDE_EFFORT_LOCAL" ]] && cmd+=(--effort "$CLAUDE_EFFORT_LOCAL")
+  cmd+=(--safe-mode --permission-mode auto --tools "Bash,Read,Edit,Write,Glob,Grep"
     --no-session-persistence --output-format json)
   command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
   (cd "$workspace" && "${cmd[@]}" < "$prompt") \
