@@ -1,0 +1,30 @@
+{
+  "schema": "bench-cell/1.0",
+  "batch": "fx1",
+  "task": "t2",
+  "condition": "A",
+  "kind": "solo",
+  "status": "complete",
+  "wall_secs": 10,
+  "word_count": 100,
+  "convergence_status": null,
+  "markers_final": 0,
+  "glm_calls": 0,
+  "kimi_status": null,
+  "degraded": false,
+  "tokens": {
+    "phases": {
+      "compose": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_cost_usd": 0.10,
+        "source": "claude-json"
+      }
+    },
+    "totals": {
+      "claude_cost_usd": 0.10
+    }
+  },
+  "error": null,
+  "finished_at": "2026-01-01T00:00:00Z"
+}

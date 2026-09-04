@@ -119,6 +119,35 @@ Writes `results/b1/REPORT.md` and a committed copy under
 verdicts, then per-judge matrices, judge-integrity stats, and the exploratory
 sections — in that order, matching `PREREGISTRATION.md` section 1.
 
+**6. Publish.**
+
+```bash
+bash benchmarks/export-site-data.sh --batch b1
+```
+
+Writes `docs/data/b1.json` and regenerates `docs/data/index.json`, which is
+everything the results site at
+<https://alanshurafa.github.io/co-evolution/plans/> renders. Commit those two
+JSON files and push to `master`; the `pages` workflow redeploys on any change
+under `docs/index.html`, `docs/assets/` or `docs/data/`. That is the whole
+republish path — one command, then a commit.
+
+The export reads the same artifacts `report.sh` does and runs the same
+win-matrix and Bradley-Terry awk, so the site and the report cannot drift
+apart. It carries only publishable fields — scores, costs, model and condition
+names, judge tallies, task ids and difficulty — and fails rather than emit a
+prompt, a plan, a judge's reasoning or an evidence quote.
+`benchmarks/tests/test-site-export.sh` holds it to that against a fixture
+batch, and `docs/README.md` covers local preview and the rest of the site's
+layout.
+
+Pass `--batch-dir` when a batch's results live outside `benchmarks/results/`,
+for instance in another checkout:
+
+```bash
+bash benchmarks/export-site-data.sh --batch-dir /path/to/results/b1
+```
+
 ## GLM quota and multi-day batches
 
 Condition C needs one GLM call per run, and GLM judging needs one call per

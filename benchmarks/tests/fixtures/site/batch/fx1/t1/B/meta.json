@@ -1,0 +1,41 @@
+{
+  "schema": "bench-cell/1.0",
+  "batch": "fx1",
+  "task": "t1",
+  "condition": "B",
+  "kind": "bouncer",
+  "status": "complete",
+  "wall_secs": 60,
+  "word_count": 200,
+  "convergence_status": "converged",
+  "markers_final": 0,
+  "glm_calls": 0,
+  "kimi_status": null,
+  "degraded": false,
+  "tokens": {
+    "phases": {
+      "compose-output.md": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_cost_usd": 0.30,
+        "source": "claude-json"
+      },
+      ".bounce-pass-1-output.md": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_cost_usd": 0.20,
+        "source": "claude-json"
+      },
+      "bounce-02": {
+        "source": "codex-stderr",
+        "total_tokens": 5000
+      }
+    },
+    "totals": {
+      "claude_cost_usd": 0.50,
+      "codex_total_tokens": 5000
+    }
+  },
+  "error": null,
+  "finished_at": "2026-01-01T00:00:00Z"
+}
