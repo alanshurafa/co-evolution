@@ -203,8 +203,11 @@ if [[ "$applied" != true ]]; then
     '{schema:"code-bench-single-shot-outcome/1.0",instance:$instance,condition:$condition,
       seed:$seed,agent:$agent,tier:$tier,outcome:"no-applicable-patch",attempts:$attempts}' \
     > "$cell/outcome.json"
-  code_die "$AGENT produced no applicable patch for $instance after $ATTEMPTS attempts"
-  exit 1
+  # A scored zero, not an infrastructure failure: exit 3 so the batch runner
+  # counts it as such and does not retry it on resume.
+  printf 'NO PATCH: %s produced no applicable patch for %s after %s attempts; scored zero\n' \
+    "$AGENT" "$instance" "$ATTEMPTS" >&2
+  exit 3
 fi
 
 patch="$cell/final.patch"

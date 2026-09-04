@@ -218,7 +218,7 @@ resume_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$RE
   bash "$RUNNER" run-canary --run-id resume-test --task pallets__flask-5014 \
   --conditions A --max-claude-dispatches 1 2>&1)
 if printf '%s' "$resume_out" | grep -q 'SKIP: pallets__flask-5014/A already has a prediction' \
-   && printf '%s' "$resume_out" | grep -q '0 cell(s) generated, 1 reused, 0 failed'; then
+   && printf '%s' "$resume_out" | grep -q '0 cell(s) generated, 1 reused, 0 scored zero (no patch), 0 failed'; then
   pass "a cell with a prediction is reused instead of rerun"
 else
   fail "a cell with a prediction is reused instead of rerun"
@@ -551,7 +551,7 @@ seed_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$SEED
   bash "$RUNNER" run-canary --run-id seed-test --task pallets__flask-5014 \
   --conditions A --repeat 2 --max-claude-dispatches 2 2>&1)
 if printf '%s' "$seed_out" | grep -q 'SKIP: pallets__flask-5014/A.r2 already has a prediction' \
-   && printf '%s' "$seed_out" | grep -q '0 cell(s) generated, 2 reused, 0 failed' \
+   && printf '%s' "$seed_out" | grep -q '0 cell(s) generated, 2 reused, 0 scored zero (no patch), 0 failed' \
    && [[ -f "$SEED_ROOT/predictions/seed-test/A.r2.jsonl" ]] \
    && jq -e '.model_name_or_path == "co-evolution-condition-A.r2"' "$SEED_ROOT/predictions/seed-test/A.r2.jsonl" >/dev/null; then
   pass "each seed resumes into its own prediction file"
@@ -626,6 +626,86 @@ if python "$CODE_DIR/scripts/annotate-difficulty.py" --lock "$CODE_DIR/external-
   fail "the annotator refuses to leave a task unlabeled"
 else
   pass "the annotator refuses to leave a task unlabeled"
+fi
+
+
+# --- T0.5: an arm that produces no patch scores zero and the batch goes on ---
+# Stub CLIs on PATH: claude returns a successful envelope and, unless told
+# otherwise, touches nothing; codex drains its prompt and prints the banner.
+STUB_BIN="$TMP/bin"
+mkdir -p "$STUB_BIN"
+cat > "$STUB_BIN/claude" <<'STUB'
+#!/usr/bin/env bash
+cat >/dev/null
+if [[ -n "${STUB_CLAUDE_EDIT:-}" ]]; then printf 'edited by stub\n' >> "$STUB_CLAUDE_EDIT"; fi
+printf '{"type":"result","is_error":false,"result":"done","duration_ms":1000,"total_cost_usd":0.5,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}\n'
+STUB
+cat > "$STUB_BIN/codex" <<'STUB'
+#!/usr/bin/env bash
+cat >/dev/null
+printf 'OpenAI Codex v0.0.0-stub\n--------\n' >&2
+if [[ -n "${STUB_CODEX_EDIT:-}" ]]; then printf 'edited by codex stub\n' >> "$STUB_CODEX_EDIT"; fi
+printf '{"type":"turn.completed","usage":{"input_tokens":1000,"cached_input_tokens":800,"output_tokens":100}}\n'
+printf 'tokens used\n1,100\n' >&2
+STUB
+chmod +x "$STUB_BIN/claude" "$STUB_BIN/codex"
+
+make_live_cell() { # make_live_cell RUN COND [SEED] -> input.json path
+  local run="$1" cond="$2" seed="${3:-1}" name
+  name=$( source "$CODE_DIR/lib/code-bench-lib.sh"; code_cell_name "$cond" "$seed" )
+  local cell="$LIVE_ROOT/runs/$run/pallets__flask-5014/$name"
+  mkdir -p "$cell/workspace" "$LIVE_ROOT/predictions/$run"
+  git -C "$cell/workspace" init -q
+  printf 'original\n' > "$cell/workspace/app.py"
+  git -C "$cell/workspace" add app.py >/dev/null 2>&1
+  git -C "$cell/workspace" -c user.email=t@e -c user.name=t commit -qm seed >/dev/null 2>&1
+  printf 'task\n' > "$cell/task.md"
+  jq -n --arg c "$cond" --argjson s "$seed" --arg w "$cell/workspace" --arg t "$cell/task.md" \
+    '{instance_id:"pallets__flask-5014",condition:$c,seed:$s,workspace:$w,task_file:$t}' \
+    > "$cell/input.json"
+  printf '%s' "$cell/input.json"
+}
+
+LIVE_ROOT="$TMP/live"
+input_a=$(make_live_cell nopatch A)
+rc=0
+( unset ANTHROPIC_API_KEY
+  PATH="$STUB_BIN:$PATH" CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-workflow --input "$input_a" \
+    --predictions "$LIVE_ROOT/predictions/nopatch/A.jsonl" --max-claude-dispatches 1 ) >/dev/null 2>&1 || rc=$?
+cell_a=$(dirname "$input_a")
+if [[ "$rc" == 3 ]] && jq -e '.outcome == "empty-patch" and .condition == "A" and .seed == 1' \
+     "$cell_a/outcome.json" >/dev/null 2>&1 && [[ ! -f "$cell_a/prediction.json" ]]; then
+  pass "an arm that changes nothing records an empty-patch outcome and exits 3"
+else
+  fail "an arm that changes nothing records an empty-patch outcome and exits 3 (rc=$rc)"
+fi
+
+# The batch runner treats that cell as a scored zero: it is not retried on
+# resume, and the summary line counts it apart from failures.
+nopatch_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-canary --run-id nopatch --task pallets__flask-5014 \
+  --conditions A --max-claude-dispatches 1 2>&1)
+if printf '%s' "$nopatch_out" | grep -q 'SKIP: pallets__flask-5014/A already ran and produced no patch' \
+   && printf '%s' "$nopatch_out" | grep -q '0 cell(s) generated, 1 reused, 0 scored zero (no patch), 0 failed'; then
+  pass "a no-patch cell is kept as a zero on resume rather than rerun"
+else
+  fail "a no-patch cell is kept as a zero on resume rather than rerun"
+fi
+
+# The happy path still writes a prediction named for its seed.
+input_a2=$(make_live_cell happy A 2)
+cell_a2=$(dirname "$input_a2")
+rc=0
+( unset ANTHROPIC_API_KEY
+  PATH="$STUB_BIN:$PATH" STUB_CLAUDE_EDIT="$cell_a2/workspace/app.py" CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-workflow --input "$input_a2" \
+    --predictions "$LIVE_ROOT/predictions/happy/A.r2.jsonl" --max-claude-dispatches 1 ) >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 0 ]] && jq -e '.model_name_or_path == "co-evolution-condition-A.r2"' "$cell_a2/prediction.json" >/dev/null 2>&1 \
+   && jq -e '.seed == 2 and .models.glm == "glm-5.3-flash"' "$cell_a2/run-manifest.json" >/dev/null 2>&1; then
+  pass "a stubbed live cell writes its prediction under the seeded model name"
+else
+  fail "a stubbed live cell writes its prediction under the seeded model name (rc=$rc)"
 fi
 
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
