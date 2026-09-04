@@ -134,6 +134,25 @@ check "the contrast prices the cost delta per net flip only from complete costs"
 check "the page states which statistics it used" "$out" \
   '.statistics.bootstrap.draws == 2000 and (.statistics.module | endswith("stats.py"))'
 
+
+# --- T0.6: inert repairs are counted per arm and flagged per task ------------
+SPEC_INERT='{
+  "run_label": "fx",
+  "conditions": {
+    "B": {"cells": {
+      "sympy__sympy-20916": {"resolved": true,  "claude_cost": 1.0, "codex": "exact", "repair": "inert"},
+      "django__django-16819": {"resolved": true, "claude_cost": 1.0, "codex": "exact", "repair": "active"},
+      "scikit-learn__scikit-learn-14141": {"resolved": false, "claude_cost": 1.0, "codex": "exact", "repair": "inert"},
+      "astropy__astropy-7166": {"resolved": true, "claude_cost": 1.0, "codex": "exact", "repair": "active"},
+      "pallets__flask-5014": {"resolved": true, "claude_cost": 1.0, "codex": "exact", "repair": "active"}}}
+  }}'
+out=$(build inert "$SPEC_INERT") || fail "inert fixture builds"
+check "inert repairs are counted per arm and flagged per task" "$out" \
+  '.rows[] | select(.condition == "B")
+   | .telemetry.repair_cells == 5 and .telemetry.repair_inert_count == 2
+     and ([.per_task[] | select(.repair_inert == true) | .instance_id]
+          == ["sympy__sympy-20916", "scikit-learn__scikit-learn-14141"])'
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'

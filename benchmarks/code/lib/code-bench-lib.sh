@@ -86,6 +86,17 @@ code_cell_name() {
   else printf '%s.r%s' "$condition" "$seed"; fi
 }
 
+# Content hash of a file, for comparing a patch before and after a repair
+# stage. sha256sum is GNU (Git Bash, Linux); shasum is macOS; python is the
+# fallback the harness already requires.
+code_sha256() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$file" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$file" | cut -d' ' -f1
+  else python -c 'import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$file"
+  fi
+}
+
 code_metadata_path() {
   printf '%s/metadata/%s.json' "$CODE_BENCH_RESULTS_ROOT" "$(code_suite_id)"
 }

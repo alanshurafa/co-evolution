@@ -298,6 +298,15 @@ def cell_telemetry(cell_dir, pricing=None):
             out['single_shot_attempts'] = read_json(outcome).get('attempts')
         except ValueError:
             pass
+    out['repair'] = None
+    repair = os.path.join(cell_dir, 'repair.json')
+    if os.path.isfile(repair):
+        try:
+            record = read_json(repair)
+            out['repair'] = {'inert': bool(record.get('repair_inert')),
+                             'phases': record.get('repair_phases') or []}
+        except ValueError:
+            pass
     logs = os.path.join(cell_dir, 'logs')
     if os.path.isdir(logs):
         for name in sorted(os.listdir(logs)):
@@ -556,6 +565,8 @@ def main():
                 'kimi_calls': 0,
                 'kimi_cost_usd': 0.0,
                 'cells_linked': 0,
+                'repair_cells': 0,
+                'repair_inert_count': 0,
                 'sandbox_modes': [],
                 'single_shot_attempts': [],
             },
@@ -611,6 +622,11 @@ def main():
                     row['telemetry']['cells_linked'] += 1
                     for key in SUMMED_TELEMETRY:
                         row['telemetry'][key] += telemetry[key]
+                    if telemetry.get('repair') is not None:
+                        row['telemetry']['repair_cells'] += 1
+                        task['repair_inert'] = telemetry['repair']['inert']
+                        if telemetry['repair']['inert']:
+                            row['telemetry']['repair_inert_count'] += 1
                     row['telemetry']['codex_cli_versions'] = sorted(
                         set(row['telemetry']['codex_cli_versions'])
                         | set(telemetry['codex_cli_versions']))

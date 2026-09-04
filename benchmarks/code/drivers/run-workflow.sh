@@ -216,6 +216,14 @@ run_codex_critique() {
 }
 
 write_implement_prompt "$cell/implement-prompt.md"
+# Snapshot the implementer's patch before any review or repair stage touches
+# the tree. A repair arm whose final patch hashes the same as this snapshot
+# never changed anything: it was a solo run with a discarded review attached,
+# and it is marked repair_inert so the page can say so instead of reporting
+# it as a bounce. This is the failure the read-only Codex sandbox produced.
+snapshot_implementation() {
+  git -C "$workspace" diff --binary > "$cell/implement.patch"
+}
 if [[ "$condition" == E ]]; then
   if [[ "$RESUME" == true && -n "$(git -C "$workspace" diff --name-only)" ]]; then
     printf 'REUSED: codex-implement\n'
@@ -229,6 +237,7 @@ elif [[ "$RESUME" == true ]] \
 else
   run_fable fable-implement "$cell/implement-prompt.md"
 fi
+snapshot_implementation
 
 case "$condition" in
   B)
@@ -292,6 +301,19 @@ esac
 
 patch="$cell/final.patch"
 git -C "$workspace" diff --binary > "$patch"
+# Did the review/repair stage change the patch at all? Recorded for every arm
+# with a stage after the implementer, by content hash of the two patches.
+if [[ "$phases" == *,* ]]; then
+  before_hash=$(code_sha256 "$cell/implement.patch")
+  after_hash=$(code_sha256 "$patch")
+  jq -n --arg before "$before_hash" --arg after "$after_hash" --arg phases "$phases" \
+    '{schema:"code-bench-repair/1.0",before_sha256:$before,after_sha256:$after,
+      repair_inert:($before == $after),
+      repair_phases:($phases|split(",")|.[1:])}' > "$cell/repair.json"
+  if [[ "$before_hash" == "$after_hash" ]]; then
+    printf 'REPAIR INERT: %s/%s left the implementation unchanged\n' "$instance" "$cell_name" >&2
+  fi
+fi
 # An arm that ran every phase and changed nothing has produced its answer: no
 # patch, which the evaluator would score as unresolved. It is recorded as an
 # outcome so the page counts it as a zero for that arm rather than as a cell
