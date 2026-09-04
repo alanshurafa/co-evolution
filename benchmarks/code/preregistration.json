@@ -1,0 +1,46 @@
+{
+  "schema": "code-bench-preregistration/1.0",
+  "registered_on": "2026-09-04",
+  "source": ".planning/notes/2026-09-04-benchmark-expansion-plan.md (sections 1, 3 and 6)",
+  "note": "One primary contrast per phase, declared before the phase runs, so the headline needs no multiple-comparison correction. Everything else is exploratory. Outcomes are never written here: the site fills them from the evaluator reports.",
+  "analysis": {
+    "primary_statistic": "paired per-task comparison on the same frozen tasks: per-task mean over seeds, discordant table, exact two-sided McNemar",
+    "interval": "Wilson 95% on the single-run rate; hierarchical bootstrap over repository, task and seed when seeds exist",
+    "secondary_correction": "Holm across secondary pairwise contrasts within a phase",
+    "power_assumptions": {
+      "discordance_rates": [0.10, 0.14, 0.20],
+      "effects": [0.05, 0.06, 0.10],
+      "alpha": 0.05,
+      "power": 0.8
+    }
+  },
+  "phases": [
+    {
+      "id": "1",
+      "name": "Finish the light matrix on random50",
+      "suite": "swebench-verified-random50",
+      "model_tier": "light",
+      "arms": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
+      "primary_contrast": {"a": "B", "b": "D", "question": "cross-vendor bounce vs self-bounce: does any second pass help, or only a cross-vendor one?"},
+      "exit": "nine light-tier rows complete on the same 50 tasks; B-vs-D discordance table published"
+    },
+    {
+      "id": "2",
+      "name": "Tier crossing on the same 50 tasks",
+      "suite": "swebench-verified-random50",
+      "model_tier": "mixed",
+      "arms": ["A", "B", "D", "E", "M", "N", "O", "P"],
+      "primary_contrast": {"a": "A", "b": "M", "question": "does a cheap implementer with a strong reviewer match a strong solo at lower cost per solved task? (A at frontier tier vs M)"},
+      "exit": "cost-vs-pass-rate Pareto plot with light, frontier, mixed and max rows on the same 50 tasks"
+    },
+    {
+      "id": "3",
+      "name": "Scale for power",
+      "suite": "stratified 100 then 300 Verified tasks, 3 seeds",
+      "model_tier": "top arms from phases 1-2",
+      "arms": [],
+      "primary_contrast": {"a": "A", "b": "B", "question": "does the cross-vendor bounce beat the solo at confirmatory power?"},
+      "exit": "confirmatory CI on the primary contrast at 300 tasks x 3 seeds"
+    }
+  ]
+}

@@ -121,9 +121,9 @@ check "every measured row carries a Wilson interval and a bootstrap interval" "$
      and .bootstrap.levels == ["repo","task","seed"] and .bootstrap.low <= .bootstrap.point
      and .bootstrap.point <= .bootstrap.high)'
 check "overlapping intervals share Rank(UB) 1" "$out" \
-  '[.rows[] | select(.measured) | .rank_ub] == [1, 1]'
+  '[.rows[] | select(.measured) | .rank_ub] == [1, 1] and .schema == "code-bench-site/2.0"'
 check "the paired contrast lists the rescued and broken tasks with an exact p" "$out" \
-  '.contrasts | length == 1 and .[0].a == "A" and .[0].b == "B"
+  '.contrasts | length == 1 and .[0].a_condition == "A" and .[0].b_condition == "B"
    and .[0].only_a == 1 and .[0].only_b == 1 and .[0].both == 3 and .[0].neither == 0
    and .[0].rescued_by_b == ["scikit-learn__scikit-learn-14141"]
    and .[0].broken_by_b == ["astropy__astropy-7166"]
@@ -152,6 +152,72 @@ check "inert repairs are counted per arm and flagged per task" "$out" \
    | .telemetry.repair_cells == 5 and .telemetry.repair_inert_count == 2
      and ([.per_task[] | select(.repair_inert == true) | .instance_id]
           == ["sympy__sympy-20916", "scikit-learn__scikit-learn-14141"])'
+
+
+# --- Site redesign: every section renders from the JSON alone ----------------
+PAGE="$TMP/stats/site/leaderboard.html"
+METH="$TMP/stats/site/leaderboard-methodology.html"
+if python "$SITE_DIR/render-page.py" --data "$TMP/stats/site/leaderboard.json" --output "$PAGE" --methodology "$METH" >/dev/null 2>&1 \
+   && [[ -s "$PAGE" && -s "$METH" ]]; then
+  pass "renderer writes the leaderboard and methodology pages"
+else
+  fail "renderer writes the leaderboard and methodology pages"
+fi
+if grep -q '<title>Co-Evolution: cross-vendor review benchmark for coding agents</title>' "$PAGE"; then
+  pass "the page carries the new title"
+else
+  fail "the page carries the new title"
+fi
+if grep -q 'Rank(UB)' "$PAGE" && grep -q 'class="ci"' "$PAGE" && grep -q '± ' "$PAGE"; then
+  pass "every row shows an interval and a Rank(UB) column"
+else
+  fail "every row shows an interval and a Rank(UB) column"
+fi
+if [[ "$(grep -o '<svg class="scatter"' "$PAGE" | wc -l | tr -d ' ')" == 3 ]] \
+   && grep -q 'data-axis="wall"' "$PAGE" && grep -q 'class="pt' "$PAGE"; then
+  pass "the Pareto scatter is inline SVG with a three-way axis toggle"
+else
+  fail "the Pareto scatter is inline SVG with a three-way axis toggle"
+fi
+if grep -q 'id="contrast-data"' "$PAGE" && grep -q 'id="contrast-a"' "$PAGE"; then
+  pass "the paired-contrast panel embeds the precomputed contrasts"
+else
+  fail "the paired-contrast panel embeds the precomputed contrasts"
+fi
+if grep -q 'id="matrix"' "$PAGE" && grep -q 'data-sort="rescued"' "$PAGE" && grep -q 'tr class="group"' "$PAGE"; then
+  pass "the task heatmap is grouped by difficulty and sortable by rescued"
+else
+  fail "the task heatmap is grouped by difficulty and sortable by rescued"
+fi
+if grep -q 'class="repro"' "$PAGE" && grep -q 'run-canary --run-id fx' "$PAGE" && grep -q 'data-filter="tier"' "$PAGE"; then
+  pass "rows expand to a reproduce command and the page has tier/run/seed selectors"
+else
+  fail "rows expand to a reproduce command and the page has tier/run/seed selectors"
+fi
+if grep -q 'official evaluator</span>' "$PAGE" && grep -q 'harness' "$PAGE" \
+   && grep -q 'prefers-color-scheme: dark' "$PAGE" && ! grep -qiE 'chart\.js|d3\.min|plotly|recharts' "$PAGE"; then
+  pass "provenance badges render, dark mode is styled, no chart library is loaded"
+else
+  fail "provenance badges render, dark mode is styled, no chart library is loaded"
+fi
+if grep -q 'Pre-registered contrasts' "$METH" && grep -q 'Paired observations' "$METH" && grep -q 'Cost basis' "$METH"; then
+  pass "the methodology page carries pre-registration, power and cost basis from the same JSON"
+else
+  fail "the methodology page carries pre-registration, power and cost basis from the same JSON"
+fi
+# The cost-completeness flag is visible, not a footnote.
+cost_page="$TMP/cost/site/leaderboard.html"
+python "$SITE_DIR/render-page.py" --data "$TMP/cost/site/leaderboard.json" --output "$cost_page" >/dev/null 2>&1
+if grep -q 'class="flag"' "$cost_page" && grep -q 'incomplete' "$cost_page" && grep -q 'class="est"' "$cost_page"; then
+  pass "an unpriced seat renders as an incomplete-cost flag and estimates are marked"
+else
+  fail "an unpriced seat renders as an incomplete-cost flag and estimates are marked"
+fi
+if grep -rq 'benchmarks/results/b1\|bounce-protocol\|judge' "$PAGE" "$METH"; then
+  fail "nothing from the retired document suite reaches the page"
+else
+  pass "nothing from the retired document suite reaches the page"
+fi
 
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
