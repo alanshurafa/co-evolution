@@ -636,12 +636,16 @@ STUB_BIN="$TMP/bin"
 mkdir -p "$STUB_BIN"
 cat > "$STUB_BIN/claude" <<'STUB'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then printf '0.0.0-stub (Claude Code)
+'; exit 0; fi
 cat >/dev/null
 if [[ -n "${STUB_CLAUDE_EDIT:-}" ]]; then printf 'edited by stub\n' >> "$STUB_CLAUDE_EDIT"; fi
 printf '{"type":"result","is_error":false,"result":"done","duration_ms":1000,"total_cost_usd":0.5,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}\n'
 STUB
 cat > "$STUB_BIN/codex" <<'STUB'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then printf 'codex-cli 0.0.0-stub
+'; exit 0; fi
 cat >/dev/null
 printf 'OpenAI Codex v0.0.0-stub\n--------\n' >&2
 if [[ -n "${STUB_CODEX_EDIT:-}" ]]; then printf 'edited by codex stub\n' >> "$STUB_CODEX_EDIT"; fi
@@ -743,6 +747,60 @@ if [[ ! -f "$cell_a2/repair.json" ]]; then
   pass "a solo arm records no repair verdict"
 else
   fail "a solo arm records no repair verdict"
+fi
+
+
+# --- T0.7: the sandbox probe reads what Codex reports, not what it was asked -
+# A stub codex that honours the asked mode only when told to, so the probe's
+# verdict can be checked without a model call.
+cat > "$STUB_BIN/codex-probe" <<'STUB'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then printf 'codex-cli 9.9.9-stub\n'; exit 0; fi
+ws=""; mode=""
+while (( $# > 0 )); do case "$1" in -C) ws="$2"; shift 2 ;; --sandbox) mode="$2"; shift 2 ;; *) shift ;; esac; done
+cat >/dev/null
+if [[ "$mode" == "${STUB_WRITES_UNDER:-danger-full-access}" ]]; then
+  printf 'sandbox: %s\n' "$mode" >&2; printf 'PATCHED\n' > "$ws/probe.txt"
+else
+  printf 'sandbox: read-only\n' >&2
+fi
+STUB
+chmod +x "$STUB_BIN/codex-probe"
+PROBE_BIN="$TMP/probe-bin"; mkdir -p "$PROBE_BIN"; cp "$STUB_BIN/codex-probe" "$PROBE_BIN/codex"
+PROBE_DIR="$TMP/probes"
+rc=0
+probe_out=$(PATH="$PROBE_BIN:$PATH" CODE_BENCH_PROBE_DIR="$PROBE_DIR" \
+  bash "$RUNNER" probe-codex-sandbox 2>&1) || rc=$?
+if [[ "$rc" == 1 ]] && printf '%s' "$probe_out" | grep -q 'PROBE workspace-write: WRITE_FAILED' \
+   && jq -e '.sandbox_asked == "workspace-write" and .sandbox_reported == "read-only" and .wrote == false
+             and .codex_version == "codex-cli 9.9.9-stub"' "$PROBE_DIR/probe-workspace-write.json" >/dev/null 2>&1; then
+  pass "the probe records the mode Codex reported against the mode it was asked for"
+else
+  fail "the probe records the mode Codex reported against the mode it was asked for (rc=$rc)"
+fi
+rc=0
+probe_all=$(PATH="$PROBE_BIN:$PATH" CODE_BENCH_PROBE_DIR="$PROBE_DIR" \
+  bash "$RUNNER" probe-codex-sandbox --all 2>&1) || rc=$?
+if [[ "$rc" == 0 ]] && printf '%s' "$probe_all" | grep -q 'PROBE danger-full-access: WRITE_OK' \
+   && jq -e '.wrote == true' "$PROBE_DIR/probe-danger-full-access.json" >/dev/null 2>&1; then
+  pass "--all falls through to the first mode that writes"
+else
+  fail "--all falls through to the first mode that writes (rc=$rc)"
+fi
+rc=0
+probe_fixed=$(PATH="$PROBE_BIN:$PATH" STUB_WRITES_UNDER=workspace-write CODE_BENCH_PROBE_DIR="$PROBE_DIR" \
+  bash "$RUNNER" probe-codex-sandbox 2>&1) || rc=$?
+if [[ "$rc" == 0 ]] && printf '%s' "$probe_fixed" | grep -q 'PROBE workspace-write: WRITE_OK'; then
+  pass "a Codex that honours workspace-write passes the default probe"
+else
+  fail "a Codex that honours workspace-write passes the default probe (rc=$rc)"
+fi
+
+if jq -e '.versions.codex | test("stub")' "$cell_b2/run-manifest.json" >/dev/null 2>&1 \
+   && jq -e '.harness.commit | length > 0' "$cell_b2/run-manifest.json" >/dev/null 2>&1; then
+  pass "the run manifest records CLI versions and the harness commit"
+else
+  fail "the run manifest records CLI versions and the harness commit"
 fi
 
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"

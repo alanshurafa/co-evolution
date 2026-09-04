@@ -135,6 +135,26 @@ Elevated access is defensible only because a benchmark workspace is a
 throwaway clone under the ignored `benchmarks/results/code/runs/` tree. Do not
 set it for anything else.
 
+The caveat is version-specific, so it is retested rather than assumed. After
+upgrading Codex on the run host (`npm i -g @openai/codex@latest`; 0.153.2 at
+the time of writing), run the probe; it makes one one-line edit per mode and
+writes `probe-<mode>.json` under `benchmarks/results/code/probes/` with the
+Codex version, the mode asked for, the mode Codex reported, and whether the
+file changed:
+
+```bash
+bash benchmarks/code/code-bench.sh probe-codex-sandbox          # workspace-write
+bash benchmarks/code/code-bench.sh probe-codex-sandbox --all    # then danger-full-access
+```
+
+If `workspace-write` writes, drop `CODE_BENCH_CODEX_SANDBOX` from the run
+command and the manifests of that run will show the default mode. Every cell
+manifest also records the `claude` and `codex` CLI versions and the harness
+commit it ran under, so a row on the page can name the Codex build that
+produced it. The Codex driver phases run with `--json`, which puts the token
+split (input, cached, output) in the transcript; without it Codex prints one
+total and the seat can only be priced approximately.
+
 ### Single-shot tier
 
 ```bash
