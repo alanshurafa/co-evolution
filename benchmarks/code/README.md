@@ -245,14 +245,34 @@ to a generation workflow.
 ## Results site
 
 ```bash
-bash benchmarks/site/aggregate.sh
+CODE_BENCH_RESULTS_ROOT=/path/to/results/code \
+  bash benchmarks/site/aggregate.sh --suite swebench-verified-random50 \
+    --output benchmarks/site/public/leaderboard.json --also "One-task proof of concept=poc.html"
 ```
 
-Builds `benchmarks/results/code/site/leaderboard.json` from the evaluator
-reports, the evaluator's own per-instance verdicts, and the run manifests. Each
-row carries the report file it came from and each task carries the
-`report.json` that decided it, so every number on the published page can be
-checked against a file on disk. The page renders that JSON and nothing else.
+Builds one JSON (schema `code-bench-site/2.0`) from the evaluator reports, the
+evaluator's own per-instance verdicts, the run manifests and provider logs,
+then renders it as two self-contained pages beside it: the leaderboard and a
+methodology page (`<name>-methodology.html`). Inline SVG, no chart library.
+Every row is a configuration, `implementer → reviewer (tier, run)`, and
+carries: a Wilson interval and Rank(UB) by interval overlap, a fully priced
+cost per task or a visible "incomplete" flag when a seat has no priced figure,
+wall p50/p90, tokens, provenance badges, and an expandable panel with the
+harness commit, evaluator run id, sandbox, models, token split, inert-repair
+count and a copy-paste reproduce command. A Pareto scatter (cost, wall or
+tokens), a paired-contrast panel (discordant table, rescued and broken tasks,
+exact McNemar, bootstrap delta, cost per net flip) and a task × configuration
+heatmap grouped by difficulty are computed in `build-site-data.py`; the page's
+JavaScript only selects what to show.
+
+Which runs a suite page shows is declared in `runs.json`; a run flagged
+`publishable: false` is rendered with the flag and its note rather than
+hidden. `preregistration.json` declares one primary contrast per phase, and
+the methodology page fills its outcome from the evaluator reports. Each row
+names the report files it was read from and each task the `report.json` that
+decided it, so every number on the published page can be checked against a
+file on disk. Commit `benchmarks/site/public/` to publish; the Pages workflow
+copies that directory and nothing else.
 
 ## Compute contract
 

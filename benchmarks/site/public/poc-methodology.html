@@ -1,0 +1,235 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Methodology · Co-Evolution: cross-vendor review benchmark for coding agents</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,400&display=swap">
+<style>
+  :root {
+    --paper: #F7F8FA; --surface: #FFFFFF; --surface-sunk: #EFF2F6;
+    --rule: #DCE2EA; --rule-strong: #C2CBD6;
+    --ink: #11161C; --ink-soft: #444F5C; --ink-faint: #6B7785;
+    --accent: #1F4E8C; --accent-soft: #E4EBF5;
+    --pass: #2F7D5D; --pass-wash: #DCEDE4;
+    --fail: #B23A34; --fail-wash: #F7DEDC;
+    --caveat: #96660F; --caveat-wash: #FAEDD4;
+    --absent: #8A94A1; --absent-wash: #E8EBEF;
+    --shadow: 0 1px 2px rgba(17,22,28,.05), 0 8px 24px -18px rgba(17,22,28,.35);
+    --f-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --f-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --measure: 68ch;
+    --pad: clamp(1.15rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0D1218; --surface: #141B23; --surface-sunk: #1B242E;
+      --rule: #26313D; --rule-strong: #3A4855;
+      --ink: #E7ECF2; --ink-soft: #AEB9C6; --ink-faint: #7E8B99;
+      --accent: #7FA9E0; --accent-soft: #1B2C42;
+      --pass: #6FC79B; --pass-wash: #163326;
+      --fail: #EA8079; --fail-wash: #3A1F1D;
+      --caveat: #E0B25C; --caveat-wash: #362A14;
+      --absent: #7E8B99; --absent-wash: #1E262F;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -20px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0D1218; --surface: #141B23; --surface-sunk: #1B242E;
+    --rule: #26313D; --rule-strong: #3A4855;
+    --ink: #E7ECF2; --ink-soft: #AEB9C6; --ink-faint: #7E8B99;
+    --accent: #7FA9E0; --accent-soft: #1B2C42;
+    --pass: #6FC79B; --pass-wash: #163326;
+    --fail: #EA8079; --fail-wash: #3A1F1D;
+    --caveat: #E0B25C; --caveat-wash: #362A14;
+    --absent: #7E8B99; --absent-wash: #1E262F;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -20px rgba(0,0,0,.9);
+  }
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-sans);
+         font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; margin: 0; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: var(--pad);
+          display: flex; flex-direction: column; gap: 3rem; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .masthead { display: flex; flex-direction: column; gap: .85rem; padding-top: .5rem; }
+  .eyebrow { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--ink-faint);
+             display: flex; flex-wrap: wrap; gap: .5rem .9rem; }
+  h1 { font-family: var(--f-display); font-weight: 600;
+       font-size: clamp(1.7rem, 4.6vw, 2.8rem); line-height: 1.08;
+       letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+  .standfirst { font-size: clamp(1rem, 2.1vw, 1.12rem); color: var(--ink-soft);
+                max-width: var(--measure); margin: 0; }
+  .sitenav { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-family: var(--f-mono); font-size: .8rem; }
+  .sitenav a.here { font-weight: 600; text-decoration: none; color: var(--ink); }
+  .runmeta { display: flex; flex-wrap: wrap; gap: .4rem .5rem; margin-top: .35rem; }
+  .runmeta span { font-family: var(--f-mono); font-size: .74rem; color: var(--ink-soft);
+                  background: var(--surface-sunk); border: 1px solid var(--rule);
+                  border-radius: 3px; padding: .22rem .5rem; white-space: nowrap; }
+
+  .callout { background: var(--caveat-wash); border: 1px solid var(--caveat);
+             border-left-width: 4px; border-radius: 4px; padding: 1.1rem 1.25rem;
+             display: flex; flex-direction: column; gap: .55rem; }
+  .callout h2 { font-family: var(--f-mono); font-size: .74rem; letter-spacing: .13em;
+                text-transform: uppercase; margin: 0; color: var(--caveat); }
+  .callout p { margin: 0; max-width: var(--measure); color: var(--ink); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+           border-radius: 5px; overflow: hidden; }
+  .tile { background: var(--surface); padding: .95rem 1.1rem; display: flex; flex-direction: column; gap: .18rem; }
+  .tile .k { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .11em;
+             text-transform: uppercase; color: var(--ink-faint); }
+  .tile .v { font-family: var(--f-mono); font-size: 1.5rem; font-weight: 600;
+             font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .tile .n { font-size: .78rem; color: var(--ink-faint); overflow-wrap: anywhere; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; align-items: center;
+             background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: .7rem 1rem; }
+  .filters label { font-family: var(--f-mono); font-size: .76rem; letter-spacing: .06em; text-transform: uppercase;
+                   color: var(--ink-soft); display: flex; gap: .5rem; align-items: center; }
+  .filters select, .contrast-pick select { font: inherit; font-family: var(--f-sans); text-transform: none;
+             background: var(--surface-sunk); color: var(--ink); border: 1px solid var(--rule-strong);
+             border-radius: 3px; padding: .25rem .4rem; max-width: 60vw; }
+  .filters .hint { font-size: .78rem; color: var(--ink-faint); }
+
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  h2.sec { font-family: var(--f-display); font-size: clamp(1.3rem, 3vw, 1.65rem);
+           font-weight: 600; letter-spacing: -.01em; margin: 0; padding-bottom: .45rem;
+           border-bottom: 2px solid var(--ink); text-wrap: balance; }
+  h3.tier { font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em;
+            text-transform: uppercase; margin: .6rem 0 0; color: var(--ink); }
+  .sec-note { margin: 0; color: var(--ink-soft); max-width: var(--measure); font-size: .95rem; }
+
+  .scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px;
+              background: var(--surface); box-shadow: var(--shadow); max-width: 100%; }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+  thead th { background: var(--surface-sunk); font-family: var(--f-mono); font-size: .68rem;
+             letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
+             text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--rule-strong);
+             white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--ink); }
+  th.sortable::after { content: " \2195"; opacity: .35; }
+  th.sortable[data-dir="asc"]::after { content: " \2191"; opacity: 1; color: var(--accent); }
+  th.sortable[data-dir="desc"]::after { content: " \2193"; opacity: 1; color: var(--accent); }
+  td { padding: .62rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface-sunk); }
+  tr[hidden] { display: none; }
+  .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .num .sub, .score .of { display: block; font-size: .72rem; color: var(--ink-faint); font-weight: 400; white-space: nowrap; }
+  .rank { font-weight: 600; font-size: 1.05rem; }
+  .mono { font-family: var(--f-mono); font-size: .82rem; overflow-wrap: anywhere; }
+  td.repo, td.diff { font-family: var(--f-mono); font-size: .76rem; color: var(--ink-faint); white-space: nowrap; }
+  .tierflag { font-family: var(--f-mono); font-size: .6rem; color: var(--caveat); display: block; letter-spacing: .08em; }
+  .hm-head { font-weight: 600; }
+  tr.absent td { color: var(--ink-faint);
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 7px, var(--absent-wash) 7px, var(--absent-wash) 8px); }
+
+  .pipeline { display: flex; flex-direction: column; gap: .18rem; min-width: 240px; }
+  .pipeline .name { font-weight: 600; color: var(--ink); }
+  .pipeline .comp { font-family: var(--f-mono); font-size: .74rem; color: var(--ink-faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .15rem; }
+  .chip { display: inline-block; font-family: var(--f-mono); font-size: .66rem; letter-spacing: .05em;
+          text-transform: uppercase; padding: .15rem .42rem; border-radius: 3px; white-space: nowrap; border: 1px solid; }
+  .chip.ok { color: var(--pass); background: var(--pass-wash); border-color: var(--pass); }
+  .chip.warn { color: var(--caveat); background: var(--caveat-wash); border-color: var(--caveat); }
+  .chip.bad { color: var(--fail); background: var(--fail-wash); border-color: var(--fail); }
+  .chip.none, .chip.run, .chip.id { color: var(--absent); background: var(--absent-wash); border-color: var(--rule-strong); }
+  .chip.tier { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badges { display: flex; flex-wrap: wrap; gap: .3rem; max-width: 220px; }
+  .badge { font-family: var(--f-mono); font-size: .62rem; letter-spacing: .04em; padding: .12rem .38rem;
+           border-radius: 3px; border: 1px solid; cursor: help; white-space: nowrap; }
+  .badge.ok { color: var(--pass); border-color: var(--pass); background: var(--pass-wash); }
+  .badge.warn { color: var(--caveat); border-color: var(--caveat); background: var(--caveat-wash); }
+  .badge.bad { color: var(--fail); border-color: var(--fail); background: var(--fail-wash); }
+  .badge.none { color: var(--absent); border-color: var(--rule-strong); background: var(--absent-wash); }
+
+  .score { min-width: 170px; }
+  .score .fig { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 600;
+                display: flex; align-items: baseline; gap: .35rem; }
+  .score .fig .pct { font-size: 1.05rem; }
+  .score .fig .pm { font-size: .78rem; color: var(--ink-soft); font-weight: 500; }
+  .score.none { color: var(--ink-faint); font-family: var(--f-mono); }
+  svg.ci { display: block; width: 100%; height: 8px; margin-top: .3rem; }
+  .ci-band { stroke: var(--pass); stroke-width: 4; stroke-opacity: .35; }
+  .ci-mark { stroke: var(--pass); stroke-width: 2; }
+  .est { font-family: var(--f-mono); font-size: .62rem; color: var(--caveat); margin-left: .3rem; cursor: help; }
+  .cost-incomplete .flag { font-family: var(--f-mono); font-size: .7rem; color: var(--fail); text-transform: uppercase;
+                           letter-spacing: .05em; cursor: help; }
+  button.expand, .axis-btn { font: inherit; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .05em;
+                  text-transform: uppercase; background: var(--surface-sunk); color: var(--ink-soft);
+                  border: 1px solid var(--rule-strong); border-radius: 3px; padding: .25rem .55rem; cursor: pointer; }
+  button.expand:hover, .axis-btn:hover { color: var(--ink); border-color: var(--accent); }
+  .axis-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .axis-toggle { display: flex; flex-wrap: wrap; gap: .4rem; }
+  tr.detail td { background: var(--surface-sunk); }
+  tr.detail:hover td { background: var(--surface-sunk); }
+  dl.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .5rem 1.5rem; margin: 0; }
+  dl.facts div { display: flex; flex-direction: column; gap: .1rem; }
+  dl.facts dt { font-family: var(--f-mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+  dl.facts dd { margin: 0; font-size: .84rem; overflow-wrap: anywhere; }
+  .repro { margin-top: .8rem; display: flex; flex-direction: column; gap: .3rem; }
+  .repro .label { font-family: var(--f-mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+  pre.code { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: .7rem .85rem;
+             overflow-x: auto; font-family: var(--f-mono); font-size: .76rem; line-height: 1.55; color: var(--ink); max-width: 100%; }
+
+  svg.scatter { width: 100%; height: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--rule);
+                border-radius: 5px; box-shadow: var(--shadow); font-family: var(--f-mono); }
+  svg.scatter .grid { stroke: var(--rule); stroke-width: 1; }
+  svg.scatter .tick { font-size: 11px; fill: var(--ink-faint); }
+  svg.scatter .axis { font-size: 11px; fill: var(--ink-soft); letter-spacing: .08em; text-transform: uppercase; }
+  svg.scatter .frontier { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  svg.scatter .whisker { stroke: var(--ink-faint); stroke-width: 1.5; }
+  svg.scatter circle { fill: var(--surface); stroke: var(--ink-soft); stroke-width: 2; }
+  svg.scatter .front circle { fill: var(--accent); stroke: var(--accent); }
+  svg.scatter .flagged circle { stroke-dasharray: 2 2; }
+  svg.scatter .ptlabel { font-size: 11px; fill: var(--ink); }
+  svg.scatter g[hidden] { display: none; }
+
+  .contrast-pick { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; }
+  .contrast-pick label { font-family: var(--f-mono); font-size: .76rem; letter-spacing: .06em; text-transform: uppercase;
+                         color: var(--ink-soft); display: flex; gap: .5rem; align-items: center; }
+  .contrast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: 1rem 1.1rem;
+          box-shadow: var(--shadow); display: flex; flex-direction: column; gap: .5rem; }
+  .card h3 { margin: 0; font-family: var(--f-mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  .card .big { font-family: var(--f-mono); font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
+  .card ul { margin: 0; padding-left: 1.1rem; font-family: var(--f-mono); font-size: .78rem; }
+  table.two { width: auto; }
+  table.two td, table.two th { padding: .35rem .7rem; }
+
+  .matrix td.cell { text-align: center; font-family: var(--f-mono); font-weight: 600; min-width: 64px; }
+  .matrix td.cell.p { background: var(--pass-wash); color: var(--pass); }
+  .matrix td.cell.f { background: var(--fail-wash); color: var(--fail); }
+  .matrix td.cell.m { background: color-mix(in srgb, var(--pass-wash) calc(var(--k, .5) * 100%), var(--fail-wash)); color: var(--ink); }
+  .matrix td.cell.n { color: var(--ink-faint); }
+  .matrix tr.group td { background: var(--surface-sunk); font-family: var(--f-mono); font-size: .7rem;
+                        letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  td[hidden], th[hidden] { display: none; }
+
+  ul.plain { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: .93rem;
+             display: flex; flex-direction: column; gap: .35rem; }
+  ul.plain strong { color: var(--ink); }
+  footer { border-top: 1px solid var(--rule); padding-top: 1.15rem; padding-bottom: 2rem;
+           color: var(--ink-faint); font-size: .82rem; display: flex; flex-direction: column; gap: .35rem; }
+  footer .mono { font-size: .76rem; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header class="masthead"><div class="eyebrow"><span>SWE-bench Verified · 1-task frozen subset</span><span>Official pinned evaluator, Docker</span><span>Built 2026-09-04T17:50:40Z</span></div><h1>Co-Evolution: cross-vendor review benchmark for coding agents</h1><p class="standfirst">Does a second model reviewing the first one's patch produce more resolved issues than either model alone, and at what cost? Every configuration is an implementer and a reviewer drawn from different vendors, run on the same frozen tasks, scored by the official evaluator, and shown with its uncertainty.</p><nav class="sitenav"><a href="poc.html">Leaderboard</a><a class="here" href="poc-methodology.html">Methodology</a><a href="poc.json">poc.json</a><a href="leaderboard.html">50-task leaderboard</a></nav><div class="runmeta"><span title="One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).">frontier tier · fable / gpt-5.6-sol</span><span>gold canary 1/1</span><span>harness build 925242b (dirty tree)</span></div></header>
+<section><h2 class="sec">Suite draw</h2><ul class="plain"><li><strong>Suite.</strong> <span class="mono">swebench-verified-poc</span>: 1 tasks from princeton-nlp/SWE-bench_Verified (test split), file <span class="mono">benchmarks/code/subsets/swebench-verified-poc.json</span>.</li><li><strong>Sampling.</strong> hand-pinned with seed <span class="mono"></span> from  instances at dataset revision <span class="mono"></span>. </li></ul></section>
+<section><h2 class="sec">Difficulty stratification</h2><p class="sec-note">Human time-to-fix estimate shipped with SWE-bench Verified. A public field, not a gold patch or hidden test. Source: datasets-server.huggingface.co rows API, field `difficulty`, fetched 2026-09-04.</p><div class="scroller"><table><thead><tr><th>Bucket</th><th>Tasks</th></tr></thead><tbody><tr><td>&lt;15 min fix</td><td class="num">1</td></tr><tr><td>15 min - 1 hour</td><td class="num">0</td></tr><tr><td>1-4 hours</td><td class="num">0</td></tr><tr><td>&gt;4 hours</td><td class="num">0</td></tr></tbody></table></div></section>
+<section><h2 class="sec">Pre-registered contrasts</h2><p class="sec-note">Registered 2026-09-04 from .planning/notes/2026-09-04-benchmark-expansion-plan.md (sections 1, 3 and 6). One primary contrast per phase, declared before the phase runs; the outcome column is filled from the evaluator reports, never by hand. Holm across secondary pairwise contrasts within a phase</p><div class="scroller"><table><thead><tr><th>Phase</th><th>Name</th><th>Primary</th><th>Question</th><th>Outcome</th><th>Arms measured</th></tr></thead><tbody><tr><td class="num">1</td><td>Finish the light matrix on random50</td><td class="mono">B vs D</td><td>cross-vendor bounce vs self-bounce: does any second pass help, or only a cross-vendor one?</td><td>B@poc-flask-5014 vs D@poc-flask-5014: 0 / 0 discordant, McNemar p = 1.00, delta 0.0% (bootstrap 0.0% to 0.0%)</td><td class="mono">A, B, C, D, E, F, G, H, I</td></tr><tr><td class="num">2</td><td>Tier crossing on the same 50 tasks</td><td class="mono">A vs M</td><td>does a cheap implementer with a strong reviewer match a strong solo at lower cost per solved task? (A at frontier tier vs M)</td><td>pending: M, N, O, P</td><td class="mono">A, B, D, E</td></tr><tr><td class="num">3</td><td>Scale for power</td><td class="mono">A vs B</td><td>does the cross-vendor bounce beat the solo at confirmatory power?</td><td>A@poc-flask-5014 vs B@poc-flask-5014: 0 / 0 discordant, McNemar p = 1.00, delta 0.0% (bootstrap 0.0% to 0.0%)</td><td class="mono">none</td></tr></tbody></table></div></section>
+<section><h2 class="sec">Power</h2><p class="sec-note">Paired observations (task × seed) needed to detect a paired difference at 80% power and α = 0.05, from the McNemar normal approximation, for the discordance rates seen so far. The light tier's A vs B discordance is 14%; repeats count as observations.</p><div class="scroller"><table><thead><tr><th>Discordance</th><th>Effect</th><th>Paired observations</th></tr></thead><tbody><tr><td class="num">10%</td><td class="num">5%</td><td class="num">312</td></tr><tr><td class="num">10%</td><td class="num">6%</td><td class="num">216</td></tr><tr><td class="num">10%</td><td class="num">10%</td><td class="num">77</td></tr><tr><td class="num">14%</td><td class="num">5%</td><td class="num">438</td></tr><tr><td class="num">14%</td><td class="num">6%</td><td class="num">303</td></tr><tr><td class="num">14%</td><td class="num">10%</td><td class="num">108</td></tr><tr><td class="num">20%</td><td class="num">5%</td><td class="num">626</td></tr><tr><td class="num">20%</td><td class="num">6%</td><td class="num">434</td></tr><tr><td class="num">20%</td><td class="num">10%</td><td class="num">155</td></tr></tbody></table></div></section>
+<section><h2 class="sec">Cost basis</h2><p class="sec-note">List prices per million tokens from <span class="mono">benchmarks/code/pricing.json</span>, recorded 2026-09-04. Claude is priced by its CLI's own envelope. A Codex phase whose log carries only a total is priced with an assumed split of 70% cached, 20% uncached input, 10% output, and flagged "est." with bounds.</p><div class="scroller"><table><thead><tr><th>Model</th><th>Vendor</th><th>Input</th><th>Cached input</th><th>Output</th><th>Note</th></tr></thead><tbody><tr><td class="mono">glm-5.3-flash</td><td>zai</td><td class="num">$0.15</td><td class="num">$0.03</td><td class="num">$0.50</td><td>Regular list price. A launch promotion (0.075 / 0.015 / 0.25) ran through 2026-09-09; the list rate is used so runs before and after it price the same.</td></tr><tr><td class="mono">gpt-5.6-luna</td><td>openai</td><td class="num">$0.20</td><td class="num">$0.02</td><td class="num">$1.20</td><td></td></tr><tr><td class="mono">gpt-5.6-sol</td><td>openai</td><td class="num">$5.00</td><td class="num">$0.50</td><td class="num">$30.00</td><td></td></tr><tr><td class="mono">gpt-5.6-terra</td><td>openai</td><td class="num">$2.00</td><td class="num">$0.20</td><td class="num">$12.00</td><td></td></tr><tr><td class="mono">kimi-k3</td><td>moonshot</td><td class="num">$3.00</td><td class="num">$0.30</td><td class="num">$15.00</td><td></td></tr></tbody></table></div></section>
+<section><h2 class="sec">Statistics and integrity</h2><ul class="plain"><li><strong>Evaluator.</strong> Official SWE-bench harness pinned at <span class="mono">7a21e0577295</span>, dataset <span class="mono">princeton-nlp/SWE-bench_Verified</span> at revision <span class="mono">c104f840cc67</span>, both from <span class="mono">benchmarks/code/external-sources.lock.json</span>.</li><li><strong>Gold canary.</strong> A gold patch resolved 1/1 before any generated prediction was scored. Report: <span class="mono">benchmarks/results/code/evaluation/gold.gold-canary-20260831T130008Z.json</span>.</li><li><strong>Cost.</strong> Claude cost is the CLI's own figure. Codex, GLM and Kimi are priced from the token counts in each cell's logs at the list prices in <span class="mono">benchmarks/code/pricing.json</span> (recorded 2026-09-04). A row is "fully priced" only when every seat that ran has a priced figure; otherwise the cost column says incomplete rather than showing a smaller number.</li><li><strong>Uncertainty.</strong> Wilson score, 95% per row; exact two-sided McNemar on discordant tasks per pair; a 2000-draw bootstrap over repo, task, seed for the paired delta; Rank(UB): 1 + number of arms whose interval lower bound exceeds this upper bound. Code: <span class="mono">benchmarks/site/stats.py</span>.</li><li><strong>Provenance badges.</strong> "official evaluator" and the gold canary say how a row was scored; "we ran it" says who generated the patches; "clean tree" or "dirty tree" is what the cell manifests recorded about the harness, and "harness unrecorded" means the run predates that record; "flagged" carries the run registry's note and keeps the row out of any headline.</li><li><strong>Every number on this page comes from a file.</strong> The page is generated from <span class="mono">benchmarks/site/aggregate.sh</span> output; each row names the evaluator reports it was read from and each task cell is backed by that run's per-instance <span class="mono">report.json</span>. The full JSON is linked in the header.</li></ul></section>
+<section><h2 class="sec">Downloads</h2><ul class="plain"><li><a href="poc.json">poc.json</a> — the complete data this site renders (schema code-bench-site/2.0).</li><li><a href="code-bench-site-2.0.schema.json">code-bench-site-2.0.schema.json</a> — the JSON schema.</li><li>In the repository: <span class="mono">benchmarks/code/conditions.json</span>, <span class="mono">benchmarks/code/pricing.json</span>, <span class="mono">benchmarks/code/runs.json</span>, <span class="mono">benchmarks/code/preregistration.json</span>.</li></ul></section>
+<footer><div>Generated from run artifacts in <span class="mono">benchmarks/results/code/</span> by <span class="mono">benchmarks/site/aggregate.sh</span>.</div><div class="mono">site build 925242b58317e94911d0baa9a1c4968f163c2b9e · working tree had uncommitted changes at build time · schema code-bench-site/2.0</div></footer>
+</div>

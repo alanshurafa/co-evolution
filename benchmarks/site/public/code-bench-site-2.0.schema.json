@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alanshurafa.github.io/co-evolution/code-bench-site-2.0.schema.json",
+  "title": "code-bench-site/2.0",
+  "description": "The single JSON the Co-Evolution results site renders. Written by benchmarks/site/build-site-data.py from evaluator reports and run logs; every figure carries the file it came from. A row is one condition run under one batch label over one or more seeds.",
+  "type": "object",
+  "required": ["schema", "title", "generated_at", "harness", "pricing", "statistics", "suite", "runs", "rows", "contrasts", "pareto", "task_matrix", "methodology"],
+  "properties": {
+    "schema": {"const": "code-bench-site/2.0"},
+    "title": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "harness": {
+      "type": "object",
+      "properties": {
+        "build_commit": {"type": ["string", "null"]},
+        "build_tree_dirty": {"type": ["boolean", "null"]},
+        "swebench_commit": {"type": ["string", "null"]},
+        "dataset": {"type": ["string", "null"]},
+        "dataset_revision": {"type": ["string", "null"]},
+        "lock_file": {"type": "string"},
+        "conditions_file": {"type": "string"},
+        "runs_file": {"type": "string"}
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "properties": {
+        "file": {"type": "string"},
+        "recorded_on": {"type": "string"},
+        "models": {"type": "object"},
+        "codex_total_only_split": {"type": "object"}
+      }
+    },
+    "statistics": {"type": "object"},
+    "suite": {
+      "type": "object",
+      "required": ["id", "dataset", "split", "task_count", "subset_file", "instances"],
+      "properties": {
+        "id": {"type": "string"},
+        "task_count": {"type": "integer"},
+        "sampling": {"type": ["object", "null"]},
+        "difficulty_annotation": {"type": ["object", "null"]},
+        "instances": {
+          "type": "array",
+          "items": {"type": "object", "required": ["instance_id", "repo"],
+                    "properties": {"instance_id": {"type": "string"}, "repo": {"type": "string"},
+                                   "difficulty": {"type": ["string", "null"]}}}
+        }
+      }
+    },
+    "gold_canary": {"type": ["object", "null"]},
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "suite"],
+        "properties": {
+          "label": {"type": "string"},
+          "model_tier": {"type": ["string", "null"]},
+          "publishable": {"type": ["boolean", "null"]},
+          "ran_by": {"type": "string"},
+          "note": {"type": ["string", "null"]},
+          "models": {"type": "object"},
+          "conditions_measured": {"type": "array"},
+          "harness_commit": {"type": ["string", "null"]},
+          "harness_dirty": {"type": ["boolean", "string", "null"]},
+          "harness_recorded": {"type": "boolean"}
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "condition", "tier", "run_label", "seeds", "configuration", "pipeline", "per_task", "telemetry", "provenance", "reproduce"],
+        "properties": {
+          "id": {"type": "string", "description": "<condition>@<run_label>"},
+          "condition": {"type": "string"},
+          "tier": {"enum": ["agentic", "single-shot"]},
+          "model_tier": {"type": ["string", "null"]},
+          "mixed_tier": {"type": "boolean"},
+          "run_label": {"type": "string"},
+          "seeds": {"type": "array", "items": {"type": "integer"}},
+          "configuration": {"type": "string", "description": "implementer → reviewer(s), with the models that ran"},
+          "implementer": {"type": ["string", "null"]},
+          "reviewers": {"type": "array"},
+          "pipeline": {"type": "string"},
+          "measured": {"type": "boolean"},
+          "complete": {"type": "boolean"},
+          "attempted_count": {"type": "integer"},
+          "cells_expected": {"type": "integer"},
+          "resolved": {"type": "integer"},
+          "score": {
+            "type": "object",
+            "properties": {
+              "resolved": {"type": "integer"}, "n": {"type": "integer"},
+              "rate": {"type": ["number", "null"]},
+              "wilson_low": {"type": "number"}, "wilson_high": {"type": "number"},
+              "seeds": {"type": "integer"}
+            }
+          },
+          "bootstrap": {"type": ["object", "null"]},
+          "seed_summary": {"type": ["object", "null"]},
+          "rank_ub": {"type": ["integer", "null"]},
+          "per_task": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["instance_id", "repo", "seed", "status"],
+              "properties": {
+                "status": {"enum": ["resolved", "unresolved", "no-patch", "not-submitted", "not-run"]},
+                "difficulty": {"type": ["string", "null"]},
+                "evidence": {"type": ["string", "null"]},
+                "cell_dir": {"type": ["string", "null"]},
+                "repair_inert": {"type": "boolean"},
+                "wall_seconds": {"type": "integer"},
+                "cost_usd": {"type": "number"}
+              }
+            }
+          },
+          "telemetry": {
+            "type": "object",
+            "properties": {
+              "cost_usd": {"type": "number"},
+              "cost_low_usd": {"type": "number"},
+              "cost_high_usd": {"type": "number"},
+              "cost_is_complete": {"type": "boolean"},
+              "cost_precision": {"enum": ["exact", "estimated", "unpriced"]},
+              "cost_per_task": {"type": ["number", "null"]},
+              "cost_per_resolved": {"type": ["number", "null"]},
+              "claude_cost_usd": {"type": "number"},
+              "codex_cost_usd": {"type": "number"},
+              "glm_cost_usd": {"type": "number"},
+              "kimi_cost_usd": {"type": "number"},
+              "wall_p50": {"type": ["integer", "null"]},
+              "wall_p90": {"type": ["integer", "null"]},
+              "tokens_per_task": {"type": ["integer", "null"]},
+              "patch_not_applied": {"type": "integer"},
+              "repair_cells": {"type": "integer"},
+              "repair_inert_count": {"type": "integer"},
+              "codex_cli_versions": {"type": "array"},
+              "sandbox_modes": {"type": "array"}
+            }
+          },
+          "provenance": {"type": "object"},
+          "reproduce": {"type": "string"}
+        }
+      }
+    },
+    "contrasts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["a", "b", "n", "both", "only_a", "only_b", "neither", "mcnemar_exact_p"],
+        "properties": {
+          "rescued_by_b": {"type": "array"},
+          "broken_by_b": {"type": "array"},
+          "net_b_minus_a": {"type": "integer"},
+          "mcnemar_exact_p": {"type": "number"},
+          "delta_b_minus_a": {"type": "object"},
+          "cost_delta_usd": {"type": ["number", "null"]},
+          "cost_per_net_flip_usd": {"type": ["number", "null"]},
+          "cost_is_complete": {"type": "boolean"}
+        }
+      }
+    },
+    "pareto": {"type": "object"},
+    "task_matrix": {"type": "object"},
+    "methodology": {"type": "object"},
+    "superseded_reports": {"type": "array"}
+  }
+}
