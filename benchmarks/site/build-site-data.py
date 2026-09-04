@@ -25,6 +25,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pricing as pricing_mod  # noqa: E402
+
 REPORT_NAME_RE = re.compile(
     r'^co-evolution-condition-(?P<cond>[A-Za-z0-9_-]+)\.(?P<run_id>.+)\.json$')
 GOLD_NAME_RE = re.compile(r'^gold\.(?P<run_id>.+)\.json$')
@@ -35,8 +38,30 @@ def read_json(path):
         return json.load(handle)
 
 
+RESULTS_ROOT = None
+
+
 def rel(root, path):
-    return os.path.relpath(path, root).replace(os.sep, '/')
+    """Repo-relative path for an evidence file.
+
+    The results tree is ignored by git and may live in a sibling checkout (the
+    runs are produced in a long-lived runtime worktree). A path under it is
+    always written as benchmarks/results/code/..., the location the README
+    documents, so evidence paths on the page do not depend on which checkout
+    built it.
+    """
+    path = os.path.abspath(path)
+    if RESULTS_ROOT:
+        try:
+            inside = os.path.relpath(path, RESULTS_ROOT)
+        except ValueError:
+            inside = '..'
+        if not inside.startswith('..'):
+            return 'benchmarks/results/code/' + inside.replace(os.sep, '/')
+    try:
+        return os.path.relpath(path, root).replace(os.sep, '/')
+    except ValueError:
+        return path.replace(os.sep, '/')
 
 
 def harness_commit(root):
@@ -193,17 +218,42 @@ def index_attempts(runs_root, run_id=None):
     return attempts
 
 
-def cell_telemetry(cell_dir):
-    """Provider effort for one cell, from the CLI's own envelope figures."""
+SEAT_DEFAULT_MODEL = {'glm': 'glm-5.3-flash', 'kimi': 'kimi-k3'}
+
+
+def cell_telemetry(cell_dir, pricing=None):
+    """Provider effort for one cell, from the CLI's own envelope figures.
+
+    Claude cost is the CLI's own dollar figure. Codex, GLM and Kimi report
+    tokens only; those are priced at the tracked list rates by the pricing
+    module, which also says whether the figure is exact or an estimate from a
+    total-only log.
+    """
     out = {
         'cell_dir': cell_dir,
         'claude_dispatches': 0,
         'claude_cost_usd': 0.0,
+        'claude_input_tokens': 0,
+        'claude_cached_tokens': 0,
         'claude_output_tokens': 0,
         'claude_wall_seconds': 0,
         'codex_phases': 0,
         'codex_wall_seconds': 0,
         'codex_tokens': 0,
+        'codex_input_tokens': 0,
+        'codex_cached_tokens': 0,
+        'codex_output_tokens': 0,
+        'codex_cost_usd': 0.0,
+        'codex_cost_low_usd': 0.0,
+        'codex_cost_high_usd': 0.0,
+        'codex_precision': [],
+        'codex_cli_versions': set(),
+        'glm_calls': 0,
+        'glm_cost_usd': 0.0,
+        'glm_precision': [],
+        'kimi_calls': 0,
+        'kimi_cost_usd': 0.0,
+        'kimi_precision': [],
         'single_shot_attempts': None,
         'sandbox': None,
         'model_tier': None,
@@ -223,9 +273,13 @@ def cell_telemetry(cell_dir):
             out['models'] = {
                 'claude': models.get('claude'),
                 'codex': models.get('codex'),
+                'glm': models.get('glm'),
+                'kimi': models.get('kimi'),
                 # A single-shot manifest names its one model directly.
                 'single_shot': data.get('model'),
             }
+            if data.get('agent') in SEAT_DEFAULT_MODEL and data.get('model'):
+                out['models'][data['agent']] = data['model']
             out['effort'] = {'claude': effort.get('claude'),
                              'codex': effort.get('codex')}
             out['schema'] = data.get('schema')
@@ -249,60 +303,78 @@ def cell_telemetry(cell_dir):
                 out['claude_dispatches'] += 1
                 out['claude_cost_usd'] += float(data.get('total_cost_usd') or 0)
                 usage = data.get('usage') or {}
+                out['claude_input_tokens'] += (int(usage.get('input_tokens') or 0)
+                                               + int(usage.get('cache_creation_input_tokens') or 0))
+                out['claude_cached_tokens'] += int(usage.get('cache_read_input_tokens') or 0)
                 out['claude_output_tokens'] += int(usage.get('output_tokens') or 0)
                 out['claude_wall_seconds'] += int((data.get('duration_ms') or 0) / 1000)
-            elif (name.startswith('codex-') and name.endswith('.log')
-                  and not name.endswith('.stderr.log')):
-                # Each Codex phase writes both a transcript and a stderr log.
-                # Counting every .log double-counted every phase.
+            elif (name.startswith('codex-') and name.endswith('.stderr.log')):
+                # Each Codex phase writes a transcript and a stderr log; the
+                # pair is one phase. The stderr log is the anchor because the
+                # transcript may be JSONL events or prose depending on the
+                # CLI flags the run used.
                 out['codex_phases'] += 1
-            elif name.startswith('codex-') and name.endswith('.stderr.log'):
-                seconds, tokens = codex_effort(path)
-                out['codex_wall_seconds'] += seconds
-                out['codex_tokens'] += tokens
+                transcript = path[:-len('.stderr.log')] + '.log'
+                phase = pricing_mod.price_codex_phase(
+                    pricing or {'models': {}, 'codex_total_only': {'assumed_split': {}}},
+                    out['models'].get('codex'), transcript, path)
+                out['codex_wall_seconds'] += phase['wall_seconds']
+                out['codex_tokens'] += phase['total_tokens'] or 0
+                out['codex_input_tokens'] += phase['input_tokens'] or 0
+                out['codex_cached_tokens'] += phase['cached_input_tokens'] or 0
+                out['codex_output_tokens'] += phase['output_tokens'] or 0
+                out['codex_cost_usd'] += phase['cost_usd'] or 0.0
+                out['codex_cost_low_usd'] += phase['cost_low_usd'] or 0.0
+                out['codex_cost_high_usd'] += phase['cost_high_usd'] or 0.0
+                out['codex_precision'].append(phase['precision'])
+                if phase['cli_version']:
+                    out['codex_cli_versions'].add(phase['cli_version'])
+    # GLM and Kimi calls: a critique review or a single-shot response, each
+    # with a usage sidecar when the adapter captured one. A call without a
+    # sidecar is counted and left unpriced, which keeps the arm's cost flagged
+    # incomplete rather than silently short.
+    for seat in ('glm', 'kimi'):
+        artifacts = []
+        artifacts += glob.glob(os.path.join(logs, '%s-response-*.md' % seat))
+        artifacts += [p for p in glob.glob(os.path.join(cell_dir, 'reviews', 'reviewer-*.md'))
+                      if _review_seat(cell_dir, p) == seat]
+        for artifact in artifacts:
+            out[seat + '_calls'] += 1
+            priced = None
+            if pricing:
+                model = out['models'].get(seat) or SEAT_DEFAULT_MODEL[seat]
+                priced = pricing_mod.price_sidecar(pricing, model, artifact + '.usage.json')
+            if priced:
+                out[seat + '_cost_usd'] += priced['cost_usd']
+                out[seat + '_precision'].append('exact')
+            else:
+                out[seat + '_precision'].append('unpriced')
+    out['codex_cli_versions'] = sorted(out['codex_cli_versions'])
     return out
 
 
-CODEX_TS_RE = re.compile(r'^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.\d+)?Z')
-CODEX_TOKENS_RE = re.compile(r'^([\d,]+)$')
-
-
-def codex_effort(stderr_path):
-    """Wall seconds and token count for one Codex phase, from its own log.
-
-    The Codex CLI reports no cost, so tokens and elapsed time are the only
-    honest units of effort available for it. Both are read out of the log the
-    phase already wrote: the span between its first and last timestamp, and the
-    figure it prints under "tokens used".
-    """
-    first = last = None
-    tokens = 0
-    want_tokens = False
+def _review_seat(cell_dir, review_path):
+    """Which critic wrote reviewer-N.md, from the manifest's ordered roster."""
+    manifest = os.path.join(cell_dir, 'run-manifest.json')
     try:
-        with open(stderr_path, encoding='utf-8', errors='replace') as handle:
-            for line in handle:
-                match = CODEX_TS_RE.match(line)
-                if match:
-                    if first is None:
-                        first = match.group(1)
-                    last = match.group(1)
-                stripped = line.strip()
-                if want_tokens:
-                    count = CODEX_TOKENS_RE.match(stripped)
-                    if count:
-                        tokens += int(count.group(1).replace(',', ''))
-                    want_tokens = False
-                elif stripped == 'tokens used':
-                    want_tokens = True
-    except OSError:
-        return 0, 0
-    seconds = 0
-    if first and last and last >= first:
-        import datetime
-        fmt = '%Y-%m-%dT%H:%M:%S'
-        seconds = int((datetime.datetime.strptime(last, fmt)
-                       - datetime.datetime.strptime(first, fmt)).total_seconds())
-    return seconds, tokens
+        critics = read_json(manifest).get('critics') or []
+    except (OSError, ValueError):
+        return None
+    match = re.search(r'reviewer-(\d+)\.md$', os.path.basename(review_path))
+    if not match:
+        return None
+    index = int(match.group(1)) - 1
+    return critics[index] if 0 <= index < len(critics) else None
+
+
+SUMMED_TELEMETRY = (
+    'claude_dispatches', 'claude_cost_usd', 'claude_input_tokens',
+    'claude_cached_tokens', 'claude_output_tokens', 'claude_wall_seconds',
+    'codex_phases', 'codex_wall_seconds', 'codex_tokens', 'codex_input_tokens',
+    'codex_cached_tokens', 'codex_output_tokens', 'codex_cost_usd',
+    'codex_cost_low_usd', 'codex_cost_high_usd', 'glm_calls', 'glm_cost_usd',
+    'kimi_calls', 'kimi_cost_usd',
+)
 
 
 def main():
@@ -319,8 +391,10 @@ def main():
                     help='benchmark run whose cells back this page; defaults to --run-label')
     args = ap.parse_args()
 
+    global RESULTS_ROOT
     root = os.path.abspath(args.repo_root)
     results = os.path.abspath(args.results_root)
+    RESULTS_ROOT = results
     code_dir = os.path.join(root, 'benchmarks', 'code')
     eval_dir = os.path.join(results, 'evaluation')
     runs_root = os.path.join(results, 'runs')
@@ -335,6 +409,8 @@ def main():
     instances = [row['instance_id'] for row in subset['instances']]
     repos = {row['instance_id']: row['repo'] for row in subset['instances']}
     lock = read_json(os.path.join(code_dir, 'external-sources.lock.json'))
+    pricing_path = os.path.join(code_dir, 'pricing.json')
+    pricing = pricing_mod.load_pricing(pricing_path)
 
     latest, superseded = newest_reports(eval_dir, args.run_label)
     cell_scope = args.run_id or args.run_label
@@ -345,6 +421,7 @@ def main():
     # than assumed. A page that hardcodes its model names lies the first time
     # someone runs a different tier.
     configuration = {'tiers': set(), 'claude': set(), 'codex': set(),
+                     'glm': set(), 'kimi': set(),
                      'single_shot': set(), 'claude_effort': set(),
                      'codex_effort': set()}
 
@@ -367,16 +444,30 @@ def main():
             'telemetry': {
                 'claude_dispatches': 0,
                 'claude_cost_usd': 0.0,
+                'claude_input_tokens': 0,
+                'claude_cached_tokens': 0,
                 'claude_output_tokens': 0,
                 'claude_wall_seconds': 0,
                 'codex_phases': 0,
                 'codex_wall_seconds': 0,
                 'codex_tokens': 0,
+                'codex_input_tokens': 0,
+                'codex_cached_tokens': 0,
+                'codex_output_tokens': 0,
+                'codex_cost_usd': 0.0,
+                'codex_cost_low_usd': 0.0,
+                'codex_cost_high_usd': 0.0,
+                'codex_cli_versions': [],
+                'glm_calls': 0,
+                'glm_cost_usd': 0.0,
+                'kimi_calls': 0,
+                'kimi_cost_usd': 0.0,
                 'cells_linked': 0,
                 'sandbox_modes': [],
                 'single_shot_attempts': [],
             },
         }
+        precision_parts = []
         entry = latest.get(cond_id)
         if entry is not None:
             run_id, report_path = entry
@@ -423,15 +514,16 @@ def main():
                 }
                 row['per_task'].append(task)
                 if cell:
-                    telemetry = cell_telemetry(cell)
+                    telemetry = cell_telemetry(cell, pricing)
                     row['telemetry']['cells_linked'] += 1
-                    row['telemetry']['claude_dispatches'] += telemetry['claude_dispatches']
-                    row['telemetry']['claude_cost_usd'] += telemetry['claude_cost_usd']
-                    row['telemetry']['claude_output_tokens'] += telemetry['claude_output_tokens']
-                    row['telemetry']['claude_wall_seconds'] += telemetry['claude_wall_seconds']
-                    row['telemetry']['codex_phases'] += telemetry['codex_phases']
-                    row['telemetry']['codex_wall_seconds'] += telemetry['codex_wall_seconds']
-                    row['telemetry']['codex_tokens'] += telemetry['codex_tokens']
+                    for key in SUMMED_TELEMETRY:
+                        row['telemetry'][key] += telemetry[key]
+                    row['telemetry']['codex_cli_versions'] = sorted(
+                        set(row['telemetry']['codex_cli_versions'])
+                        | set(telemetry['codex_cli_versions']))
+                    precision_parts += (telemetry['codex_precision']
+                                        + telemetry['glm_precision']
+                                        + telemetry['kimi_precision'])
                     if telemetry['sandbox']:
                         sandboxes.add(telemetry['sandbox'])
                     if telemetry.get('model_tier'):
@@ -459,7 +551,9 @@ def main():
                     'evidence': (rel(root, os.path.join(attempt['cell_dir'], 'outcome.json'))
                                  if attempt else None),
                 })
-        row['telemetry']['claude_cost_usd'] = round(row['telemetry']['claude_cost_usd'], 4)
+        for key in ('claude_cost_usd', 'codex_cost_usd', 'codex_cost_low_usd',
+                    'codex_cost_high_usd', 'glm_cost_usd', 'kimi_cost_usd'):
+            row['telemetry'][key] = round(row['telemetry'][key], 4)
 
         # A task the arm actually ran, whether or not it yielded a patch. The
         # distinction matters: a task that ran and produced nothing is a zero,
@@ -471,22 +565,35 @@ def main():
         row['attempted_count'] = len(ran)
         row['complete'] = len(ran) == len(instances)
 
-        # Effort per arm. Codex, GLM and Kimi report no cost, so an arm that
-        # uses them has a dollar figure covering only its Claude phases; saying
-        # so is the difference between a partial figure and a wrong one.
+        # Effort per arm. Every seat that ran is priced at list rate from its
+        # own token log; a seat that ran without a priceable figure leaves the
+        # arm's cost flagged incomplete rather than silently short. The
+        # precision says whether any seat was priced from a total-only log.
         telemetry = row['telemetry']
         telemetry['total_wall_seconds'] = (telemetry['claude_wall_seconds']
                                            + telemetry['codex_wall_seconds'])
+        telemetry['cost_precision'] = pricing_mod.combine_precision(precision_parts)
         telemetry['cost_is_complete'] = (
-            telemetry['codex_phases'] == 0
-            and not telemetry['single_shot_attempts'])
+            row['telemetry']['cells_linked'] > 0
+            and telemetry['cost_precision'] != 'unpriced')
+        telemetry['cost_usd'] = round(telemetry['claude_cost_usd']
+                                      + telemetry['codex_cost_usd']
+                                      + telemetry['glm_cost_usd']
+                                      + telemetry['kimi_cost_usd'], 4)
+        telemetry['cost_low_usd'] = round(telemetry['cost_usd'] - telemetry['codex_cost_usd']
+                                          + telemetry['codex_cost_low_usd'], 4)
+        telemetry['cost_high_usd'] = round(telemetry['cost_usd'] - telemetry['codex_cost_usd']
+                                           + telemetry['codex_cost_high_usd'], 4)
         resolved = row['resolved'] or 0
-        # No reported cost is not zero cost: Codex, GLM and Kimi bill elsewhere.
-        # Emitting 0.0 here would render as "$0.00 per resolved task", which
-        # reads as free rather than as unmeasured.
+        # An unpriced seat is not a free one. Emitting a per-resolved figure
+        # for an arm whose cost is incomplete would read as cheap rather than
+        # as unmeasured, so the figure is withheld until every seat is priced.
         telemetry['cost_per_resolved'] = (
-            round(telemetry['claude_cost_usd'] / resolved, 4)
-            if resolved and telemetry['claude_cost_usd'] else None)
+            round(telemetry['cost_usd'] / resolved, 4)
+            if resolved and telemetry['cost_usd'] and telemetry['cost_is_complete'] else None)
+        telemetry['cost_per_task'] = (
+            round(telemetry['cost_usd'] / telemetry['cells_linked'], 4)
+            if telemetry['cells_linked'] and telemetry['cost_is_complete'] else None)
         telemetry['seconds_per_resolved'] = (
             round(telemetry['total_wall_seconds'] / resolved) if resolved else None)
         rows.append(row)
@@ -503,6 +610,11 @@ def main():
             'dataset': suite.get('dataset'),
             'dataset_revision': lock.get('dataset', {}).get('revision'),
             'lock_file': rel(root, os.path.join(code_dir, 'external-sources.lock.json')),
+        },
+        'pricing': {
+            'file': rel(root, pricing_path),
+            'recorded_on': pricing.get('recorded_on'),
+            'codex_total_only_split': pricing['codex_total_only']['assumed_split'],
         },
         'suite': {
             'id': suite['id'],
