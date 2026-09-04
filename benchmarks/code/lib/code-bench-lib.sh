@@ -149,6 +149,17 @@ code_check_manifests() {
       printf 'CHECK FAIL: malformed or duplicate subset entries: %s\n' "$subset" >&2
       failures=$((failures + 1)); continue
     fi
+    # Difficulty labels are optional per subset but, once present, every
+    # instance must carry one of the four Verified buckets: a by-difficulty
+    # breakdown with an unlabeled task silently drops it from every bucket.
+    if jq -e '.annotations.difficulty' "$subset" >/dev/null 2>&1; then
+      if ! jq -e '(.annotations.difficulty.buckets == ["<15 min fix","15 min - 1 hour","1-4 hours",">4 hours"]) and
+                  (all(.instances[]; .difficulty as $d | any(["<15 min fix","15 min - 1 hour","1-4 hours",">4 hours"][]; . == $d)))' \
+             "$subset" >/dev/null; then
+        printf 'CHECK FAIL: difficulty labels missing or outside the four buckets: %s\n' "$subset" >&2
+        failures=$((failures + 1)); continue
+      fi
+    fi
     if printf '%s' "$suite_json" | jq -e '.require_unique_repos == true' >/dev/null 2>&1; then
       if ! jq -e '[.instances[].repo] | length == (unique | length)' "$subset" >/dev/null; then
         printf 'CHECK FAIL: suite requires one task per repository: %s\n' "$subset" >&2
