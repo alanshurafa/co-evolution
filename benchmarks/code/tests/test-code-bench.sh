@@ -256,6 +256,92 @@ else
   pass "a shard index outside its count is rejected"
 fi
 
+# A tier is a named configuration of the primary seats. GLM and Kimi are held
+# constant across all of them, so a tier comparison varies only the two seats
+# that have a cheaper sibling.
+tier_ok=true
+for spec in "frontier fable gpt-5.6-sol medium" \
+            "max fable gpt-5.6-sol xhigh" \
+            "light sonnet gpt-5.6-terra medium"; do
+  set -- $spec
+  got=$( unset CODE_BENCH_CLAUDE_MODEL CODE_BENCH_CODEX_MODEL CODE_BENCH_CODEX_EFFORT
+         source "$CODE_DIR/lib/code-bench-lib.sh"
+         code_apply_model_tier "$1" >/dev/null
+         printf '%s %s %s' "$CODE_BENCH_CLAUDE_MODEL" "$CODE_BENCH_CODEX_MODEL" \
+           "$CODE_BENCH_CODEX_EFFORT" )
+  [[ "$got" == "$2 $3 $4" ]] || { tier_ok=false; printf 'tier %s gave: %s\n' "$1" "$got" >&2; }
+done
+if [[ "$tier_ok" == true ]]; then
+  pass "each model tier selects its own models"
+else
+  fail "each model tier selects its own models"
+fi
+
+# The light tier asks for Sonnet's own default effort. If that arrives as the
+# driver's "medium" instead, the run is not the one the tier described and the
+# manifest records an effort nobody chose.
+light_effort=$( unset CODE_BENCH_CLAUDE_EFFORT
+                source "$CODE_DIR/lib/code-bench-lib.sh"
+                code_apply_model_tier light >/dev/null
+                printf '[%s]' "${CODE_BENCH_CLAUDE_EFFORT?unset}" )
+if [[ "$light_effort" == "[]" ]]; then
+  pass "the light tier leaves Claude effort to the model"
+else
+  fail "the light tier leaves Claude effort to the model (got $light_effort)"
+fi
+
+# A ceiling that clips a model's tail measures the ceiling, not the model. The
+# cheaper tier needs the longer one because it iterates more per task.
+timeout_ok=true
+for spec in "frontier 900" "max 1800" "light 2400"; do
+  set -- $spec
+  got=$( unset CODE_BENCH_PHASE_TIMEOUT
+         source "$CODE_DIR/lib/code-bench-lib.sh"
+         code_apply_model_tier "$1" >/dev/null
+         printf '%s' "$CODE_BENCH_PHASE_TIMEOUT" )
+  [[ "$got" == "$2" ]] || { timeout_ok=false; printf 'tier %s timeout %s\n' "$1" "$got" >&2; }
+done
+if [[ "$timeout_ok" == true ]]; then
+  pass "each tier carries a phase timeout sized to its models"
+else
+  fail "each tier carries a phase timeout sized to its models"
+fi
+
+# An explicit override is a deliberate act and must outrank the tier default.
+# Exported before the call, the way a caller actually sets it. A "VAR=x func"
+# prefix does not reliably outlive a shell function, so testing it that way
+# measured the shell rather than the tier logic.
+override=$( unset CODE_BENCH_CODEX_MODEL
+            source "$CODE_DIR/lib/code-bench-lib.sh"
+            export CODE_BENCH_CLAUDE_MODEL=opus
+            code_apply_model_tier light >/dev/null
+            printf '%s' "$CODE_BENCH_CLAUDE_MODEL" )
+if [[ "$override" == "opus" ]]; then
+  pass "an explicit model override survives tier selection"
+else
+  fail "an explicit model override survives tier selection (got $override)"
+fi
+
+if ( source "$CODE_DIR/lib/code-bench-lib.sh"; code_tier_is_valid turbo ); then
+  fail "an unknown tier is rejected"
+else
+  pass "an unknown tier is rejected"
+fi
+
+# Resuming a run at a different tier would put two experiments in one prediction
+# file with nothing downstream able to separate them.
+TIER_ROOT="$TMP/tiermix"
+mkdir -p "$TIER_ROOT/runs/tier-test/pallets__flask-5014/A"
+jq -n '{schema:"code-bench-run/1.0",model_tier:"light"}' \
+  > "$TIER_ROOT/runs/tier-test/pallets__flask-5014/A/run-manifest.json"
+if CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$TIER_ROOT" \
+     bash "$RUNNER" run-canary --run-id tier-test --task pallets__flask-5014 \
+     --conditions A --models frontier --max-claude-dispatches 1 >/dev/null 2>&1; then
+  fail "a cell from another tier is refused instead of reused"
+else
+  pass "a cell from another tier is refused instead of reused"
+fi
+
 if jq -e 'all(.conditions[]; (.tier == "agentic") or (.tier == "single-shot"))' \
      "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
   pass "every condition declares a tier"
