@@ -49,6 +49,10 @@ case "$COMMAND" in
   validate-predictions)
     exec bash "$SCRIPT_DIR/validate-predictions.sh" "$@"
     ;;
+  probe-codex-sandbox)
+    # One tiny Codex call per mode: not free, never run by the tests.
+    exec bash "$SCRIPT_DIR/scripts/probe-codex-sandbox.sh" "$@"
+    ;;
   gold-canary)
     exec bash "$SCRIPT_DIR/scripts/evaluate-swebench.sh" gold "$@"
     ;;
@@ -70,6 +74,7 @@ usage: code-bench.sh COMMAND [options]
   run-single-shot [options]     generate one single-shot tier prediction
   run-canary [options]          run a batch with one aggregate Claude cap
   validate-predictions FILE     validate JSONL before official scoring
+  probe-codex-sandbox [--all]   check whether Codex can write under workspace-write here
   gold-canary [INSTANCE]        verify the official evaluator with a gold patch
   evaluate FILE                 score generated predictions officially
 

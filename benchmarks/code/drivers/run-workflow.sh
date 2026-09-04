@@ -123,7 +123,17 @@ cell="$input_dir"
 logs="$cell/logs"
 reviews="$cell/reviews"
 mkdir -p "$logs" "$reviews"
+# The CLI versions and the harness commit are treatment-relevant: the Codex
+# sandbox bug is version-specific, and a row on the page should be able to say
+# which harness produced it without trusting the build-time checkout.
+claude_version=$(claude --version 2>/dev/null </dev/null | head -1 | tr -d '\r')
+codex_version=$(codex --version 2>/dev/null </dev/null | head -1 | tr -d '\r')
+harness_commit=$(git -C "$CODE_BENCH_REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)
+harness_dirty=false
+[[ -z "$(git -C "$CODE_BENCH_REPO_ROOT" status --porcelain 2>/dev/null)" ]] || harness_dirty=true
 jq -n --arg instance "$instance" --arg condition "$condition" \
+  --arg claude_version "$claude_version" --arg codex_version "$codex_version" \
+  --arg harness_commit "$harness_commit" --argjson harness_dirty "$harness_dirty" \
   --arg claude_model "$CLAUDE_MODEL" --arg claude_effort "$CLAUDE_EFFORT_LOCAL" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
   --arg glm_model "${GLM_MODEL:-glm-5.3-flash}" --arg kimi_model "${KIMI_MODEL:-kimi-k3}" \
@@ -135,6 +145,8 @@ jq -n --arg instance "$instance" --arg condition "$condition" \
     models:{claude:$claude_model,codex:$codex_model,glm:$glm_model,kimi:$kimi_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
     sandbox:{codex:$codex_sandbox},critics:$critics,
+    versions:{claude:$claude_version,codex:$codex_version},
+    harness:{commit:$harness_commit,dirty:$harness_dirty},
     phase_timeout_seconds:$phase_timeout,declared_claude_dispatches:$declared_claude}' \
   > "$cell/run-manifest.json"
 
