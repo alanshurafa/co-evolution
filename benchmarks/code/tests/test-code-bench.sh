@@ -858,6 +858,99 @@ else
   fail "the selector exits 3 when no candidate applies (rc=$rc)"
 fi
 
+
+# --- New conditions J..P: declared plan and executable plan agree ------------
+# conditions.json is what the page and the estimate read; the driver's case
+# statement is what runs. A condition declared one way and run another is the
+# inert-repair bug in a different coat, so every agentic condition's dry-run
+# phase list must equal the declared one.
+plan_ok=true
+while IFS=$'\t' read -r cond declared; do
+  cellp="$TEST_RESULTS/runs/test/sympy__sympy-20916/$cond"
+  mkdir -p "$cellp/workspace/.git"; printf 'task\n' > "$cellp/task.md"
+  jq -n --arg c "$cond" --arg w "$cellp/workspace" --arg t "$cellp/task.md" \
+    '{instance_id:"sympy__sympy-20916",condition:$c,workspace:$w,task_file:$t}' > "$cellp/input.json"
+  got=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+    --input "$cellp/input.json" --predictions "$TEST_RESULTS/predictions/test/$cond.jsonl" \
+    --max-claude-dispatches 9 --dry-run 2>/dev/null | jq -r '.phases | join(",")')
+  [[ "$got" == "$declared" ]] || { plan_ok=false; printf 'condition %s: declared %s, driver %s\n' "$cond" "$declared" "$got" >&2; }
+done < <(jq -r '.conditions[] | select(.tier == "agentic") | [.id, (.phases | join(","))] | @tsv' "$CODE_DIR/conditions.json" | tr -d '\r')
+if [[ "$plan_ok" == true ]]; then
+  pass "every agentic condition's declared phases match the driver's plan"
+else
+  fail "every agentic condition's declared phases match the driver's plan"
+fi
+
+if jq -e '[.conditions[].id] == ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P"]' \
+     "$CODE_DIR/conditions.json" >/dev/null 2>&1; then
+  pass "conditions A through P are declared"
+else
+  fail "conditions A through P are declared"
+fi
+
+# A mixed-tier arm pins its seats regardless of the tier in force.
+dry_m=$(CODE_BENCH_MODEL_TIER=frontier CODE_BENCH_CLAUDE_MODEL=fable CODE_BENCH_CODEX_MODEL=gpt-5.6-sol \
+  CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/M/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/M.jsonl" --max-claude-dispatches 1 --dry-run 2>/dev/null)
+dry_n=$(CODE_BENCH_MODEL_TIER=light CODE_BENCH_CLAUDE_MODEL=sonnet CODE_BENCH_CODEX_MODEL=gpt-5.6-terra \
+  CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/N/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/N.jsonl" --max-claude-dispatches 1 --dry-run 2>/dev/null)
+if [[ "$(printf '%s' "$dry_m" | jq -r '.models.claude + " " + .models.codex')" == "sonnet gpt-5.6-sol" \
+   && "$(printf '%s' "$dry_n" | jq -r '.models.claude + " " + .models.codex')" == "fable gpt-5.6-terra" ]]; then
+  pass "mixed-tier arms pin their seats over the tier"
+else
+  fail "mixed-tier arms pin their seats over the tier"
+fi
+
+# Reverse and self-bounce arms for the Codex seat.
+dry_j=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/J/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/J.jsonl" --max-claude-dispatches 1 --dry-run 2>/dev/null)
+rc=0
+CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$TEST_RESULTS/runs/test/sympy__sympy-20916/K/input.json" \
+  --predictions "$TEST_RESULTS/predictions/test/K.jsonl" --max-claude-dispatches 0 --dry-run >/dev/null 2>&1 || rc=$?
+if [[ "$(printf '%s' "$dry_j" | jq -r '.phases | join(",")')" == "codex-implement,fable-repair" && "$rc" == 0 ]]; then
+  pass "J reverses B and K needs no Claude dispatch"
+else
+  fail "J reverses B and K needs no Claude dispatch (rc=$rc)"
+fi
+
+# L end to end with stubs: two candidates, a selection, a prediction.
+input_l=$(make_live_cell bestof L)
+cell_l=$(dirname "$input_l")
+rc=0
+( unset ANTHROPIC_API_KEY
+  PATH="$STUB_BIN:$PATH" STUB_CLAUDE_EDIT="$cell_l/workspace/app.py" CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-workflow --input "$input_l" \
+    --predictions "$LIVE_ROOT/predictions/bestof/L.jsonl" --max-claude-dispatches 2 ) >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 0 ]] && [[ -s "$cell_l/candidate-1.patch" && -s "$cell_l/candidate-2.patch" ]] \
+   && jq -e '.chosen == 1 and (.candidates | length) == 2' "$cell_l/selection.json" >/dev/null 2>&1 \
+   && [[ -f "$cell_l/prediction.json" && ! -f "$cell_l/repair.json" ]] \
+   && [[ "$(ls "$cell_l/logs"/fable-implement*.json | wc -l | tr -d ' ')" == 2 ]]; then
+  pass "L runs two implementations, selects one, and writes no repair verdict"
+else
+  fail "L runs two implementations, selects one, and writes no repair verdict (rc=$rc)"
+fi
+
+# Phase 1 of the expansion plan, as the runner would dispatch it.
+p1=$(bash "$RUNNER" estimate --suite swebench-verified-random50 --conditions C,D,H,I,F,G,J,K,L --json 2>/dev/null)
+if [[ "$(printf '%s' "$p1" | jq -r '[.cells, .declared_dispatches.claude, .declared_dispatches.codex, .declared_dispatches.glm, .declared_dispatches.kimi] | join(" ")')" == "450 550 200 150 150" ]]; then
+  pass "Phase 1 on random50 dispatches 550 Claude, 200 Codex, 150 GLM, 150 Kimi over 450 cells"
+else
+  fail "Phase 1 on random50 dispatches 550 Claude, 200 Codex, 150 GLM, 150 Kimi over 450 cells"
+fi
+if CODE_BENCH_SUITE=swebench-verified-random50 bash "$RUNNER" run-canary --run-id phase1-dry --conditions C,D,H,I,F,G,J,K,L --task-limit 50 \
+     --max-claude-dispatches 550 --models light --dry-run >/dev/null 2>&1 \
+   && ! CODE_BENCH_SUITE=swebench-verified-random50 bash "$RUNNER" run-canary --run-id phase1-dry \
+     --conditions C,D,H,I,F,G,J,K,L --task-limit 50 --max-claude-dispatches 549 --models light --dry-run >/dev/null 2>&1; then
+  pass "the Phase 1 dry run fits its cap exactly"
+else
+  fail "the Phase 1 dry run fits its cap exactly"
+fi
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'

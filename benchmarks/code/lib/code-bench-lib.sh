@@ -122,6 +122,10 @@ code_check_manifests() {
          (all(.conditions[]; (.dispatches | keys) == ["claude","codex","glm","kimi"])) and
          (all(.conditions[]; (.label | type == "string" and length > 0))) and
          (all(.conditions[]; .tier == "agentic" or .tier == "single-shot")) and
+         (all(.conditions[]; (.phases | type == "array" and length > 0))) and
+         (all(.conditions[]; (.pipeline | type == "string" and length > 0))) and
+         (all(.conditions[]; (.seats == null) or
+              ((.seats | type == "object") and ((.seats | keys) - ["claude","codex"] == [])))) and
          ([.conditions[].dispatches[] | type == "number" and . >= 0 and floor == .] | all)' \
     "$CODE_BENCH_DIR/conditions.json" >/dev/null || {
       printf 'CHECK FAIL: conditions.json\n' >&2; failures=$((failures + 1));
