@@ -308,9 +308,13 @@ else
 fi
 
 # An explicit override is a deliberate act and must outrank the tier default.
+# Exported before the call, the way a caller actually sets it. A "VAR=x func"
+# prefix does not reliably outlive a shell function, so testing it that way
+# measured the shell rather than the tier logic.
 override=$( unset CODE_BENCH_CODEX_MODEL
             source "$CODE_DIR/lib/code-bench-lib.sh"
-            CODE_BENCH_CLAUDE_MODEL=opus code_apply_model_tier light >/dev/null
+            export CODE_BENCH_CLAUDE_MODEL=opus
+            code_apply_model_tier light >/dev/null
             printf '%s' "$CODE_BENCH_CLAUDE_MODEL" )
 if [[ "$override" == "opus" ]]; then
   pass "an explicit model override survives tier selection"
