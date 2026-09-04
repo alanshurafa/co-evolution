@@ -27,6 +27,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pricing as pricing_mod  # noqa: E402
+import stats  # noqa: E402
 
 # A seed>1 cell names its prediction co-evolution-condition-B.r2, and the
 # evaluator names the report after that, so the seed is recoverable from the
@@ -373,6 +374,91 @@ def _review_seat(cell_dir, review_path):
     return critics[index] if 0 <= index < len(critics) else None
 
 
+BOOTSTRAP_DRAWS = 2000
+BOOTSTRAP_SEED = 20260904
+
+
+def outcome_cells(row):
+    """The scored tasks of one row as bootstrap cells: {task, repo, seed, resolved}.
+
+    A task the arm ran and failed to patch is a zero; a task it never reached
+    is not a result and is left out, the same rule the denominator uses.
+    """
+    cells = []
+    for task in row['per_task']:
+        if task['status'] in ('resolved', 'unresolved', 'no-patch'):
+            cells.append({'task': task['instance_id'], 'repo': task['repo'],
+                          'seed': task.get('seed', 1),
+                          'resolved': task['status'] == 'resolved'})
+    return cells
+
+
+def attach_statistics(rows, task_count):
+    """Wilson interval, bootstrap interval, Rank(UB) per row; contrasts per pair.
+
+    Every figure the page shows with a +- comes from here, computed from the
+    per-task verdicts already in the row, so the JSON stays the single source
+    the renderer reads.
+    """
+    scored = [r for r in rows if r['measured'] or r.get('attempted')]
+    for row in scored:
+        cells = outcome_cells(row)
+        n = task_count if row.get('complete', True) else len(cells)
+        k = sum(1 for c in cells if c['resolved'])
+        low, high = stats.wilson(k, n)
+        row['score'] = {
+            'resolved': k, 'n': n, 'rate': (k / n) if n else None,
+            'wilson_low': low, 'wilson_high': high,
+            'seeds': max([c['seed'] for c in cells] or [1]),
+        }
+        row['bootstrap'] = stats.hierarchical_bootstrap(
+            cells, n_boot=BOOTSTRAP_DRAWS, seed=BOOTSTRAP_SEED) if cells else None
+        row['seed_summary'] = stats.seed_summary(cells) if cells else None
+    # Rank(UB) only among complete rows of the same tier: an unfinished arm
+    # has no comparable interval, and a single-shot arm is a different test.
+    for tier in sorted({r['tier'] for r in scored}):
+        entries = [(r['condition'], r['score']['wilson_low'], r['score']['wilson_high'])
+                   for r in scored if r['tier'] == tier and r.get('complete', True)]
+        ranks = stats.rank_by_upper_bound(entries)
+        for r in scored:
+            if r['tier'] == tier:
+                r['rank_ub'] = ranks.get(r['condition'])
+    contrasts = []
+    for i, first in enumerate(scored):
+        for second in scored[i + 1:]:
+            if first['tier'] != second['tier']:
+                continue
+            a = {t['instance_id']: t['status'] == 'resolved' for t in first['per_task']
+                 if t['status'] in ('resolved', 'unresolved', 'no-patch')}
+            b = {t['instance_id']: t['status'] == 'resolved' for t in second['per_task']
+                 if t['status'] in ('resolved', 'unresolved', 'no-patch')}
+            table = stats.discordance(a, b)
+            if table['n'] == 0:
+                continue
+            p_value = stats.mcnemar_exact(table['only_a'], table['only_b'])
+            delta = stats.hierarchical_bootstrap(
+                outcome_cells(second), n_boot=BOOTSTRAP_DRAWS, seed=BOOTSTRAP_SEED,
+                deltas_against=outcome_cells(first))
+            cost_a = first['telemetry'].get('cost_usd') if first['telemetry'].get('cost_is_complete') else None
+            cost_b = second['telemetry'].get('cost_usd') if second['telemetry'].get('cost_is_complete') else None
+            cost_delta = (cost_b - cost_a) if (cost_a is not None and cost_b is not None) else None
+            net = table['net_b_minus_a']
+            contrasts.append({
+                'a': first['condition'], 'b': second['condition'],
+                'n': table['n'], 'both': table['both'], 'only_a': table['only_a'],
+                'only_b': table['only_b'], 'neither': table['neither'],
+                'rescued_by_b': table['rescued_by_b'], 'broken_by_b': table['broken_by_b'],
+                'net_b_minus_a': net,
+                'mcnemar_exact_p': p_value,
+                'delta_b_minus_a': delta,
+                'cost_delta_usd': round(cost_delta, 4) if cost_delta is not None else None,
+                'cost_per_net_flip_usd': (round(cost_delta / net, 4)
+                                          if cost_delta is not None and net > 0 else None),
+                'cost_is_complete': cost_delta is not None,
+            })
+    return contrasts
+
+
 SUMMED_TELEMETRY = (
     'claude_dispatches', 'claude_cost_usd', 'claude_input_tokens',
     'claude_cached_tokens', 'claude_output_tokens', 'claude_wall_seconds',
@@ -605,6 +691,8 @@ def main():
             round(telemetry['total_wall_seconds'] / resolved) if resolved else None)
         rows.append(row)
 
+    contrasts = attach_statistics(rows, len(instances))
+
     payload = {
         'schema': 'code-bench-site/1.0',
         'generated_at': args.generated_at,
@@ -636,6 +724,15 @@ def main():
         },
         'gold_canary': gold_canary(eval_dir),
         'rows': rows,
+        'contrasts': contrasts,
+        'statistics': {
+            'interval': 'Wilson score, 95%',
+            'paired_test': 'exact two-sided McNemar on discordant tasks',
+            'bootstrap': {'levels': ['repo', 'task', 'seed'], 'draws': BOOTSTRAP_DRAWS,
+                          'rng_seed': BOOTSTRAP_SEED, 'interval': 'percentile 2.5-97.5'},
+            'rank': 'Rank(UB): 1 + number of arms whose interval lower bound exceeds this upper bound',
+            'module': 'benchmarks/site/stats.py',
+        },
         'superseded_reports': [
             {'condition': cond, 'seed': seed, 'evaluator_run_id': run_id,
              'report_file': rel(root, path)}

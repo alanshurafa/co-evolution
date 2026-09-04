@@ -89,6 +89,51 @@ check "the page records which pricing file and date it used" "$out" \
 check "evidence paths stay under benchmarks/results/code" "$out" \
   '[.rows[] | select(.measured) | .per_task[] | .evidence | select(. != null)] | length > 0 and all(startswith("benchmarks/results/code/"))'
 
+
+# --- T0.4: uncertainty on every cell, paired contrasts, Rank(UB) -------------
+if python "$SCRIPT_DIR/test_stats.py" >/dev/null 2>&1; then
+  pass "statistics module reproduces the known values (Wilson 42/50 = 71-92, McNemar 2/5 p = 0.45)"
+else
+  fail "statistics module reproduces the known values"
+fi
+
+# A: 4/5, B: 4/5 with one rescued and one broken task -> p = 1.0, rank tie.
+SPEC_STATS='{
+  "run_label": "fx",
+  "conditions": {
+    "A": {"cells": {
+      "sympy__sympy-20916": {"resolved": true,  "claude_cost": 1.0},
+      "django__django-16819": {"resolved": true, "claude_cost": 1.0},
+      "scikit-learn__scikit-learn-14141": {"resolved": false, "claude_cost": 1.0},
+      "astropy__astropy-7166": {"resolved": true, "claude_cost": 1.0},
+      "pallets__flask-5014": {"resolved": true, "claude_cost": 1.0}}},
+    "B": {"cells": {
+      "sympy__sympy-20916": {"resolved": true,  "claude_cost": 1.0, "codex": "exact"},
+      "django__django-16819": {"resolved": true, "claude_cost": 1.0, "codex": "exact"},
+      "scikit-learn__scikit-learn-14141": {"resolved": true, "claude_cost": 1.0, "codex": "exact"},
+      "astropy__astropy-7166": {"resolved": false, "claude_cost": 1.0, "codex": "exact"},
+      "pallets__flask-5014": {"resolved": true, "claude_cost": 1.0, "codex": "exact"}}}
+  }}'
+out=$(build stats "$SPEC_STATS") || fail "stats fixture builds"
+check "every measured row carries a Wilson interval and a bootstrap interval" "$out" \
+  '[.rows[] | select(.measured)] | length == 2 and all(.[];
+     .score.n == 5 and .score.resolved == 4 and .score.wilson_low < 0.8 and .score.wilson_high > 0.8
+     and .bootstrap.levels == ["repo","task","seed"] and .bootstrap.low <= .bootstrap.point
+     and .bootstrap.point <= .bootstrap.high)'
+check "overlapping intervals share Rank(UB) 1" "$out" \
+  '[.rows[] | select(.measured) | .rank_ub] == [1, 1]'
+check "the paired contrast lists the rescued and broken tasks with an exact p" "$out" \
+  '.contrasts | length == 1 and .[0].a == "A" and .[0].b == "B"
+   and .[0].only_a == 1 and .[0].only_b == 1 and .[0].both == 3 and .[0].neither == 0
+   and .[0].rescued_by_b == ["scikit-learn__scikit-learn-14141"]
+   and .[0].broken_by_b == ["astropy__astropy-7166"]
+   and .[0].mcnemar_exact_p == 1 and .[0].delta_b_minus_a.point == 0'
+check "the contrast prices the cost delta per net flip only from complete costs" "$out" \
+  '.contrasts[0].cost_is_complete == true and .contrasts[0].cost_delta_usd > 0
+   and .contrasts[0].cost_per_net_flip_usd == null'
+check "the page states which statistics it used" "$out" \
+  '.statistics.bootstrap.draws == 2000 and (.statistics.module | endswith("stats.py"))'
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'
