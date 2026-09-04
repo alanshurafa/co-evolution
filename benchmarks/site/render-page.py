@@ -154,7 +154,7 @@ def num_cell(value, sort_value=None, suffix=''):
     return '<td class="num" data-sort="%s">%s%s</td>' % (sort_value, value, suffix)
 
 
-def leaderboard_table(rows, table_id, task_count):
+def leaderboard_table(rows, table_id, task_count, data=None):
     body = []
     for row in rows:
         klass = '' if (row['measured'] or row.get('attempted')) else ' class="absent"'
@@ -170,8 +170,10 @@ def leaderboard_table(rows, table_id, task_count):
             '<tr%s><td><div class="pipeline">'
             '<span class="name">%s · %s</span>'
             '<span class="comp">%s</span></div></td>%s<td>%s</td>%s%s%s<td>%s</td></tr>'
-            % (klass, esc(row['condition']), esc(row['label']),
-               esc(COMPOSITION.get(row['condition'], row['description'])),
+            % (klass, esc(row['condition']),
+               esc(retarget(row['label'], data or {})),
+               esc(retarget(COMPOSITION.get(row['condition'], row['description']),
+                            data or {})),
                score_cell(row, denominator(row, task_count)), dots(row['per_task']),
                calls_cell, codex_cell, effort_cells(row),
                coverage_chip(row, task_count)))
@@ -645,6 +647,31 @@ def caveat(data):
             % ''.join('<p>%s</p>' % esc(text) for text in paragraphs))
 
 
+def seat_names(data):
+    """The model that actually filled each seat on this run.
+
+    Condition labels and compositions are written against the default seats
+    ("fable-solo", "fable implements -> codex repairs"). Rendering those verbatim
+    on a run at another tier names a model that never ran, which is the one thing
+    a results page cannot do.
+    """
+    config = data.get('configuration') or {}
+    claude = (config.get('claude') or [None])[0]
+    codex = (config.get('codex') or [None])[0]
+    return claude, codex
+
+
+def retarget(text, data):
+    """Rewrite default seat names in a label or composition to what ran."""
+    claude, codex = seat_names(data)
+    out = text
+    if claude and claude != 'fable':
+        out = out.replace('fable', claude)
+    if codex and codex not in ('codex', 'gpt-5.6-sol'):
+        out = out.replace('codex', codex)
+    return out
+
+
 def run_config_chips(data):
     """The models this run actually used, read from its own cell manifests.
 
@@ -723,7 +750,7 @@ def build(data, also=()):
     for tier, group in (('agentic', agentic), ('single-shot', single)):
         title, note = TIER_COPY[tier]
         parts.append('<h3 class="tier">%s</h3><p class="sec-note">%s</p>' % (esc(title), esc(note)))
-        parts.append(leaderboard_table(group, 'board-%s' % tier, suite['task_count']))
+        parts.append(leaderboard_table(group, 'board-%s' % tier, suite['task_count'], data))
     parts.append(
         '<div class="legend">'
         '<span class="swatch"><i style="background:var(--pass-wash);border-color:var(--pass)"></i> resolved</span>'
