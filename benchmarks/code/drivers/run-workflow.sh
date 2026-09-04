@@ -108,6 +108,10 @@ command -v codex >/dev/null 2>&1 || { code_die "codex CLI is required"; exit 1; 
 
 code_load_env_key ZAI_API_KEY
 code_load_env_key KIMI_API_KEY
+# The GLM and Kimi adapters write a token-usage sidecar next to each artifact
+# only when asked. Cost on the results page is priced from those sidecars, so a
+# cell without them is an unpriced seat and an incomplete cost figure.
+export CO_EVOLVE_TOKEN_CAPTURE=1
 
 cell="$input_dir"
 logs="$cell/logs"
@@ -116,12 +120,13 @@ mkdir -p "$logs" "$reviews"
 jq -n --arg instance "$instance" --arg condition "$condition" \
   --arg claude_model "$CLAUDE_MODEL" --arg claude_effort "$CLAUDE_EFFORT_LOCAL" \
   --arg codex_model "$CODEX_MODEL_LOCAL" --arg codex_effort "$CODEX_EFFORT_LOCAL" \
+  --arg glm_model "${GLM_MODEL:-glm-5.3-flash}" --arg kimi_model "${KIMI_MODEL:-kimi-k3}" \
   --arg codex_sandbox "$CODEX_SANDBOX" --argjson critics "$critics_json" \
   --arg model_tier "$MODEL_TIER" \
   --argjson phase_timeout "$PHASE_TIMEOUT" --argjson declared_claude "$claude_needed" \
   '{schema:"code-bench-run/1.0",instance:$instance,condition:$condition,
     model_tier:$model_tier,
-    models:{claude:$claude_model,codex:$codex_model},
+    models:{claude:$claude_model,codex:$codex_model,glm:$glm_model,kimi:$kimi_model},
     effort:{claude:$claude_effort,codex:$codex_effort},
     sandbox:{codex:$codex_sandbox},critics:$critics,
     phase_timeout_seconds:$phase_timeout,declared_claude_dispatches:$declared_claude}' \
@@ -151,25 +156,24 @@ run_fable() {
     "$logs/$phase.json" >/dev/null || { code_die "$phase did not produce a successful Claude result"; return 1; }
 }
 
-run_codex_repair() {
-  local prompt="$1"
+# A writing Codex phase (implement or repair). Codex prints one total under
+# "tokens used" on stderr and no input/output split, which is not enough to
+# price the seat exactly. With --json the transcript on stdout is a JSONL
+# event stream that carries the split, so the results page can price the phase
+# at list rate; the final message is kept separately with -o so it stays
+# readable.
+run_codex_phase() {
+  local phase="$1" prompt="$2"
   local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox "$CODEX_SANDBOX"
     --ephemeral --ignore-user-config -c approval_policy="never"
-    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" -)
+    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" --json -o "$logs/$phase.last.md" -)
   command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
   "${cmd[@]}" \
-    < "$prompt" > "$logs/codex-repair.log" 2> "$logs/codex-repair.stderr.log"
+    < "$prompt" > "$logs/$phase.log" 2> "$logs/$phase.stderr.log"
 }
 
-run_codex_implement() {
-  local prompt="$1"
-  local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox "$CODEX_SANDBOX"
-    --ephemeral --ignore-user-config -c approval_policy="never"
-    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" -)
-  command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
-  "${cmd[@]}" \
-    < "$prompt" > "$logs/codex-implement.log" 2> "$logs/codex-implement.stderr.log"
-}
+run_codex_repair() { run_codex_phase codex-repair "$1"; }
+run_codex_implement() { run_codex_phase codex-implement "$1"; }
 
 # GLM and Kimi both reason by default and bill reasoning against max_tokens, so
 # the capped critic seats must bound reasoning too or they return an empty
@@ -200,7 +204,7 @@ run_codex_critique() {
   local prompt="$1" out="$2"
   local -a cmd=(codex exec -C "$workspace" -m "$CODEX_MODEL_LOCAL" --sandbox read-only
     --ephemeral --ignore-user-config -c approval_policy="never"
-    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" -o "$out" -)
+    -c model_reasoning_effort="$CODEX_EFFORT_LOCAL" --json -o "$out" -)
   command -v timeout >/dev/null 2>&1 && cmd=(timeout --foreground "${PHASE_TIMEOUT}s" "${cmd[@]}")
   "${cmd[@]}" < "$prompt" > "$logs/codex-critique.log" 2> "$logs/codex-critique.stderr.log"
 }

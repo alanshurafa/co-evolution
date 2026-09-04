@@ -94,6 +94,9 @@ esac
 cell="$input_dir"
 logs="$cell/logs"
 mkdir -p "$logs"
+# Ask the adapter for the token-usage sidecar next to each response; the
+# results page prices the seat from it, and a cell without one is unpriced.
+export CO_EVOLVE_TOKEN_CAPTURE=1
 
 git -C "$workspace" diff --quiet || { code_die "workspace is already dirty; prepare a fresh cell"; exit 1; }
 

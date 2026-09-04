@@ -1,0 +1,28 @@
+{
+  "schema": "code-bench-pricing/1.0",
+  "recorded_on": "2026-09-04",
+  "unit": "usd_per_million_tokens",
+  "note": "Public list prices on the date recorded. Every cost on the results site is priced from these rates and the token counts each cell's own logs carry; a seat with no rate here is unpriced and keeps cost_is_complete false. Update the date whenever a rate changes.",
+  "sources": {
+    "openai": "https://openai.com/api/pricing/ (post 2026-07-30 price cut; see also https://openai.com/index/advancing-the-price-performance-frontier-with-gpt-5-6/)",
+    "zai": "https://docs.z.ai/guides/overview/pricing",
+    "moonshot": "https://platform.moonshot.ai/docs/pricing",
+    "anthropic": "priced by the Claude CLI's own envelope (total_cost_usd), which applies Anthropic list prices per model"
+  },
+  "models": {
+    "gpt-5.6-sol":   {"vendor": "openai", "input": 5.00, "cached_input": 0.50, "output": 30.00},
+    "gpt-5.6-terra": {"vendor": "openai", "input": 2.00, "cached_input": 0.20, "output": 12.00},
+    "gpt-5.6-luna":  {"vendor": "openai", "input": 0.20, "cached_input": 0.02, "output": 1.20},
+    "glm-5.3-flash": {"vendor": "zai", "input": 0.15, "cached_input": 0.03, "output": 0.50,
+                      "note": "Regular list price. A launch promotion (0.075 / 0.015 / 0.25) ran through 2026-09-09; the list rate is used so runs before and after it price the same."},
+    "kimi-k3":       {"vendor": "moonshot", "input": 3.00, "cached_input": 0.30, "output": 15.00}
+  },
+  "claude": {
+    "priced_by": "cli-envelope",
+    "note": "The Claude CLI returns total_cost_usd per dispatch at list price; that figure is used directly and no rate is duplicated here."
+  },
+  "codex_total_only": {
+    "note": "Codex 0.144.x prints one figure, 'tokens used', with no input/output split. Cells run before the driver captured --json events are priced with the split below and flagged cost_precision=estimated; the low and high bounds price the whole total at the cached-input and output rates. Cells with a captured split are priced exactly.",
+    "assumed_split": {"cached_input": 0.70, "input": 0.20, "output": 0.10}
+  }
+}
