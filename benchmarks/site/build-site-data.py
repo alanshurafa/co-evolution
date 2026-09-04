@@ -145,10 +145,16 @@ def scored_patches(eval_dir, run_id, model_name):
     return patches
 
 
-def index_cells(runs_root):
-    """Map (condition, instance, patch text) -> cell directory."""
+def index_cells(runs_root, run_id=None):
+    """Map (condition, instance, patch text) -> cell directory.
+
+    Scoped to one benchmark run. Two runs of the same condition on the same
+    instance can produce byte-identical patches, and an unscoped index lets the
+    later one win the key: a frontier row then reads its models and telemetry
+    out of a light-tier cell, and the page reports the wrong experiment.
+    """
     index = {}
-    pattern = os.path.join(runs_root, '*', '*', '*', 'prediction.json')
+    pattern = os.path.join(runs_root, run_id or '*', '*', '*', 'prediction.json')
     for path in glob.glob(pattern):
         try:
             record = read_json(path)
@@ -164,7 +170,7 @@ def index_cells(runs_root):
     return index
 
 
-def index_attempts(runs_root):
+def index_attempts(runs_root, run_id=None):
     """Cells that ran and recorded an outcome, keyed by (condition, instance).
 
     A single-shot cell that never produced an applicable patch writes an
@@ -173,7 +179,7 @@ def index_attempts(runs_root):
     as missing data rather than as the failure it is.
     """
     attempts = {}
-    for path in glob.glob(os.path.join(runs_root, '*', '*', '*', 'outcome.json')):
+    for path in glob.glob(os.path.join(runs_root, run_id or '*', '*', '*', 'outcome.json')):
         try:
             record = read_json(path)
         except ValueError:
@@ -309,6 +315,8 @@ def main():
                     help='UTC timestamp supplied by the caller')
     ap.add_argument('--run-label', default=None,
                     help='only read evaluator reports from this labelled batch')
+    ap.add_argument('--run-id', default=None,
+                    help='benchmark run whose cells back this page; defaults to --run-label')
     args = ap.parse_args()
 
     root = os.path.abspath(args.repo_root)
@@ -329,8 +337,9 @@ def main():
     lock = read_json(os.path.join(code_dir, 'external-sources.lock.json'))
 
     latest, superseded = newest_reports(eval_dir, args.run_label)
-    cells = index_cells(runs_root)
-    attempts_index = index_attempts(runs_root)
+    cell_scope = args.run_id or args.run_label
+    cells = index_cells(runs_root, cell_scope)
+    attempts_index = index_attempts(runs_root, cell_scope)
 
     # What the run was actually configured with, gathered from the cells rather
     # than assumed. A page that hardcodes its model names lies the first time
