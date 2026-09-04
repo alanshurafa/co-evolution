@@ -86,6 +86,7 @@ runs_root="$CODE_BENCH_RESULTS_ROOT/runs/$RUN_ID"
 failed_cells=0
 done_cells=0
 skipped_cells=0
+nopatch_cells=0
 
 task_index=0
 while IFS= read -r instance; do
@@ -170,7 +171,13 @@ while IFS= read -r instance; do
         --predictions "$pred_file" \
         --max-claude-dispatches "$per_condition" || cell_rc=$?
     fi
-    if (( cell_rc != 0 )); then
+    # Exit 3 from a driver is a cell that ran to completion and produced no
+    # patch: a zero for that arm, recorded in its outcome.json, not a failure
+    # to retry. Anything else non-zero is an infrastructure failure.
+    if (( cell_rc == 3 )); then
+      printf 'NO PATCH: %s/%s scored zero\n' "$instance" "$cell_name"
+      nopatch_cells=$((nopatch_cells + 1))
+    elif (( cell_rc != 0 )); then
       printf 'CELL FAILED: %s/%s produced no prediction (rc=%s)\n' "$instance" "$cell_name" "$cell_rc" >&2
       failed_cells=$((failed_cells + 1))
     else
@@ -192,9 +199,9 @@ fi
 for predictions in "${validate_glob[@]}"; do
   bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
 done
-printf 'COMPLETE: %s cell(s) generated, %s reused, %s failed -> %s\n' \
-  "$done_cells" "$skipped_cells" "$failed_cells" "$pred_dir"
+printf 'COMPLETE: %s cell(s) generated, %s reused, %s scored zero (no patch), %s failed -> %s\n' \
+  "$done_cells" "$skipped_cells" "$nopatch_cells" "$failed_cells" "$pred_dir"
 if (( failed_cells > 0 )); then
-  printf 'INCOMPLETE: %s cell(s) produced no prediction. They score zero against the\n' "$failed_cells" >&2
-  printf 'subset; rerun the same command to retry only those cells.\n' >&2
+  printf 'INCOMPLETE: %s cell(s) failed before producing a result. Rerun the same\n' "$failed_cells" >&2
+  printf 'command to retry only those cells; no-patch cells are kept as zeros.\n' >&2
 fi

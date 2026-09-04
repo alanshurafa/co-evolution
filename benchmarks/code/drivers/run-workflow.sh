@@ -292,7 +292,20 @@ esac
 
 patch="$cell/final.patch"
 git -C "$workspace" diff --binary > "$patch"
-[[ -s "$patch" ]] || { code_die "workflow produced an empty patch"; exit 1; }
+# An arm that ran every phase and changed nothing has produced its answer: no
+# patch, which the evaluator would score as unresolved. It is recorded as an
+# outcome so the page counts it as a zero for that arm rather than as a cell
+# that never ran, and the batch moves on. Exit 3 tells the batch runner this
+# is a scored zero, not an infrastructure failure worth retrying.
+if [[ ! -s "$patch" ]]; then
+  jq -n --arg instance "$instance" --arg condition "$condition" --argjson seed "$seed" \
+    --arg phases "$phases" \
+    '{schema:"code-bench-outcome/1.0",instance:$instance,condition:$condition,seed:$seed,
+      outcome:"empty-patch",attempts:1,phases:($phases|split(","))}' > "$cell/outcome.json"
+  printf 'NO PATCH: %s/%s ran every phase and left the tree unchanged; scored zero\n' \
+    "$instance" "$cell_name" >&2
+  exit 3
+fi
 record="$cell/prediction.json"
 jq -n --arg instance_id "$instance" --arg model "co-evolution-condition-$cell_name" \
   --rawfile model_patch "$patch" \
