@@ -74,6 +74,18 @@ code_apply_model_tier() {
   export CODE_BENCH_CLAUDE_EFFORT="${CODE_BENCH_CLAUDE_EFFORT-$claude_effort}"
 }
 
+# Seeds are repeat indices, not RNG seeds: the models are not seedable, so a
+# "seed" here is the k-th independent run of the same (task, condition) cell.
+# Seed 1 keeps the bare condition name so nothing that already exists moves;
+# seed k>1 gets a .rk suffix. The same suffix names the prediction file, the
+# model_name_or_path the evaluator sees, and therefore the evaluator report, so
+# repeats never collide inside one evaluator run.
+code_cell_name() {
+  local condition="$1" seed="${2:-1}"
+  if [[ "$seed" == 1 ]]; then printf '%s' "$condition"
+  else printf '%s.r%s' "$condition" "$seed"; fi
+}
+
 code_metadata_path() {
   printf '%s/metadata/%s.json' "$CODE_BENCH_RESULTS_ROOT" "$(code_suite_id)"
 }

@@ -496,6 +496,91 @@ else
   pass "codex sandbox rejects an unknown mode"
 fi
 
+
+# --- T0.2: seeds -------------------------------------------------------------
+# A seed is a repeat index. Seed 1 keeps the bare condition name so every
+# existing run stays addressable; a repeat gets a .rN suffix on the cell, the
+# prediction file and model_name_or_path alike.
+seed_names=$( source "$CODE_DIR/lib/code-bench-lib.sh"
+              printf '%s %s %s' "$(code_cell_name A 1)" "$(code_cell_name A 2)" "$(code_cell_name B 10)" )
+if [[ "$seed_names" == "A A.r2 B.r10" ]]; then
+  pass "cell names carry the seed only past the first run"
+else
+  fail "cell names carry the seed only past the first run (got $seed_names)"
+fi
+
+estimate3=$(bash "$RUNNER" estimate --suite swebench-verified-canary --conditions A,B --repeat 3 --json 2>/dev/null)
+if [[ "$(printf '%s' "$estimate3" | jq -r '.cells')" == 30 \
+   && "$(printf '%s' "$estimate3" | jq -r '.seeds')" == 3 \
+   && "$(printf '%s' "$estimate3" | jq -r '.declared_dispatches.claude')" == 30 \
+   && "$(printf '%s' "$estimate3" | jq -r '.declared_dispatches.codex')" == 15 ]]; then
+  pass "--repeat multiplies cells and dispatches by the seed count"
+else
+  fail "--repeat multiplies cells and dispatches by the seed count"
+fi
+
+rc=0
+bash "$RUNNER" run-canary --run-id dry-seeds --conditions A --task-limit 5 --repeat 3 \
+  --max-claude-dispatches 14 --dry-run >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 75 ]]; then pass "the aggregate cap counts every seed"; else fail "the aggregate cap counts every seed (rc=$rc)"; fi
+
+if bash "$RUNNER" run-canary --run-id dry-seeds --conditions A --task-limit 5 --repeat 3 \
+     --max-claude-dispatches 15 --dry-run >/dev/null 2>&1; then
+  pass "three seeds of a five-task solo arm fit fifteen dispatches"
+else
+  fail "three seeds of a five-task solo arm fit fifteen dispatches"
+fi
+
+if bash "$RUNNER" run-canary --run-id dry-seeds --conditions A --repeat 0 \
+     --max-claude-dispatches 1 --dry-run >/dev/null 2>&1; then
+  fail "--repeat rejects zero"
+else
+  pass "--repeat rejects zero"
+fi
+
+# Resume across seeds: seed 1 and seed 2 cells both hold predictions, so a
+# --repeat 2 rerun reuses both and generates nothing.
+SEED_ROOT="$TMP/seeds"
+for cellname in A A.r2; do
+  mkdir -p "$SEED_ROOT/runs/seed-test/pallets__flask-5014/$cellname"
+  jq -n --arg m "co-evolution-condition-$cellname" \
+    '{instance_id:"pallets__flask-5014",model_name_or_path:$m,model_patch:"diff --git a/a.py b/a.py\n"}' \
+    > "$SEED_ROOT/runs/seed-test/pallets__flask-5014/$cellname/prediction.json"
+done
+seed_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$SEED_ROOT" \
+  bash "$RUNNER" run-canary --run-id seed-test --task pallets__flask-5014 \
+  --conditions A --repeat 2 --max-claude-dispatches 2 2>&1)
+if printf '%s' "$seed_out" | grep -q 'SKIP: pallets__flask-5014/A.r2 already has a prediction' \
+   && printf '%s' "$seed_out" | grep -q '0 cell(s) generated, 2 reused, 0 failed' \
+   && [[ -f "$SEED_ROOT/predictions/seed-test/A.r2.jsonl" ]] \
+   && jq -e '.model_name_or_path == "co-evolution-condition-A.r2"' "$SEED_ROOT/predictions/seed-test/A.r2.jsonl" >/dev/null; then
+  pass "each seed resumes into its own prediction file"
+else
+  fail "each seed resumes into its own prediction file"
+fi
+
+seed_cell="$TEST_RESULTS/runs/test/sympy__sympy-20916/A.r2"
+mkdir -p "$seed_cell/workspace/.git"
+printf 'task\n' > "$seed_cell/task.md"
+jq -n --arg w "$seed_cell/workspace" --arg t "$seed_cell/task.md" \
+  '{instance_id:"sympy__sympy-20916",condition:"A",seed:2,workspace:$w,task_file:$t}' \
+  > "$seed_cell/input.json"
+dry_seed=$(CODE_BENCH_RESULTS_ROOT="$TEST_RESULTS" bash "$RUNNER" run-workflow \
+  --input "$seed_cell/input.json" --predictions "$TEST_RESULTS/predictions/test/A.r2.jsonl" \
+  --max-claude-dispatches 1 --dry-run 2>/dev/null)
+if [[ "$(printf '%s' "$dry_seed" | jq -r '.seed')" == 2 \
+   && "$(printf '%s' "$dry_seed" | jq -r '.model_name_or_path')" == "co-evolution-condition-A.r2" ]]; then
+  pass "the driver names a repeat's prediction after its seed"
+else
+  fail "the driver names a repeat's prediction after its seed"
+fi
+
+if bash "$CODE_DIR/scripts/prepare-swebench-instance.sh" sympy__sympy-20916 x A 0 >/dev/null 2>&1; then
+  fail "prepare rejects seed zero"
+else
+  pass "prepare rejects seed zero"
+fi
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'
