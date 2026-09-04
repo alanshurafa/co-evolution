@@ -86,6 +86,23 @@ code_cell_name() {
   else printf '%s.r%s' "$condition" "$seed"; fi
 }
 
+# Who is supervising a phase. Explicit first, then the host the session runs
+# in, then plain shell. The value is recorded in the phase state and used as
+# the status-file writer id, so a wrong default shows in one status read
+# instead of being inferred silently. A Claude Code session exports CLAUDECODE;
+# a Codex session exports CODEX_SANDBOX or CODEX_CI (either marks the host).
+code_orchestrator() {
+  if [[ -n "${CODE_BENCH_ORCHESTRATOR:-}" ]]; then
+    case "$CODE_BENCH_ORCHESTRATOR" in
+      claude|codex|shell|claude:*|codex:*|shell:*) printf '%s' "$CODE_BENCH_ORCHESTRATOR"; return 0 ;;
+      *) code_die "CODE_BENCH_ORCHESTRATOR must be claude, codex or shell (optionally :label)"; return 1 ;;
+    esac
+  fi
+  if [[ -n "${CLAUDECODE:-}" ]]; then printf 'claude'
+  elif [[ -n "${CODEX_SANDBOX:-}${CODEX_CI:-}" ]]; then printf 'codex'
+  else printf 'shell'; fi
+}
+
 # Content hash of a file, for comparing a patch before and after a repair
 # stage. sha256sum is GNU (Git Bash, Linux); shasum is macOS; python is the
 # fallback the harness already requires.
