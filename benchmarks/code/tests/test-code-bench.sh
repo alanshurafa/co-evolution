@@ -803,6 +803,61 @@ else
   fail "the run manifest records CLI versions and the harness commit"
 fi
 
+
+# --- T0.8: best-of-k selector chooses by the repository's own tests ----------
+SEL="$TMP/selector"
+mkdir -p "$SEL/ws"
+git -C "$SEL/ws" init -q
+printf 'value = 0\n' > "$SEL/ws/lib.py"
+mkdir -p "$SEL/ws/tests"
+# The "test suite" is a shell script the selector runs through {files}; it
+# passes only when lib.py carries the right value.
+printf '#!/usr/bin/env bash\ngrep -q "value = 2" lib.py && { echo "1 passed in 0.01s"; exit 0; }\necho "1 failed in 0.01s"; exit 1\n' > "$SEL/ws/tests/test_lib.sh"
+git -C "$SEL/ws" add -A >/dev/null 2>&1
+git -C "$SEL/ws" -c user.email=t@e -c user.name=t commit -qm seed >/dev/null 2>&1
+mk_candidate() { # mk_candidate OUT VALUE
+  printf 'value = %s\n' "$2" > "$SEL/ws/lib.py"
+  printf 'touched\n' >> "$SEL/ws/tests/test_lib.sh"
+  git -C "$SEL/ws" diff --binary > "$1"
+  git -C "$SEL/ws" checkout -q -- .
+}
+mk_candidate "$SEL/c1.patch" 1
+mk_candidate "$SEL/c2.patch" 2
+printf 'not a patch\n' > "$SEL/c3.patch"
+rc=0
+sel_out=$(bash "$CODE_DIR/scripts/select-best-of-k.sh" --workspace "$SEL/ws" --output "$SEL/selection.json" \
+  --test-cmd 'bash {files}' "$SEL/c1.patch" "$SEL/c2.patch" "$SEL/c3.patch" 2>&1) || rc=$?
+if [[ "$rc" == 0 ]] && printf '%s' "$sel_out" | grep -q 'SELECTED: candidate 2 of 3 by tests' \
+   && jq -e '.chosen == 2 and .rule == "tests" and .candidates[0].exit_code == 1 and .candidates[1].passed == 1
+             and .candidates[2].applied == false' "$SEL/selection.json" >/dev/null 2>&1 \
+   && grep -q 'value = 2' "$SEL/ws/lib.py"; then
+  pass "the selector picks the candidate the repository's tests pass and applies it"
+else
+  fail "the selector picks the candidate the repository's tests pass and applies it (rc=$rc)"
+fi
+
+# With no locatable test target the selector says so instead of pretending.
+git -C "$SEL/ws" checkout -q -- .
+printf 'value = 9\n' > "$SEL/ws/lib.py"; git -C "$SEL/ws" diff --binary > "$SEL/c4.patch"; git -C "$SEL/ws" checkout -q -- .
+rm -rf "$SEL/ws/tests"; git -C "$SEL/ws" add -A >/dev/null 2>&1; git -C "$SEL/ws" -c user.email=t@e -c user.name=t commit -qm notests >/dev/null 2>&1
+rc=0
+bash "$CODE_DIR/scripts/select-best-of-k.sh" --workspace "$SEL/ws" --output "$SEL/selection2.json" \
+  "$SEL/c4.patch" >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 0 ]] && jq -e '.rule == "apply-only" and .chosen == 1' "$SEL/selection2.json" >/dev/null 2>&1; then
+  pass "the selector reports apply-only when no test target exists"
+else
+  fail "the selector reports apply-only when no test target exists (rc=$rc)"
+fi
+
+rc=0
+bash "$CODE_DIR/scripts/select-best-of-k.sh" --workspace "$SEL/ws" --output "$SEL/selection3.json" \
+  "$SEL/c3.patch" >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 3 ]] && jq -e '.chosen == null' "$SEL/selection3.json" >/dev/null 2>&1; then
+  pass "the selector exits 3 when no candidate applies"
+else
+  fail "the selector exits 3 when no candidate applies (rc=$rc)"
+fi
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'
