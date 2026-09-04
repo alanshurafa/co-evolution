@@ -708,6 +708,43 @@ else
   fail "a stubbed live cell writes its prediction under the seeded model name (rc=$rc)"
 fi
 
+
+# --- T0.6: an inert repair stage is detected by patch hash -------------------
+input_b=$(make_live_cell inert B)
+cell_b=$(dirname "$input_b")
+rc=0
+( unset ANTHROPIC_API_KEY
+  PATH="$STUB_BIN:$PATH" STUB_CLAUDE_EDIT="$cell_b/workspace/app.py" CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-workflow --input "$input_b" \
+    --predictions "$LIVE_ROOT/predictions/inert/B.jsonl" --max-claude-dispatches 1 ) >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 0 ]] && jq -e '.repair_inert == true and .repair_phases == ["codex-repair"] and .before_sha256 == .after_sha256' \
+     "$cell_b/repair.json" >/dev/null 2>&1; then
+  pass "a repair stage that changes nothing is recorded as inert"
+else
+  fail "a repair stage that changes nothing is recorded as inert (rc=$rc)"
+fi
+
+input_b2=$(make_live_cell active B)
+cell_b2=$(dirname "$input_b2")
+rc=0
+( unset ANTHROPIC_API_KEY
+  PATH="$STUB_BIN:$PATH" STUB_CLAUDE_EDIT="$cell_b2/workspace/app.py" STUB_CODEX_EDIT="$cell_b2/workspace/app.py" \
+  CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
+  bash "$RUNNER" run-workflow --input "$input_b2" \
+    --predictions "$LIVE_ROOT/predictions/active/B.jsonl" --max-claude-dispatches 1 ) >/dev/null 2>&1 || rc=$?
+if [[ "$rc" == 0 ]] && jq -e '.repair_inert == false and .before_sha256 != .after_sha256' \
+     "$cell_b2/repair.json" >/dev/null 2>&1 && [[ -s "$cell_b2/implement.patch" ]]; then
+  pass "a repair stage that edits the patch is recorded as active"
+else
+  fail "a repair stage that edits the patch is recorded as active (rc=$rc)"
+fi
+
+if [[ ! -f "$cell_a2/repair.json" ]]; then
+  pass "a solo arm records no repair verdict"
+else
+  fail "a solo arm records no repair verdict"
+fi
+
 printf '%d/%d assertions passed' "$((TOTAL - FAILED))" "$TOTAL"
 if (( FAILED > 0 )); then printf ' (%d failed)\n' "$FAILED"; exit 1; fi
 printf '\n'
