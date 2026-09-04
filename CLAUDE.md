@@ -115,6 +115,24 @@ Co-evolution tools are integrated into GSD workflows:
 - Convergence is honest, never forced-silent. A `co-evolve-bouncer.sh` run ends in one of three recorded states (`state.json.convergence_status`): **converged** (markers hit 0 within the configured passes), **adjudicated** (markers survived, so one forced-adjudication pass resolved each one and wrote `adjudication-report.md` mapping every stripped marker to the chosen text + a one-line rationale), or **stuck** (adjudication could not defensibly resolve every marker — the working document is preserved WITH its markers, labeled NOT-final, and fails the scorer gate). A naturally-converging run is byte-identical to the pre-adjudication bouncer; the adjudication pass fires only when markers survive. Exit semantics by design: a stuck document run still exits 0 — the `CO-EVOLVE:STUCK` label and the failing scorer gate carry the signal, not the exit code; only `--execute` refuses a stuck plan, with exit 1.
 - Agent-bouncer overwrites the input file in place; orchestrators should back up first
 
+## What May Be Published as a Result
+
+The public results site carries **standardized benchmarks scored by their own
+official evaluators** and nothing else. Today that means SWE-bench Verified
+through the pinned harness in `benchmarks/code/`.
+
+The plan-composition suite (`benchmarks/`, batches `b1` and successors) is
+**internal only**. Every condition in it is composed by Fable and its primary
+judge is Fable, so it scores Co-Evolution with the model under evaluation. Run
+it, read it, act on it — and do not put it on the site, because publishing it
+beside official-evaluator numbers lends it their credibility. Its exporter
+writes to the ignored `benchmarks/results/site-export/` for that reason.
+
+One site: `benchmarks/site/`, deployed by `.github/workflows/pages.yml` from
+`benchmarks/site/public/`. Before adding a second, check whether that workflow
+would actually serve it — a previous results site under `docs/` documented a
+deploy trigger that did not exist and was never live.
+
 ## Status
 
 - v1.4 npm/MCP publish pending — a human gate, not yet shipped.

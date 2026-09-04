@@ -37,7 +37,12 @@ command -v jq >/dev/null 2>&1 || die "jq is required for export-site-data.sh"
 BATCH_ID=""
 BATCH_DIR=""
 RESULTS_ROOT="$SCRIPT_DIR/results"
-DOCS_DIR="$REPO_ROOT/docs"
+# The plan-composition suite scores Co-Evolution against itself: every condition
+# is composed by Fable and the primary judge is Fable. That is a legitimate
+# internal signal and not a publishable result, so the export lands in the
+# ignored results tree rather than in a directory staged for the public site.
+# Point --docs-dir somewhere else deliberately if you have a reason to.
+DOCS_DIR="${CODE_BENCH_SITE_EXPORT_DIR:-$REPO_ROOT/benchmarks/results/site-export}"
 CORPUS_DIR="$SCRIPT_DIR/corpus"
 CONDITIONS_FILE="$SCRIPT_DIR/conditions.yaml"
 JUDGES_CSV="fable,codex,glm"

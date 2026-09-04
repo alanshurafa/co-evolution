@@ -119,27 +119,34 @@ Writes `results/b1/REPORT.md` and a committed copy under
 verdicts, then per-judge matrices, judge-integrity stats, and the exploratory
 sections — in that order, matching `PREREGISTRATION.md` section 1.
 
-**6. Publish.**
+**6. Export, for internal review only.**
 
 ```bash
 bash benchmarks/export-site-data.sh --batch b1
 ```
 
-Writes `docs/data/b1.json` and regenerates `docs/data/index.json`, which is
-everything the results site at
-<https://alanshurafa.github.io/co-evolution/plans/> renders. Commit those two
-JSON files and push to `master`; the `pages` workflow redeploys on any change
-under `docs/index.html`, `docs/assets/` or `docs/data/`. That is the whole
-republish path — one command, then a commit.
+Writes `benchmarks/results/site-export/b1.json` and an index beside it, under
+the ignored results tree.
+
+**These numbers are not publishable and this suite is not a lane on the results
+site.** Every condition here is composed by Fable and the primary judge is
+Fable, so the suite scores Co-Evolution using the model it is evaluating. That
+is a useful internal signal and an indefensible public claim, and placing it
+next to official-evaluator numbers would lend it their credibility. The public
+site carries standardized benchmarks with official evaluators only — see
+`benchmarks/code/README.md`.
+
+An earlier version of this document described committing the export to `docs/`
+and a `pages` workflow that redeployed on changes there. No such trigger
+existed: `pages.yml` watches `benchmarks/site/public/**` and nothing else.
 
 The export reads the same artifacts `report.sh` does and runs the same
 win-matrix and Bradley-Terry awk, so the site and the report cannot drift
-apart. It carries only publishable fields — scores, costs, model and condition
-names, judge tallies, task ids and difficulty — and fails rather than emit a
-prompt, a plan, a judge's reasoning or an evidence quote.
-`benchmarks/tests/test-site-export.sh` holds it to that against a fixture
-batch, and `docs/README.md` covers local preview and the rest of the site's
-layout.
+apart. It carries only scores, costs, model and condition names, judge tallies,
+task ids and difficulty, and fails rather than emit a prompt, a plan, a judge's
+reasoning or an evidence quote. `benchmarks/tests/test-site-export.sh` holds it
+to that against a fixture batch. That redaction is what makes the export safe to
+share internally; it does not make a self-judged win rate safe to publish.
 
 Pass `--batch-dir` when a batch's results live outside `benchmarks/results/`,
 for instance in another checkout:
