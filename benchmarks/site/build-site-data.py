@@ -67,7 +67,11 @@ def newest_reports(eval_dir, run_label=None):
         if not match:
             continue
         cond, run_id = match.group('cond'), match.group('run_id')
-        if run_label is not None and not run_id.startswith(run_label + '-'):
+        # The label is everything before the final "-"; the evaluator's
+        # timestamp suffix contains none. A prefix test would make "base50"
+        # match "base50-light-2026...", so a frontier page would silently
+        # render light-tier results.
+        if run_label is not None and run_id.rsplit('-', 1)[0] != run_label:
             continue
         previous = latest.get(cond)
         if previous is None or run_id > previous[0]:
