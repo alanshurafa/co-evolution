@@ -53,7 +53,9 @@ class ObservatoryTests(unittest.TestCase):
                 (root/current['data']).write_text(json.dumps(data), encoding='utf-8')
                 (root/current['methodology']).write_text('<html></html>')
             for archive in catalog['archives']:
-                (root/archive['href']).write_text('<html></html>')
+                archive_path = root/archive['href']
+                archive_path.parent.mkdir(parents=True, exist_ok=True)
+                archive_path.write_text('<html></html>')
             path = root/'catalog.json'
             path.write_text(json.dumps(catalog), encoding='utf-8')
             loaded = builder.load_catalog(path,root)

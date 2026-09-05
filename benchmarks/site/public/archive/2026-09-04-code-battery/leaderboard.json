@@ -1,0 +1,4648 @@
+{
+  "schema": "code-bench-site/1.0",
+  "generated_at": "2026-09-04T12:57:24Z",
+  "configuration": {
+    "tiers": [
+      "light"
+    ],
+    "claude": [
+      "sonnet"
+    ],
+    "codex": [
+      "gpt-5.6-terra"
+    ],
+    "single_shot": [],
+    "claude_effort": [],
+    "codex_effort": [
+      "medium"
+    ]
+  },
+  "harness": {
+    "repo_commit": "39efd7f429f9698feddd446418d94adb8484241c",
+    "working_tree_dirty": true,
+    "swebench_commit": "7a21e05772954cc81471ae19d56f436cecf43c54",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "lock_file": "benchmarks/code/external-sources.lock.json"
+  },
+  "suite": {
+    "id": "swebench-verified-random50",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "split": "test",
+    "task_count": 50,
+    "subset_file": "benchmarks/code/subsets/swebench-verified-random50.json",
+    "instances": [
+      {
+        "instance_id": "astropy__astropy-12907",
+        "repo": "astropy/astropy"
+      },
+      {
+        "instance_id": "astropy__astropy-13033",
+        "repo": "astropy/astropy"
+      },
+      {
+        "instance_id": "astropy__astropy-13398",
+        "repo": "astropy/astropy"
+      },
+      {
+        "instance_id": "astropy__astropy-14365",
+        "repo": "astropy/astropy"
+      },
+      {
+        "instance_id": "django__django-11163",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-11179",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-11451",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-11477",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-12754",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-13128",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-13807",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-14053",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-14315",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-14534",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-14631",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-14792",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-15022",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-15280",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-15380",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-15525",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-15731",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-16100",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-16263",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-16493",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-16612",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "django__django-16819",
+        "repo": "django/django"
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-21568",
+        "repo": "matplotlib/matplotlib"
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-24970",
+        "repo": "matplotlib/matplotlib"
+      },
+      {
+        "instance_id": "mwaskom__seaborn-3069",
+        "repo": "mwaskom/seaborn"
+      },
+      {
+        "instance_id": "psf__requests-6028",
+        "repo": "psf/requests"
+      },
+      {
+        "instance_id": "pydata__xarray-4075",
+        "repo": "pydata/xarray"
+      },
+      {
+        "instance_id": "pydata__xarray-4687",
+        "repo": "pydata/xarray"
+      },
+      {
+        "instance_id": "pydata__xarray-6599",
+        "repo": "pydata/xarray"
+      },
+      {
+        "instance_id": "pydata__xarray-6721",
+        "repo": "pydata/xarray"
+      },
+      {
+        "instance_id": "pydata__xarray-6992",
+        "repo": "pydata/xarray"
+      },
+      {
+        "instance_id": "pytest-dev__pytest-7571",
+        "repo": "pytest-dev/pytest"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-12682",
+        "repo": "scikit-learn/scikit-learn"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-13142",
+        "repo": "scikit-learn/scikit-learn"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-13496",
+        "repo": "scikit-learn/scikit-learn"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-14983",
+        "repo": "scikit-learn/scikit-learn"
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-10614",
+        "repo": "sphinx-doc/sphinx"
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8120",
+        "repo": "sphinx-doc/sphinx"
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8269",
+        "repo": "sphinx-doc/sphinx"
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8621",
+        "repo": "sphinx-doc/sphinx"
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8638",
+        "repo": "sphinx-doc/sphinx"
+      },
+      {
+        "instance_id": "sympy__sympy-12419",
+        "repo": "sympy/sympy"
+      },
+      {
+        "instance_id": "sympy__sympy-12489",
+        "repo": "sympy/sympy"
+      },
+      {
+        "instance_id": "sympy__sympy-13480",
+        "repo": "sympy/sympy"
+      },
+      {
+        "instance_id": "sympy__sympy-16450",
+        "repo": "sympy/sympy"
+      },
+      {
+        "instance_id": "sympy__sympy-23262",
+        "repo": "sympy/sympy"
+      }
+    ]
+  },
+  "gold_canary": {
+    "run_id": "gold-canary-20260831T130008Z",
+    "report_file": "benchmarks/results/code/evaluation/gold.gold-canary-20260831T130008Z.json",
+    "submitted": 1,
+    "resolved": 1
+  },
+  "rows": [
+    {
+      "condition": "A",
+      "label": "fable-solo",
+      "tier": "agentic",
+      "description": "Fable investigates, edits, and tests once.",
+      "declared_dispatches": {
+        "claude": 1,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.base50-light-20260904T021224Z.json",
+      "evaluator_run_id": "base50-light-20260904T021224Z",
+      "submitted": 50,
+      "resolved": 39,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/astropy__astropy-12907/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-12907/A"
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/astropy__astropy-13033/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13033/A"
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 4,
+          "pass_to_pass_failed": 68,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/astropy__astropy-13398/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13398/A"
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/astropy__astropy-14365/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-14365/A"
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-11163/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11163/A"
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-11179/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11179/A"
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 6,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-11451/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11451/A"
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 3,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-11477/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11477/A"
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-12754/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-12754/A"
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 7,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-13128/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13128/A"
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-13807/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13807/A"
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-14053/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14053/A"
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 9,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-14315/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14315/A"
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-14534/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14534/A"
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-14631/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14631/A"
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-14792/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14792/A"
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 3,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-15022/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15022/A"
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-15280/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15280/A"
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-15380/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15380/A"
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-15525/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15525/A"
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-15731/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15731/A"
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-16100/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16100/A"
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-16263/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16263/A"
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-16493/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16493/A"
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-16612/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16612/A"
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/django__django-16819/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16819/A"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/matplotlib__matplotlib-21568/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-21568/A"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/matplotlib__matplotlib-24970/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-24970/A"
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/mwaskom__seaborn-3069/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/mwaskom__seaborn-3069/A"
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/psf__requests-6028/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/psf__requests-6028/A"
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pydata__xarray-4075/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4075/A"
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pydata__xarray-4687/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4687/A"
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pydata__xarray-6599/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6599/A"
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pydata__xarray-6721/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6721/A"
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 12,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pydata__xarray-6992/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6992/A"
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/pytest-dev__pytest-7571/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pytest-dev__pytest-7571/A"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/scikit-learn__scikit-learn-12682/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-12682/A"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/scikit-learn__scikit-learn-13142/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13142/A"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/scikit-learn__scikit-learn-13496/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13496/A"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/scikit-learn__scikit-learn-14983/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-14983/A"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sphinx-doc__sphinx-10614/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-10614/A"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sphinx-doc__sphinx-8120/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8120/A"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sphinx-doc__sphinx-8269/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8269/A"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sphinx-doc__sphinx-8621/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8621/A"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sphinx-doc__sphinx-8638/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8638/A"
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sympy__sympy-12419/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12419/A"
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sympy__sympy-12489/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12489/A"
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sympy__sympy-13480/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-13480/A"
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sympy__sympy-16450/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-16450/A"
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T021224Z/co-evolution-condition-A/sympy__sympy-23262/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-23262/A"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 50,
+        "claude_cost_usd": 52.1925,
+        "claude_output_tokens": 879176,
+        "claude_wall_seconds": 23632,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 50,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 23632,
+        "cost_is_complete": true,
+        "cost_per_resolved": 1.3383,
+        "seconds_per_resolved": 606
+      },
+      "dataset_total_instances": 500,
+      "attempted_count": 50,
+      "complete": true
+    },
+    {
+      "condition": "B",
+      "label": "cross-vendor-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Codex reviews and repairs the patch.",
+      "declared_dispatches": {
+        "claude": 1,
+        "codex": 1,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.base50-light-20260904T023619Z.json",
+      "evaluator_run_id": "base50-light-20260904T023619Z",
+      "submitted": 50,
+      "resolved": 42,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/astropy__astropy-12907/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-12907/B"
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/astropy__astropy-13033/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13033/B"
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 4,
+          "pass_to_pass_failed": 68,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/astropy__astropy-13398/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13398/B"
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/astropy__astropy-14365/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-14365/B"
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-11163/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11163/B"
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-11179/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11179/B"
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 6,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-11451/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11451/B"
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-11477/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11477/B"
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-12754/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-12754/B"
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 7,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-13128/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13128/B"
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-13807/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13807/B"
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-14053/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14053/B"
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 9,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-14315/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14315/B"
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-14534/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14534/B"
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-14631/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14631/B"
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-14792/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14792/B"
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 3,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-15022/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15022/B"
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-15280/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15280/B"
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-15380/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15380/B"
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-15525/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15525/B"
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-15731/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15731/B"
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-16100/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16100/B"
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-16263/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16263/B"
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-16493/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16493/B"
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-16612/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16612/B"
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/django__django-16819/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16819/B"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 4,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/matplotlib__matplotlib-21568/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-21568/B"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/matplotlib__matplotlib-24970/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-24970/B"
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/mwaskom__seaborn-3069/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/mwaskom__seaborn-3069/B"
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/psf__requests-6028/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/psf__requests-6028/B"
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pydata__xarray-4075/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4075/B"
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pydata__xarray-4687/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4687/B"
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pydata__xarray-6599/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6599/B"
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pydata__xarray-6721/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6721/B"
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 12,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pydata__xarray-6992/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6992/B"
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/pytest-dev__pytest-7571/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pytest-dev__pytest-7571/B"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/scikit-learn__scikit-learn-12682/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-12682/B"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/scikit-learn__scikit-learn-13142/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13142/B"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/scikit-learn__scikit-learn-13496/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13496/B"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/scikit-learn__scikit-learn-14983/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-14983/B"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": false,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sphinx-doc__sphinx-10614/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-10614/B"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sphinx-doc__sphinx-8120/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8120/B"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": false,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sphinx-doc__sphinx-8269/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8269/B"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sphinx-doc__sphinx-8621/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8621/B"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sphinx-doc__sphinx-8638/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8638/B"
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sympy__sympy-12419/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12419/B"
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sympy__sympy-12489/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12489/B"
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sympy__sympy-13480/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-13480/B"
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sympy__sympy-16450/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-16450/B"
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T023619Z/co-evolution-condition-B/sympy__sympy-23262/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-23262/B"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 50,
+        "claude_cost_usd": 53.6535,
+        "claude_output_tokens": 848391,
+        "claude_wall_seconds": 22729,
+        "codex_phases": 50,
+        "codex_wall_seconds": 7293,
+        "codex_tokens": 2884669,
+        "cells_linked": 50,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 30022,
+        "cost_is_complete": false,
+        "cost_per_resolved": 1.2775,
+        "seconds_per_resolved": 715
+      },
+      "dataset_total_instances": 500,
+      "attempted_count": 50,
+      "complete": true
+    },
+    {
+      "condition": "C",
+      "label": "fable-led-panel",
+      "tier": "agentic",
+      "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 1,
+        "glm": 1,
+        "kimi": 1
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    },
+    {
+      "condition": "D",
+      "label": "fable-self-bounce",
+      "tier": "agentic",
+      "description": "Fable implements and performs a second review/repair pass.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    },
+    {
+      "condition": "E",
+      "label": "codex-solo",
+      "tier": "agentic",
+      "description": "Codex investigates, edits, and tests once.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 1,
+        "glm": 0,
+        "kimi": 0
+      },
+      "measured": true,
+      "attempted": true,
+      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.base50-light-20260904T030024Z.json",
+      "evaluator_run_id": "base50-light-20260904T030024Z",
+      "submitted": 50,
+      "resolved": 33,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/astropy__astropy-12907/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-12907/E"
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 1,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/astropy__astropy-13033/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13033/E"
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 4,
+          "pass_to_pass_failed": 68,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/astropy__astropy-13398/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-13398/E"
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/astropy__astropy-14365/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/astropy__astropy-14365/E"
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-11163/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11163/E"
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-11179/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11179/E"
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 6,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-11451/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11451/E"
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-11477/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-11477/E"
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-12754/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-12754/E"
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 7,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-13128/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13128/E"
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-13807/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-13807/E"
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-14053/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14053/E"
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 9,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-14315/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14315/E"
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-14534/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14534/E"
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-14631/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14631/E"
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-14792/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-14792/E"
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 3,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-15022/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15022/E"
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-15280/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15280/E"
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-15380/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15380/E"
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-15525/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15525/E"
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-15731/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-15731/E"
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-16100/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16100/E"
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-16263/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16263/E"
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-16493/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16493/E"
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-16612/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16612/E"
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/django__django-16819/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/django__django-16819/E"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 4,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/matplotlib__matplotlib-21568/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-21568/E"
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/matplotlib__matplotlib-24970/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/matplotlib__matplotlib-24970/E"
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/mwaskom__seaborn-3069/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/mwaskom__seaborn-3069/E"
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/psf__requests-6028/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/psf__requests-6028/E"
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pydata__xarray-4075/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4075/E"
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pydata__xarray-4687/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-4687/E"
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pydata__xarray-6599/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6599/E"
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pydata__xarray-6721/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6721/E"
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 12,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pydata__xarray-6992/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pydata__xarray-6992/E"
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/pytest-dev__pytest-7571/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/pytest-dev__pytest-7571/E"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/scikit-learn__scikit-learn-12682/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-12682/E"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/scikit-learn__scikit-learn-13142/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13142/E"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/scikit-learn__scikit-learn-13496/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-13496/E"
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 2,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/scikit-learn__scikit-learn-14983/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/scikit-learn__scikit-learn-14983/E"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": false,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sphinx-doc__sphinx-10614/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-10614/E"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sphinx-doc__sphinx-8120/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8120/E"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": false,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sphinx-doc__sphinx-8269/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8269/E"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 2,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 1,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sphinx-doc__sphinx-8621/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8621/E"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sphinx-doc__sphinx-8638/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sphinx-doc__sphinx-8638/E"
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sympy__sympy-12419/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12419/E"
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "unresolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 0,
+          "fail_to_pass_failed": 1,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sympy__sympy-12489/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-12489/E"
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sympy__sympy-13480/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-13480/E"
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sympy__sympy-16450/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-16450/E"
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "resolved",
+          "patch_applied": true,
+          "fail_to_pass_passed": 1,
+          "fail_to_pass_failed": 0,
+          "pass_to_pass_failed": 0,
+          "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/base50-light-20260904T030024Z/co-evolution-condition-E/sympy__sympy-23262/report.json",
+          "cell_dir": "benchmarks/results/code/runs/base50-light/sympy__sympy-23262/E"
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 50,
+        "codex_wall_seconds": 5690,
+        "codex_tokens": 2541605,
+        "cells_linked": 50,
+        "sandbox_modes": [
+          "danger-full-access"
+        ],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 5690,
+        "cost_is_complete": false,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": 172
+      },
+      "dataset_total_instances": 500,
+      "attempted_count": 50,
+      "complete": true
+    },
+    {
+      "condition": "F",
+      "label": "glm-solo-single-shot",
+      "tier": "single-shot",
+      "description": "GLM receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 0,
+        "glm": 1,
+        "kimi": 0
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    },
+    {
+      "condition": "G",
+      "label": "kimi-solo-single-shot",
+      "tier": "single-shot",
+      "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
+      "declared_dispatches": {
+        "claude": 0,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 1
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    },
+    {
+      "condition": "H",
+      "label": "fable-glm-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; GLM returns one single-shot critique with no agent loop; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 1,
+        "kimi": 0
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    },
+    {
+      "condition": "I",
+      "label": "fable-kimi-bounce",
+      "tier": "agentic",
+      "description": "Fable implements; Kimi returns one single-shot critique with no agent loop; Fable repairs.",
+      "declared_dispatches": {
+        "claude": 2,
+        "codex": 0,
+        "glm": 0,
+        "kimi": 1
+      },
+      "measured": false,
+      "attempted": false,
+      "report_file": null,
+      "evaluator_run_id": null,
+      "submitted": 0,
+      "resolved": 0,
+      "per_task": [
+        {
+          "instance_id": "astropy__astropy-12907",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13033",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-13398",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "astropy__astropy-14365",
+          "repo": "astropy/astropy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11163",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11179",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11451",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-11477",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-12754",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13128",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-13807",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14053",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14315",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14534",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14631",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-14792",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15022",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15280",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15380",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15525",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-15731",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16100",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16263",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16493",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16612",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "django__django-16819",
+          "repo": "django/django",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-21568",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "matplotlib__matplotlib-24970",
+          "repo": "matplotlib/matplotlib",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3069",
+          "repo": "mwaskom/seaborn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "psf__requests-6028",
+          "repo": "psf/requests",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4075",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-4687",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6599",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6721",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pydata__xarray-6992",
+          "repo": "pydata/xarray",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "pytest-dev__pytest-7571",
+          "repo": "pytest-dev/pytest",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-12682",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13142",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-13496",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "scikit-learn__scikit-learn-14983",
+          "repo": "scikit-learn/scikit-learn",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10614",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8120",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8621",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8638",
+          "repo": "sphinx-doc/sphinx",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12419",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-12489",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-13480",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-16450",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        },
+        {
+          "instance_id": "sympy__sympy-23262",
+          "repo": "sympy/sympy",
+          "status": "not-run",
+          "attempt_outcome": null,
+          "attempts": null,
+          "evidence": null
+        }
+      ],
+      "telemetry": {
+        "claude_dispatches": 0,
+        "claude_cost_usd": 0.0,
+        "claude_output_tokens": 0,
+        "claude_wall_seconds": 0,
+        "codex_phases": 0,
+        "codex_wall_seconds": 0,
+        "codex_tokens": 0,
+        "cells_linked": 0,
+        "sandbox_modes": [],
+        "single_shot_attempts": [],
+        "total_wall_seconds": 0,
+        "cost_is_complete": true,
+        "cost_per_resolved": null,
+        "seconds_per_resolved": null
+      },
+      "attempted_count": 0,
+      "complete": false
+    }
+  ],
+  "superseded_reports": [],
+  "caveat": "Frozen five-task probe of SWE-bench Verified, scored by the official evaluator. One task is 20 points; these numbers are not comparable to published full-500 SWE-bench Verified scores."
+}

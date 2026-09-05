@@ -14,6 +14,12 @@
   ],
   "archives": [
     {
+      "name": "Original live website",
+      "description": "The Code Battery edition served before this redesign, including its frontier results and proof of concept. Preserved as a complete snapshot.",
+      "href": "archive/2026-09-04-code-battery/index.html",
+      "label": "Original edition"
+    },
+    {
       "name": "Previous results website",
       "description": "The original configuration leaderboard, charts, and technical methodology. Preserved at its original address.",
       "href": "leaderboard.html",

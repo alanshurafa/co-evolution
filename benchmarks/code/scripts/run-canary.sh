@@ -196,7 +196,9 @@ if (( SHARD_COUNT > 1 )); then
 else
   validate_glob=("$pred_dir"/*.jsonl)
 fi
-for predictions in "${validate_glob[@]}"; do
+# Bash 3.2 treats an empty array as unset under nounset. A batch containing
+# only completed no-patch cells legitimately has no prediction files.
+for predictions in ${validate_glob[@]+"${validate_glob[@]}"}; do
   bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
 done
 printf 'COMPLETE: %s cell(s) generated, %s reused, %s scored zero (no patch), %s failed -> %s\n' \
