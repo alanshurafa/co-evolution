@@ -1,0 +1,21 @@
+{
+  "note": "SHA-256 of preserved pre-redesign editions. Includes the Code Battery live at master 699be4a and the schema 2.0 edition from the development branch. Current results use current-results.json.",
+  "files": {
+    "code-bench-site-2.0.schema.json": "69ee0af4d3e824bea221ad6c9aca63fb93ca90885bcb0a3ae966219bb85134f1",
+    "leaderboard-methodology.html": "01956abb3fe0c90c32ca1ff895fb3222bcf0e15359bc9003a6e0aa751a092964",
+    "leaderboard.html": "9557622928eca8ce22df258a2041aabe84e858b31578b6d1b63b86814324e484",
+    "leaderboard.json": "61e90038d61de7e41ee3b2d2830a96fc6f02d2c7b06332de4c859d3dba3d6299",
+    "poc-methodology.html": "7d1db8b45972e6e1cefc9cad661aae8f893ed6508874cd57a656ea4ffde216c6",
+    "poc.html": "ae89a5c3933910e190a974ed5cc9742527d97e881da7bcf47eeaa6d2eae75b1e",
+    "poc.json": "652d5151ae1a3dc18ca2e74e13798c1c40ad075f31caae7f7c8587dab66dab4f",
+    "archive/2026-09-04-code-battery/frontier.html": "a1616a400ac63692065634e64947f8bd7c5b7cf8bca84b5275dbc0faa8fed5fe",
+    "frontier.html": "a1616a400ac63692065634e64947f8bd7c5b7cf8bca84b5275dbc0faa8fed5fe",
+    "archive/2026-09-04-code-battery/frontier.json": "638c5da6ac687720620498757fcb323b3a51648ffd88645f9e5c008e988cb943",
+    "frontier.json": "638c5da6ac687720620498757fcb323b3a51648ffd88645f9e5c008e988cb943",
+    "archive/2026-09-04-code-battery/leaderboard.html": "8df11cc827e2586827b7004d2ad418f61df302740f712b849e483b52163803f8",
+    "archive/2026-09-04-code-battery/index.html": "8df11cc827e2586827b7004d2ad418f61df302740f712b849e483b52163803f8",
+    "archive/2026-09-04-code-battery/leaderboard.json": "ee4e1b78fd8167c82411e84d5de68ad563db96b6269765367058590c47408eee",
+    "archive/2026-09-04-code-battery/poc.html": "9b271bb0a74eafb4aa5352025a19bf9eb3a03d3fceabd9db2f26523a6b8002e1",
+    "archive/2026-09-04-code-battery/poc.json": "978d4b1625d1e8058efd1cf113968f7a8083f740726933b6afbba9622e2165aa"
+  }
+}

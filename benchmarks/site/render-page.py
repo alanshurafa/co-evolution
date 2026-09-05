@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Render the results page from the aggregator's JSON and nothing else.
+"""Render the results site from the aggregator's JSON and nothing else.
 
-Every figure on the page is read out of leaderboard.json, which in turn records
-the evaluator report or run log each number came from. Prose here is framing;
-it never states a result the JSON does not contain.
+Every figure on the page is read out of leaderboard.json (schema
+code-bench-site/2.0), which in turn records the evaluator report or run log
+each number came from. Prose here is framing; it never states a result the
+JSON does not contain. Two pages come out of the same JSON: the leaderboard
+and a methodology page.
 
-The agentic and single-shot tiers are rendered as separate tables on purpose. A
-single-shot seat gets one prompt and one answer with no tools and no test run,
-so its score is not comparable to a coding agent's and must never appear in the
-same ranked list without the label.
+Inline SVG only, no chart library. The agentic and single-shot tiers are
+rendered as separate tables on purpose: a single-shot seat gets one prompt and
+one answer with no tools and no test run, so its score is not comparable to a
+coding agent's and must never appear in the same ranked list without the label.
 """
 import argparse
 import html
@@ -24,258 +26,720 @@ TIER_COPY = {
                     'set of retrieved files, returns a diff, and never runs a test '
                     'or looks again. Not comparable to an agentic score.'),
 }
-
-COMPOSITION = {
-    'A': 'fable implements',
-    'B': 'fable implements → codex repairs',
-    'C': 'fable implements → codex + glm + kimi critique → fable repairs',
-    'D': 'fable implements → fable reviews and repairs',
-    'E': 'codex implements',
-    'F': 'glm answers once, from retrieved context',
-    'G': 'kimi answers once, from retrieved context',
-    'H': 'fable implements → glm critiques once → fable repairs',
-    'I': 'fable implements → kimi critiques once → fable repairs',
-}
+AXES = (('cost', 'Cost per task (USD, list price)', 'cost_per_task'),
+        ('wall', 'Wall time per task (seconds)', 'wall_per_task'),
+        ('tokens', 'Tokens per task', 'tokens_per_task'))
 
 
 def esc(value):
     return html.escape('' if value is None else str(value), quote=True)
 
 
-def dots(per_task):
-    cells = []
-    for task in per_task:
-        status = task['status']
-        klass = {'resolved': 'p', 'unresolved': 'f'}.get(status, 'n')
-        cells.append('<i class="%s" title="%s · %s"></i>'
-                     % (klass, esc(task['instance_id']), esc(status)))
-    return '<div class="dots">%s</div>' % ''.join(cells)
+def pct(value, digits=0):
+    if value is None:
+        return '—'
+    return ('%.' + str(digits) + 'f%%') % (100.0 * value)
 
 
-def denominator(row, task_count):
-    """What a row's score is out of.
-
-    A finished arm is scored against the whole subset, so a task it failed to
-    submit counts against it. An arm still in progress is scored against what it
-    has actually run, because the tasks it has not reached yet are not failures
-    and must not be counted as any kind of result.
-    """
-    if row.get('complete', True):
-        return task_count
-    return row.get('attempted_count') or 0
+def money(value, digits=2):
+    if value is None:
+        return '—'
+    return ('$%.' + str(digits) + 'f') % value
 
 
 def duration(seconds):
-    if not seconds:
-        return None
-    hours, rest = divmod(int(seconds), 3600)
-    minutes = rest // 60
+    if seconds is None:
+        return '—'
+    seconds = int(seconds)
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
     if hours:
         return '%dh %02dm' % (hours, minutes)
     if minutes:
-        return '%dm' % minutes
-    return '%ds' % int(seconds)
+        return '%dm %02ds' % (minutes, secs)
+    return '%ds' % secs
 
 
-def effort_cells(row):
-    """Wall time, cost, and cost per resolved task for one arm."""
-    telemetry = row['telemetry']
-    if not (row['measured'] or row.get('attempted')):
-        blank = '<td class="num" data-sort="-1">—</td>'
-        return blank * 3
-    seconds = telemetry.get('total_wall_seconds') or 0
-    cost = telemetry.get('claude_cost_usd') or 0
-    per = telemetry.get('cost_per_resolved')
-    partial = not telemetry.get('cost_is_complete', True)
-    # A provider that reports no cost must not read as free. The dagger marks a
-    # figure that covers only the Claude phases of an arm that used others.
-    mark = '<span class="partial" title="Claude phases only; Codex, GLM and Kimi report no cost">†</span>' if partial else ''
-    time_cell = ('<td class="num" data-sort="%d">%s</td>' % (seconds, esc(duration(seconds)))
-                 if seconds else '<td class="num" data-sort="0">—</td>')
-    if cost:
-        cost_cell = '<td class="num" data-sort="%.2f">$%.2f%s</td>' % (cost, cost, mark)
-    else:
-        cost_cell = '<td class="num" data-sort="0">no CLI figure</td>'
-    if per:
-        per_cell = '<td class="num" data-sort="%.2f">$%.2f%s</td>' % (per, per, mark)
-    else:
-        per_cell = '<td class="num" data-sort="-1">—</td>'
-    return time_cell + cost_cell + per_cell
-
-
-def score_cell(row, task_count):
-    if not row['measured']:
-        # An arm that ran and produced nothing scorable scores zero. Only an arm
-        # that never ran gets a blank.
-        if row.get('attempted'):
-            return ('<td class="score" data-sort="0"><span class="fig">'
-                    '<span class="pct">0%%</span><span class="of">0 / %d</span>'
-                    '</span></td>' % task_count)
-        return '<td class="score none" data-sort="-1">not run</td>'
-    # The denominator is the frozen subset, never the number of predictions the
-    # arm managed to submit. A cell that produced no applicable patch failed its
-    # task; dropping it from the denominator would flatter the arm.
-    total = task_count
-    resolved = row['resolved'] or 0
-    pct = (100.0 * resolved / total) if total else 0.0
-    remaining = max(0.0, 100.0 - pct)
-    return (
-        '<td class="score" data-sort="%.2f">'
-        '<span class="bar" style="right:calc(%.1f%% + 6px)"></span>'
-        '<span class="fig"><span class="pct">%d%%</span>'
-        '<span class="of">%d / %d</span></span></td>'
-    ) % (pct, remaining, round(pct), resolved, total)
-
-
-def coverage_chip(row, task_count):
-    if not row['measured']:
-        if row.get('attempted'):
-            return '<span class="chip bad">ran, no scorable patch</span>'
-        return '<span class="chip none">no data</span>'
-    # An unfinished arm is reported as unfinished, never as a low score. The
-    # chip says how much of the subset it has actually run.
-    if not row.get('complete', True):
-        return ('<span class="chip warn">in progress · %d of %d tasks run</span>'
-                % (row.get('attempted_count') or 0, task_count))
-    linked = row['telemetry']['cells_linked']
-    submitted = row['submitted'] or 0
-    if submitted < task_count:
-        return ('<span class="chip warn">%d of %d patches submitted</span>'
-                % (submitted, task_count))
-    if linked < submitted:
-        return '<span class="chip warn">telemetry partial</span>'
-    return '<span class="chip ok">fully measured</span>'
-
-
-def num_cell(value, sort_value=None, suffix=''):
+def compact(value):
     if value is None:
-        return '<td class="num" data-sort="-1">—</td>'
-    sort_value = value if sort_value is None else sort_value
-    return '<td class="num" data-sort="%s">%s%s</td>' % (sort_value, value, suffix)
+        return '—'
+    value = float(value)
+    for unit, size in (('B', 1e9), ('M', 1e6), ('k', 1e3)):
+        if value >= size:
+            return '%.1f%s' % (value / size, unit)
+    return '%d' % value
 
 
-def leaderboard_table(rows, table_id, task_count, data=None):
-    body = []
-    for row in rows:
-        klass = '' if (row['measured'] or row.get('attempted')) else ' class="absent"'
-        telemetry = row['telemetry']
-        claude_calls = telemetry['claude_dispatches']
-        codex_phases = telemetry['codex_phases']
-        if row['measured'] or row.get('attempted'):
-            calls_cell = num_cell(claude_calls if claude_calls else 0)
-            codex_cell = num_cell(codex_phases if codex_phases else 0)
-        else:
-            calls_cell = codex_cell = '<td class="num" data-sort="-1">—</td>'
-        body.append(
-            '<tr%s><td><div class="pipeline">'
-            '<span class="name">%s · %s</span>'
-            '<span class="comp">%s</span></div></td>%s<td>%s</td>%s%s%s<td>%s</td></tr>'
-            % (klass, esc(row['condition']),
-               esc(retarget(row['label'], data or {})),
-               esc(retarget(COMPOSITION.get(row['condition'], row['description']),
-                            data or {})),
-               score_cell(row, denominator(row, task_count)), dots(row['per_task']),
-               calls_cell, codex_cell, effort_cells(row),
-               coverage_chip(row, task_count)))
+def scored_rows(data):
+    return [r for r in data['rows'] if r.get('score')]
+
+
+def row_by_id(data, ident):
+    return next((r for r in data['rows'] if r['id'] == ident), None)
+
+
+# --- masthead, caveat, tiles ---------------------------------------------------
+
+NAV = {'page': 'leaderboard.html', 'methodology': 'methodology.html', 'json': 'leaderboard.json'}
+
+
+def nav_links(data, also, current):
+    items = []
+    for label, href in (('Leaderboard', NAV['page']), ('Methodology', NAV['methodology']),
+                        (NAV['json'], NAV['json'])):
+        cls = ' class="here"' if label.lower().startswith(current) else ''
+        items.append('<a%s href="%s">%s</a>' % (cls, esc(href), esc(label)))
+    for label, href in also:
+        items.append('<a href="%s">%s</a>' % (esc(href), esc(label)))
+    return '<nav class="sitenav">%s</nav>' % ''.join(items)
+
+
+def run_chips(data):
+    chips = []
+    for run in data['runs']:
+        models = run.get('models') or {}
+        seats = []
+        for key in ('claude', 'codex'):
+            if models.get(key):
+                seats.append(', '.join(models[key]))
+        chip = '%s tier · %s' % (run.get('model_tier') or 'unknown', ' / '.join(seats) or 'no seats')
+        if run.get('publishable') is False:
+            chip += ' · flagged'
+        chips.append('<span title="%s">%s</span>' % (esc(run.get('note')), esc(chip)))
+    return ''.join(chips)
+
+
+def masthead(data, also, current):
+    suite = data['suite']
+    gold = data.get('gold_canary') or {}
+    harness = data['harness']
     return (
-        '<div class="scroller"><table id="%s"><thead><tr>'
-        '<th class="sortable" data-type="text">Pipeline</th>'
-        '<th class="sortable" data-type="num" data-dir="desc">Resolved</th>'
-        '<th>Per task</th>'
-        '<th class="sortable" data-type="num">Fable calls</th>'
-        '<th class="sortable" data-type="num">Codex phases</th>'
-        '<th class="sortable" data-type="num">Wall time</th>'
-        '<th class="sortable" data-type="num">Reported cost</th>'
-        '<th class="sortable" data-type="num">Cost / resolved</th>'
-        '<th>Coverage</th>'
-        '</tr></thead><tbody>%s</tbody></table></div>'
-    ) % (esc(table_id), ''.join(body))
+        '<header class="masthead">'
+        '<div class="eyebrow"><span>SWE-bench Verified · %d-task frozen subset</span>'
+        '<span>Official pinned evaluator, Docker</span><span>Built %s</span></div>'
+        '<h1>%s</h1>'
+        '<p class="standfirst">Does a second model reviewing the first one\'s patch produce more '
+        'resolved issues than either model alone, and at what cost? Every configuration is an '
+        'implementer and a reviewer drawn from different vendors, run on the same frozen tasks, '
+        'scored by the official evaluator, and shown with its uncertainty.</p>'
+        '%s'
+        '<div class="runmeta">%s<span>gold canary %s/%s</span><span>harness build %s%s</span></div>'
+        '</header>'
+        % (suite['task_count'], esc(data['generated_at']), esc(data.get('title')),
+           nav_links(data, also, current), run_chips(data),
+           esc(gold.get('resolved')), esc(gold.get('submitted')),
+           esc((harness.get('build_commit') or '')[:7]),
+           ' (dirty tree)' if harness.get('build_tree_dirty') else ''))
 
 
-def task_matrix(data):
-    measured = [row for row in data['rows']
-                if row['measured'] or row.get('attempted')]
-    instances = [entry['instance_id'] for entry in data['suite']['instances']]
-    header = ''.join('<th>%s<span class="tierflag">%s</span></th>'
-                     % (esc(row['condition']),
-                        ' single-shot' if row['tier'] == 'single-shot' else '')
-                     for row in measured)
-    body = []
-    for instance in instances:
-        cells = []
-        for row in measured:
-            task = next((t for t in row['per_task'] if t['instance_id'] == instance), None)
-            if task is None or task['status'] in ('not-submitted', 'not-run'):
-                cells.append('<td class="cell n">not scored</td>')
-                continue
-            if task['status'] == 'no-patch':
-                cells.append('<td class="cell f" title="%s after %s attempts">no patch</td>'
-                             % (esc(task.get('attempt_outcome') or 'no applicable patch'),
-                                esc(task.get('attempts'))))
-                continue
-            if task['status'] == 'resolved':
-                cells.append('<td class="cell p">resolved</td>')
-                continue
-            detail = []
-            if task.get('fail_to_pass_failed'):
-                detail.append('%d F2P fail' % task['fail_to_pass_failed'])
-            if task.get('pass_to_pass_failed'):
-                detail.append('%d P2P fail' % task['pass_to_pass_failed'])
-            if not task.get('patch_applied'):
-                detail.append('patch did not apply')
-            cells.append('<td class="cell f" title="%s">unresolved</td>'
-                         % esc(', '.join(detail) or 'unresolved'))
-        repo = next(e['repo'] for e in data['suite']['instances']
-                    if e['instance_id'] == instance)
-        body.append('<tr><td class="mono">%s</td><td class="repo">%s</td>%s</tr>'
-                    % (esc(instance), esc(repo), ''.join(cells)))
-    return (
-        '<div class="scroller"><table class="matrix"><thead><tr>'
-        '<th>Instance</th><th>Repository</th>%s</tr></thead><tbody>%s</tbody></table></div>'
-    ) % (header, ''.join(body))
-
-
-def provenance_table(data):
-    body = []
-    for row in data['rows']:
-        if not row['measured']:
-            body.append('<tr><td class="mono">%s</td><td colspan="2">no evaluator report</td></tr>'
-                        % esc(row['condition']))
-            continue
-        body.append('<tr><td class="mono">%s</td><td class="mono">%s</td><td class="mono">%s</td></tr>'
-                    % (esc(row['condition']), esc(row['evaluator_run_id']), esc(row['report_file'])))
-    for entry in data.get('superseded_reports', []):
-        body.append('<tr class="absent"><td class="mono">%s</td><td class="mono">%s</td>'
-                    '<td class="mono">%s <span class="chip none">superseded</span></td></tr>'
-                    % (esc(entry['condition']), esc(entry['evaluator_run_id']),
-                       esc(entry['report_file'])))
-    return ('<div class="scroller"><table><thead><tr>'
-            '<th>Condition</th><th>Evaluator run</th><th>Report file</th>'
-            '</tr></thead><tbody>%s</tbody></table></div>') % ''.join(body)
+def caveat(data):
+    suite = data['suite']
+    rows = scored_rows(data)
+    paragraphs = []
+    n = suite['task_count']
+    paragraphs.append(
+        '%d tasks is a probe, not a ranking. One task is %d points, and the intervals on every '
+        'row say how far two rows have to be apart before the difference is more than noise. '
+        'Rank(UB) ties every row whose interval overlaps the leader\'s.'
+        % (n, round(100.0 / n)))
+    flagged = [r for r in data['runs'] if r.get('publishable') is False]
+    if flagged:
+        paragraphs.append(
+            'Rows from %s are shown with a flag rather than hidden: %s'
+            % (', '.join('run %s' % r['label'] for r in flagged),
+               ' '.join(r.get('note') or '' for r in flagged)))
+    incomplete = [r for r in rows if not r['complete']]
+    if incomplete:
+        paragraphs.append(
+            'Unfinished rows (%s) are scored against the tasks they actually ran, because a task '
+            'an arm has not reached is not a failure; they carry no Rank(UB).'
+            % ', '.join(r['configuration'] for r in incomplete))
+    if any(r['telemetry'].get('cost_precision') == 'estimated' for r in rows):
+        paragraphs.append(
+            'Cost marked "est." prices a Codex phase from a total-only token figure with the '
+            'split recorded in the pricing file; the range under it prices the whole total at '
+            'the cached-input and output rates. A phase captured with --json is priced exactly.')
+    paragraphs.append(
+        'These numbers are not comparable to published full-500 SWE-bench Verified scores. '
+        'The two tiers are listed separately because they are not the same test.')
+    return ('<div class="callout"><h2>Read this before the table</h2>%s</div>'
+            % ''.join('<p>%s</p>' % esc(p) for p in paragraphs))
 
 
 def tiles(data):
-    rows = data['rows']
-    measured = [r for r in rows if r['measured'] or r.get('attempted')]
-    scored_cells = sum(r['submitted'] or 0 for r in measured)
-    claude_calls = sum(r['telemetry']['claude_dispatches'] for r in measured)
-    wall_seconds = sum(r['telemetry'].get('total_wall_seconds') or 0 for r in measured)
-    cost = sum(r['telemetry']['claude_cost_usd'] for r in measured)
-    resolved = sum(r['resolved'] or 0 for r in measured)
-    per_resolved = ('$%.2f' % (cost / resolved)) if resolved and cost else '—'
+    rows = scored_rows(data)
+    complete_cost = [r for r in rows if r['telemetry']['cost_is_complete']]
+    cells = sum(r['attempted_count'] for r in rows)
+    cost = sum(r['telemetry']['cost_usd'] for r in complete_cost)
     items = [
-        ('Configurations', '%d <span class="of">/ %d</span>' % (len(measured), len(rows)),
-         'measured on this subset'),
-        ('Tasks per cell', str(data['suite']['task_count']), 'frozen subset'),
-        ('Scored cells', str(scored_cells), 'official evaluator, Docker'),
-        ('Fable dispatches', str(claude_calls), 'across every measured arm'),
-        ('Wall time', esc(duration(wall_seconds) or '—'), 'model time, all providers'),
-        ('Cost per resolved', per_resolved, 'Claude phases only'),
+        ('Configurations', str(len(rows)), 'measured on this subset'),
+        ('Runs', str(len(data['runs'])), ', '.join(r['label'] for r in data['runs'])),
+        ('Tasks', str(data['suite']['task_count']), 'frozen, uniform random draw'),
+        ('Scored cells', str(cells), 'official evaluator, Docker'),
+        ('Priced spend', money(cost), '%d of %d rows fully priced' % (len(complete_cost), len(rows))),
+        ('Pairwise contrasts', str(len(data.get('contrasts') or [])), 'paired on shared tasks'),
     ]
     return '<div class="tiles">%s</div>' % ''.join(
         '<div class="tile"><span class="k">%s</span><span class="v">%s</span>'
-        '<span class="n">%s</span></div>' % (esc(k), v, esc(n)) for k, v, n in items)
+        '<span class="n">%s</span></div>' % (esc(k), esc(v), esc(n)) for k, v, n in items)
 
+
+def filters(data):
+    rows = scored_rows(data)
+    tiers = sorted({r.get('model_tier') or 'unknown' for r in rows})
+    seeds = sorted({len(r['seeds']) for r in rows})
+    tier_opts = ''.join('<option value="%s">%s</option>' % (esc(t), esc(t)) for t in tiers)
+    run_opts = ''.join('<option value="%s">%s</option>' % (esc(r['label']), esc(r['label']))
+                       for r in data['runs'])
+    seed_opts = ''.join('<option value="%d">%d seed%s</option>' % (s, s, '' if s == 1 else 's')
+                        for s in seeds)
+    return (
+        '<div class="filters" id="filters">'
+        '<label>Model tier <select data-filter="tier"><option value="">all</option>%s</select></label>'
+        '<label>Run <select data-filter="run"><option value="">all</option>%s</select></label>'
+        '<label>Seeds <select data-filter="seeds"><option value="">any</option>%s</select></label>'
+        '<span class="hint">Filters apply to the tables, the scatter and the heatmap.</span>'
+        '</div>' % (tier_opts, run_opts, seed_opts))
+
+
+# --- leaderboard --------------------------------------------------------------
+
+def badges(row):
+    prov = row['provenance']
+    out = ['<span class="badge ok" title="Scored by the pinned official SWE-bench evaluator in Docker">official evaluator</span>']
+    if prov.get('ran_by') == 'we ran it':
+        out.append('<span class="badge ok" title="Generated and scored by this project, not submitted by a third party">we ran it</span>')
+    else:
+        out.append('<span class="badge none">%s</span>' % esc(prov.get('ran_by')))
+    if prov.get('harness_recorded'):
+        if prov.get('harness_dirty') in (False, 'False'):
+            out.append('<span class="badge ok" title="Cell manifests record a clean harness tree at commit %s">clean tree %s</span>'
+                       % (esc(prov.get('harness_commit')), esc(str(prov.get('harness_commit') or '')[:7])))
+        else:
+            out.append('<span class="badge warn" title="Cell manifests record uncommitted harness changes">dirty tree</span>')
+    else:
+        out.append('<span class="badge none" title="This run predates manifests that record the harness commit">harness unrecorded</span>')
+    if prov.get('publishable') is False:
+        out.append('<span class="badge bad" title="%s">flagged</span>' % esc(prov.get('run_note')))
+    if row['telemetry'].get('repair_inert_count'):
+        out.append('<span class="badge warn" title="Cells whose repair stage left the implementation unchanged">%d inert</span>'
+                   % row['telemetry']['repair_inert_count'])
+    return '<div class="badges">%s</div>' % ''.join(out)
+
+
+def interval_svg(row):
+    score = row['score']
+    low, high, rate = score['wilson_low'], score['wilson_high'], score['rate']
+    if rate is None:
+        return ''
+    return ('<svg class="ci" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" '
+            'aria-label="Wilson interval %s to %s">'
+            '<line x1="%.1f" y1="5" x2="%.1f" y2="5" class="ci-band"/>'
+            '<line x1="%.1f" y1="1" x2="%.1f" y2="9" class="ci-mark"/></svg>'
+            % (pct(low), pct(high), 100 * low, 100 * high, 100 * rate, 100 * rate))
+
+
+def score_cell(row):
+    score = row['score']
+    if score['rate'] is None:
+        return '<td class="score none" data-sort="-1">no result</td>'
+    half = 100.0 * (score['wilson_high'] - score['wilson_low']) / 2.0
+    seeds = score.get('seeds') or 1
+    seed_note = ' · %d seeds' % seeds if seeds > 1 else ''
+    return ('<td class="score" data-sort="%.4f"><span class="fig"><span class="pct">%s</span>'
+            '<span class="pm">± %.0f</span></span><span class="of">%d / %d%s · CI %s–%s</span>%s</td>'
+            % (score['rate'], pct(score['rate']), half, score['resolved'], score['n'], seed_note,
+               pct(score['wilson_low']), pct(score['wilson_high']), interval_svg(row)))
+
+
+def cost_cell(row):
+    t = row['telemetry']
+    if not t['cost_is_complete']:
+        seats = []
+        for seat in ('glm', 'kimi'):
+            if t.get(seat + '_calls') and not t.get(seat + '_cost_usd'):
+                seats.append(seat)
+        if t.get('codex_phases') and t.get('cost_precision') == 'unpriced':
+            seats.append('codex')
+        return ('<td class="num cost-incomplete" data-sort="-1"><span class="flag" title="%s seat has no priced token figure">'
+                'incomplete</span><span class="sub">Claude %s only</span></td>'
+                % (esc(', '.join(seats) or 'a'), money(t['claude_cost_usd'] / t['cells_linked'] if t['cells_linked'] else None)))
+    per = t['cost_per_task']
+    mark = ''
+    sub = ''
+    if t['cost_precision'] == 'estimated' and t['cells_linked']:
+        low = t['cost_low_usd'] / t['cells_linked']
+        high = t['cost_high_usd'] / t['cells_linked']
+        mark = '<span class="est" title="Codex priced from a total-only token figure; range prices the total at cached-input and output rates">est.</span>'
+        sub = '<span class="sub">%s–%s</span>' % (money(low), money(high))
+    return '<td class="num" data-sort="%.4f">%s%s%s</td>' % (per, money(per), mark, sub)
+
+
+def wall_cell(row):
+    t = row['telemetry']
+    if t.get('wall_p50') is None:
+        return '<td class="num" data-sort="-1">—</td>'
+    return ('<td class="num" data-sort="%d">%s<span class="sub">p90 %s</span></td>'
+            % (t['wall_p50'], duration(t['wall_p50']), duration(t['wall_p90'])))
+
+
+def tokens_cell(row):
+    t = row['telemetry']
+    if not t.get('tokens_per_task'):
+        return '<td class="num" data-sort="-1">—</td>'
+    return '<td class="num" data-sort="%d">%s</td>' % (t['tokens_per_task'], compact(t['tokens_per_task']))
+
+
+def rank_cell(row):
+    rank = row.get('rank_ub')
+    if rank is None:
+        return '<td class="num rank" data-sort="999">—</td>'
+    return '<td class="num rank" data-sort="%d">%d</td>' % (rank, rank)
+
+
+def config_cell(row):
+    chips = ['<span class="chip tier">%s</span>' % esc(row.get('model_tier') or 'unknown'),
+             '<span class="chip run">%s</span>' % esc(row['run_label']),
+             '<span class="chip id">%s</span>' % esc(row['condition'])]
+    if row.get('mixed_tier'):
+        chips.append('<span class="chip warn">mixed tier</span>')
+    return ('<td><div class="pipeline"><span class="name">%s</span>'
+            '<span class="comp">%s</span><span class="chips">%s</span></div></td>'
+            % (esc(row['configuration']), esc(row['pipeline']), ''.join(chips)))
+
+
+def coverage_chip(row):
+    if not row['complete']:
+        return ('<span class="chip warn">in progress · %d of %d cells</span>'
+                % (row['attempted_count'], row['cells_expected']))
+    t = row['telemetry']
+    if t['cells_linked'] < row['attempted_count']:
+        return '<span class="chip warn">telemetry partial</span>'
+    return '<span class="chip ok">complete</span>'
+
+
+def detail_row(row, colspan):
+    t = row['telemetry']
+    prov = row['provenance']
+    facts = [
+        ('Harness commit', (prov.get('harness_commit') or 'not recorded in this run\'s manifests')),
+        ('Dataset revision', row.get('dataset_revision') or ''),
+        ('Evaluator run', ', '.join(prov.get('evaluator_run_ids') or []) or 'none'),
+        ('Report file', ', '.join(prov.get('report_files') or []) or 'none'),
+        ('Sandbox', ', '.join(prov.get('sandbox_modes') or []) or 'n/a'),
+        ('Models', ', '.join('%s=%s' % (k, v if isinstance(v, str) else ','.join(v))
+                             for k, v in sorted(row['models'].items()))),
+        ('Effort', ', '.join('%s=%s' % (k, ','.join(v)) for k, v in sorted(row['effort'].items())) or 'model default'),
+        ('CLI versions', ', '.join('%s %s' % (k, ','.join(v)) for k, v in sorted((prov.get('cli_versions') or {}).items())) or 'not recorded'),
+        ('Claude tokens', 'in %s · cached %s · out %s' % (compact(t['claude_input_tokens']), compact(t['claude_cached_tokens']), compact(t['claude_output_tokens']))),
+        ('Codex tokens', ('total %s' % compact(t['codex_tokens'])) + (
+            ' (in %s · cached %s · out %s)' % (compact(t['codex_input_tokens']), compact(t['codex_cached_tokens']), compact(t['codex_output_tokens']))
+            if t['codex_input_tokens'] else ' (no split in log)') if t['codex_phases'] else 'no Codex phase'),
+        ('Cost by seat', 'claude %s · codex %s%s · glm %s · kimi %s' % (
+            money(t['claude_cost_usd']), money(t['codex_cost_usd']),
+            (' [%s–%s]' % (money(t['codex_cost_low_usd']), money(t['codex_cost_high_usd']))) if t['cost_precision'] == 'estimated' else '',
+            money(t['glm_cost_usd']), money(t['kimi_cost_usd']))),
+        ('Cost precision', t['cost_precision']),
+        ('Wall p50 / p90', '%s / %s' % (duration(t.get('wall_p50')), duration(t.get('wall_p90')))),
+        ('Patch did not apply', str(t.get('patch_not_applied', 0))),
+        ('Inert repairs', '%d of %d repair cells' % (t.get('repair_inert_count', 0), t.get('repair_cells', 0)) if t.get('repair_cells') else 'n/a'),
+        ('Best-of-k selection', ('%d cells, %d apply-only' % (t['selection_cells'], t['selection_apply_only'])) if t.get('selection_cells') else 'n/a'),
+        ('Bootstrap CI', ('%s–%s (%d draws over repo, task, seed)' % (pct(row['bootstrap']['low']), pct(row['bootstrap']['high']), row['bootstrap']['n_boot'])) if row.get('bootstrap') and row['bootstrap'].get('low') is not None else 'n/a'),
+    ]
+    if row.get('seed_summary'):
+        ss = row['seed_summary']
+        facts.append(('Seeds', 'pass@%d %s · pass^%d %s · flip rate %s · unstable: %s' % (
+            ss['k'], pct(ss['pass_at_k']), ss['k'], pct(ss['pass_pow_k']), pct(ss['flip_rate']),
+            ', '.join(ss['unstable_tasks']) or 'none')))
+    dl = ''.join('<div><dt>%s</dt><dd>%s</dd></div>' % (esc(k), esc(v)) for k, v in facts)
+    return ('<tr class="detail" id="detail-%s" hidden><td colspan="%d"><dl class="facts">%s</dl>'
+            '<div class="repro"><span class="label">Reproduce</span><pre class="code">%s</pre></div></td></tr>'
+            % (esc(row['id']), colspan, dl, esc(row['reproduce'])))
+
+
+def leaderboard_table(rows, table_id):
+    head = ('<th class="sortable" data-type="num" title="1 + number of rows whose interval lower bound is above this row\'s upper bound">Rank(UB)</th>'
+            '<th class="sortable" data-type="text">Configuration</th>'
+            '<th class="sortable" data-type="num" data-dir="desc">Resolved ± 95% CI</th>'
+            '<th class="sortable" data-type="num">Cost / task</th>'
+            '<th class="sortable" data-type="num">Wall p50</th>'
+            '<th class="sortable" data-type="num">Tokens / task</th>'
+            '<th>Provenance</th><th>Coverage</th><th></th>')
+    body = []
+    for row in rows:
+        attrs = ('data-row="%s" data-tier="%s" data-run="%s" data-seeds="%d" data-flagged="%s"'
+                 % (esc(row['id']), esc(row.get('model_tier') or 'unknown'), esc(row['run_label']),
+                    len(row['seeds']), 'yes' if row['provenance'].get('publishable') is False else 'no'))
+        body.append(
+            '<tr %s>%s%s%s%s%s%s<td>%s</td><td>%s</td>'
+            '<td><button class="expand" type="button" aria-expanded="false" aria-controls="detail-%s">details</button></td></tr>'
+            % (attrs, rank_cell(row), config_cell(row), score_cell(row), cost_cell(row),
+               wall_cell(row), tokens_cell(row), badges(row), coverage_chip(row), esc(row['id'])))
+        body.append(detail_row(row, 9))
+    return ('<div class="scroller"><table data-sortable id="%s"><thead><tr>%s</tr></thead>'
+            '<tbody>%s</tbody></table></div>' % (esc(table_id), head, ''.join(body)))
+
+
+# --- pareto scatter ------------------------------------------------------------
+
+def pareto_svg(data, axis, label, key):
+    rows = [r for r in scored_rows(data) if r['complete'] and r['tier'] == 'agentic'
+            and r['telemetry'].get(key) is not None and r['score']['rate'] is not None]
+    frontier = set((data.get('pareto') or {}).get(axis) or [])
+    width, height = 720, 400
+    left, right, top, bottom = 64, 24, 24, 56
+    if not rows:
+        return '<p class="sec-note">No fully priced, complete row to plot on this axis yet.</p>'
+    xs = [r['telemetry'][key] for r in rows]
+    xmax = max(xs) * 1.15 or 1.0
+    xmin = 0.0
+
+    def sx(x):
+        return left + (x - xmin) / (xmax - xmin) * (width - left - right)
+
+    def sy(y):
+        return top + (1.0 - y) * (height - top - bottom)
+
+    parts = ['<svg class="scatter" viewBox="0 0 %d %d" role="img" aria-label="Pass rate against %s">' % (width, height, esc(label))]
+    for i in range(0, 11, 2):
+        y = i / 10.0
+        parts.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" class="grid"/>' % (left, sy(y), width - right, sy(y)))
+        parts.append('<text x="%d" y="%.1f" class="tick" text-anchor="end">%d%%</text>' % (left - 8, sy(y) + 4, i * 10))
+    ticks = 5
+    for i in range(ticks + 1):
+        x = xmin + (xmax - xmin) * i / ticks
+        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" class="grid"/>' % (sx(x), top, sx(x), height - bottom))
+        if axis == 'cost':
+            text = money(x)
+        elif axis == 'wall':
+            text = duration(x)
+        else:
+            text = compact(x)
+        parts.append('<text x="%.1f" y="%d" class="tick" text-anchor="middle">%s</text>' % (sx(x), height - bottom + 18, esc(text)))
+    parts.append('<text x="%d" y="%d" class="axis" text-anchor="middle">%s</text>' % ((left + width - right) / 2, height - 8, esc(label)))
+    parts.append('<text transform="translate(14 %d) rotate(-90)" class="axis" text-anchor="middle">Resolved (Wilson 95%% CI)</text>' % ((top + height - bottom) / 2))
+    front = sorted([r for r in rows if r['id'] in frontier], key=lambda r: r['telemetry'][key])
+    if len(front) > 1:
+        points = ' '.join('%.1f,%.1f' % (sx(r['telemetry'][key]), sy(r['score']['rate'])) for r in front)
+        parts.append('<polyline points="%s" class="frontier"/>' % points)
+    for r in rows:
+        x, y = sx(r['telemetry'][key]), sy(r['score']['rate'])
+        lo, hi = sy(r['score']['wilson_low']), sy(r['score']['wilson_high'])
+        cls = 'pt front' if r['id'] in frontier else 'pt'
+        flagged = r['provenance'].get('publishable') is False
+        parts.append('<g class="%s%s" data-row="%s" data-tier="%s" data-run="%s" data-seeds="%d">'
+                     % (cls, ' flagged' if flagged else '', esc(r['id']), esc(r.get('model_tier') or 'unknown'),
+                        esc(r['run_label']), len(r['seeds'])))
+        parts.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" class="whisker"/>' % (x, hi, x, lo))
+        parts.append('<circle cx="%.1f" cy="%.1f" r="5"><title>%s · %s · %s</title></circle>'
+                     % (x, y, esc(r['configuration']), esc(pct(r['score']['rate'])),
+                        esc({'cost': money(r['telemetry'][key]), 'wall': duration(r['telemetry'][key]),
+                             'tokens': compact(r['telemetry'][key])}[axis])))
+        parts.append('<text x="%.1f" y="%.1f" class="ptlabel">%s</text>' % (x + 8, y - 8, esc(r['configuration'])))
+        parts.append('</g>')
+    parts.append('</svg>')
+    return ''.join(parts)
+
+
+def pareto_section(data):
+    buttons = ''.join('<button type="button" class="axis-btn%s" data-axis="%s">%s</button>'
+                      % (' active' if i == 0 else '', axis, esc(label.split(' (')[0]))
+                      for i, (axis, label, _) in enumerate(AXES))
+    panes = ''.join('<div class="pane" data-axis="%s"%s>%s</div>'
+                    % (axis, '' if i == 0 else ' hidden', pareto_svg(data, axis, label, key))
+                    for i, (axis, label, key) in enumerate(AXES))
+    frontier = (data.get('pareto') or {}).get('cost') or []
+    return (
+        '<section id="pareto"><h2 class="sec">Pass rate against cost</h2>'
+        '<p class="sec-note">Agentic rows with a complete run and a fully priced cost. The line joins the '
+        'Pareto frontier: no row above and to the left. Whiskers are the Wilson interval. On the cost axis '
+        'the frontier is %s.</p>'
+        '<div class="axis-toggle" role="group" aria-label="x axis">%s</div>%s</section>'
+        % (esc(', '.join(row_by_id(data, i)['configuration'] for i in frontier if row_by_id(data, i)) or 'empty'),
+           buttons, panes))
+
+
+# --- contrasts --------------------------------------------------------------------
+
+def contrast_section(data):
+    contrasts = data.get('contrasts') or []
+    rows = [r for r in scored_rows(data) if r['tier'] == 'agentic']
+    if len(rows) < 2 or not contrasts:
+        return ''
+    options = ''.join('<option value="%s">%s (%s)</option>' % (esc(r['id']), esc(r['configuration']), esc(r['run_label']))
+                      for r in rows)
+    default = None
+    for phase in (data.get('methodology') or {}).get('phases') or []:
+        if phase.get('observed'):
+            default = phase['observed']['contrast'].split(' vs ')
+            break
+    if default is None:
+        default = [contrasts[0]['a'], contrasts[0]['b']]
+    payload = json.dumps(contrasts, separators=(',', ':')).replace('</', '<\\/')
+    return (
+        '<section id="contrast"><h2 class="sec">Paired contrast</h2>'
+        '<p class="sec-note">Same tasks, same seed, compared task by task. The discordant tasks are the '
+        'only ones that carry information about which arm is better; the exact McNemar test asks whether '
+        'their split could be a coin flip. Cost per net flip is what the second arm paid for each task it '
+        'gained on balance.</p>'
+        '<div class="contrast-pick"><label>A <select id="contrast-a">%s</select></label>'
+        '<label>B <select id="contrast-b">%s</select></label></div>'
+        '<div id="contrast-out" data-default-a="%s" data-default-b="%s"></div>'
+        '<script type="application/json" id="contrast-data">%s</script></section>'
+        % (options, options, esc(default[0]), esc(default[1]), payload))
+
+
+# --- heatmap ------------------------------------------------------------------------
+
+def heatmap(data):
+    matrix = data.get('task_matrix') or {}
+    rows = [r for r in scored_rows(data)]
+    if not rows or not matrix:
+        return ''
+    head = ''.join('<th data-row="%s" data-tier="%s" data-run="%s" data-seeds="%d"><span class="hm-head">%s</span>'
+                   '<span class="tierflag">%s · %s</span></th>'
+                   % (esc(r['id']), esc(r.get('model_tier') or 'unknown'), esc(r['run_label']), len(r['seeds']),
+                      esc(r['condition']), esc(r.get('model_tier') or ''),
+                      'single-shot' if r['tier'] == 'single-shot' else esc(r['run_label']))
+                   for r in rows)
+    body = []
+    last_group = None
+    order = matrix['order']
+    for index, instance in enumerate(order):
+        task = matrix['tasks'][instance]
+        group = task.get('difficulty') or 'unlabeled'
+        if group != last_group:
+            body.append('<tr class="group"><td colspan="%d">%s</td></tr>' % (len(rows) + 3, esc(group)))
+            last_group = group
+        cells = []
+        resolved_count = 0
+        for r in rows:
+            cell = task['cells'].get(r['id']) or {'status': 'not-run', 'resolved': 0, 'ran': 0, 'seeds': 1}
+            status = cell['status']
+            klass = {'resolved': 'p', 'unresolved': 'f', 'no-patch': 'f', 'mixed': 'm'}.get(status, 'n')
+            shade = ''
+            if cell['ran'] > 1:
+                shade = ' style="--k:%.2f"' % (cell['resolved'] / cell['ran'])
+            text = {'resolved': '✓', 'unresolved': '✗', 'no-patch': 'no patch', 'mixed': '%d/%d' % (cell['resolved'], cell['ran'])}.get(status, '·')
+            title = '%s · %s' % (r['configuration'], status)
+            if cell.get('repair_inert'):
+                title += ' · repair inert'
+            if status in ('unresolved',) and not cell.get('patch_applied', True):
+                title += ' · patch did not apply'
+            resolved_count += cell['resolved']
+            cells.append('<td class="cell %s" data-row="%s" data-tier="%s" data-run="%s" data-seeds="%d" title="%s"%s>%s</td>'
+                         % (klass, esc(r['id']), esc(r.get('model_tier') or 'unknown'), esc(r['run_label']),
+                            len(r['seeds']), esc(title), shade, text))
+        body.append('<tr class="task" data-order="%d" data-rescued="%d" data-resolved="%d" data-group="%s">'
+                    '<td class="mono">%s</td><td class="repo">%s</td><td class="diff">%s</td>%s</tr>'
+                    % (index, 1 if task.get('rescued_by_review') else 0, resolved_count, esc(group),
+                       esc(instance), esc(task['repo']), esc(task.get('difficulty') or '—'), ''.join(cells)))
+    rescued = [i for i in order if matrix['tasks'][i].get('rescued_by_review')]
+    return (
+        '<section id="heatmap"><h2 class="sec">Task by configuration</h2>'
+        '<p class="sec-note">Grouped by the Verified difficulty label, then repository. A task is '
+        '"rescued by review" when a review arm resolved it and no solo arm did: %s. With seeds, a cell '
+        'shows resolved/ran and shades by pass^k.</p>'
+        '<div class="axis-toggle" role="group" aria-label="row order">'
+        '<button type="button" class="axis-btn active" data-sort="default">difficulty · repo</button>'
+        '<button type="button" class="axis-btn" data-sort="rescued">rescued by review first</button>'
+        '<button type="button" class="axis-btn" data-sort="resolved">most resolved first</button></div>'
+        '<div class="scroller"><table class="matrix" id="matrix"><thead><tr><th>Task</th><th>Repository</th>'
+        '<th>Difficulty</th>%s</tr></thead><tbody>%s</tbody></table></div></section>'
+        % (esc(', '.join(rescued) or 'none yet'), head, ''.join(body)))
+
+
+# --- provenance and integrity -----------------------------------------------------
+
+def provenance_table(data):
+    body = []
+    for row in scored_rows(data):
+        prov = row['provenance']
+        body.append('<tr><td class="mono">%s</td><td class="mono">%s</td><td class="num">%d</td>'
+                    '<td class="mono">%s</td><td class="mono">%s</td></tr>'
+                    % (esc(row['id']), esc(row['run_label']), len(row['seeds']),
+                       esc(', '.join(prov.get('evaluator_run_ids') or [])),
+                       esc(', '.join(prov.get('report_files') or []))))
+    for entry in data.get('superseded_reports') or []:
+        body.append('<tr class="absent"><td class="mono">%s@%s</td><td class="mono">%s</td><td class="num">%s</td>'
+                    '<td class="mono">%s</td><td class="mono">%s <span class="chip none">superseded</span></td></tr>'
+                    % (esc(entry['condition']), esc(entry['run_label']), esc(entry['run_label']), esc(entry['seed']),
+                       esc(entry['evaluator_run_id']), esc(entry['report_file'])))
+    return ('<div class="scroller"><table><thead><tr><th>Row</th><th>Run</th><th>Seeds</th>'
+            '<th>Evaluator run</th><th>Report file</th></tr></thead><tbody>%s</tbody></table></div>' % ''.join(body))
+
+
+def integrity(data):
+    harness = data['harness']
+    gold = data.get('gold_canary') or {}
+    pricing = data.get('pricing') or {}
+    items = [
+        '<li><strong>Evaluator.</strong> Official SWE-bench harness pinned at <span class="mono">%s</span>, '
+        'dataset <span class="mono">%s</span> at revision <span class="mono">%s</span>, both from '
+        '<span class="mono">%s</span>.</li>'
+        % (esc((harness.get('swebench_commit') or '')[:12]), esc(harness.get('dataset')),
+           esc((harness.get('dataset_revision') or '')[:12]), esc(harness.get('lock_file'))),
+    ]
+    if gold:
+        items.append('<li><strong>Gold canary.</strong> A gold patch resolved %s/%s before any generated '
+                     'prediction was scored. Report: <span class="mono">%s</span>.</li>'
+                     % (esc(gold.get('resolved')), esc(gold.get('submitted')), esc(gold.get('report_file'))))
+    items.append('<li><strong>Cost.</strong> Claude cost is the CLI\'s own figure. Codex, GLM and Kimi are priced '
+                 'from the token counts in each cell\'s logs at the list prices in <span class="mono">%s</span> '
+                 '(recorded %s). A row is "fully priced" only when every seat that ran has a priced figure; '
+                 'otherwise the cost column says incomplete rather than showing a smaller number.</li>'
+                 % (esc(pricing.get('file')), esc(pricing.get('recorded_on'))))
+    items.append('<li><strong>Uncertainty.</strong> %s per row; %s per pair; a %d-draw bootstrap over %s for the '
+                 'paired delta; %s. Code: <span class="mono">%s</span>.</li>'
+                 % (esc(data['statistics']['interval']), esc(data['statistics']['paired_test']),
+                    data['statistics']['bootstrap']['draws'], esc(', '.join(data['statistics']['bootstrap']['levels'])),
+                    esc(data['statistics']['rank']), esc(data['statistics']['module'])))
+    items.append('<li><strong>Provenance badges.</strong> "official evaluator" and the gold canary say how a row '
+                 'was scored; "we ran it" says who generated the patches; "clean tree" or "dirty tree" is what the '
+                 'cell manifests recorded about the harness, and "harness unrecorded" means the run predates that '
+                 'record; "flagged" carries the run registry\'s note and keeps the row out of any headline.</li>')
+    items.append('<li><strong>Every number on this page comes from a file.</strong> The page is generated from '
+                 '<span class="mono">benchmarks/site/aggregate.sh</span> output; each row names the evaluator '
+                 'reports it was read from and each task cell is backed by that run\'s per-instance '
+                 '<span class="mono">report.json</span>. The full JSON is linked in the header.</li>')
+    return '<ul class="plain">%s</ul>' % ''.join(items)
+
+
+# --- methodology page -----------------------------------------------------------------
+
+def methodology_page(data, also):
+    meth = data.get('methodology') or {}
+    prereg = meth.get('preregistration') or {}
+    suite = data['suite']
+    sampling = meth.get('sampling') or {}
+    diff = meth.get('difficulty') or {}
+    parts = [HEAD, '<title>%s</title>' % esc('Methodology · ' + (data.get('title') or 'Co-Evolution')), STYLE,
+             '<div class="wrap">', masthead(data, also, 'meth')]
+    parts.append('<section><h2 class="sec">Suite draw</h2><ul class="plain">'
+                 '<li><strong>Suite.</strong> <span class="mono">%s</span>: %d tasks from %s (%s split), file '
+                 '<span class="mono">%s</span>.</li>'
+                 '<li><strong>Sampling.</strong> %s with seed <span class="mono">%s</span> from %s instances at '
+                 'dataset revision <span class="mono">%s</span>. %s</li></ul></section>'
+                 % (esc(suite['id']), suite['task_count'], esc(suite['dataset']), esc(suite['split']),
+                    esc(suite['subset_file']), esc(sampling.get('method') or 'hand-pinned'),
+                    esc(sampling.get('seed')), esc((sampling.get('drawn_from') or {}).get('population')),
+                    esc(((sampling.get('drawn_from') or {}).get('revision') or '')[:12]),
+                    esc(sampling.get('note') or '')))
+    if diff:
+        counts = diff.get('counts') or {}
+        rows = ''.join('<tr><td>%s</td><td class="num">%s</td></tr>' % (esc(b), esc(counts.get(b, 0)))
+                       for b in diff.get('buckets') or [])
+        parts.append('<section><h2 class="sec">Difficulty stratification</h2>'
+                     '<p class="sec-note">%s Source: %s, fetched %s.</p>'
+                     '<div class="scroller"><table><thead><tr><th>Bucket</th><th>Tasks</th></tr></thead>'
+                     '<tbody>%s</tbody></table></div></section>'
+                     % (esc(diff.get('note')), esc(diff.get('source')), esc(diff.get('fetched_on')), rows))
+    phase_rows = []
+    for phase in meth.get('phases') or []:
+        primary = phase.get('primary_contrast') or {}
+        observed = phase.get('observed')
+        if observed:
+            delta = observed.get('delta') or {}
+            outcome = ('%s: %d / %d discordant, McNemar p = %.2f, delta %s (bootstrap %s to %s)'
+                       % (observed['contrast'], observed['only_a'], observed['only_b'],
+                          observed['mcnemar_exact_p'], pct(delta.get('point'), 1),
+                          pct(delta.get('low'), 1), pct(delta.get('high'), 1)))
+        else:
+            outcome = 'pending: %s' % (', '.join(a for a in (phase.get('arms') or [])
+                                                  if a not in (phase.get('arms_measured') or [])) or 'no arms declared')
+        phase_rows.append('<tr><td class="num">%s</td><td>%s</td><td class="mono">%s vs %s</td><td>%s</td>'
+                          '<td>%s</td><td class="mono">%s</td></tr>'
+                          % (esc(phase.get('id')), esc(phase.get('name')), esc(primary.get('a')),
+                             esc(primary.get('b')), esc(primary.get('question')), esc(outcome),
+                             esc(', '.join(phase.get('arms_measured') or []) or 'none')))
+    parts.append('<section><h2 class="sec">Pre-registered contrasts</h2>'
+                 '<p class="sec-note">Registered %s from %s. One primary contrast per phase, declared before the '
+                 'phase runs; the outcome column is filled from the evaluator reports, never by hand. %s</p>'
+                 '<div class="scroller"><table><thead><tr><th>Phase</th><th>Name</th><th>Primary</th>'
+                 '<th>Question</th><th>Outcome</th><th>Arms measured</th></tr></thead><tbody>%s</tbody></table></div></section>'
+                 % (esc(prereg.get('registered_on')), esc(prereg.get('source')),
+                    esc((prereg.get('analysis') or {}).get('secondary_correction') or ''), ''.join(phase_rows)))
+    power_rows = ''.join('<tr><td class="num">%s</td><td class="num">%s</td><td class="num">%s</td></tr>'
+                         % (pct(p['discordance_rate']), pct(p['effect']), esc(p['paired_observations']))
+                         for p in meth.get('power_table') or [])
+    parts.append('<section><h2 class="sec">Power</h2>'
+                 '<p class="sec-note">Paired observations (task × seed) needed to detect a paired difference at '
+                 '80%% power and α = 0.05, from the McNemar normal approximation, for the discordance rates seen '
+                 'so far. The light tier\'s A vs B discordance is 14%%; repeats count as observations.</p>'
+                 '<div class="scroller"><table><thead><tr><th>Discordance</th><th>Effect</th>'
+                 '<th>Paired observations</th></tr></thead><tbody>%s</tbody></table></div></section>' % power_rows)
+    pricing = data.get('pricing') or {}
+    price_rows = ''.join('<tr><td class="mono">%s</td><td>%s</td><td class="num">%s</td><td class="num">%s</td>'
+                         '<td class="num">%s</td><td>%s</td></tr>'
+                         % (esc(m), esc(r.get('vendor')), money(r['input']), money(r['cached_input']),
+                            money(r['output']), esc(r.get('note') or ''))
+                         for m, r in sorted((pricing.get('models') or {}).items()))
+    split = pricing.get('codex_total_only_split') or {}
+    parts.append('<section><h2 class="sec">Cost basis</h2>'
+                 '<p class="sec-note">List prices per million tokens from <span class="mono">%s</span>, recorded %s. '
+                 'Claude is priced by its CLI\'s own envelope. A Codex phase whose log carries only a total is priced '
+                 'with an assumed split of %s cached, %s uncached input, %s output, and flagged "est." with bounds.</p>'
+                 '<div class="scroller"><table><thead><tr><th>Model</th><th>Vendor</th><th>Input</th>'
+                 '<th>Cached input</th><th>Output</th><th>Note</th></tr></thead><tbody>%s</tbody></table></div></section>'
+                 % (esc(pricing.get('file')), esc(pricing.get('recorded_on')), pct(split.get('cached_input')),
+                    pct(split.get('input')), pct(split.get('output')), price_rows))
+    parts.append('<section><h2 class="sec">Statistics and integrity</h2>%s</section>' % integrity(data))
+    parts.append('<section><h2 class="sec">Downloads</h2><ul class="plain">'
+                 '<li><a href="%s">%s</a> — the complete data this site renders (schema %s).</li>'
+                 '<li><a href="code-bench-site-2.0.schema.json">code-bench-site-2.0.schema.json</a> — the JSON schema.</li>'
+                 '<li>In the repository: <span class="mono">%s</span>, <span class="mono">%s</span>, '
+                 '<span class="mono">%s</span>, <span class="mono">benchmarks/code/preregistration.json</span>.</li></ul></section>'
+                 % (esc(NAV['json']), esc(NAV['json']), esc(data.get('schema')), esc(data['harness'].get('conditions_file')),
+                    esc(pricing.get('file')), esc(data['harness'].get('runs_file'))))
+    parts.append(footer(data))
+    parts.append('</div>')
+    return '\n'.join(parts)
+
+
+def footer(data):
+    harness = data['harness']
+    return ('<footer><div>Generated from run artifacts in <span class="mono">benchmarks/results/code/</span> by '
+            '<span class="mono">benchmarks/site/aggregate.sh</span>.</div>'
+            '<div class="mono">site build %s%s · schema %s</div></footer>'
+            % (esc(harness.get('build_commit')),
+               ' · working tree had uncommitted changes at build time' if harness.get('build_tree_dirty') else '',
+               esc(data.get('schema'))))
+
+
+# --- leaderboard page ------------------------------------------------------------------
+
+def build(data, also=()):
+    rows = scored_rows(data)
+    agentic = [r for r in rows if r['tier'] == 'agentic']
+    single = [r for r in rows if r['tier'] == 'single-shot']
+    parts = [HEAD, '<title>%s</title>' % esc(data.get('title') or 'Co-Evolution'), STYLE,
+             '<div class="wrap">', masthead(data, also, 'leader'), caveat(data), tiles(data), filters(data)]
+    parts.append('<section id="leaderboard"><h2 class="sec">Leaderboard</h2>')
+    for tier, group in (('agentic', agentic), ('single-shot', single)):
+        if not group:
+            continue
+        title, note = TIER_COPY[tier]
+        parts.append('<h3 class="tier">%s</h3><p class="sec-note">%s</p>' % (esc(title), esc(note)))
+        parts.append(leaderboard_table(group, 'board-%s' % tier))
+    parts.append('</section>')
+    parts.append(pareto_section(data))
+    parts.append(contrast_section(data))
+    parts.append(heatmap(data))
+    parts.append('<section><h2 class="sec">Methodology and integrity</h2>%s'
+                 '<p class="sec-note">The <a href="%s">methodology page</a> carries the suite draw, '
+                 'stratification, pre-registered contrasts, the power table and the cost basis, generated from the '
+                 'same JSON.</p>%s</section>' % (integrity(data), esc(NAV['methodology']), provenance_table(data)))
+    parts.append(footer(data))
+    parts.append('</div>')
+    parts.append(SCRIPT)
+    return '\n'.join(parts)
+
+
+# The pages are served raw by GitHub Pages, so they declare their own charset
+# and viewport; without them a phone lays the page out at 980px and a server
+# without a charset header shows the middle dots as mojibake.
+HEAD = ('<!doctype html><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">')
 
 STYLE = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -323,10 +787,11 @@ STYLE = """
     --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -20px rgba(0,0,0,.9);
   }
   * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
   body { background: var(--paper); color: var(--ink); font-family: var(--f-sans);
          font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; margin: 0; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--pad);
-          display: flex; flex-direction: column; gap: 3.25rem; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: var(--pad);
+          display: flex; flex-direction: column; gap: 3rem; }
   a { color: var(--accent); text-underline-offset: 2px; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
@@ -335,10 +800,12 @@ STYLE = """
              text-transform: uppercase; color: var(--ink-faint);
              display: flex; flex-wrap: wrap; gap: .5rem .9rem; }
   h1 { font-family: var(--f-display); font-weight: 600;
-       font-size: clamp(2rem, 5.2vw, 3.1rem); line-height: 1.05;
+       font-size: clamp(1.7rem, 4.6vw, 2.8rem); line-height: 1.08;
        letter-spacing: -.015em; margin: 0; text-wrap: balance; }
-  .standfirst { font-size: clamp(1rem, 2.1vw, 1.14rem); color: var(--ink-soft);
+  .standfirst { font-size: clamp(1rem, 2.1vw, 1.12rem); color: var(--ink-soft);
                 max-width: var(--measure); margin: 0; }
+  .sitenav { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-family: var(--f-mono); font-size: .8rem; }
+  .sitenav a.here { font-weight: 600; text-decoration: none; color: var(--ink); }
   .runmeta { display: flex; flex-wrap: wrap; gap: .4rem .5rem; margin-top: .35rem; }
   .runmeta span { font-family: var(--f-mono); font-size: .74rem; color: var(--ink-soft);
                   background: var(--surface-sunk); border: 1px solid var(--rule);
@@ -354,14 +821,21 @@ STYLE = """
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
            gap: 1px; background: var(--rule); border: 1px solid var(--rule);
            border-radius: 5px; overflow: hidden; }
-  .tile { background: var(--surface); padding: .95rem 1.1rem;
-          display: flex; flex-direction: column; gap: .18rem; }
+  .tile { background: var(--surface); padding: .95rem 1.1rem; display: flex; flex-direction: column; gap: .18rem; }
   .tile .k { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .11em;
              text-transform: uppercase; color: var(--ink-faint); }
   .tile .v { font-family: var(--f-mono); font-size: 1.5rem; font-weight: 600;
              font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .tile .v .of { font-size: .9rem; color: var(--ink-faint); font-weight: 400; }
-  .tile .n { font-size: .78rem; color: var(--ink-faint); }
+  .tile .n { font-size: .78rem; color: var(--ink-faint); overflow-wrap: anywhere; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; align-items: center;
+             background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: .7rem 1rem; }
+  .filters label { font-family: var(--f-mono); font-size: .76rem; letter-spacing: .06em; text-transform: uppercase;
+                   color: var(--ink-soft); display: flex; gap: .5rem; align-items: center; }
+  .filters select, .contrast-pick select { font: inherit; font-family: var(--f-sans); text-transform: none;
+             background: var(--surface-sunk); color: var(--ink); border: 1px solid var(--rule-strong);
+             border-radius: 3px; padding: .25rem .4rem; max-width: 60vw; }
+  .filters .hint { font-size: .78rem; color: var(--ink-faint); }
 
   section { display: flex; flex-direction: column; gap: 1rem; }
   h2.sec { font-family: var(--f-display); font-size: clamp(1.3rem, 3vw, 1.65rem);
@@ -372,7 +846,7 @@ STYLE = """
   .sec-note { margin: 0; color: var(--ink-soft); max-width: var(--measure); font-size: .95rem; }
 
   .scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px;
-              background: var(--surface); box-shadow: var(--shadow); }
+              background: var(--surface); box-shadow: var(--shadow); max-width: 100%; }
   table { border-collapse: collapse; width: 100%; font-size: .875rem; }
   thead th { background: var(--surface-sunk); font-family: var(--f-mono); font-size: .68rem;
              letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
@@ -386,463 +860,287 @@ STYLE = """
   td { padding: .62rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: middle; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: var(--surface-sunk); }
+  tr[hidden] { display: none; }
   .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .partial { color: var(--caveat); font-weight: 600; margin-left: .15rem; cursor: help; }
-  .mono { font-family: var(--f-mono); font-size: .82rem; }
-  td.repo { font-family: var(--f-mono); font-size: .78rem; color: var(--ink-faint); }
-  .tierflag { font-family: var(--f-mono); font-size: .6rem; color: var(--caveat);
-              display: block; letter-spacing: .08em; }
-
+  .num .sub, .score .of { display: block; font-size: .72rem; color: var(--ink-faint); font-weight: 400; white-space: nowrap; }
+  .rank { font-weight: 600; font-size: 1.05rem; }
+  .mono { font-family: var(--f-mono); font-size: .82rem; overflow-wrap: anywhere; }
+  td.repo, td.diff { font-family: var(--f-mono); font-size: .76rem; color: var(--ink-faint); white-space: nowrap; }
+  .tierflag { font-family: var(--f-mono); font-size: .6rem; color: var(--caveat); display: block; letter-spacing: .08em; }
+  .hm-head { font-weight: 600; }
   tr.absent td { color: var(--ink-faint);
-    background-image: repeating-linear-gradient(45deg, transparent, transparent 7px,
-      var(--absent-wash) 7px, var(--absent-wash) 8px); }
-  tr.absent:hover td { background-color: var(--surface-sunk); }
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 7px, var(--absent-wash) 7px, var(--absent-wash) 8px); }
 
-  .pipeline { display: flex; flex-direction: column; gap: .12rem; min-width: 230px; }
+  .pipeline { display: flex; flex-direction: column; gap: .18rem; min-width: 240px; }
   .pipeline .name { font-weight: 600; color: var(--ink); }
   .pipeline .comp { font-family: var(--f-mono); font-size: .74rem; color: var(--ink-faint); }
-
-  .score { position: relative; min-width: 132px; }
-  .score .bar { position: absolute; inset: 4px auto 4px 6px; border-radius: 2px;
-                background: var(--pass-wash); border-left: 3px solid var(--pass); }
-  .score .fig { position: relative; font-family: var(--f-mono);
-                font-variant-numeric: tabular-nums; font-weight: 600; padding-left: .7rem;
-                display: flex; align-items: baseline; gap: .4rem; }
-  .score .fig .pct { font-size: 1.02rem; }
-  .score .fig .of { font-size: .74rem; color: var(--ink-soft); font-weight: 400; }
-  .score.none { color: var(--ink-faint); font-family: var(--f-mono); }
-
-  .dots { display: flex; gap: 3px; }
-  .dots i { width: 15px; height: 15px; border-radius: 2px; display: block;
-            border: 1px solid transparent; }
-  .dots i.p { background: var(--pass-wash); border-color: var(--pass); }
-  .dots i.f { background: var(--fail-wash); border-color: var(--fail); }
-  .dots i.n { background: var(--absent-wash); border-color: var(--rule-strong); }
-
-  .chip { display: inline-block; font-family: var(--f-mono); font-size: .68rem;
-          letter-spacing: .05em; text-transform: uppercase; padding: .17rem .45rem;
-          border-radius: 3px; white-space: nowrap; border: 1px solid; }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .15rem; }
+  .chip { display: inline-block; font-family: var(--f-mono); font-size: .66rem; letter-spacing: .05em;
+          text-transform: uppercase; padding: .15rem .42rem; border-radius: 3px; white-space: nowrap; border: 1px solid; }
   .chip.ok { color: var(--pass); background: var(--pass-wash); border-color: var(--pass); }
   .chip.warn { color: var(--caveat); background: var(--caveat-wash); border-color: var(--caveat); }
   .chip.bad { color: var(--fail); background: var(--fail-wash); border-color: var(--fail); }
-  .chip.none { color: var(--absent); background: var(--absent-wash); border-color: var(--rule-strong); }
+  .chip.none, .chip.run, .chip.id { color: var(--absent); background: var(--absent-wash); border-color: var(--rule-strong); }
+  .chip.tier { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .badges { display: flex; flex-wrap: wrap; gap: .3rem; max-width: 220px; }
+  .badge { font-family: var(--f-mono); font-size: .62rem; letter-spacing: .04em; padding: .12rem .38rem;
+           border-radius: 3px; border: 1px solid; cursor: help; white-space: nowrap; }
+  .badge.ok { color: var(--pass); border-color: var(--pass); background: var(--pass-wash); }
+  .badge.warn { color: var(--caveat); border-color: var(--caveat); background: var(--caveat-wash); }
+  .badge.bad { color: var(--fail); border-color: var(--fail); background: var(--fail-wash); }
+  .badge.none { color: var(--absent); border-color: var(--rule-strong); background: var(--absent-wash); }
 
-  .matrix td.cell { text-align: center; font-family: var(--f-mono); font-weight: 600; width: 104px; }
+  .score { min-width: 170px; }
+  .score .fig { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 600;
+                display: flex; align-items: baseline; gap: .35rem; }
+  .score .fig .pct { font-size: 1.05rem; }
+  .score .fig .pm { font-size: .78rem; color: var(--ink-soft); font-weight: 500; }
+  .score.none { color: var(--ink-faint); font-family: var(--f-mono); }
+  svg.ci { display: block; width: 100%; height: 8px; margin-top: .3rem; }
+  .ci-band { stroke: var(--pass); stroke-width: 4; stroke-opacity: .35; }
+  .ci-mark { stroke: var(--pass); stroke-width: 2; }
+  .est { font-family: var(--f-mono); font-size: .62rem; color: var(--caveat); margin-left: .3rem; cursor: help; }
+  .cost-incomplete .flag { font-family: var(--f-mono); font-size: .7rem; color: var(--fail); text-transform: uppercase;
+                           letter-spacing: .05em; cursor: help; }
+  button.expand, .axis-btn { font: inherit; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .05em;
+                  text-transform: uppercase; background: var(--surface-sunk); color: var(--ink-soft);
+                  border: 1px solid var(--rule-strong); border-radius: 3px; padding: .25rem .55rem; cursor: pointer; }
+  button.expand:hover, .axis-btn:hover { color: var(--ink); border-color: var(--accent); }
+  .axis-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .axis-toggle { display: flex; flex-wrap: wrap; gap: .4rem; }
+  tr.detail td { background: var(--surface-sunk); }
+  tr.detail:hover td { background: var(--surface-sunk); }
+  dl.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .5rem 1.5rem; margin: 0; }
+  dl.facts div { display: flex; flex-direction: column; gap: .1rem; }
+  dl.facts dt { font-family: var(--f-mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+  dl.facts dd { margin: 0; font-size: .84rem; overflow-wrap: anywhere; }
+  .repro { margin-top: .8rem; display: flex; flex-direction: column; gap: .3rem; }
+  .repro .label { font-family: var(--f-mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+  pre.code { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: .7rem .85rem;
+             overflow-x: auto; font-family: var(--f-mono); font-size: .76rem; line-height: 1.55; color: var(--ink); max-width: 100%; }
+
+  svg.scatter { width: 100%; height: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--rule);
+                border-radius: 5px; box-shadow: var(--shadow); font-family: var(--f-mono); }
+  svg.scatter .grid { stroke: var(--rule); stroke-width: 1; }
+  svg.scatter .tick { font-size: 11px; fill: var(--ink-faint); }
+  svg.scatter .axis { font-size: 11px; fill: var(--ink-soft); letter-spacing: .08em; text-transform: uppercase; }
+  svg.scatter .frontier { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  svg.scatter .whisker { stroke: var(--ink-faint); stroke-width: 1.5; }
+  svg.scatter circle { fill: var(--surface); stroke: var(--ink-soft); stroke-width: 2; }
+  svg.scatter .front circle { fill: var(--accent); stroke: var(--accent); }
+  svg.scatter .flagged circle { stroke-dasharray: 2 2; }
+  svg.scatter .ptlabel { font-size: 11px; fill: var(--ink); }
+  svg.scatter g[hidden] { display: none; }
+
+  .contrast-pick { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; }
+  .contrast-pick label { font-family: var(--f-mono); font-size: .76rem; letter-spacing: .06em; text-transform: uppercase;
+                         color: var(--ink-soft); display: flex; gap: .5rem; align-items: center; }
+  .contrast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: 1rem 1.1rem;
+          box-shadow: var(--shadow); display: flex; flex-direction: column; gap: .5rem; }
+  .card h3 { margin: 0; font-family: var(--f-mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  .card .big { font-family: var(--f-mono); font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
+  .card ul { margin: 0; padding-left: 1.1rem; font-family: var(--f-mono); font-size: .78rem; }
+  table.two { width: auto; }
+  table.two td, table.two th { padding: .35rem .7rem; }
+
+  .matrix td.cell { text-align: center; font-family: var(--f-mono); font-weight: 600; min-width: 64px; }
   .matrix td.cell.p { background: var(--pass-wash); color: var(--pass); }
   .matrix td.cell.f { background: var(--fail-wash); color: var(--fail); }
+  .matrix td.cell.m { background: color-mix(in srgb, var(--pass-wash) calc(var(--k, .5) * 100%), var(--fail-wash)); color: var(--ink); }
   .matrix td.cell.n { color: var(--ink-faint); }
-
-  .findings { display: grid; gap: 1.15rem; grid-template-columns: 1fr; }
-  @media (min-width: 900px) { .findings { grid-template-columns: 1fr 1fr; } }
-  .finding { background: var(--surface); border: 1px solid var(--rule);
-             border-top: 3px solid var(--fail); border-radius: 5px;
-             padding: 1.15rem 1.25rem; display: flex; flex-direction: column;
-             gap: .7rem; box-shadow: var(--shadow); }
-  .finding.amber { border-top-color: var(--caveat); }
-  .finding h3 { margin: 0; font-family: var(--f-display); font-size: 1.12rem;
-                font-weight: 600; line-height: 1.25; text-wrap: balance; }
-  .finding p { margin: 0; font-size: .93rem; color: var(--ink-soft); }
-  .finding .label { font-family: var(--f-mono); font-size: .66rem; letter-spacing: .12em;
-                    text-transform: uppercase; color: var(--ink-faint); }
-  pre.code { margin: 0; background: var(--surface-sunk); border: 1px solid var(--rule);
-             border-radius: 4px; padding: .7rem .85rem; overflow-x: auto;
-             font-family: var(--f-mono); font-size: .78rem; line-height: 1.6; color: var(--ink); }
-  pre.code .add { color: var(--pass); }
-  pre.code .del { color: var(--fail); }
-  pre.code .dim { color: var(--ink-faint); }
+  .matrix tr.group td { background: var(--surface-sunk); font-family: var(--f-mono); font-size: .7rem;
+                        letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  td[hidden], th[hidden] { display: none; }
 
   ul.plain { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: .93rem;
              display: flex; flex-direction: column; gap: .35rem; }
   ul.plain strong { color: var(--ink); }
-
-  .legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; align-items: center;
-            font-size: .78rem; color: var(--ink-soft); }
-  .legend .swatch { display: inline-flex; align-items: center; gap: .35rem; }
-  .legend .swatch i { width: 12px; height: 12px; border-radius: 2px;
-                      border: 1px solid transparent; display: block; }
-
   footer { border-top: 1px solid var(--rule); padding-top: 1.15rem; padding-bottom: 2rem;
-           color: var(--ink-faint); font-size: .82rem;
-           display: flex; flex-direction: column; gap: .35rem; }
+           color: var(--ink-faint); font-size: .82rem; display: flex; flex-direction: column; gap: .35rem; }
   footer .mono { font-size: .76rem; }
-
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 """
 
-SORT_SCRIPT = """
+SCRIPT = """
 <script>
-  (function () {
-    var tables = document.querySelectorAll('table[data-sortable]');
-    Array.prototype.forEach.call(tables, function (table) {
-      var headers = table.querySelectorAll('th.sortable');
-      Array.prototype.forEach.call(headers, function (th) {
-        var index = Array.prototype.indexOf.call(th.parentNode.children, th);
-        th.setAttribute('tabindex', '0');
-        th.setAttribute('role', 'button');
-        function activate() {
-          var dir = th.getAttribute('data-dir') === 'desc' ? 'asc' : 'desc';
-          Array.prototype.forEach.call(headers, function (h) { h.removeAttribute('data-dir'); });
-          th.setAttribute('data-dir', dir);
-          var body = table.tBodies[0];
-          var rows = Array.prototype.slice.call(body.rows);
-          var numeric = th.getAttribute('data-type') === 'num';
-          rows.sort(function (a, b) {
-            var ca = a.cells[index], cb = b.cells[index];
-            if (numeric) {
-              var va = parseFloat(ca.getAttribute('data-sort'));
-              var vb = parseFloat(cb.getAttribute('data-sort'));
-              if (isNaN(va)) { va = -Infinity; }
-              if (isNaN(vb)) { vb = -Infinity; }
-              return dir === 'desc' ? vb - va : va - vb;
-            }
-            var ta = ca.textContent.trim().toLowerCase();
-            var tb = cb.textContent.trim().toLowerCase();
-            return dir === 'desc' ? tb.localeCompare(ta) : ta.localeCompare(tb);
-          });
-          rows.forEach(function (r) { body.appendChild(r); });
-        }
-        th.addEventListener('click', activate);
-        th.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+(function () {
+  function all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  // Sortable headers. Detail rows travel with their parent.
+  all('table[data-sortable]').forEach(function (table) {
+    var headers = all('th.sortable', table);
+    headers.forEach(function (th) {
+      var index = Array.prototype.indexOf.call(th.parentNode.children, th);
+      th.setAttribute('tabindex', '0'); th.setAttribute('role', 'button');
+      function activate() {
+        var dir = th.getAttribute('data-dir') === 'desc' ? 'asc' : 'desc';
+        headers.forEach(function (h) { h.removeAttribute('data-dir'); });
+        th.setAttribute('data-dir', dir);
+        var body = table.tBodies[0];
+        var rows = all('tr[data-row]', body);
+        var numeric = th.getAttribute('data-type') === 'num';
+        rows.sort(function (a, b) {
+          var ca = a.cells[index], cb = b.cells[index];
+          if (numeric) {
+            var va = parseFloat(ca.getAttribute('data-sort')), vb = parseFloat(cb.getAttribute('data-sort'));
+            if (isNaN(va)) { va = -Infinity; } if (isNaN(vb)) { vb = -Infinity; }
+            return dir === 'desc' ? vb - va : va - vb;
+          }
+          var ta = ca.textContent.trim().toLowerCase(), tb = cb.textContent.trim().toLowerCase();
+          return dir === 'desc' ? tb.localeCompare(ta) : ta.localeCompare(tb);
         });
+        rows.forEach(function (r) {
+          body.appendChild(r);
+          var d = document.getElementById('detail-' + r.getAttribute('data-row'));
+          if (d) { body.appendChild(d); }
+        });
+      }
+      th.addEventListener('click', activate);
+      th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } });
+    });
+  });
+
+  // Expandable rows.
+  all('button.expand').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = document.getElementById(btn.getAttribute('aria-controls'));
+      if (!target) { return; }
+      var open = target.hidden;
+      target.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? 'hide' : 'details';
+    });
+  });
+
+  // Filters: tier, run, seeds, applied to every element carrying the data attributes.
+  var filters = {};
+  function applyFilters() {
+    all('[data-row]').forEach(function (el) {
+      var show = true;
+      Object.keys(filters).forEach(function (key) {
+        var want = filters[key];
+        if (want && el.getAttribute('data-' + key) !== want) { show = false; }
+      });
+      if (el.tagName === 'TR') {
+        el.hidden = !show;
+        var d = document.getElementById('detail-' + el.getAttribute('data-row'));
+        if (d && !show) { d.hidden = true; }
+      } else if (el.tagName === 'TD' || el.tagName === 'TH') {
+        el.hidden = !show;
+      } else {
+        if (show) { el.removeAttribute('hidden'); } else { el.setAttribute('hidden', ''); }
+      }
+    });
+  }
+  all('#filters select').forEach(function (sel) {
+    sel.addEventListener('change', function () { filters[sel.getAttribute('data-filter')] = sel.value; applyFilters(); });
+  });
+
+  // Pareto axis toggle: three pre-rendered SVGs, one visible.
+  all('#pareto .axis-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      all('#pareto .axis-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      all('#pareto .pane').forEach(function (p) { p.hidden = p.getAttribute('data-axis') !== btn.getAttribute('data-axis'); });
+    });
+  });
+
+  // Heatmap ordering.
+  var matrix = document.getElementById('matrix');
+  if (matrix) {
+    var mbody = matrix.tBodies[0];
+    var original = all('tr', mbody);
+    all('#heatmap .axis-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        all('#heatmap .axis-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var mode = btn.getAttribute('data-sort');
+        if (mode === 'default') {
+          original.forEach(function (r) { r.hidden = false; mbody.appendChild(r); });
+          return;
+        }
+        all('tr.group', mbody).forEach(function (r) { r.hidden = true; });
+        var rows = all('tr.task', mbody);
+        rows.sort(function (a, b) {
+          var ka = parseInt(a.getAttribute('data-' + mode), 10), kb = parseInt(b.getAttribute('data-' + mode), 10);
+          if (kb !== ka) { return kb - ka; }
+          return parseInt(a.getAttribute('data-order'), 10) - parseInt(b.getAttribute('data-order'), 10);
+        });
+        rows.forEach(function (r) { mbody.appendChild(r); });
       });
     });
-  })();
+  }
+
+  // Paired contrast panel: every pair is precomputed by the aggregator; the
+  // page only selects which one to show. Swapping A and B flips the table.
+  var dataEl = document.getElementById('contrast-data');
+  var out = document.getElementById('contrast-out');
+  if (dataEl && out) {
+    var contrasts = JSON.parse(dataEl.textContent);
+    var selA = document.getElementById('contrast-a'), selB = document.getElementById('contrast-b');
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    function pct(v, d) { return v == null ? '—' : (100 * v).toFixed(d || 0) + '%'; }
+    function money(v) { return v == null ? '—' : '$' + v.toFixed(2); }
+    function find(a, b) {
+      for (var i = 0; i < contrasts.length; i++) {
+        var c = contrasts[i];
+        if (c.a === a && c.b === b) { return c; }
+        if (c.a === b && c.b === a) {
+          var d = c.delta_b_minus_a || {};
+          return {a: b, b: a, n: c.n, both: c.both, only_a: c.only_b, only_b: c.only_a, neither: c.neither,
+                  rescued_by_b: c.broken_by_b, broken_by_b: c.rescued_by_b, net_b_minus_a: -c.net_b_minus_a,
+                  mcnemar_exact_p: c.mcnemar_exact_p,
+                  delta_b_minus_a: {point: d.point == null ? null : -d.point, low: d.high == null ? null : -d.high, high: d.low == null ? null : -d.low, n_boot: d.n_boot},
+                  cost_delta_usd: c.cost_delta_usd == null ? null : -c.cost_delta_usd,
+                  cost_per_net_flip_usd: (c.cost_delta_usd != null && c.net_b_minus_a < 0) ? (-c.cost_delta_usd / -c.net_b_minus_a) : null,
+                  cost_is_complete: c.cost_is_complete};
+        }
+      }
+      return null;
+    }
+    function render() {
+      var a = selA.value, b = selB.value;
+      if (a === b) { out.innerHTML = '<p class="sec-note">Pick two different configurations.</p>'; return; }
+      var c = find(a, b);
+      if (!c) { out.innerHTML = '<p class="sec-note">These two rows are not in the same tier or share no scored task.</p>'; return; }
+      var d = c.delta_b_minus_a || {};
+      var la = selA.options[selA.selectedIndex].text, lb = selB.options[selB.selectedIndex].text;
+      var html = '<div class="contrast-grid">';
+      html += '<div class="card"><h3>Discordant table · ' + c.n + ' shared tasks</h3>' +
+        '<table class="two"><thead><tr><th></th><th>B resolved</th><th>B failed</th></tr></thead><tbody>' +
+        '<tr><th>A resolved</th><td class="num">' + c.both + '</td><td class="num">' + c.only_a + '</td></tr>' +
+        '<tr><th>A failed</th><td class="num">' + c.only_b + '</td><td class="num">' + c.neither + '</td></tr></tbody></table>' +
+        '<p>A = ' + esc(la) + '<br>B = ' + esc(lb) + '</p></div>';
+      html += '<div class="card"><h3>Exact McNemar</h3><span class="big">p = ' + c.mcnemar_exact_p.toFixed(3) + '</span>' +
+        '<p>' + c.only_b + ' tasks only B resolved against ' + c.only_a + ' only A. Net ' + (c.net_b_minus_a >= 0 ? '+' : '') + c.net_b_minus_a + ' for B.</p></div>';
+      html += '<div class="card"><h3>Paired delta (B − A)</h3><span class="big">' + (d.point == null ? '—' : ((d.point >= 0 ? '+' : '') + pct(d.point, 1))) + '</span>' +
+        '<p>Bootstrap 95% ' + pct(d.low, 1) + ' to ' + pct(d.high, 1) + ' over repo, task, seed (' + (d.n_boot || 0) + ' draws).</p></div>';
+      html += '<div class="card"><h3>Cost</h3><span class="big">' + (c.cost_is_complete ? ((c.cost_delta_usd >= 0 ? '+' : '') + money(c.cost_delta_usd)) : 'incomplete') + '</span>' +
+        '<p>' + (c.cost_is_complete ? ('B minus A over the shared tasks. Per net rescued task: ' + (c.cost_per_net_flip_usd == null ? 'n/a (no net gain)' : money(c.cost_per_net_flip_usd)) + '.') : 'One side has an unpriced seat, so no cost delta is shown.') + '</p></div>';
+      html += '<div class="card"><h3>Rescued by B</h3><ul>' + (c.rescued_by_b.length ? c.rescued_by_b.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') : '<li>none</li>') + '</ul></div>';
+      html += '<div class="card"><h3>Broken by B</h3><ul>' + (c.broken_by_b.length ? c.broken_by_b.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') : '<li>none</li>') + '</ul></div>';
+      html += '</div>';
+      out.innerHTML = html;
+    }
+    selA.value = out.getAttribute('data-default-a'); selB.value = out.getAttribute('data-default-b');
+    selA.addEventListener('change', render); selB.addEventListener('change', render);
+    render();
+  }
+})();
 </script>
 """
-
-
-# The narrative below describes one specific pattern in the results. It is
-# guarded: if a later run stops producing that pattern, the section renders
-# nothing rather than describing a run that did not happen.
-SEPARATOR_TASK = 'sympy__sympy-20916'
-UNICODE_DIGITS = ('B', 'D')
-ASCII_DIGITS = ('A', 'C', 'E')
-
-
-def status_on(rows, condition, instance):
-    row = next((r for r in rows if r['condition'] == condition), None)
-    if row is None:
-        return None
-    task = next((t for t in row['per_task'] if t['instance_id'] == instance), None)
-    return task['status'] if task else None
-
-
-def findings(data):
-    rows = data['rows']
-    resolved_ok = all(status_on(rows, c, SEPARATOR_TASK) == 'resolved' for c in UNICODE_DIGITS)
-    failed_ok = all(status_on(rows, c, SEPARATOR_TASK) == 'unresolved' for c in ASCII_DIGITS)
-    others_uniform = True
-    for entry in data['suite']['instances']:
-        if entry['instance_id'] == SEPARATOR_TASK:
-            continue
-        for cond in UNICODE_DIGITS + ASCII_DIGITS:
-            if status_on(rows, cond, entry['instance_id']) != 'resolved':
-                others_uniform = False
-    if not (resolved_ok and failed_ok and others_uniform):
-        return ''
-
-    return (
-        '<section><h2 class="sec">What actually separated the pipelines</h2>'
-        '<p class="sec-note">Four of the five tasks resolved under every agentic '
-        'configuration. The entire spread across the leaderboard comes from one task, '
-        'and within that task from one character class.</p>'
-        '<div class="findings">'
-        '<article class="finding">'
-        '<span class="label">Finding 01 &middot; ' + esc(SEPARATOR_TASK) + '</span>'
-        '<h3>Every agentic arm wrote the same fix; two chose Unicode digits and passed</h3>'
-        '<p>All five agentic configurations edited the same line of '
-        '<span class="mono">sympy/printing/conventions.py</span>, replacing an ASCII-only '
-        'name pattern with a Unicode-aware one. They differ in the second capture group '
-        'alone.</p>'
-        '<pre class="code"><span class="dim">baseline </span>'
-        "^([a-zA-Z]+)([0-9]+)$\n"
-        '<span class="add">B, D    </span> '
-        "^([^" + chr(92) + "W" + chr(92) + "d_]+)(" + chr(92) + "d+)$     "
-        '<span class="dim">Unicode digits &rarr; resolved</span>\n'
-        '<span class="del">A, C, E </span> '
-        "^([^" + chr(92) + "W" + chr(92) + "d_]+)([0-9]+)$  "
-        '<span class="dim">ASCII only &rarr; unresolved</span></pre>'
-        '<p>The upstream test subscripts a non-ASCII digit, so the ASCII-only class fails it. '
-        'In condition C the panel critique argued explicitly that '
-        '<span class="mono">' + chr(92) + 'd+</span> would wrongly capture Arabic-Indic digits; '
-        'the repair pass accepted that reasoning and narrowed the class. The argument was '
-        'careful and the conclusion was wrong.</p>'
-        '</article>'
-        '<article class="finding amber">'
-        '<span class="label">Finding 02 &middot; harness</span>'
-        '<h3>The cross-vendor repair arm had never actually run</h3>'
-        '<p>Codex on this Windows host accepts '
-        '<span class="mono">--sandbox workspace-write</span> and then reports '
-        '<span class="mono">sandbox: read-only</span>. Across the earlier B cells it wrote a '
-        'review and changed nothing, so that run\'s 5/5 was Fable\'s first draft with a '
-        'discarded review attached.</p>'
-        '<p>The arm now runs with elevated access inside throwaway clones, and the mode is '
-        'recorded per cell. Re-run with a repair step that can write, B resolves the separator '
-        'task. Its two earlier reports are listed as superseded below rather than deleted.</p>'
-        '</article>'
-        '</div></section>')
-
-
-NUMBER_WORDS = {1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six',
-                7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten'}
-
-
-def count_phrase(count, noun, cap=True):
-    """"Nine configurations" — spelled out where English prefers it."""
-    word = NUMBER_WORDS.get(count, str(count))
-    if not cap:
-        word = word.lower()
-    return esc('%s %s%s' % (word, noun, '' if count == 1 else 's'))
-
-
-def caveat(data):
-    """The standing warning above the table, sized to what actually ran.
-
-    A one-task run is a proof that the pipeline works, not a measurement, and
-    the page has to say so in its own voice rather than leave a reader to infer
-    it from the denominator.
-    """
-    task_count = data['suite']['task_count']
-    rows = data.get('rows') or []
-    running = [r for r in rows
-               if (r['measured'] or r.get('attempted')) and not r.get('complete', True)]
-    paragraphs = []
-    if running:
-        counts = sorted({r.get('attempted_count') or 0 for r in running})
-        spread = (counts[0] != counts[-1])
-        paragraphs.append(
-            'This run is unfinished. Each arm is scored against the tasks it has actually '
-            'run, not against the full subset, because a task an arm has not reached yet '
-            'is not a failure. Nothing here is a final score.')
-        if spread:
-            paragraphs.append(
-                'The arms have run different numbers of tasks so far (%d to %d of %d), so '
-                'the percentages are not directly comparable to each other. Read the '
-                'task-by-task table below for any head-to-head comparison; it is the only '
-                'view here that holds the task set fixed.'
-                % (counts[0], counts[-1], task_count))
-    if task_count == 1:
-        paragraphs.append(
-            'Proof of concept: one SWE-bench Verified task, not a score. This run exists '
-            'to show that every configuration executes end to end and reaches the official '
-            'evaluator. A single task cannot separate two pipelines, and no row here should '
-            'be read as evidence that one configuration is better than another. Frozen '
-            '50-task results for arm B are internal until the comparison arms run.')
-    else:
-        points = 100.0 / task_count
-        paragraphs.append(
-            '%d tasks is a probe, not a ranking. One task is %d points, so a one-task gap '
-            'between two rows is well inside what a %d-task sample produces by chance.'
-            % (task_count, round(points), task_count))
-    paragraphs.append(
-        'These numbers are not comparable to published full-500 SWE-bench Verified scores: '
-        'the subset is fixed and was chosen for the harness, not drawn at random.')
-    paragraphs.append(
-        'The two tiers are listed separately because they are not the same test. An agentic '
-        'row had file tools and could run the test suite; a single-shot row got one prompt '
-        'and answered once.')
-    return ('<div class="callout"><h2>Read this before the table</h2>%s</div>'
-            % ''.join('<p>%s</p>' % esc(text) for text in paragraphs))
-
-
-def seat_names(data):
-    """The model that actually filled each seat on this run.
-
-    Condition labels and compositions are written against the default seats
-    ("fable-solo", "fable implements -> codex repairs"). Rendering those verbatim
-    on a run at another tier names a model that never ran, which is the one thing
-    a results page cannot do.
-    """
-    config = data.get('configuration') or {}
-    claude = (config.get('claude') or [None])[0]
-    codex = (config.get('codex') or [None])[0]
-    return claude, codex
-
-
-def retarget(text, data):
-    """Rewrite default seat names in a label or composition to what ran."""
-    claude, codex = seat_names(data)
-    out = text
-    if claude and claude != 'fable':
-        out = out.replace('fable', claude)
-    if codex and codex not in ('codex', 'gpt-5.6-sol'):
-        out = out.replace('codex', codex)
-    return out
-
-
-def run_config_chips(data):
-    """The models this run actually used, read from its own cell manifests.
-
-    Hardcoding the model names here was a latent lie: the first run at a
-    different tier would have published a page claiming it ran the default one.
-    """
-    config = data.get('configuration') or {}
-    chips = []
-    tiers = config.get('tiers') or []
-    if tiers:
-        chips.append('tier: %s' % ', '.join(tiers))
-    for key, effort_key in (('claude', 'claude_effort'), ('codex', 'codex_effort')):
-        models = config.get(key) or []
-        if not models:
-            continue
-        efforts = config.get(effort_key) or []
-        chips.append('%s%s' % (', '.join(models),
-                               (' @ ' + ', '.join(efforts)) if efforts else ''))
-    for model in config.get('single_shot') or []:
-        chips.append(model)
-    if not chips:
-        return ''
-    return ''.join('<span>%s</span>' % esc(chip) for chip in chips)
-
-
-def nav_links(also):
-    """Links to the project's other published runs.
-
-    Each run is its own page because each is a different subset; without a link
-    between them a reader who lands on one has no way to discover the others.
-    """
-    if not also:
-        return ''
-    return ''.join('<span><a href="%s">%s</a></span>' % (esc(href), esc(label))
-                   for label, href in also)
-
-
-def build(data, also=()):
-    harness = data['harness']
-    gold = data['gold_canary'] or {}
-    suite = data['suite']
-    rows = data['rows']
-    agentic = [r for r in rows if r['tier'] == 'agentic']
-    single = [r for r in rows if r['tier'] == 'single-shot']
-    measured_single = [r for r in single if r['measured'] or r.get('attempted')]
-
-    parts = []
-    parts.append('<title>Co-Evolution Code Battery</title>')
-    parts.append(STYLE)
-    parts.append('<div class="wrap">')
-
-    parts.append(
-        '<header class="masthead">'
-        '<div class="eyebrow"><span>SWE-bench Verified · %d-task frozen subset</span>'
-        '<span>Official pinned evaluator, Docker</span>'
-        '<span>Built %s</span>%s</div>'
-        '<h1>Co-Evolution Code Battery</h1>'
-        '<p class="standfirst">Does putting a second model in the loop produce better patches '
-        'than one model working alone? %s, %s, every patch scored by the official '
-        'evaluator in Docker.</p>'
-        '<div class="runmeta">%s'
-        '<span>phase timeout 900s</span><span>gold canary %s/%s</span>'
-        '<span>harness %s</span></div></header>'
-        % (suite['task_count'], esc(data['generated_at']), nav_links(also),
-           count_phrase(len(rows), 'configuration'),
-           count_phrase(suite['task_count'], 'pinned SWE-bench Verified task', cap=False),
-           run_config_chips(data),
-           esc(gold.get('resolved')), esc(gold.get('submitted')),
-           esc((harness.get('repo_commit') or '')[:7])))
-
-    parts.append(caveat(data))
-
-    parts.append(tiles(data))
-
-    parts.append('<section><h2 class="sec">Leaderboard</h2>')
-    for tier, group in (('agentic', agentic), ('single-shot', single)):
-        title, note = TIER_COPY[tier]
-        parts.append('<h3 class="tier">%s</h3><p class="sec-note">%s</p>' % (esc(title), esc(note)))
-        parts.append(leaderboard_table(group, 'board-%s' % tier, suite['task_count'], data))
-    parts.append(
-        '<div class="legend">'
-        '<span class="swatch"><i style="background:var(--pass-wash);border-color:var(--pass)"></i> resolved</span>'
-        '<span class="swatch"><i style="background:var(--fail-wash);border-color:var(--fail)"></i> unresolved</span>'
-        '<span class="swatch"><i style="background:var(--absent-wash);border-color:var(--rule-strong)"></i> no patch scored</span>'
-        '<span>Task order: %s</span></div>'
-        % esc(' · '.join(e['instance_id'].split('__')[0] for e in suite['instances'])))
-    parts.append('</section>')
-
-    parts.append(findings(data))
-
-    parts.append(
-        '<section><h2 class="sec">Task by task</h2>'
-        '<p class="sec-note">One column per measured configuration. Hover an unresolved cell '
-        'for the failing test counts the evaluator recorded.</p>%s</section>' % task_matrix(data))
-
-    integrity = []
-    integrity.append(
-        '<li><strong>Evaluator.</strong> Official SWE-bench harness pinned at '
-        '<span class="mono">%s</span>, dataset <span class="mono">%s</span> at revision '
-        '<span class="mono">%s</span>, both from <span class="mono">%s</span>.</li>'
-        % (esc((harness.get('swebench_commit') or '')[:12]), esc(harness.get('dataset')),
-           esc((harness.get('dataset_revision') or '')[:12]), esc(harness.get('lock_file'))))
-    if gold:
-        integrity.append(
-            '<li><strong>Gold canary.</strong> A gold patch resolved %s/%s before any generated '
-            'prediction was scored, so a failure here means the patch, not the harness. Report: '
-            '<span class="mono">%s</span>.</li>'
-            % (esc(gold.get('resolved')), esc(gold.get('submitted')), esc(gold.get('report_file'))))
-    integrity.append(
-        '<li><strong>Cost is the CLI\'s own figure</strong> for work billed to a Max '
-        'subscription, not metered API spend. The Claude CLI exposes no plan meter, so there is '
-        'no percentage-of-plan number here. Codex, GLM and Kimi report no per-call cost, so their '
-        'rows show dispatch counts instead.</li>')
-    if measured_single:
-        integrity.append(
-            '<li><strong>The single-shot tier is a floor, not a model ceiling.</strong> GLM and '
-            'Kimi are reachable here only as chat completions. Their cells receive the issue plus '
-            'a deterministic file selection and return one diff, gated by '
-            '<span class="mono">git apply --check --recount</span>. A cell that never produced an '
-            'applicable patch contributes no prediction and still counts against the '
-            'subset\'s ' + str(suite['task_count']) + '. '
-            '<span class="mono">--recount</span> recomputes the hunk line counts and changes no '
-            'line of the proposed edit: without it the gate scores a chat model\'s ability to '
-            'count lines, which the agentic arms never have to do because they edit files '
-            'directly.</li>')
-    by_mode = {}
-    for row in rows:
-        for mode in row['telemetry']['sandbox_modes']:
-            by_mode.setdefault(mode, []).append(row['condition'])
-    if by_mode:
-        detail = '; '.join('<span class="mono">%s</span> in %s'
-                           % (esc(mode), esc(', '.join(sorted(conds))))
-                           for mode, conds in sorted(by_mode.items()))
-        integrity.append(
-            '<li><strong>Codex sandbox.</strong> %s. Codex on Windows accepts '
-            '<span class="mono">workspace-write</span> and then runs read-only, which makes a '
-            'repair arm look like it ran while changing nothing, so the mode each cell used is '
-            'recorded in its run manifest. The arms that needed Codex to write ran with elevated '
-            'access inside throwaway clones.</li>' % detail)
-    integrity.append(
-        '<li><strong>Every number on this page comes from a file.</strong> The page is generated '
-        'from <span class="mono">benchmarks/site/aggregate.sh</span> output; each row names the '
-        'evaluator report it was read from and each task cell is backed by that run\'s per-instance '
-        '<span class="mono">report.json</span>.</li>')
-
-    parts.append('<section><h2 class="sec">Methodology and integrity</h2>'
-                 '<ul class="plain">%s</ul>%s</section>'
-                 % (''.join(integrity), provenance_table(data)))
-
-    dirty = harness.get('working_tree_dirty')
-    parts.append(
-        '<footer><div>Generated from run artifacts in '
-        '<span class="mono">benchmarks/results/code/</span> by '
-        '<span class="mono">benchmarks/site/aggregate.sh</span>.</div>'
-        '<div class="mono">Repository co-evolution-runtime · harness commit %s%s</div>'
-        '<div>%s</div></footer>'
-        % (esc(harness.get('repo_commit')),
-           ' · working tree had uncommitted changes at build time' if dirty else '',
-           esc(data['caveat'])))
-
-    parts.append('</div>')
-    parts.append(SORT_SCRIPT)
-    return '\n'.join(parts)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', required=True)
     ap.add_argument('--output', required=True)
+    ap.add_argument('--methodology', default=None, help='also write the methodology page here')
     ap.add_argument('--also', action='append', default=[], metavar='LABEL=HREF',
-                    help='link to another published run, repeatable')
+                    help='link to another published suite page, repeatable')
     args = ap.parse_args()
     also = []
     for item in args.also:
@@ -851,13 +1149,23 @@ def main():
             also.append((label, href))
     with open(args.data, encoding='utf-8') as handle:
         data = json.load(handle)
-    page = build(data, also)
-    page = page.replace('<table id="board-', '<table data-sortable id="board-')
+    # Links between the page, its methodology page and its JSON are by file
+    # name, so a second suite's pages (poc.html, poc.json) link to their own.
+    NAV['page'] = os.path.basename(args.output)
+    NAV['json'] = os.path.basename(args.data)
+    NAV['methodology'] = os.path.basename(args.methodology) if args.methodology else NAV['page']
+    if data.get('schema') != 'code-bench-site/2.0':
+        raise SystemExit('render-page.py renders code-bench-site/2.0; got %s' % data.get('schema'))
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, 'w', encoding='utf-8', newline='\n') as handle:
-        handle.write(page)
+        handle.write(build(data, also))
         handle.write('\n')
     print(args.output)
+    if args.methodology:
+        with open(args.methodology, 'w', encoding='utf-8', newline='\n') as handle:
+            handle.write(methodology_page(data, also))
+            handle.write('\n')
+        print(args.methodology)
 
 
 if __name__ == '__main__':

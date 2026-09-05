@@ -141,6 +141,7 @@ if [[ "$QUICK" == false ]]; then
   SUITES+=("$REPO_ROOT/benchmarks/tests/test-report.sh")
   SUITES+=("$REPO_ROOT/benchmarks/tests/test-site-export.sh")
   SUITES+=("$REPO_ROOT/benchmarks/code/tests/test-code-bench.sh")
+  SUITES+=("$REPO_ROOT/benchmarks/site/tests/test-site-build.sh")
 fi
 
 # --- run -----------------------------------------------------------------------

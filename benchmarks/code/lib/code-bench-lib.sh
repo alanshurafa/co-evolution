@@ -74,6 +74,29 @@ code_apply_model_tier() {
   export CODE_BENCH_CLAUDE_EFFORT="${CODE_BENCH_CLAUDE_EFFORT-$claude_effort}"
 }
 
+# Seeds are repeat indices, not RNG seeds: the models are not seedable, so a
+# "seed" here is the k-th independent run of the same (task, condition) cell.
+# Seed 1 keeps the bare condition name so nothing that already exists moves;
+# seed k>1 gets a .rk suffix. The same suffix names the prediction file, the
+# model_name_or_path the evaluator sees, and therefore the evaluator report, so
+# repeats never collide inside one evaluator run.
+code_cell_name() {
+  local condition="$1" seed="${2:-1}"
+  if [[ "$seed" == 1 ]]; then printf '%s' "$condition"
+  else printf '%s.r%s' "$condition" "$seed"; fi
+}
+
+# Content hash of a file, for comparing a patch before and after a repair
+# stage. sha256sum is GNU (Git Bash, Linux); shasum is macOS; python is the
+# fallback the harness already requires.
+code_sha256() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$file" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$file" | cut -d' ' -f1
+  else python -c 'import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$file"
+  fi
+}
+
 code_metadata_path() {
   printf '%s/metadata/%s.json' "$CODE_BENCH_RESULTS_ROOT" "$(code_suite_id)"
 }
@@ -99,6 +122,10 @@ code_check_manifests() {
          (all(.conditions[]; (.dispatches | keys) == ["claude","codex","glm","kimi"])) and
          (all(.conditions[]; (.label | type == "string" and length > 0))) and
          (all(.conditions[]; .tier == "agentic" or .tier == "single-shot")) and
+         (all(.conditions[]; (.phases | type == "array" and length > 0))) and
+         (all(.conditions[]; (.pipeline | type == "string" and length > 0))) and
+         (all(.conditions[]; (.seats == null) or
+              ((.seats | type == "object") and ((.seats | keys) - ["claude","codex"] == [])))) and
          ([.conditions[].dispatches[] | type == "number" and . >= 0 and floor == .] | all)' \
     "$CODE_BENCH_DIR/conditions.json" >/dev/null || {
       printf 'CHECK FAIL: conditions.json\n' >&2; failures=$((failures + 1));
@@ -136,6 +163,17 @@ code_check_manifests() {
                 ([.instances[].instance_id] | length == (unique | length))' "$subset" >/dev/null; then
       printf 'CHECK FAIL: malformed or duplicate subset entries: %s\n' "$subset" >&2
       failures=$((failures + 1)); continue
+    fi
+    # Difficulty labels are optional per subset but, once present, every
+    # instance must carry one of the four Verified buckets: a by-difficulty
+    # breakdown with an unlabeled task silently drops it from every bucket.
+    if jq -e '.annotations.difficulty' "$subset" >/dev/null 2>&1; then
+      if ! jq -e '(.annotations.difficulty.buckets == ["<15 min fix","15 min - 1 hour","1-4 hours",">4 hours"]) and
+                  (all(.instances[]; .difficulty as $d | any(["<15 min fix","15 min - 1 hour","1-4 hours",">4 hours"][]; . == $d)))' \
+             "$subset" >/dev/null; then
+        printf 'CHECK FAIL: difficulty labels missing or outside the four buckets: %s\n' "$subset" >&2
+        failures=$((failures + 1)); continue
+      fi
     fi
     if printf '%s' "$suite_json" | jq -e '.require_unique_repos == true' >/dev/null 2>&1; then
       if ! jq -e '[.instances[].repo] | length == (unique | length)' "$subset" >/dev/null; then

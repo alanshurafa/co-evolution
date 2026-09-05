@@ -50,8 +50,11 @@ done
 
 instance=$(jq -r '.instance_id' "$INPUT_JSON" | tr -d '\r')
 condition=$(jq -r '.condition' "$INPUT_JSON" | tr -d '\r')
+seed=$(jq -r '.seed // 1' "$INPUT_JSON" | tr -d '\r')
 workspace=$(jq -r '.workspace' "$INPUT_JSON" | tr -d '\r')
 task_file=$(jq -r '.task_file' "$INPUT_JSON" | tr -d '\r')
+[[ "$seed" =~ ^[1-9][0-9]*$ ]] || { code_die "input.json seed must be a positive integer"; exit 2; }
+cell_name=$(code_cell_name "$condition" "$seed")
 [[ -d "$workspace/.git" && -f "$task_file" ]] || { code_die "prepared workspace or task file is missing"; exit 1; }
 
 condition_json=$(jq -ce --arg id "$condition" '.conditions | map(select(.id == $id)) | if length == 1 then .[0] else empty end' "$CODE_DIR/conditions.json") \
@@ -78,8 +81,9 @@ case "$pred_abs" in "$results_root"/predictions/*) ;; *) code_die "predictions p
 
 if [[ "$DRY_RUN" == true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg agent "$AGENT" \
-    --arg tier "$tier" --arg label "$label" \
-    '{instance:$instance,condition:$condition,agent:$agent,tier:$tier,label:$label,
+    --arg tier "$tier" --arg label "$label" --argjson seed "$seed" --arg cell "$cell_name" \
+    '{instance:$instance,condition:$condition,seed:$seed,cell:$cell,agent:$agent,tier:$tier,label:$label,
+      model_name_or_path:("co-evolution-condition-" + $cell),
       phases:["select-context","single-shot-diff","git-apply-gate"],executed:false}'
   exit 0
 fi
@@ -94,6 +98,9 @@ esac
 cell="$input_dir"
 logs="$cell/logs"
 mkdir -p "$logs"
+# Ask the adapter for the token-usage sidecar next to each response; the
+# results page prices the seat from it, and a cell without one is unpriced.
+export CO_EVOLVE_TOKEN_CAPTURE=1
 
 git -C "$workspace" diff --quiet || { code_die "workspace is already dirty; prepare a fresh cell"; exit 1; }
 
@@ -111,11 +118,11 @@ case "$AGENT" in
 esac
 jq -n --arg instance "$instance" --arg condition "$condition" --arg agent "$AGENT" \
   --arg tier "$tier" --arg label "$label" --arg model "$model_name" \
-  --arg model_tier "$(code_model_tier)" \
+  --arg model_tier "$(code_model_tier)" --argjson seed "$seed" \
   --argjson max_tokens "$MAX_TOKENS" --argjson attempts "$ATTEMPTS" \
   --argjson context_files "$CONTEXT_FILES" --argjson context_bytes "$CONTEXT_BYTES" \
   --rawfile context "$context_list" \
-  '{schema:"code-bench-single-shot/1.0",instance:$instance,condition:$condition,
+  '{schema:"code-bench-single-shot/1.0",instance:$instance,condition:$condition,seed:$seed,
     tier:$tier,label:$label,agent:$agent,model:$model,model_tier:$model_tier,
     output_max_tokens:$max_tokens,apply_attempts:$attempts,
     retrieval:{max_files:$context_files,max_bytes_per_file:$context_bytes,
@@ -192,25 +199,28 @@ done
 
 if [[ "$applied" != true ]]; then
   jq -n --arg instance "$instance" --arg condition "$condition" --arg agent "$AGENT" \
-    --arg tier "$tier" --argjson attempts "$ATTEMPTS" \
+    --arg tier "$tier" --argjson attempts "$ATTEMPTS" --argjson seed "$seed" \
     '{schema:"code-bench-single-shot-outcome/1.0",instance:$instance,condition:$condition,
-      agent:$agent,tier:$tier,outcome:"no-applicable-patch",attempts:$attempts}' \
+      seed:$seed,agent:$agent,tier:$tier,outcome:"no-applicable-patch",attempts:$attempts}' \
     > "$cell/outcome.json"
-  code_die "$AGENT produced no applicable patch for $instance after $ATTEMPTS attempts"
-  exit 1
+  # A scored zero, not an infrastructure failure: exit 3 so the batch runner
+  # counts it as such and does not retry it on resume.
+  printf 'NO PATCH: %s produced no applicable patch for %s after %s attempts; scored zero\n' \
+    "$AGENT" "$instance" "$ATTEMPTS" >&2
+  exit 3
 fi
 
 patch="$cell/final.patch"
 git -C "$workspace" diff --binary > "$patch"
 [[ -s "$patch" ]] || { code_die "single-shot run produced an empty patch"; exit 1; }
 record="$cell/prediction.json"
-jq -n --arg instance_id "$instance" --arg model "co-evolution-condition-$condition" \
+jq -n --arg instance_id "$instance" --arg model "co-evolution-condition-$cell_name" \
   --rawfile model_patch "$patch" \
   '{instance_id:$instance_id,model_name_or_path:$model,model_patch:$model_patch}' > "$record"
 jq -c . "$record" >> "$PREDICTIONS"
 jq -n --arg instance "$instance" --arg condition "$condition" --arg agent "$AGENT" \
-  --arg tier "$tier" --argjson attempts "$attempt" \
+  --arg tier "$tier" --argjson attempts "$attempt" --argjson seed "$seed" \
   '{schema:"code-bench-single-shot-outcome/1.0",instance:$instance,condition:$condition,
-    agent:$agent,tier:$tier,outcome:"patch-applied",attempts:$attempts}' \
+    seed:$seed,agent:$agent,tier:$tier,outcome:"patch-applied",attempts:$attempts}' \
   > "$cell/outcome.json"
 printf 'WROTE: %s\n' "$record"

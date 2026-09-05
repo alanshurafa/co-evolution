@@ -288,10 +288,12 @@ help_out="$(bash "$BOUNCER" --help 2>/dev/null || true)"
 h5_ok=true
 for flag in -- '--composer-model' '--composer-effort' '--reviewer-model' '--reviewer-effort'; do
   [[ "$flag" == "--" ]] && continue
-  printf '%s' "$help_out" | grep -Eq -- "$flag" || h5_ok=false
+  # grep -q can close a pipe before printf finishes under pipefail. A here
+  # string checks the same complete help text without a SIGPIPE race.
+  grep -Eq -- "$flag" <<< "$help_out" || h5_ok=false
 done
 # Deliberately NO bare global --effort flag (only the per-role effort flags).
-if printf '%s' "$help_out" | grep -Eq -- '^[[:space:]]*--effort '; then h5_ok=false; fi
+if grep -Eq -- '^[[:space:]]*--effort ' <<< "$help_out"; then h5_ok=false; fi
 if [[ "$h5_ok" == true ]]; then
   pass "--help documents the four per-role seat flags and offers no global --effort"
 else
