@@ -1,0 +1,12 @@
+{
+  "note": "SHA-256 of the original public files before the observatory redesign, 2026-09-04. Keep these editions unchanged; publish new data as current-results.json.",
+  "files": {
+    "code-bench-site-2.0.schema.json": "69ee0af4d3e824bea221ad6c9aca63fb93ca90885bcb0a3ae966219bb85134f1",
+    "leaderboard-methodology.html": "01956abb3fe0c90c32ca1ff895fb3222bcf0e15359bc9003a6e0aa751a092964",
+    "leaderboard.html": "9557622928eca8ce22df258a2041aabe84e858b31578b6d1b63b86814324e484",
+    "leaderboard.json": "61e90038d61de7e41ee3b2d2830a96fc6f02d2c7b06332de4c859d3dba3d6299",
+    "poc-methodology.html": "7d1db8b45972e6e1cefc9cad661aae8f893ed6508874cd57a656ea4ffde216c6",
+    "poc.html": "ae89a5c3933910e190a974ed5cc9742527d97e881da7bcf47eeaa6d2eae75b1e",
+    "poc.json": "652d5151ae1a3dc18ca2e74e13798c1c40ad075f31caae7f7c8587dab66dab4f"
+  }
+}

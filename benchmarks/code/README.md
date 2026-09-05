@@ -247,10 +247,18 @@ to a generation workflow.
 ```bash
 CODE_BENCH_RESULTS_ROOT=/path/to/results/code \
   bash benchmarks/site/aggregate.sh --suite swebench-verified-random50 \
-    --output benchmarks/site/public/leaderboard.json --also "One-task proof of concept=poc.html"
+    --output benchmarks/site/public/current-results.json --observatory \
+    --also "Current observatory=index.html"
 ```
 
-Builds one JSON (schema `code-bench-site/2.0`) from the evaluator reports, the
+The public entry point is now `benchmarks/site/public/index.html`: a responsive
+observatory with score intervals, configuration search and sorting, repository
+radar comparisons, cost per resolved task, paired gains/losses, task evidence,
+and a registered research agenda. Its default view includes only completed,
+publishable configurations. Partial/flagged runs remain inspectable and do not
+feed headline charts. Agentic and single-shot modes stay separate.
+
+The command builds one JSON (schema `code-bench-site/2.0`) from the evaluator reports, the
 evaluator's own per-instance verdicts, the run manifests and provider logs,
 then renders it as two self-contained pages beside it: the leaderboard and a
 methodology page (`<name>-methodology.html`). Inline SVG, no chart library.
@@ -272,7 +280,12 @@ the methodology page fills its outcome from the evaluator reports. Each row
 names the report files it was read from and each task the `report.json` that
 decided it, so every number on the published page can be checked against a
 file on disk. Commit `benchmarks/site/public/` to publish; the Pages workflow
-copies that directory and nothing else.
+copies that directory and nothing else. The original `leaderboard.*` and
+`poc.*` editions are frozen and reachable through Archive; refresh current
+results using the command above. Do not overwrite the archived exports.
+
+For local preview, rebuilding from existing data, or adding future suites,
+see [`../site/README.md`](../site/README.md).
 
 ## Compute contract
 

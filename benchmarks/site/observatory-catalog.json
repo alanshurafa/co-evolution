@@ -1,0 +1,29 @@
+{
+  "schema": "eval-observatory-catalog/1.0",
+  "default_suite": "swebench-verified-random50",
+  "suites": [
+    {
+      "id": "swebench-verified-random50",
+      "name": "SWE-bench Verified",
+      "subtitle": "50-task random subset",
+      "category": "Coding",
+      "data": "current-results.json",
+      "methodology": "current-results-methodology.html",
+      "default_run": "base50-light"
+    }
+  ],
+  "archives": [
+    {
+      "name": "Previous results website",
+      "description": "The original configuration leaderboard, charts, and technical methodology. Preserved at its original address.",
+      "href": "leaderboard.html",
+      "label": "Previous design"
+    },
+    {
+      "name": "One-task proof of concept",
+      "description": "The original end-to-end harness demonstration. One task validates the pipeline; it does not establish model performance.",
+      "href": "poc.html",
+      "label": "Technical validation"
+    }
+  ]
+}
