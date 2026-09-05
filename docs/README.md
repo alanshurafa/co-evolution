@@ -5,7 +5,13 @@ workflow, `.github/workflows/pages.yml`, globs only
 `benchmarks/site/public/**` and publishes those committed files as the site
 root; it never reads this directory.
 
-The published site is the SWE-bench Verified leaderboard, built by
+The published site is the evaluation observatory (`index.html`), built by
+`benchmarks/site/build-observatory.py` from standardized exports registered in
+`benchmarks/site/observatory-catalog.json`. Current data is refreshed by
+`benchmarks/site/aggregate.sh --observatory`. The original leaderboard and
+proof-of-concept pages remain available through its Archive section.
+
+The detailed SWE-bench Verified technical pages are built by
 `benchmarks/site/aggregate.sh` from evaluator reports and run logs into one
 JSON, rendered as self-contained HTML, and committed under
 `benchmarks/site/public/`. See the "Results site" section of

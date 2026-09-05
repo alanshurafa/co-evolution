@@ -17,6 +17,25 @@ env:
   YQ_VERSION: v4.44.3
 
 jobs:
+  observatory:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check score fidelity, archive preservation and current build
+        run: python benchmarks/site/tests/test_observatory.py
+      - name: Check score inclusion and repository denominators
+        run: node --test benchmarks/site/tests/test-observatory-data.cjs
+
   test:
     strategy:
       fail-fast: false

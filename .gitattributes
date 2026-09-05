@@ -23,3 +23,6 @@
 # The frozen benchmark banned-token list is byte-compared by the leak gate —
 # keep plain-text protocol files LF everywhere too.
 *.txt text eol=lf
+
+# Archived eval pages are checksum-verified on every platform.
+benchmarks/site/public/*.html text eol=lf
