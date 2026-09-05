@@ -14,6 +14,7 @@ SHARD_SPEC=""
 MODEL_TIER=$(code_model_tier)
 MAX_CLAUDE=""
 DRY_RUN=false
+REPEAT=1
 SUITE=$(code_suite_id)
 
 while (( $# > 0 )); do
@@ -24,6 +25,7 @@ while (( $# > 0 )); do
     --task) TASK="${2:?--task needs a value}"; shift 2 ;;
     --shard) SHARD_SPEC="${2:?--shard needs N/M}"; shift 2 ;;
     --models) MODEL_TIER="${2:?--models needs a tier}"; shift 2 ;;
+    --repeat) REPEAT="${2:?--repeat needs a count}"; shift 2 ;;
     --max-claude-dispatches) MAX_CLAUDE="${2:?--max-claude-dispatches needs a value}"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     *) code_die "unknown canary option: $1"; exit 2 ;;
@@ -32,6 +34,10 @@ done
 
 [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { code_die "--run-id is required and must be filesystem-safe"; exit 2; }
 [[ "$TASK_LIMIT" =~ ^[1-9][0-9]*$ ]] || { code_die "--task-limit must be positive"; exit 2; }
+# --repeat K runs every (task, condition) cell K times as seeds 1..K. The
+# models are not seedable, so a seed is a repeat index; what it buys is
+# pass@k, pass^k and the per-task flip rate, which a single run cannot give.
+[[ "$REPEAT" =~ ^[1-9][0-9]*$ ]] || { code_die "--repeat must be a positive integer"; exit 2; }
 [[ "$MAX_CLAUDE" =~ ^[0-9]+$ ]] || { code_die "--max-claude-dispatches is required"; exit 2; }
 code_tier_is_valid "$MODEL_TIER" \
   || { code_die "--models must be frontier, max, or light: $MODEL_TIER"; exit 2; }
@@ -65,7 +71,7 @@ if [[ -n "$TASK" ]]; then
 fi
 
 bash "$CODE_DIR/estimate-compute.sh" --suite "$SUITE" \
-  --conditions "$CONDITIONS" --task-limit "$TASK_LIMIT" \
+  --conditions "$CONDITIONS" --task-limit "$TASK_LIMIT" --repeat "$REPEAT" \
   --max-claude-dispatches "$MAX_CLAUDE"
 
 if [[ "$DRY_RUN" == true ]]; then
@@ -80,6 +86,7 @@ runs_root="$CODE_BENCH_RESULTS_ROOT/runs/$RUN_ID"
 failed_cells=0
 done_cells=0
 skipped_cells=0
+nopatch_cells=0
 
 task_index=0
 while IFS= read -r instance; do
@@ -87,11 +94,19 @@ while IFS= read -r instance; do
   (( task_index <= TASK_LIMIT )) || break
   (( (task_index - 1) % SHARD_COUNT == SHARD_INDEX )) || continue
   for condition in $(printf '%s' "$CONDITIONS" | tr ',' ' '); do
-    cell="$runs_root/$instance/$condition"
+   seed=0
+   while (( seed < REPEAT )); do
+    seed=$((seed + 1))
+    cell_name=$(code_cell_name "$condition" "$seed")
+    cell="$runs_root/$instance/$cell_name"
+    # One prediction file per (condition, seed[, shard]): the evaluator refuses
+    # duplicate instance ids in one file, and two seeds of one task are exactly
+    # that. The seed suffix on the file matches the one on the cell directory
+    # and on model_name_or_path, so a report can be traced back to its seed.
     if (( SHARD_COUNT > 1 )); then
-      pred_file="$pred_dir/$condition.s$SHARD_INDEX.jsonl"
+      pred_file="$pred_dir/$cell_name.s$SHARD_INDEX.jsonl"
     else
-      pred_file="$pred_dir/$condition.jsonl"
+      pred_file="$pred_dir/$cell_name.jsonl"
     fi
     # A fifty-task batch is hours long, so it has to be restartable. A cell that
     # already holds a prediction is finished and is left alone; a cell without
@@ -103,7 +118,7 @@ while IFS= read -r instance; do
     if [[ -f "$cell/run-manifest.json" ]]; then
       cell_tier=$(jq -r '.model_tier // "frontier"' "$cell/run-manifest.json" | tr -d '\r')
       if [[ "$cell_tier" != "$MODEL_TIER" ]]; then
-        code_die "cell $instance/$condition was run at tier $cell_tier, not $MODEL_TIER; use a new --run-id"
+        code_die "cell $instance/$cell_name was run at tier $cell_tier, not $MODEL_TIER; use a new --run-id"
         exit 1
       fi
     fi
@@ -115,12 +130,21 @@ while IFS= read -r instance; do
            >/dev/null 2>&1; then
         jq -c . "$cell/prediction.json" >> "$pred_file"
       fi
-      printf 'SKIP: %s/%s already has a prediction\n' "$instance" "$condition"
+      printf 'SKIP: %s/%s already has a prediction\n' "$instance" "$cell_name"
+      skipped_cells=$((skipped_cells + 1)); continue
+    fi
+    # A cell that ran to completion and produced no patch is finished too: it
+    # scored zero, and re-cloning it would only spend the same dispatches again
+    # for a result the tree already records. --resume-failed is deliberately
+    # not offered; delete the cell to retry it.
+    if [[ -f "$cell/outcome.json" ]] \
+       && jq -e '.outcome != "patch-applied"' "$cell/outcome.json" >/dev/null 2>&1; then
+      printf 'SKIP: %s/%s already ran and produced no patch (scores zero)\n' "$instance" "$cell_name"
       skipped_cells=$((skipped_cells + 1)); continue
     fi
     [[ ! -d "$cell" ]] || rm -rf "$cell"
-    if ! input=$(bash "$CODE_DIR/scripts/prepare-swebench-instance.sh" "$instance" "$RUN_ID" "$condition"); then
-      printf 'CELL FAILED: could not prepare %s/%s\n' "$instance" "$condition" >&2
+    if ! input=$(bash "$CODE_DIR/scripts/prepare-swebench-instance.sh" "$instance" "$RUN_ID" "$condition" "$seed"); then
+      printf 'CELL FAILED: could not prepare %s/%s\n' "$instance" "$cell_name" >&2
       failed_cells=$((failed_cells + 1)); continue
     fi
     tier=$(jq -r --arg id "$condition" '.conditions[] | select(.id == $id) | .tier' \
@@ -147,12 +171,19 @@ while IFS= read -r instance; do
         --predictions "$pred_file" \
         --max-claude-dispatches "$per_condition" || cell_rc=$?
     fi
-    if (( cell_rc != 0 )); then
-      printf 'CELL FAILED: %s/%s produced no prediction (rc=%s)\n' "$instance" "$condition" "$cell_rc" >&2
+    # Exit 3 from a driver is a cell that ran to completion and produced no
+    # patch: a zero for that arm, recorded in its outcome.json, not a failure
+    # to retry. Anything else non-zero is an infrastructure failure.
+    if (( cell_rc == 3 )); then
+      printf 'NO PATCH: %s/%s scored zero\n' "$instance" "$cell_name"
+      nopatch_cells=$((nopatch_cells + 1))
+    elif (( cell_rc != 0 )); then
+      printf 'CELL FAILED: %s/%s produced no prediction (rc=%s)\n' "$instance" "$cell_name" "$cell_rc" >&2
       failed_cells=$((failed_cells + 1))
     else
       done_cells=$((done_cells + 1))
     fi
+   done
   done
 done < <(if [[ -n "$TASK" ]]; then printf '%s\n' "$TASK"
          else jq -r '.instances[].instance_id' "$subset" | tr -d '\r'; fi)
@@ -165,12 +196,14 @@ if (( SHARD_COUNT > 1 )); then
 else
   validate_glob=("$pred_dir"/*.jsonl)
 fi
-for predictions in "${validate_glob[@]}"; do
+# Bash 3.2 treats an empty array as unset under nounset. A batch containing
+# only completed no-patch cells legitimately has no prediction files.
+for predictions in ${validate_glob[@]+"${validate_glob[@]}"}; do
   bash "$CODE_DIR/validate-predictions.sh" "$predictions" "$SUITE"
 done
-printf 'COMPLETE: %s cell(s) generated, %s reused, %s failed -> %s\n' \
-  "$done_cells" "$skipped_cells" "$failed_cells" "$pred_dir"
+printf 'COMPLETE: %s cell(s) generated, %s reused, %s scored zero (no patch), %s failed -> %s\n' \
+  "$done_cells" "$skipped_cells" "$nopatch_cells" "$failed_cells" "$pred_dir"
 if (( failed_cells > 0 )); then
-  printf 'INCOMPLETE: %s cell(s) produced no prediction. They score zero against the\n' "$failed_cells" >&2
-  printf 'subset; rerun the same command to retry only those cells.\n' >&2
+  printf 'INCOMPLETE: %s cell(s) failed before producing a result. Rerun the same\n' "$failed_cells" >&2
+  printf 'command to retry only those cells; no-patch cells are kept as zeros.\n' >&2
 fi

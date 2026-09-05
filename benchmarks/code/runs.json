@@ -1,0 +1,31 @@
+{
+  "schema": "code-bench-runs/1.0",
+  "note": "Registry of benchmark runs the site may show. A run is a batch under benchmarks/results/code/runs/<label>/ scored under evaluator label <label>. publishable is a provenance judgement recorded when the run was reviewed, not a number: a run whose harness tree was dirty, or that stopped part way, is shown with that flag rather than hidden. Every figure for a run is still read from its own files. evaluator_label names the label the evaluator reports carry when it differs from the run directory (older runs scored before --label existed).",
+  "runs": [
+    {
+      "label": "base50-light",
+      "suite": "swebench-verified-random50",
+      "model_tier": "light",
+      "publishable": true,
+      "ran_by": "we ran it",
+      "note": "Light tier (Sonnet implements, gpt-5.6-terra as the Codex seat). Arms A, B, E complete on all 50 tasks."
+    },
+    {
+      "label": "base50",
+      "suite": "swebench-verified-random50",
+      "model_tier": "frontier",
+      "publishable": false,
+      "ran_by": "we ran it",
+      "note": "Frontier tier partial run (Fable, gpt-5.6-sol). Generated from a dirty harness worktree and stopped part way through A and B; kept as-is and shown with this flag, never as a headline."
+    },
+    {
+      "label": "poc-flask-5014",
+      "suite": "swebench-verified-poc",
+      "model_tier": "frontier",
+      "publishable": true,
+      "ran_by": "we ran it",
+      "note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+      "evaluator_label": "code-bench"
+    }
+  ]
+}

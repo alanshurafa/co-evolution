@@ -1,68 +1,156 @@
 {
   "schema": "code-bench-conditions/1.0",
+  "note": "phases is the executable plan run-workflow.sh follows (a test asserts they agree); pipeline is the same plan as prose with {claude} and {codex} standing for whichever model the tier or the seats override puts in that seat; seats pins a model for a condition regardless of tier, which is how the mixed-tier arms are defined.",
   "conditions": [
     {
       "id": "A",
       "label": "fable-solo",
       "tier": "agentic",
       "description": "Fable investigates, edits, and tests once.",
-      "dispatches": {"claude": 1, "codex": 0, "glm": 0, "kimi": 0}
+      "dispatches": {"claude": 1, "codex": 0, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement"],
+      "pipeline": "{claude} implements"
     },
     {
       "id": "B",
       "label": "cross-vendor-bounce",
       "tier": "agentic",
       "description": "Fable implements; Codex reviews and repairs the patch.",
-      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0}
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "codex-repair"],
+      "pipeline": "{claude} implements → {codex} repairs"
     },
     {
       "id": "C",
       "label": "fable-led-panel",
       "tier": "agentic",
       "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
-      "dispatches": {"claude": 2, "codex": 1, "glm": 1, "kimi": 1}
+      "dispatches": {"claude": 2, "codex": 1, "glm": 1, "kimi": 1},
+      "phases": ["fable-implement", "codex-critique", "glm-critique", "kimi-critique", "fable-repair"],
+      "pipeline": "{claude} implements → {codex} + glm + kimi critique → {claude} repairs"
     },
     {
       "id": "D",
       "label": "fable-self-bounce",
       "tier": "agentic",
       "description": "Fable implements and performs a second review/repair pass.",
-      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 0}
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "fable-self-repair"],
+      "pipeline": "{claude} implements → {claude} reviews and repairs"
     },
     {
       "id": "E",
       "label": "codex-solo",
       "tier": "agentic",
       "description": "Codex investigates, edits, and tests once.",
-      "dispatches": {"claude": 0, "codex": 1, "glm": 0, "kimi": 0}
+      "dispatches": {"claude": 0, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["codex-implement"],
+      "pipeline": "{codex} implements"
     },
     {
       "id": "F",
       "label": "glm-solo-single-shot",
       "tier": "single-shot",
       "description": "GLM receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
-      "dispatches": {"claude": 0, "codex": 0, "glm": 1, "kimi": 0}
+      "dispatches": {"claude": 0, "codex": 0, "glm": 1, "kimi": 0},
+      "phases": ["select-context", "single-shot-diff", "git-apply-gate"],
+      "pipeline": "glm answers once, from retrieved context"
     },
     {
       "id": "G",
       "label": "kimi-solo-single-shot",
       "tier": "single-shot",
       "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
-      "dispatches": {"claude": 0, "codex": 0, "glm": 0, "kimi": 1}
+      "dispatches": {"claude": 0, "codex": 0, "glm": 0, "kimi": 1},
+      "phases": ["select-context", "single-shot-diff", "git-apply-gate"],
+      "pipeline": "kimi answers once, from retrieved context"
     },
     {
       "id": "H",
       "label": "fable-glm-bounce",
       "tier": "agentic",
       "description": "Fable implements; GLM returns one single-shot critique with no agent loop; Fable repairs.",
-      "dispatches": {"claude": 2, "codex": 0, "glm": 1, "kimi": 0}
+      "dispatches": {"claude": 2, "codex": 0, "glm": 1, "kimi": 0},
+      "phases": ["fable-implement", "glm-critique", "fable-repair"],
+      "pipeline": "{claude} implements → glm critiques once → {claude} repairs"
     },
     {
       "id": "I",
       "label": "fable-kimi-bounce",
       "tier": "agentic",
       "description": "Fable implements; Kimi returns one single-shot critique with no agent loop; Fable repairs.",
-      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 1}
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 1},
+      "phases": ["fable-implement", "kimi-critique", "fable-repair"],
+      "pipeline": "{claude} implements → kimi critiques once → {claude} repairs"
+    },
+    {
+      "id": "J",
+      "label": "codex-implements-fable-repairs",
+      "tier": "agentic",
+      "description": "The reverse of B: Codex implements; Fable reviews and repairs. Tests whether a reviewer stronger than the author explains B's gain (the KDD'26 asymmetry).",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["codex-implement", "fable-repair"],
+      "pipeline": "{codex} implements → {claude} repairs"
+    },
+    {
+      "id": "K",
+      "label": "codex-self-bounce",
+      "tier": "agentic",
+      "description": "Codex implements, then reviews and repairs its own patch. The self-bounce control for the Codex seat, as D is for the Claude seat.",
+      "dispatches": {"claude": 0, "codex": 2, "glm": 0, "kimi": 0},
+      "phases": ["codex-implement", "codex-repair"],
+      "pipeline": "{codex} implements → {codex} reviews and repairs"
+    },
+    {
+      "id": "L",
+      "label": "fable-best-of-2",
+      "tier": "agentic",
+      "description": "Two independent Fable implementations; the repository's own tests pick one, with no reviewer. The equal-cost baseline for D: two dispatches either way.",
+      "dispatches": {"claude": 2, "codex": 0, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "fable-implement-2", "select-best-of-2"],
+      "pipeline": "{claude} implements twice → repo tests pick one"
+    },
+    {
+      "id": "M",
+      "label": "sonnet-to-sol-bounce",
+      "tier": "agentic",
+      "description": "Mixed tier: Sonnet implements; gpt-5.6-sol reviews and repairs. The product question: does a cheap implementer with a strong reviewer match a strong solo at lower cost?",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "codex-repair"],
+      "pipeline": "{claude} implements → {codex} repairs",
+      "seats": {"claude": "sonnet", "codex": "gpt-5.6-sol"},
+      "mixed_tier": true
+    },
+    {
+      "id": "N",
+      "label": "fable-to-terra-bounce",
+      "tier": "agentic",
+      "description": "Mixed tier: Fable implements; gpt-5.6-terra reviews and repairs. The cheap-reviewer half of the tier crossing.",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "codex-repair"],
+      "pipeline": "{claude} implements → {codex} repairs",
+      "seats": {"claude": "fable", "codex": "gpt-5.6-terra"},
+      "mixed_tier": true
+    },
+    {
+      "id": "O",
+      "label": "sol-implements-fable-repairs",
+      "tier": "agentic",
+      "description": "The reverse of frontier B: gpt-5.6-sol implements; Fable reviews and repairs.",
+      "dispatches": {"claude": 1, "codex": 1, "glm": 0, "kimi": 0},
+      "phases": ["codex-implement", "fable-repair"],
+      "pipeline": "{codex} implements → {claude} repairs",
+      "seats": {"claude": "fable", "codex": "gpt-5.6-sol"},
+      "mixed_tier": true
+    },
+    {
+      "id": "P",
+      "label": "cross-vendor-bounce-2-rounds",
+      "tier": "agentic",
+      "description": "B with a second review/repair round: Fable implements; Codex repairs; Codex reviews the repaired patch and repairs again.",
+      "dispatches": {"claude": 1, "codex": 2, "glm": 0, "kimi": 0},
+      "phases": ["fable-implement", "codex-repair", "codex-repair-2"],
+      "pipeline": "{claude} implements → {codex} repairs → {codex} repairs again"
     }
   ]
 }

@@ -3,10 +3,51 @@
   "id": "swebench-verified-canary",
   "selection": "Choose the shortest public problem statement within each repository, then take the five shortest across repositories in the pinned 500-task dataset; frozen before any live run.",
   "instances": [
-    {"instance_id": "sympy__sympy-20916", "repo": "sympy/sympy"},
-    {"instance_id": "django__django-16819", "repo": "django/django"},
-    {"instance_id": "scikit-learn__scikit-learn-14141", "repo": "scikit-learn/scikit-learn"},
-    {"instance_id": "astropy__astropy-7166", "repo": "astropy/astropy"},
-    {"instance_id": "pallets__flask-5014", "repo": "pallets/flask"}
-  ]
+    {
+      "instance_id": "sympy__sympy-20916",
+      "repo": "sympy/sympy",
+      "difficulty": "<15 min fix"
+    },
+    {
+      "instance_id": "django__django-16819",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14141",
+      "repo": "scikit-learn/scikit-learn",
+      "difficulty": "<15 min fix"
+    },
+    {
+      "instance_id": "astropy__astropy-7166",
+      "repo": "astropy/astropy",
+      "difficulty": "<15 min fix"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "difficulty": "<15 min fix"
+    }
+  ],
+  "annotations": {
+    "difficulty": {
+      "source": "datasets-server.huggingface.co rows API, field `difficulty`",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "fetched_on": "2026-09-04",
+      "buckets": [
+        "<15 min fix",
+        "15 min - 1 hour",
+        "1-4 hours",
+        ">4 hours"
+      ],
+      "counts": {
+        "<15 min fix": 4,
+        "15 min - 1 hour": 1,
+        "1-4 hours": 0,
+        ">4 hours": 0
+      },
+      "note": "Human time-to-fix estimate shipped with SWE-bench Verified. A public field, not a gold patch or hidden test."
+    }
+  }
 }

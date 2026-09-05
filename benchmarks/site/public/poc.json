@@ -1,13 +1,74 @@
 {
-  "schema": "code-bench-site/1.0",
-  "generated_at": "2026-09-03T02:35:14Z",
+  "schema": "code-bench-site/2.0",
+  "title": "Co-Evolution: cross-vendor review benchmark for coding agents",
+  "generated_at": "2026-09-04T17:50:40Z",
   "harness": {
-    "repo_commit": "9eedc40fcb98a615370b9f28728642ef4a83e6c6",
-    "working_tree_dirty": true,
+    "build_commit": "925242b58317e94911d0baa9a1c4968f163c2b9e",
+    "build_tree_dirty": true,
     "swebench_commit": "7a21e05772954cc81471ae19d56f436cecf43c54",
     "dataset": "princeton-nlp/SWE-bench_Verified",
     "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
-    "lock_file": "benchmarks/code/external-sources.lock.json"
+    "lock_file": "benchmarks/code/external-sources.lock.json",
+    "conditions_file": "benchmarks/code/conditions.json",
+    "runs_file": "benchmarks/code/runs.json"
+  },
+  "pricing": {
+    "file": "benchmarks/code/pricing.json",
+    "recorded_on": "2026-09-04",
+    "models": {
+      "gpt-5.6-sol": {
+        "vendor": "openai",
+        "input": 5.0,
+        "cached_input": 0.5,
+        "output": 30.0
+      },
+      "gpt-5.6-terra": {
+        "vendor": "openai",
+        "input": 2.0,
+        "cached_input": 0.2,
+        "output": 12.0
+      },
+      "gpt-5.6-luna": {
+        "vendor": "openai",
+        "input": 0.2,
+        "cached_input": 0.02,
+        "output": 1.2
+      },
+      "glm-5.3-flash": {
+        "vendor": "zai",
+        "input": 0.15,
+        "cached_input": 0.03,
+        "output": 0.5,
+        "note": "Regular list price. A launch promotion (0.075 / 0.015 / 0.25) ran through 2026-09-09; the list rate is used so runs before and after it price the same."
+      },
+      "kimi-k3": {
+        "vendor": "moonshot",
+        "input": 3.0,
+        "cached_input": 0.3,
+        "output": 15.0
+      }
+    },
+    "codex_total_only_split": {
+      "cached_input": 0.7,
+      "input": 0.2,
+      "output": 0.1
+    }
+  },
+  "statistics": {
+    "interval": "Wilson score, 95%",
+    "paired_test": "exact two-sided McNemar on discordant tasks",
+    "bootstrap": {
+      "levels": [
+        "repo",
+        "task",
+        "seed"
+      ],
+      "draws": 2000,
+      "rng_seed": 20260904,
+      "interval": "percentile 2.5-97.5"
+    },
+    "rank": "Rank(UB): 1 + number of arms whose interval lower bound exceeds this upper bound",
+    "module": "benchmarks/site/stats.py"
   },
   "suite": {
     "id": "swebench-verified-poc",
@@ -15,10 +76,31 @@
     "split": "test",
     "task_count": 1,
     "subset_file": "benchmarks/code/subsets/swebench-verified-poc.json",
+    "sampling": null,
+    "difficulty_annotation": {
+      "source": "datasets-server.huggingface.co rows API, field `difficulty`",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "fetched_on": "2026-09-04",
+      "buckets": [
+        "<15 min fix",
+        "15 min - 1 hour",
+        "1-4 hours",
+        ">4 hours"
+      ],
+      "counts": {
+        "<15 min fix": 1,
+        "15 min - 1 hour": 0,
+        "1-4 hours": 0,
+        ">4 hours": 0
+      },
+      "note": "Human time-to-fix estimate shipped with SWE-bench Verified. A public field, not a gold patch or hidden test."
+    },
     "instances": [
       {
         "instance_id": "pallets__flask-5014",
-        "repo": "pallets/flask"
+        "repo": "pallets/flask",
+        "difficulty": "<15 min fix"
       }
     ]
   },
@@ -28,11 +110,68 @@
     "submitted": 1,
     "resolved": 1
   },
+  "runs": [
+    {
+      "label": "poc-flask-5014",
+      "suite": "swebench-verified-poc",
+      "model_tier": "frontier",
+      "publishable": true,
+      "ran_by": "we ran it",
+      "note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+      "evaluator_label": "code-bench",
+      "registered": true,
+      "models": {
+        "claude": [
+          "fable"
+        ],
+        "codex": [
+          "gpt-5.6-sol"
+        ],
+        "glm": [
+          "glm-5.3-flash"
+        ],
+        "single_shot": [
+          "glm-5.3-flash",
+          "kimi-k3"
+        ],
+        "kimi": [
+          "kimi-k3"
+        ]
+      },
+      "conditions_measured": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I"
+      ],
+      "conditions_not_run": [
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P"
+      ],
+      "harness_commit": null,
+      "harness_dirty": null,
+      "harness_recorded": false
+    }
+  ],
   "rows": [
     {
+      "id": "A@poc-flask-5014",
       "condition": "A",
       "label": "fable-solo",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable investigates, edits, and tests once.",
       "declared_dispatches": {
         "claude": 1,
@@ -40,51 +179,162 @@
         "glm": 0,
         "kimi": 0
       },
+      "phases": [
+        "fable-implement"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260902T221122Z.json",
-      "evaluator_run_id": "code-bench-20260902T221122Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221122Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260902T221122Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221122Z/co-evolution-condition-A/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/A"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/A",
+          "wall_seconds": 417,
+          "cost_usd": 2.4518
         }
       ],
       "telemetry": {
         "claude_dispatches": 1,
         "claude_cost_usd": 2.4518,
+        "claude_input_tokens": 42935,
+        "claude_cached_tokens": 656749,
         "claude_output_tokens": 18823,
         "claude_wall_seconds": 417,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [
           "workspace-write"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 417,
+        "cost_precision": "exact",
         "cost_is_complete": true,
+        "cost_usd": 2.4518,
+        "cost_low_usd": 2.4518,
+        "cost_high_usd": 2.4518,
+        "cost_per_task": 2.4518,
         "cost_per_resolved": 2.4518,
+        "tokens": 718507,
+        "tokens_per_task": 718507,
+        "wall_per_task": 417,
+        "wall_p50": 417,
+        "wall_p90": 417,
         "seconds_per_resolved": 417
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable solo",
+      "implementer": "fable",
+      "reviewers": [],
+      "pipeline": "fable implements",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221122Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260902T221122Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": [
+          "workspace-write"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions A --task-limit 1 --max-claude-dispatches 1\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/A.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "B@poc-flask-5014",
       "condition": "B",
       "label": "cross-vendor-bounce",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable implements; Codex reviews and repairs the patch.",
       "declared_dispatches": {
         "claude": 1,
@@ -92,51 +342,171 @@
         "glm": 0,
         "kimi": 0
       },
+      "phases": [
+        "fable-implement",
+        "codex-repair"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260902T221156Z.json",
-      "evaluator_run_id": "code-bench-20260902T221156Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221156Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260902T221156Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221156Z/co-evolution-condition-B/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/B"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/B",
+          "wall_seconds": 498,
+          "cost_usd": 2.1703
         }
       ],
       "telemetry": {
         "claude_dispatches": 1,
         "claude_cost_usd": 1.8773,
+        "claude_input_tokens": 28417,
+        "claude_cached_tokens": 440093,
         "claude_output_tokens": 17371,
         "claude_wall_seconds": 307,
         "codex_phases": 1,
         "codex_wall_seconds": 191,
         "codex_tokens": 67343,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.2929,
+        "codex_cost_low_usd": 0.0337,
+        "codex_cost_high_usd": 2.0203,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [
+          "0.144.5"
+        ],
         "sandbox_modes": [
           "danger-full-access"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 498,
-        "cost_is_complete": false,
-        "cost_per_resolved": 1.8773,
+        "cost_precision": "estimated",
+        "cost_is_complete": true,
+        "cost_usd": 2.1702,
+        "cost_low_usd": 1.911,
+        "cost_high_usd": 3.8976,
+        "cost_per_task": 2.1702,
+        "cost_per_resolved": 2.1702,
+        "tokens": 553224,
+        "tokens_per_task": 553224,
+        "wall_per_task": 498,
+        "wall_p50": 498,
+        "wall_p90": 498,
         "seconds_per_resolved": 498
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable \u2192 gpt-5.6-sol",
+      "implementer": "fable",
+      "reviewers": [
+        "gpt-5.6-sol"
+      ],
+      "pipeline": "fable implements \u2192 gpt-5.6-sol repairs",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221156Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260902T221156Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {
+          "codex": [
+            "0.144.5"
+          ]
+        },
+        "sandbox_modes": [
+          "danger-full-access"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_CODEX_SANDBOX=danger-full-access bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions B --task-limit 1 --max-claude-dispatches 1\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/B.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "C@poc-flask-5014",
       "condition": "C",
       "label": "fable-led-panel",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable implements; Codex, GLM, and Kimi critique; Fable repairs.",
       "declared_dispatches": {
         "claude": 2,
@@ -144,51 +514,177 @@
         "glm": 1,
         "kimi": 1
       },
+      "phases": [
+        "fable-implement",
+        "codex-critique",
+        "glm-critique",
+        "kimi-critique",
+        "fable-repair"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260902T221229Z.json",
-      "evaluator_run_id": "code-bench-20260902T221229Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221229Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260902T221229Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221229Z/co-evolution-condition-C/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/C"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/C",
+          "wall_seconds": 1313,
+          "cost_usd": 6.9441
         }
       ],
       "telemetry": {
         "claude_dispatches": 2,
         "claude_cost_usd": 6.6624,
+        "claude_input_tokens": 95641,
+        "claude_cached_tokens": 1749665,
         "claude_output_tokens": 60072,
         "claude_wall_seconds": 1168,
         "codex_phases": 1,
         "codex_wall_seconds": 145,
         "codex_tokens": 64758,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.2817,
+        "codex_cost_low_usd": 0.0324,
+        "codex_cost_high_usd": 1.9427,
+        "glm_calls": 1,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 1,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [
+          "0.144.5"
+        ],
         "sandbox_modes": [
           "workspace-write"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 1313,
+        "cost_precision": "unpriced",
         "cost_is_complete": false,
-        "cost_per_resolved": 6.6624,
+        "cost_usd": 6.9441,
+        "cost_low_usd": 6.6948,
+        "cost_high_usd": 8.6051,
+        "cost_per_task": null,
+        "cost_per_resolved": null,
+        "tokens": 1970136,
+        "tokens_per_task": 1970136,
+        "wall_per_task": 1313,
+        "wall_p50": 1313,
+        "wall_p90": 1313,
         "seconds_per_resolved": 1313
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable \u2192 gpt-5.6-sol + glm-5.3-flash + kimi-k3 + fable",
+      "implementer": "fable",
+      "reviewers": [
+        "gpt-5.6-sol",
+        "glm-5.3-flash",
+        "kimi-k3",
+        "fable"
+      ],
+      "pipeline": "fable implements \u2192 gpt-5.6-sol + glm + kimi critique \u2192 fable repairs",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221229Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260902T221229Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {
+          "codex": [
+            "0.144.5"
+          ]
+        },
+        "sandbox_modes": [
+          "workspace-write"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions C --task-limit 1 --max-claude-dispatches 2\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/C.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "D@poc-flask-5014",
       "condition": "D",
       "label": "fable-self-bounce",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable implements and performs a second review/repair pass.",
       "declared_dispatches": {
         "claude": 2,
@@ -196,51 +692,165 @@
         "glm": 0,
         "kimi": 0
       },
+      "phases": [
+        "fable-implement",
+        "fable-self-repair"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260902T221304Z.json",
-      "evaluator_run_id": "code-bench-20260902T221304Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221304Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260902T221304Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221304Z/co-evolution-condition-D/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/D"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/D",
+          "wall_seconds": 817,
+          "cost_usd": 3.9241
         }
       ],
       "telemetry": {
         "claude_dispatches": 2,
         "claude_cost_usd": 3.9241,
+        "claude_input_tokens": 63483,
+        "claude_cached_tokens": 1025636,
         "claude_output_tokens": 32690,
         "claude_wall_seconds": 817,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [
           "workspace-write"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 817,
+        "cost_precision": "exact",
         "cost_is_complete": true,
+        "cost_usd": 3.9241,
+        "cost_low_usd": 3.9241,
+        "cost_high_usd": 3.9241,
+        "cost_per_task": 3.9241,
         "cost_per_resolved": 3.9241,
+        "tokens": 1121809,
+        "tokens_per_task": 1121809,
+        "wall_per_task": 817,
+        "wall_p50": 817,
+        "wall_p90": 817,
         "seconds_per_resolved": 817
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable \u2192 fable",
+      "implementer": "fable",
+      "reviewers": [
+        "fable"
+      ],
+      "pipeline": "fable implements \u2192 fable reviews and repairs",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221304Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260902T221304Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": [
+          "workspace-write"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions D --task-limit 1 --max-claude-dispatches 2\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/D.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "E@poc-flask-5014",
       "condition": "E",
       "label": "codex-solo",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Codex investigates, edits, and tests once.",
       "declared_dispatches": {
         "claude": 0,
@@ -248,51 +858,168 @@
         "glm": 0,
         "kimi": 0
       },
+      "phases": [
+        "codex-implement"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260902T221343Z.json",
-      "evaluator_run_id": "code-bench-20260902T221343Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221343Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260902T221343Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221343Z/co-evolution-condition-E/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/E"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/E",
+          "wall_seconds": 72,
+          "cost_usd": 0.1148
         }
       ],
       "telemetry": {
         "claude_dispatches": 0,
         "claude_cost_usd": 0.0,
+        "claude_input_tokens": 0,
+        "claude_cached_tokens": 0,
         "claude_output_tokens": 0,
         "claude_wall_seconds": 0,
         "codex_phases": 1,
         "codex_wall_seconds": 72,
         "codex_tokens": 26395,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.1148,
+        "codex_cost_low_usd": 0.0132,
+        "codex_cost_high_usd": 0.7919,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [
+          "0.144.5"
+        ],
         "sandbox_modes": [
           "danger-full-access"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 72,
-        "cost_is_complete": false,
-        "cost_per_resolved": null,
+        "cost_precision": "estimated",
+        "cost_is_complete": true,
+        "cost_usd": 0.1148,
+        "cost_low_usd": 0.0132,
+        "cost_high_usd": 0.7919,
+        "cost_per_task": 0.1148,
+        "cost_per_resolved": 0.1148,
+        "tokens": 26395,
+        "tokens_per_task": 26395,
+        "wall_per_task": 72,
+        "wall_p50": 72,
+        "wall_p90": 72,
         "seconds_per_resolved": 72
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "gpt-5.6-sol solo",
+      "implementer": "gpt-5.6-sol",
+      "reviewers": [],
+      "pipeline": "gpt-5.6-sol implements",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221343Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260902T221343Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {
+          "codex": [
+            "0.144.5"
+          ]
+        },
+        "sandbox_modes": [
+          "danger-full-access"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_CODEX_SANDBOX=danger-full-access bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions E --task-limit 1 --max-claude-dispatches 0\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/E.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "F@poc-flask-5014",
       "condition": "F",
       "label": "glm-solo-single-shot",
       "tier": "single-shot",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "GLM receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
       "declared_dispatches": {
         "claude": 0,
@@ -300,51 +1027,155 @@
         "glm": 1,
         "kimi": 0
       },
+      "phases": [
+        "select-context",
+        "single-shot-diff",
+        "git-apply-gate"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260902T221418Z.json",
-      "evaluator_run_id": "code-bench-20260902T221418Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221418Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260902T221418Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221418Z/co-evolution-condition-F/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/F"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/F",
+          "wall_seconds": 0,
+          "cost_usd": 0.0
         }
       ],
       "telemetry": {
         "claude_dispatches": 0,
         "claude_cost_usd": 0.0,
+        "claude_input_tokens": 0,
+        "claude_cached_tokens": 0,
         "claude_output_tokens": 0,
         "claude_wall_seconds": 0,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 1,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [],
         "single_shot_attempts": [
           1
         ],
         "total_wall_seconds": 0,
+        "cost_precision": "unpriced",
         "cost_is_complete": false,
+        "cost_usd": 0.0,
+        "cost_low_usd": 0.0,
+        "cost_high_usd": 0.0,
+        "cost_per_task": null,
         "cost_per_resolved": null,
+        "tokens": 0,
+        "tokens_per_task": 0,
+        "wall_per_task": 0,
+        "wall_p50": 0,
+        "wall_p90": 0,
         "seconds_per_resolved": 0
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "glm": "glm-5.3-flash",
+        "single_shot": "glm-5.3-flash"
+      },
+      "effort": {},
+      "seats": {},
+      "configuration": "glm-5.3-flash (single-shot)",
+      "implementer": "glm-5.3-flash",
+      "reviewers": [],
+      "pipeline": "glm answers once, from retrieved context",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221418Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260902T221418Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": []
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions F --task-limit 1 --max-claude-dispatches 0\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/F.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "G@poc-flask-5014",
       "condition": "G",
       "label": "kimi-solo-single-shot",
       "tier": "single-shot",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Kimi receives the issue plus retrieved file context and returns one unified diff. No agent loop, no test execution.",
       "declared_dispatches": {
         "claude": 0,
@@ -352,51 +1183,155 @@
         "glm": 0,
         "kimi": 1
       },
+      "phases": [
+        "select-context",
+        "single-shot-diff",
+        "git-apply-gate"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260902T221452Z.json",
-      "evaluator_run_id": "code-bench-20260902T221452Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T221452Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260902T221452Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T221452Z/co-evolution-condition-G/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/G"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/G",
+          "wall_seconds": 0,
+          "cost_usd": 0.0
         }
       ],
       "telemetry": {
         "claude_dispatches": 0,
         "claude_cost_usd": 0.0,
+        "claude_input_tokens": 0,
+        "claude_cached_tokens": 0,
         "claude_output_tokens": 0,
         "claude_wall_seconds": 0,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 1,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [],
         "single_shot_attempts": [
           1
         ],
         "total_wall_seconds": 0,
+        "cost_precision": "unpriced",
         "cost_is_complete": false,
+        "cost_usd": 0.0,
+        "cost_low_usd": 0.0,
+        "cost_high_usd": 0.0,
+        "cost_per_task": null,
         "cost_per_resolved": null,
+        "tokens": 0,
+        "tokens_per_task": 0,
+        "wall_per_task": 0,
+        "wall_p50": 0,
+        "wall_p90": 0,
         "seconds_per_resolved": 0
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "kimi": "kimi-k3",
+        "single_shot": "kimi-k3"
+      },
+      "effort": {},
+      "seats": {},
+      "configuration": "kimi-k3 (single-shot)",
+      "implementer": "kimi-k3",
+      "reviewers": [],
+      "pipeline": "kimi answers once, from retrieved context",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T221452Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260902T221452Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": []
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions G --task-limit 1 --max-claude-dispatches 0\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/G.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "H@poc-flask-5014",
       "condition": "H",
       "label": "fable-glm-bounce",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable implements; GLM returns one single-shot critique with no agent loop; Fable repairs.",
       "declared_dispatches": {
         "claude": 2,
@@ -404,51 +1339,167 @@
         "glm": 1,
         "kimi": 0
       },
+      "phases": [
+        "fable-implement",
+        "glm-critique",
+        "fable-repair"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-H.code-bench-20260902T222442Z.json",
-      "evaluator_run_id": "code-bench-20260902T222442Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T222442Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-H.code-bench-20260902T222442Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T222442Z/co-evolution-condition-H/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/H"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/H",
+          "wall_seconds": 628,
+          "cost_usd": 3.3927
         }
       ],
       "telemetry": {
         "claude_dispatches": 2,
         "claude_cost_usd": 3.3927,
+        "claude_input_tokens": 52424,
+        "claude_cached_tokens": 813981,
         "claude_output_tokens": 30640,
         "claude_wall_seconds": 628,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 1,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 0,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [
           "danger-full-access"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 628,
-        "cost_is_complete": true,
-        "cost_per_resolved": 3.3927,
+        "cost_precision": "unpriced",
+        "cost_is_complete": false,
+        "cost_usd": 3.3927,
+        "cost_low_usd": 3.3927,
+        "cost_high_usd": 3.3927,
+        "cost_per_task": null,
+        "cost_per_resolved": null,
+        "tokens": 897045,
+        "tokens_per_task": 897045,
+        "wall_per_task": 628,
+        "wall_p50": 628,
+        "wall_p90": 628,
         "seconds_per_resolved": 628
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable \u2192 glm-5.3-flash + fable",
+      "implementer": "fable",
+      "reviewers": [
+        "glm-5.3-flash",
+        "fable"
+      ],
+      "pipeline": "fable implements \u2192 glm critiques once \u2192 fable repairs",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T222442Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-H.code-bench-20260902T222442Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": [
+          "danger-full-access"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_CODEX_SANDBOX=danger-full-access bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions H --task-limit 1 --max-claude-dispatches 2\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/H.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     },
     {
+      "id": "I@poc-flask-5014",
       "condition": "I",
       "label": "fable-kimi-bounce",
       "tier": "agentic",
+      "mixed_tier": false,
+      "run_label": "poc-flask-5014",
+      "model_tier": "frontier",
       "description": "Fable implements; Kimi returns one single-shot critique with no agent loop; Fable repairs.",
       "declared_dispatches": {
         "claude": 2,
@@ -456,99 +1507,1293 @@
         "glm": 0,
         "kimi": 1
       },
+      "phases": [
+        "fable-implement",
+        "kimi-critique",
+        "fable-repair"
+      ],
+      "seeds": [
+        1
+      ],
       "measured": true,
       "attempted": true,
-      "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-I.code-bench-20260902T222512Z.json",
-      "evaluator_run_id": "code-bench-20260902T222512Z",
-      "submitted": 1,
-      "resolved": 1,
+      "reports": [
+        {
+          "seed": 1,
+          "evaluator_run_id": "code-bench-20260902T222512Z",
+          "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-I.code-bench-20260902T222512Z.json",
+          "submitted": 1,
+          "resolved": 1,
+          "dataset_total_instances": 500
+        }
+      ],
       "per_task": [
         {
           "instance_id": "pallets__flask-5014",
           "repo": "pallets/flask",
+          "difficulty": "<15 min fix",
+          "seed": 1,
           "status": "resolved",
           "patch_applied": true,
           "fail_to_pass_passed": 1,
           "fail_to_pass_failed": 0,
           "pass_to_pass_failed": 0,
           "evidence": "benchmarks/results/code/evaluation/logs/run_evaluation/code-bench-20260902T222512Z/co-evolution-condition-I/pallets__flask-5014/report.json",
-          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/I"
+          "cell_dir": "benchmarks/results/code/runs/poc-flask-5014/pallets__flask-5014/I",
+          "wall_seconds": 640,
+          "cost_usd": 3.656
         }
       ],
       "telemetry": {
         "claude_dispatches": 2,
         "claude_cost_usd": 3.656,
+        "claude_input_tokens": 58962,
+        "claude_cached_tokens": 1011233,
         "claude_output_tokens": 29285,
         "claude_wall_seconds": 640,
         "codex_phases": 0,
         "codex_wall_seconds": 0,
         "codex_tokens": 0,
+        "codex_input_tokens": 0,
+        "codex_cached_tokens": 0,
+        "codex_output_tokens": 0,
+        "codex_cost_usd": 0.0,
+        "codex_cost_low_usd": 0.0,
+        "codex_cost_high_usd": 0.0,
+        "glm_calls": 0,
+        "glm_cost_usd": 0.0,
+        "kimi_calls": 1,
+        "kimi_cost_usd": 0.0,
         "cells_linked": 1,
+        "repair_cells": 0,
+        "repair_inert_count": 0,
+        "selection_cells": 0,
+        "selection_apply_only": 0,
+        "patch_not_applied": 0,
+        "codex_cli_versions": [],
         "sandbox_modes": [
           "danger-full-access"
         ],
         "single_shot_attempts": [],
         "total_wall_seconds": 640,
-        "cost_is_complete": true,
-        "cost_per_resolved": 3.656,
+        "cost_precision": "unpriced",
+        "cost_is_complete": false,
+        "cost_usd": 3.656,
+        "cost_low_usd": 3.656,
+        "cost_high_usd": 3.656,
+        "cost_per_task": null,
+        "cost_per_resolved": null,
+        "tokens": 1099480,
+        "tokens_per_task": 1099480,
+        "wall_per_task": 640,
+        "wall_p50": 640,
+        "wall_p90": 640,
         "seconds_per_resolved": 640
       },
-      "dataset_total_instances": 500,
       "attempted_count": 1,
-      "complete": true
+      "cells_expected": 1,
+      "complete": true,
+      "submitted": 1,
+      "resolved": 1,
+      "models": {
+        "claude": "fable",
+        "codex": "gpt-5.6-sol"
+      },
+      "effort": {
+        "claude": [
+          "medium"
+        ],
+        "codex": [
+          "medium"
+        ]
+      },
+      "seats": {},
+      "configuration": "fable \u2192 kimi-k3 + fable",
+      "implementer": "fable",
+      "reviewers": [
+        "kimi-k3",
+        "fable"
+      ],
+      "pipeline": "fable implements \u2192 kimi critiques once \u2192 fable repairs",
+      "provenance": {
+        "ran_by": "we ran it",
+        "publishable": true,
+        "run_note": "One-task proof of concept: every arm executes end to end and reaches the official evaluator. Not a measurement. Its evaluator reports carry the label code-bench (the default before --label existed).",
+        "registered": true,
+        "evaluator_run_ids": [
+          "code-bench-20260902T222512Z"
+        ],
+        "report_files": [
+          "benchmarks/results/code/evaluation/co-evolution-condition-I.code-bench-20260902T222512Z.json"
+        ],
+        "harness_commit": null,
+        "harness_dirty": null,
+        "harness_recorded": false,
+        "cli_versions": {},
+        "sandbox_modes": [
+          "danger-full-access"
+        ]
+      },
+      "reproduce": "CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_CODEX_SANDBOX=danger-full-access bash benchmarks/code/code-bench.sh run-canary --run-id poc-flask-5014 --models frontier \\\n  --conditions I --task-limit 1 --max-claude-dispatches 2\nbash benchmarks/code/code-bench.sh evaluate benchmarks/results/code/predictions/poc-flask-5014/I.jsonl --label poc-flask-5014\nbash benchmarks/site/aggregate.sh --suite swebench-verified-poc --run-label poc-flask-5014",
+      "score": {
+        "resolved": 1,
+        "n": 1,
+        "rate": 1.0,
+        "wilson_low": 0.20654931437723745,
+        "wilson_high": 1.0,
+        "seeds": 1
+      },
+      "bootstrap": {
+        "point": 1.0,
+        "low": 1.0,
+        "high": 1.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "seed_summary": null,
+      "rank_ub": 1
     }
   ],
+  "contrasts": [
+    {
+      "a": "A@poc-flask-5014",
+      "b": "B@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "B",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": -0.2816,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "A@poc-flask-5014",
+      "b": "C@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "C",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "A@poc-flask-5014",
+      "b": "D@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "D",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": 1.4723,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "A@poc-flask-5014",
+      "b": "E@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "E",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": -2.337,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "A@poc-flask-5014",
+      "b": "H@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "H",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "A@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "A",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "B@poc-flask-5014",
+      "b": "C@poc-flask-5014",
+      "a_condition": "B",
+      "b_condition": "C",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "B@poc-flask-5014",
+      "b": "D@poc-flask-5014",
+      "a_condition": "B",
+      "b_condition": "D",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": 1.7539,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "B@poc-flask-5014",
+      "b": "E@poc-flask-5014",
+      "a_condition": "B",
+      "b_condition": "E",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": -2.0554,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "B@poc-flask-5014",
+      "b": "H@poc-flask-5014",
+      "a_condition": "B",
+      "b_condition": "H",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "B@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "B",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "C@poc-flask-5014",
+      "b": "D@poc-flask-5014",
+      "a_condition": "C",
+      "b_condition": "D",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "C@poc-flask-5014",
+      "b": "E@poc-flask-5014",
+      "a_condition": "C",
+      "b_condition": "E",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "C@poc-flask-5014",
+      "b": "H@poc-flask-5014",
+      "a_condition": "C",
+      "b_condition": "H",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "C@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "C",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "D@poc-flask-5014",
+      "b": "E@poc-flask-5014",
+      "a_condition": "D",
+      "b_condition": "E",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": -3.8093,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": true
+    },
+    {
+      "a": "D@poc-flask-5014",
+      "b": "H@poc-flask-5014",
+      "a_condition": "D",
+      "b_condition": "H",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "D@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "D",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "E@poc-flask-5014",
+      "b": "H@poc-flask-5014",
+      "a_condition": "E",
+      "b_condition": "H",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "E@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "E",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "F@poc-flask-5014",
+      "b": "G@poc-flask-5014",
+      "a_condition": "F",
+      "b_condition": "G",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    },
+    {
+      "a": "H@poc-flask-5014",
+      "b": "I@poc-flask-5014",
+      "a_condition": "H",
+      "b_condition": "I",
+      "n": 1,
+      "both": 1,
+      "only_a": 0,
+      "only_b": 0,
+      "neither": 0,
+      "excluded": 0,
+      "rescued_by_b": [],
+      "broken_by_b": [],
+      "net_b_minus_a": 0,
+      "mcnemar_exact_p": 1.0,
+      "delta_b_minus_a": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n_boot": 2000,
+        "seed": 20260904,
+        "levels": [
+          "repo",
+          "task",
+          "seed"
+        ],
+        "tasks": 1,
+        "repos": 1
+      },
+      "cost_delta_usd": null,
+      "cost_per_net_flip_usd": null,
+      "cost_is_complete": false
+    }
+  ],
+  "pareto": {
+    "cost": [
+      "E@poc-flask-5014"
+    ],
+    "wall": [
+      "F@poc-flask-5014",
+      "G@poc-flask-5014"
+    ],
+    "tokens": [
+      "F@poc-flask-5014",
+      "G@poc-flask-5014"
+    ]
+  },
+  "task_matrix": {
+    "order": [
+      "pallets__flask-5014"
+    ],
+    "tasks": {
+      "pallets__flask-5014": {
+        "instance_id": "pallets__flask-5014",
+        "repo": "pallets/flask",
+        "difficulty": "<15 min fix",
+        "cells": {
+          "A@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "B@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "C@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "D@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "E@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "F@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "G@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "H@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          },
+          "I@poc-flask-5014": {
+            "resolved": 1,
+            "ran": 1,
+            "seeds": 1,
+            "status": "resolved",
+            "repair_inert": false,
+            "patch_applied": true
+          }
+        },
+        "solo_resolved": true,
+        "review_resolved": true,
+        "rescued_by_review": false,
+        "resolved_by": [
+          "A@poc-flask-5014",
+          "B@poc-flask-5014",
+          "C@poc-flask-5014",
+          "D@poc-flask-5014",
+          "E@poc-flask-5014",
+          "F@poc-flask-5014",
+          "G@poc-flask-5014",
+          "H@poc-flask-5014",
+          "I@poc-flask-5014"
+        ]
+      }
+    },
+    "difficulty_order": [
+      "<15 min fix",
+      "15 min - 1 hour",
+      "1-4 hours",
+      ">4 hours"
+    ]
+  },
+  "methodology": {
+    "preregistration": {
+      "schema": "code-bench-preregistration/1.0",
+      "registered_on": "2026-09-04",
+      "source": ".planning/notes/2026-09-04-benchmark-expansion-plan.md (sections 1, 3 and 6)",
+      "note": "One primary contrast per phase, declared before the phase runs, so the headline needs no multiple-comparison correction. Everything else is exploratory. Outcomes are never written here: the site fills them from the evaluator reports.",
+      "analysis": {
+        "primary_statistic": "paired per-task comparison on the same frozen tasks: per-task mean over seeds, discordant table, exact two-sided McNemar",
+        "interval": "Wilson 95% on the single-run rate; hierarchical bootstrap over repository, task and seed when seeds exist",
+        "secondary_correction": "Holm across secondary pairwise contrasts within a phase",
+        "power_assumptions": {
+          "discordance_rates": [
+            0.1,
+            0.14,
+            0.2
+          ],
+          "effects": [
+            0.05,
+            0.06,
+            0.1
+          ],
+          "alpha": 0.05,
+          "power": 0.8
+        }
+      }
+    },
+    "phases": [
+      {
+        "id": "1",
+        "name": "Finish the light matrix on random50",
+        "suite": "swebench-verified-random50",
+        "model_tier": "light",
+        "arms": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I",
+          "J",
+          "K",
+          "L"
+        ],
+        "primary_contrast": {
+          "a": "B",
+          "b": "D",
+          "question": "cross-vendor bounce vs self-bounce: does any second pass help, or only a cross-vendor one?"
+        },
+        "exit": "nine light-tier rows complete on the same 50 tasks; B-vs-D discordance table published",
+        "observed": {
+          "contrast": "B@poc-flask-5014 vs D@poc-flask-5014",
+          "only_a": 0,
+          "only_b": 0,
+          "mcnemar_exact_p": 1.0,
+          "delta": {
+            "point": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n_boot": 2000,
+            "seed": 20260904,
+            "levels": [
+              "repo",
+              "task",
+              "seed"
+            ],
+            "tasks": 1,
+            "repos": 1
+          }
+        },
+        "arms_measured": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I"
+        ]
+      },
+      {
+        "id": "2",
+        "name": "Tier crossing on the same 50 tasks",
+        "suite": "swebench-verified-random50",
+        "model_tier": "mixed",
+        "arms": [
+          "A",
+          "B",
+          "D",
+          "E",
+          "M",
+          "N",
+          "O",
+          "P"
+        ],
+        "primary_contrast": {
+          "a": "A",
+          "b": "M",
+          "question": "does a cheap implementer with a strong reviewer match a strong solo at lower cost per solved task? (A at frontier tier vs M)"
+        },
+        "exit": "cost-vs-pass-rate Pareto plot with light, frontier, mixed and max rows on the same 50 tasks",
+        "observed": null,
+        "arms_measured": [
+          "A",
+          "B",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "id": "3",
+        "name": "Scale for power",
+        "suite": "stratified 100 then 300 Verified tasks, 3 seeds",
+        "model_tier": "top arms from phases 1-2",
+        "arms": [],
+        "primary_contrast": {
+          "a": "A",
+          "b": "B",
+          "question": "does the cross-vendor bounce beat the solo at confirmatory power?"
+        },
+        "exit": "confirmatory CI on the primary contrast at 300 tasks x 3 seeds",
+        "observed": {
+          "contrast": "A@poc-flask-5014 vs B@poc-flask-5014",
+          "only_a": 0,
+          "only_b": 0,
+          "mcnemar_exact_p": 1.0,
+          "delta": {
+            "point": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n_boot": 2000,
+            "seed": 20260904,
+            "levels": [
+              "repo",
+              "task",
+              "seed"
+            ],
+            "tasks": 1,
+            "repos": 1
+          }
+        },
+        "arms_measured": []
+      }
+    ],
+    "power_table": [
+      {
+        "discordance_rate": 0.1,
+        "effect": 0.05,
+        "paired_observations": 312
+      },
+      {
+        "discordance_rate": 0.1,
+        "effect": 0.06,
+        "paired_observations": 216
+      },
+      {
+        "discordance_rate": 0.1,
+        "effect": 0.1,
+        "paired_observations": 77
+      },
+      {
+        "discordance_rate": 0.14,
+        "effect": 0.05,
+        "paired_observations": 438
+      },
+      {
+        "discordance_rate": 0.14,
+        "effect": 0.06,
+        "paired_observations": 303
+      },
+      {
+        "discordance_rate": 0.14,
+        "effect": 0.1,
+        "paired_observations": 108
+      },
+      {
+        "discordance_rate": 0.2,
+        "effect": 0.05,
+        "paired_observations": 626
+      },
+      {
+        "discordance_rate": 0.2,
+        "effect": 0.06,
+        "paired_observations": 434
+      },
+      {
+        "discordance_rate": 0.2,
+        "effect": 0.1,
+        "paired_observations": 155
+      }
+    ],
+    "sampling": null,
+    "difficulty": {
+      "source": "datasets-server.huggingface.co rows API, field `difficulty`",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "fetched_on": "2026-09-04",
+      "buckets": [
+        "<15 min fix",
+        "15 min - 1 hour",
+        "1-4 hours",
+        ">4 hours"
+      ],
+      "counts": {
+        "<15 min fix": 1,
+        "15 min - 1 hour": 0,
+        "1-4 hours": 0,
+        ">4 hours": 0
+      },
+      "note": "Human time-to-fix estimate shipped with SWE-bench Verified. A public field, not a gold patch or hidden test."
+    }
+  },
   "superseded_reports": [
     {
+      "run_label": "poc-flask-5014",
       "condition": "A",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T151007Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-A.code-bench-20260901T151007Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "B",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260831T205027Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260831T205027Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "B",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260831T235501Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260831T235501Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "B",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T163754Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260901T163754Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "B",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T223410Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-B.code-bench-20260901T223410Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "C",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T000746Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-C.code-bench-20260901T000746Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "D",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T160935Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-D.code-bench-20260901T160935Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "E",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T151934Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-E.code-bench-20260901T151934Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "F",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T155052Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-F.code-bench-20260901T155052Z.json"
     },
     {
+      "run_label": "poc-flask-5014",
       "condition": "G",
+      "seed": 1,
       "evaluator_run_id": "code-bench-20260901T160000Z",
       "report_file": "benchmarks/results/code/evaluation/co-evolution-condition-G.code-bench-20260901T160000Z.json"
     }
-  ],
-  "caveat": "Frozen five-task probe of SWE-bench Verified, scored by the official evaluator. One task is 20 points; these numbers are not comparable to published full-500 SWE-bench Verified scores."
+  ]
 }

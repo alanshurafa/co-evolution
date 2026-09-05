@@ -37,11 +37,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ -f benchmarks/site/public/leaderboard.html ]] \
+          [[ -f benchmarks/site/public/index.html ]] \
             || { echo "no rendered page to publish"; exit 1; }
           mkdir -p _site
-          cp benchmarks/site/public/* _site/
-          cp benchmarks/site/public/leaderboard.html _site/index.html
+          cp -R benchmarks/site/public/. _site/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

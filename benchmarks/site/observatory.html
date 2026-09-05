@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Does cross-vendor AI code review improve results? Explore Co-Evolution's SWE-bench Verified scores, uncertainty, cost, and task-level evidence.">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>Co-Evolution · AI evaluation observatory</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%232b50ed'/%3E%3Cpath d='M17 10L7 20l10 10M23 10l10 10-10 10' stroke='white' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;450;500;550;600;650;700;750;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>__STYLE__</style>
+</head>
+<body>
+  <a class="skip" href="#results">Skip to results</a>
+  <div class="reading-progress" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top" aria-label="Co-Evolution home"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M15 7 4 18l11 11M21 7l11 11-11 11"/></svg><span>co-evolution<span class="brand-dot">.</span></span><span class="brand-label">EVALS</span></a>
+      <nav aria-label="Main navigation"><a href="#results" class="active">Results</a><a href="#compare">Compare</a><a href="#methodology">Methodology</a><a href="#archive">Archive</a></nav>
+      <a class="source-link" href="https://github.com/alanshurafa/co-evolution" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  <main id="top" class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> THE CO-EVOLUTION OBSERVATORY</p>
+        <h1 id="hero-title">Better together?<br><span>Measure it.</span></h1>
+        <p class="hero-description">One model writes the code. Another reviews it.<br class="desktop-break"> See what changes in accuracy, cost, and reliability.</p>
+        <a class="primary-link" href="#results">Explore the results <span aria-hidden="true">↗</span></a>
+        <p class="hero-footnote">Real repository issues. Official evaluation. Open evidence.</p>
+      </div>
+      <div class="hero-scores" id="hero-scores" aria-label="Current completed results"></div>
+    </section>
+    <div class="dataset-strip"><span class="dataset-icon" aria-hidden="true">⌘</span><div><strong id="dataset-name">SWE-bench Verified</strong><span id="dataset-scope"></span></div><div class="dataset-meta"><span class="status-dot"></span><span id="updated"></span><a href="#methodology">How we test <span aria-hidden="true">↗</span></a></div></div>
+
+    <section id="results" class="section" aria-labelledby="results-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / THE RESULTS</p><h2 id="results-title">Every configuration. Clear evidence.</h2><p>Compare workflows on the same tasks, with the uncertainty in view.</p></div><button id="export" class="button secondary">Export CSV <span aria-hidden="true">↓</span></button></div>
+      <div class="filter-bar"><label>Benchmark<select id="suite-select"></select></label><label>Run<select id="run-select"></select></label><label>Execution<select id="tier-select"><option value="agentic">Coding agents</option><option value="single-shot">Single-shot models</option></select></label><label class="search-label">Find a configuration<span class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search models or workflows…"></span></label></div>
+      <div class="results-context"><div id="run-context"></div><span id="result-count" role="status" aria-live="polite"></span></div>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Configuration results, scroll horizontally on smaller screens"><table class="leaderboard"><caption class="sr-only">Scores and resource usage for the selected benchmark run and execution type</caption><thead><tr><th scope="col">Configuration</th><th scope="col" class="number" aria-sort="descending"><button data-sort="score">Resolved <span>↓</span></button></th><th scope="col" class="interval-heading">95% interval</th><th scope="col" class="number" aria-sort="none"><button data-sort="cost">Cost / task <span>↕</span></button></th><th scope="col" class="number" aria-sort="none"><button data-sort="time">Time / task <span>↕</span></button></th><th scope="col" class="number">Tested</th><th scope="col">Evidence</th></tr></thead><tbody id="result-rows"></tbody></table></div>
+      <div class="table-note"><span class="info-icon" aria-hidden="true">i</span><p>Sorted by observed score, not a claim of statistical superiority. Bars show 95% Wilson intervals. “Est.” marks estimated cost. Unfinished runs use their evaluated sample, and carry a partial label.</p></div>
+    </section>
+
+    <section id="compare" class="section" aria-labelledby="compare-title">
+      <div class="section-heading"><div><p class="eyebrow">02 / LOOK CLOSER</p><h2 id="compare-title">Build your comparison.</h2><p>Select configurations to see where they succeed and what a solved task costs.</p></div><button class="button secondary" id="select-all">Select all</button></div>
+      <div class="compare-chips" id="compare-chips" aria-label="Configurations to compare"></div>
+      <div class="chart-grid">
+        <article class="chart-panel"><div class="chart-heading"><div><h3>Performance by repository</h3><p>Resolved tasks · %</p></div><span class="small-label">HIGHER IS BETTER ↗</span></div><div id="radar-chart"></div></article>
+        <article class="chart-panel"><div class="chart-heading"><div><h3>Cost per resolved task</h3><p>USD · list-price accounting</p></div><span class="small-label">LOWER IS BETTER ↘</span></div><div id="cost-chart"></div></article>
+      </div>
+      <div id="compare-legend" class="chart-legend"></div>
+      <details class="breakdown"><summary>Repository breakdown <span>Exact counts behind the chart <span aria-hidden="true">＋</span></span></summary><div class="table-scroll" tabindex="0" role="region" aria-label="Repository score breakdown"><table id="repo-table"></table></div><p class="small-note">Repositories have unequal sample sizes; overall scores weight tasks equally. Small repository samples are descriptive.</p></details>
+      <article class="paired-panel"><div class="paired-intro"><p class="eyebrow">SAME TASKS. DIRECT COMPARISON.</p><h3>What did the extra pass change?</h3><p>Count the issues gained and lost when switching configurations.</p><label>Paired comparison<select id="pair-select"></select></label></div><div id="paired-result"></div></article>
+    </section>
+
+    <section id="tasks" class="section" aria-labelledby="tasks-title"><div class="section-heading"><div><p class="eyebrow">03 / THE UNDERLYING TASKS</p><h2 id="tasks-title">Every result has a story.</h2><p>Explore individual issues and the configurations that resolved them.</p></div><label class="compact-label">Repository<select id="repo-select"><option value="all">All repositories</option></select></label></div><div class="matrix-legend"><span><i class="resolved-key">✓</i> Resolved</span><span><i class="failed-key">×</i> Unresolved</span><span><i class="missing-key">—</i> Not evaluated</span></div><div class="table-scroll task-scroll" tabindex="0" role="region" aria-label="Individual task outcomes"><table id="task-table"></table></div><p class="small-note">Select an outcome for its evaluator record. Evidence paths identify local artifacts; the downloadable JSON contains the recorded outcomes.</p></section>
+
+    <section id="next" class="section" aria-labelledby="next-title"><div class="section-heading"><div><p class="eyebrow">04 / WHAT COMES NEXT</p><h2 id="next-title">An open research agenda.</h2><p>Registered experiments, with results added as evaluation completes.</p></div><span class="small-label">PLANNED ≠ MEASURED</span></div><div id="roadmap" class="roadmap"></div></section>
+
+    <section id="methodology" class="section methodology" aria-labelledby="method-title"><div><p class="eyebrow">05 / HOW TO READ THIS</p><h2 id="method-title">The method matters<br>as much as the score.</h2><a id="method-link" class="text-link" href="leaderboard-methodology.html">Read the full methodology ↗</a><a id="json-link" class="text-link" href="leaderboard.json" download>Download the source data ↓</a></div><div class="method-items"><article><span>01</span><div><h3>Same issues. Official tests.</h3><p id="method-sample"></p></div></article><article><span>02</span><div><h3>A score is an estimate.</h3><p>Read the interval beside every score. Paired comparisons count gains and losses on shared tasks; exploratory p-values are not corrected for multiple comparisons.</p></div></article><article><span>03</span><div><h3>Costs show their assumptions.</h3><p>List-price accounting is not an invoice. Estimated token splits are marked; incomplete costs are excluded from cost comparisons. Time is average wall time per task.</p></div></article><article><span>04</span><div><h3>Provenance stays visible.</h3><p id="method-provenance"></p></div></article></div></section>
+
+    <section id="archive" class="section archive" aria-labelledby="archive-title"><div class="section-heading"><div><p class="eyebrow">THE RECORD</p><h2 id="archive-title">Previous editions, preserved.</h2></div><p>The original pages remain at their original addresses.</p></div><div id="archive-links"></div></section>
+    <noscript><section class="section"><h2>Current completed results</h2><ul>__FALLBACK__</ul><p>Enable JavaScript for interactive comparisons, or <a href="leaderboard.html">read the original static results</a>.</p></section></noscript>
+  </main>
+  <footer class="shell footer"><a class="brand" href="#top">co-evolution<span class="brand-dot">.</span></a><span>A better workflow should prove it.</span><a href="https://github.com/alanshurafa/co-evolution" target="_blank" rel="noopener">Source & methodology ↗</a></footer>
+  <dialog id="evidence-dialog" aria-labelledby="evidence-title"><form method="dialog"><button class="dialog-close" aria-label="Close evidence">×</button></form><p class="eyebrow">EVALUATION RECORD</p><h2 id="evidence-title"></h2><div id="evidence-body"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script id="observatory-data" type="application/json">__DATA__</script>
+  <script>__SCRIPT__</script>
+</body>
+</html>

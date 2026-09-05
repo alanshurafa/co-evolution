@@ -30,9 +30,28 @@ The conditions are declared in `conditions.json`, each with a `tier`:
 | G | kimi-solo-single-shot | single-shot | Kimi sees the issue plus retrieved context, returns one diff |
 | H | fable-glm-bounce | agentic | Fable implements; GLM critiques once; Fable repairs |
 | I | fable-kimi-bounce | agentic | Fable implements; Kimi critiques once; Fable repairs |
+| J | codex-implements-fable-repairs | agentic | Reverse of B: Codex implements; Fable repairs |
+| K | codex-self-bounce | agentic | Codex implements, then reviews and repairs its own patch |
+| L | fable-best-of-2 | agentic | Two independent Fable implementations; the repo's own tests pick one |
+| M | sonnet-to-sol-bounce | agentic, mixed tier | Sonnet implements; gpt-5.6-sol repairs |
+| N | fable-to-terra-bounce | agentic, mixed tier | Fable implements; gpt-5.6-terra repairs |
+| O | sol-implements-fable-repairs | agentic, mixed tier | gpt-5.6-sol implements; Fable repairs |
+| P | cross-vendor-bounce-2-rounds | agentic | B, then Codex reviews and repairs a second time |
+
+"Fable" and "Codex" in the labels name the seat, not a fixed model: the tier
+(`--models`) decides which model fills each seat, and the results page names
+the model that actually ran. M, N and O pin their seats in `conditions.json`
+regardless of tier, which is what makes them mixed-tier arms. Every condition
+also declares its `phases`; the driver's phase plan must match, and a test
+checks that it does.
 
 D is retained as a self-bounce control even when the product question focuses
-on A/B/C. E is the comparator that makes B's repair arm interpretable.
+on A/B/C. E is the comparator that makes B's repair arm interpretable. J and K
+mirror B and D for the Codex seat: if B's gain comes from the reviewer being
+stronger than the author, J should lose it. L is the equal-cost baseline for
+any two-dispatch arm: two implementations chosen by the repository's tests
+(`scripts/select-best-of-k.sh`, no model in the loop) is what a review pass
+has to beat at the same spend.
 
 H and I isolate one critic each out of C's three-model panel, which is what
 makes C's result attributable: if C beats B, H and I say whether a cheap
@@ -135,6 +154,26 @@ Elevated access is defensible only because a benchmark workspace is a
 throwaway clone under the ignored `benchmarks/results/code/runs/` tree. Do not
 set it for anything else.
 
+The caveat is version-specific, so it is retested rather than assumed. After
+upgrading Codex on the run host (`npm i -g @openai/codex@latest`; 0.153.2 at
+the time of writing), run the probe; it makes one one-line edit per mode and
+writes `probe-<mode>.json` under `benchmarks/results/code/probes/` with the
+Codex version, the mode asked for, the mode Codex reported, and whether the
+file changed:
+
+```bash
+bash benchmarks/code/code-bench.sh probe-codex-sandbox          # workspace-write
+bash benchmarks/code/code-bench.sh probe-codex-sandbox --all    # then danger-full-access
+```
+
+If `workspace-write` writes, drop `CODE_BENCH_CODEX_SANDBOX` from the run
+command and the manifests of that run will show the default mode. Every cell
+manifest also records the `claude` and `codex` CLI versions and the harness
+commit it ran under, so a row on the page can name the Codex build that
+produced it. The Codex driver phases run with `--json`, which puts the token
+split (input, cached, output) in the transcript; without it Codex prints one
+total and the seat can only be priced approximately.
+
 ### Single-shot tier
 
 ```bash
@@ -206,14 +245,47 @@ to a generation workflow.
 ## Results site
 
 ```bash
-bash benchmarks/site/aggregate.sh
+CODE_BENCH_RESULTS_ROOT=/path/to/results/code \
+  bash benchmarks/site/aggregate.sh --suite swebench-verified-random50 \
+    --output benchmarks/site/public/current-results.json --observatory \
+    --also "Current observatory=index.html"
 ```
 
-Builds `benchmarks/results/code/site/leaderboard.json` from the evaluator
-reports, the evaluator's own per-instance verdicts, and the run manifests. Each
-row carries the report file it came from and each task carries the
-`report.json` that decided it, so every number on the published page can be
-checked against a file on disk. The page renders that JSON and nothing else.
+The public entry point is now `benchmarks/site/public/index.html`: a responsive
+observatory with score intervals, configuration search and sorting, repository
+radar comparisons, cost per resolved task, paired gains/losses, task evidence,
+and a registered research agenda. Its default view includes only completed,
+publishable configurations. Partial/flagged runs remain inspectable and do not
+feed headline charts. Agentic and single-shot modes stay separate.
+
+The command builds one JSON (schema `code-bench-site/2.0`) from the evaluator reports, the
+evaluator's own per-instance verdicts, the run manifests and provider logs,
+then renders it as two self-contained pages beside it: the leaderboard and a
+methodology page (`<name>-methodology.html`). Inline SVG, no chart library.
+Every row is a configuration, `implementer → reviewer (tier, run)`, and
+carries: a Wilson interval and Rank(UB) by interval overlap, a fully priced
+cost per task or a visible "incomplete" flag when a seat has no priced figure,
+wall p50/p90, tokens, provenance badges, and an expandable panel with the
+harness commit, evaluator run id, sandbox, models, token split, inert-repair
+count and a copy-paste reproduce command. A Pareto scatter (cost, wall or
+tokens), a paired-contrast panel (discordant table, rescued and broken tasks,
+exact McNemar, bootstrap delta, cost per net flip) and a task × configuration
+heatmap grouped by difficulty are computed in `build-site-data.py`; the page's
+JavaScript only selects what to show.
+
+Which runs a suite page shows is declared in `runs.json`; a run flagged
+`publishable: false` is rendered with the flag and its note rather than
+hidden. `preregistration.json` declares one primary contrast per phase, and
+the methodology page fills its outcome from the evaluator reports. Each row
+names the report files it was read from and each task the `report.json` that
+decided it, so every number on the published page can be checked against a
+file on disk. Commit `benchmarks/site/public/` to publish; the Pages workflow
+copies that directory and nothing else. The original `leaderboard.*` and
+`poc.*` editions are frozen and reachable through Archive; refresh current
+results using the command above. Do not overwrite the archived exports.
+
+For local preview, rebuilding from existing data, or adding future suites,
+see [`../site/README.md`](../site/README.md).
 
 ## Compute contract
 
