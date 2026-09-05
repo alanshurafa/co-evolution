@@ -77,6 +77,11 @@ original SHA-256 hashes. Future refreshes write `current-results.*`; the old
 pages retain their original snapshots. Retired private document benchmarks
 remain outside the public site.
 
+The earlier Code Battery edition that was live on `master` is also preserved
+in `public/archive/2026-09-04-code-battery/`, including an `index.html` alias
+and all six original public files. Its frontier URLs remain at the site root
+for existing bookmarks. All 16 preserved files are checksum-verified.
+
 ## Verification
 
 ```bash

@@ -26,3 +26,4 @@
 
 # Archived eval pages are checksum-verified on every platform.
 benchmarks/site/public/*.html text eol=lf
+benchmarks/site/public/**/*.html text eol=lf

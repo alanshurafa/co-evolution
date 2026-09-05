@@ -36,3 +36,21 @@ Completed 2026-09-04 local / 2026-09-05 UTC.
 - CI now runs the observatory checks on Windows/macOS/Linux; local JavaScript syntax and `git diff --check` passed. Hosted CI itself has not run.
 - Public deployment was not performed. The existing Pages workflow now stages the new `index.html` and preserves archive files; publishing remains a separate release action.
 - Original task checkout and unrelated notes in this worktree were left untouched.
+
+## Release to master
+
+Alan explicitly requested merging and publishing the website. Release checks
+found that the development branch included the unfinished phase orchestrator
+from `8888cb0` and that the older Code Battery edition on `master` was not the
+same as the development branch's archived pages.
+
+- Exclude the unfinished orchestrator's five-file change from this release;
+  its original branch remains on GitHub.
+- Preserve all six public files from master `699be4a` plus its index alias in
+  `archive/2026-09-04-code-battery/`; retain the frontier URLs at the root.
+  The expanded archive manifest checks 16 preserved files.
+- Fix the existing macOS CI failure in no-patch resume: Bash 3.2 treats an
+  empty prediction-file array as unset under nounset. Guard its expansion and
+  assert successful exit in the existing regression test.
+- Run GitHub checks on a PR, merge the verified head into master, wait for the
+  Pages deployment, and verify the deployed index and archive hashes.

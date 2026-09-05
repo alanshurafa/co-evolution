@@ -687,14 +687,17 @@ fi
 
 # The batch runner treats that cell as a scored zero: it is not retried on
 # resume, and the summary line counts it apart from failures.
+nopatch_rc=0
 nopatch_out=$(CODE_BENCH_SUITE=swebench-verified-poc CODE_BENCH_RESULTS_ROOT="$LIVE_ROOT" \
   bash "$RUNNER" run-canary --run-id nopatch --task pallets__flask-5014 \
-  --conditions A --max-claude-dispatches 1 2>&1)
-if printf '%s' "$nopatch_out" | grep -q 'SKIP: pallets__flask-5014/A already ran and produced no patch' \
+  --conditions A --max-claude-dispatches 1 2>&1) || nopatch_rc=$?
+if [[ "$nopatch_rc" == 0 ]] \
+   && printf '%s' "$nopatch_out" | grep -q 'SKIP: pallets__flask-5014/A already ran and produced no patch' \
    && printf '%s' "$nopatch_out" | grep -q '0 cell(s) generated, 1 reused, 0 scored zero (no patch), 0 failed'; then
   pass "a no-patch cell is kept as a zero on resume rather than rerun"
 else
   fail "a no-patch cell is kept as a zero on resume rather than rerun"
+  printf 'resume exit=%s\n%s\n' "$nopatch_rc" "$nopatch_out" >&2
 fi
 
 # The happy path still writes a prediction named for its seed.
