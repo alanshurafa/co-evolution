@@ -10,6 +10,7 @@ Spec (JSON on stdin or --spec FILE):
 
   {
     "run_label": "fx",
+    "source_label": "fx",  # optional cell-artifact directory when labels differ
     "conditions": {
       "A": {"seed": 1, "tier": "light", "cells": {
           "sympy__sympy-20916": {"resolved": true, "claude_cost": 1.0,
@@ -50,7 +51,7 @@ def patch_text(cond, instance, seed):
 def build(root, spec):
     label = spec['run_label']
     eval_dir = os.path.join(root, 'evaluation')
-    runs = os.path.join(root, 'runs', label)
+    runs = os.path.join(root, 'runs', spec.get('source_label') or label)
     for cond, block in spec['conditions'].items():
         seed = int(block.get('seed') or 1)
         tier = block.get('tier', 'light')

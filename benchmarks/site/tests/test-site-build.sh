@@ -23,9 +23,11 @@ check() { # check LABEL FILE JQ-EXPRESSION
 build() { # build NAME SPEC-JSON [extra builder args...]
   local name="$1" spec="$2"; shift 2
   local root="$TMP/$name"
+  local run_label
+  run_label=$(printf '%s' "$spec" | jq -r '.run_label')
   printf '%s' "$spec" | python "$SCRIPT_DIR/make-fixture.py" --root "$root" >/dev/null || return 1
   python "$SITE_DIR/build-site-data.py" --repo-root "$REPO_ROOT" --results-root "$root" \
-    --suite swebench-verified-canary --run-label fx --output "$root/site/leaderboard.json" \
+    --suite swebench-verified-canary --run-label "$run_label" --output "$root/site/leaderboard.json" \
     --generated-at 2026-09-04T00:00:00Z "$@" >/dev/null 2>"$root/build.stderr" \
     || { cat "$root/build.stderr" >&2; return 1; }
   printf '%s' "$root/site/leaderboard.json"
@@ -88,6 +90,39 @@ check "the page records which pricing file and date it used" "$out" \
   '.pricing.file == "benchmarks/code/pricing.json" and (.pricing.recorded_on | test("^2026-"))'
 check "evidence paths stay under benchmarks/results/code" "$out" \
   '[.rows[] | select(.measured) | .per_task[] | .evidence | select(. != null)] | length > 0 and all(startswith("benchmarks/results/code/"))'
+
+
+# --- Interim reports can retain their own label while reusing source cells --
+SPEC_SOURCE_LABEL='{
+  "run_label": "base50-light-interim-378",
+  "source_label": "base50-light",
+  "conditions": {
+    "D": {"cells": {
+      "sympy__sympy-20916": {"resolved": true, "claude_cost": 1.0}}}
+  }}'
+out=$(build source-label "$SPEC_SOURCE_LABEL") || fail "source-label fixture builds"
+check "an interim evaluator label links back to source-run telemetry" "$out" \
+  '.rows[] | select(.condition == "D")
+   | .id == "D@base50-light-interim-378"
+     and .telemetry.cells_linked == 1
+     and .provenance.source_run_label == "base50-light"'
+check "interim reproduction separates generation and evaluator labels" "$out" \
+  '.rows[] | select(.condition == "D") | .reproduce
+   | contains("run-canary --run-id base50-light ")
+     and contains("predictions/base50-light-interim-378/D.jsonl --label base50-light-interim-378")'
+
+SPEC_CONDITION_FILTER='{
+  "run_label": "base50-light",
+  "conditions": {
+    "A": {"cells": {
+      "sympy__sympy-20916": {"resolved": true, "claude_cost": 1.0}}},
+    "F": {"cells": {
+      "django__django-16819": {"resolved": false, "no_patch": true}}}
+  }}'
+out=$(build condition-filter "$SPEC_CONDITION_FILTER") || fail "condition-filter fixture builds"
+check "a display run includes only its registered conditions" "$out" \
+  '[.rows[].condition] == ["A"]
+   and (.runs[] | select(.label == "base50-light") | .conditions_measured == ["A"])'
 
 
 # --- T0.4: uncertainty on every cell, paired contrasts, Rank(UB) -------------

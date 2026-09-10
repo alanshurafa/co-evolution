@@ -1,14 +1,25 @@
 {
   "schema": "code-bench-runs/1.0",
-  "note": "Registry of benchmark runs the site may show. A run is a batch under benchmarks/results/code/runs/<label>/ scored under evaluator label <label>. publishable is a provenance judgement recorded when the run was reviewed, not a number: a run whose harness tree was dirty, or that stopped part way, is shown with that flag rather than hidden. Every figure for a run is still read from its own files. evaluator_label names the label the evaluator reports carry when it differs from the run directory (older runs scored before --label existed).",
+  "note": "Registry of benchmark runs the site may show. A run is a batch under benchmarks/results/code/runs/<label>/ scored under evaluator label <label>. publishable is a provenance judgement recorded when the run was reviewed, not a number: a run whose harness tree was dirty, or that stopped part way, is shown with that flag rather than hidden. Every figure for a run is still read from its own files. evaluator_label names the label the evaluator reports carry when it differs from the displayed run. source_label names the preserved cell-artifact directory when a frozen evaluator snapshot has its own display label. conditions limits a display run to the declared arms when multiple snapshots share one source directory.",
   "runs": [
     {
       "label": "base50-light",
       "suite": "swebench-verified-random50",
       "model_tier": "light",
+      "conditions": ["A", "B", "E"],
       "publishable": true,
       "ran_by": "we ran it",
       "note": "Light tier (Sonnet implements, gpt-5.6-terra as the Codex seat). Arms A, B, E complete on all 50 tasks."
+    },
+    {
+      "label": "base50-light-interim-378",
+      "source_label": "base50-light",
+      "suite": "swebench-verified-random50",
+      "model_tier": "light",
+      "conditions": ["C", "D", "F", "G", "H", "I", "J", "K", "L"],
+      "publishable": false,
+      "ran_by": "we ran it",
+      "note": "Provisional Phase 1 snapshot frozen at 378/450 terminal cells after Kimi was suspended for insufficient balance. Official evaluator reports cover all submitted patches in C, D, F, G, H, I, J, K and L; explicit no-patch outcomes count unresolved, while unfinished cells remain excluded. C and I are selected partial subsets, and B vs D has 49 shared pairs rather than the pre-registered 50. This run also exceeded the original 550-dispatch authorization on an observable lower bound of 576 Claude dispatches because retry caps applied per invocation rather than cumulatively."
     },
     {
       "label": "base50",
