@@ -430,15 +430,18 @@ def resolve_pipeline(condition, models):
                 .replace('{codex}', models.get('codex') or 'codex'))
 
 
-def reproduce_command(suite_id, run_label, condition, tier, sandbox_modes, seeds, task_count):
+def reproduce_command(suite_id, run_label, condition, tier, sandbox_modes, seeds, task_count,
+                      source_label=None, evaluator_label=None):
     """A copy-paste command that would regenerate and score this row."""
+    source_label = source_label or run_label
+    evaluator_label = evaluator_label or run_label
     env = ['CODE_BENCH_SUITE=%s' % suite_id]
     if sandbox_modes and sandbox_modes != ['workspace-write']:
         env.append('CODE_BENCH_CODEX_SANDBOX=%s' % sandbox_modes[0])
     claude = condition['dispatches']['claude'] * task_count * len(seeds)
     lines = [
         '%s bash benchmarks/code/code-bench.sh run-canary --run-id %s --models %s \\'
-        % (' '.join(env), run_label, tier or 'frontier'),
+        % (' '.join(env), source_label, tier or 'frontier'),
         '  --conditions %s --task-limit %d%s --max-claude-dispatches %d'
         % (condition['id'], task_count,
            (' --repeat %d' % len(seeds)) if len(seeds) > 1 else '', claude),
@@ -447,7 +450,7 @@ def reproduce_command(suite_id, run_label, condition, tier, sandbox_modes, seeds
         cell = condition['id'] if seed == 1 else '%s.r%d' % (condition['id'], seed)
         lines.append('bash benchmarks/code/code-bench.sh evaluate '
                      'benchmarks/results/code/predictions/%s/%s.jsonl --label %s'
-                     % (run_label, cell, run_label))
+                     % (run_label, cell, evaluator_label))
     lines.append('bash benchmarks/site/aggregate.sh --suite %s --run-label %s'
                  % (suite_id, run_label))
     return '\n'.join(lines)
@@ -459,6 +462,7 @@ def build_row(root, eval_dir, condition, run, seeds, latest, cells, attempts_ind
               instances, repos, difficulties, pricing, suite_id):
     cond_id = condition['id']
     label = run['label']
+    source_label = run.get('source_label') or label
     row = {
         'id': '%s@%s' % (cond_id, label),
         'condition': cond_id,
@@ -596,6 +600,7 @@ def build_row(root, eval_dir, condition, run, seeds, latest, cells, attempts_ind
         'ran_by': run.get('ran_by') or 'unknown',
         'publishable': run.get('publishable'),
         'run_note': run.get('note'),
+        'source_run_label': source_label,
         'registered': run.get('registered', True),
         'evaluator_run_ids': [r['evaluator_run_id'] for r in row['reports']],
         'report_files': [r['report_file'] for r in row['reports']],
@@ -605,8 +610,10 @@ def build_row(root, eval_dir, condition, run, seeds, latest, cells, attempts_ind
         'cli_versions': {k: sorted(v) for k, v in versions.items() if v},
         'sandbox_modes': telemetry['sandbox_modes'],
     }
-    row['reproduce'] = reproduce_command(suite_id, label, condition, run.get('model_tier'),
-                                         telemetry['sandbox_modes'], seeds, len(instances))
+    row['reproduce'] = reproduce_command(
+        suite_id, label, condition, run.get('model_tier'), telemetry['sandbox_modes'],
+        seeds, len(instances), source_label=source_label,
+        evaluator_label=run.get('evaluator_label') or label)
     return row
 
 
@@ -871,12 +878,16 @@ def main():
                                              'note': 'run label not in benchmarks/code/runs.json'})
         run.setdefault('registered', True)
         latest, superseded = newest_reports(eval_dir, run.get('evaluator_label') or label)
-        cells = index_cells(runs_root, label)
-        attempts_index = index_attempts(runs_root, label)
+        source_label = run.get('source_label') or label
+        cells = index_cells(runs_root, source_label)
+        attempts_index = index_attempts(runs_root, source_label)
         superseded_all += [(label,) + s for s in superseded]
         measured_conditions = []
+        included_conditions = set(run.get('conditions') or [c['id'] for c in conditions])
         for condition in conditions:
             cond_id = condition['id']
+            if cond_id not in included_conditions:
+                continue
             seeds = sorted({seed for (cond, seed) in latest if cond == cond_id}
                            | {seed for (cond, seed, _) in attempts_index if cond == cond_id})
             if not seeds:
