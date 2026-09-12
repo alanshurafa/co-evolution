@@ -118,7 +118,7 @@ function runtimeError(
   });
 }
 
-function findBash(): string | null {
+export function findBash(): string | null {
   if (process.platform === "win32") {
     const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
     const gitBash = join(programFiles, "Git", "bin", "bash.exe");
@@ -131,7 +131,7 @@ function isWslLauncher(bashPath: string | null): boolean {
   return /[/\\]windows[/\\]system32[/\\]bash\.exe$/i.test(bashPath ?? "");
 }
 
-function pathForBash(path: string, bashPath: string | null): string {
+export function pathForBash(path: string, bashPath: string | null): string {
   if (process.platform !== "win32") return path;
   const forward = path.replaceAll("\\", "/");
   // Windows' system bash.exe is the WSL launcher, which needs /mnt/<drive>.

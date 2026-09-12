@@ -7,6 +7,23 @@ alone.
 
 ## Default Usage
 
+From a fresh checkout, create and refine a sample without reading the scripts:
+
+```bash
+bash ./co-evolve --help
+bash ./co-evolve init
+bash ./co-evolve bounce sample.md --agents codex,codex --output sample.bounced.md
+```
+
+`init` refuses to overwrite an existing file. `bounce` leaves the input intact,
+prints the result unless `--output` is supplied, and preserves per-pass critiques
+and marker decisions under `.co-evolve/runs/` in your current directory.
+The example requires a logged-in Codex CLI; omit `--agents` for a Claude reviewer
+and Codex composer. Behavior scores are informational; the judge is opt-in.
+
+The npm package also provides `co-evolve` and `co-evolution-mcp`. Its first
+publication is pending; source installation works now. See [publication steps](mcp/PUBLISH.md).
+
 Start with the general Co-Evolution runner unless the task specifically needs
 code execution:
 

@@ -20,6 +20,7 @@ rm -rf "$VENDOR"
 mkdir -p "$VENDOR/lib" "$VENDOR/templates" "$VENDOR/agent-bouncer/templates" "$VENDOR/evals"
 
 cp "$REPO_ROOT/co-evolve-bouncer.sh"                      "$VENDOR/"
+cp "$REPO_ROOT/co-evolve"                                 "$VENDOR/"
 cp "$REPO_ROOT/lib/co-evolution.sh"                       "$VENDOR/lib/"
 cp -R "$REPO_ROOT/templates/co-evolve"                    "$VENDOR/templates/"
 cp "$REPO_ROOT/agent-bouncer/templates/bounce-protocol.md" "$VENDOR/agent-bouncer/templates/"
@@ -29,5 +30,6 @@ cp "$REPO_ROOT/evals/bounce-thresholds.yaml"              "$VENDOR/evals/"
 cp "$REPO_ROOT/evals/BOUNCE-RUNNER-CONTRACT.md"           "$VENDOR/evals/"
 
 chmod +x "$VENDOR/co-evolve-bouncer.sh" "$VENDOR/evals/score-bounce.sh" "$VENDOR/evals/report-bounce.sh"
+chmod +x "$VENDOR/co-evolve"
 
 echo "vendored co-evolution toolkit -> $VENDOR"
