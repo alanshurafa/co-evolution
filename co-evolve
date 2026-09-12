@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat <<'USAGE'
+Usage: co-evolve <command> [options]
+
+Commands:
+  init [file]          Create a sample Markdown document (default: sample.md).
+  bounce <file> [opts] Refine a document; preserve input and run artifacts.
+  help                Show this usage.
+
+Quick start:
+  co-evolve init
+  co-evolve bounce sample.md --agents codex,codex --output sample.bounced.md
+
+Bounce defaults: two passes, Claude reviewer and Codex composer, no interview.
+Both selected agent CLIs must be installed and logged in. To use only Codex,
+pass --agents codex,codex. Run artifacts go to .co-evolve/runs in the current
+directory; set CO_EVOLVE_RUNS_DIR to choose another directory.
+
+Use co-evolve bounce --help for all runner options. Legacy positional input
+and flags still work. The judge is opt-in; behavior scores are informational.
+USAGE
+}
+
+case "${1:-help}" in
+  help|--help|-h) usage ;;
+  init)
+    shift
+    if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then usage; exit 0; fi
+    [[ $# -le 1 ]] || { echo 'Usage: co-evolve init [file]' >&2; exit 2; }
+    target="${1:-sample.md}"
+    # noclobber also protects an existing file if another init races this one.
+    if ! (set -o noclobber; cat > "$target" <<'SAMPLE'
+# A small team's backup plan
+
+We keep our only backup on the same laptop as the original files. A weekly
+copy is enough because the laptop has never failed. Everyone can overwrite
+the backup to save time. We will know the backups work when no one complains.
+
+Improve this plan for a three-person team. Keep it under 250 words. Address
+recovery, access, and a concrete way to prove that a backup can be restored.
+SAMPLE
+    ); then
+      echo "Could not create $target; choose a new file in an existing directory." >&2
+      exit 1
+    fi
+    printf 'Created %s\nNext: co-evolve bounce "%s" --agents codex,codex\n' "$target" "$target"
+    ;;
+  bounce)
+    shift
+    if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
+      exec bash "$ROOT/co-evolve-bouncer.sh" --help
+    fi
+    [[ $# -gt 0 && -f "$1" ]] || { echo 'Usage: co-evolve bounce <existing-file> [options]' >&2; exit 2; }
+    input="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+    shift
+    export CO_EVOLVE_RUNS_DIR="${CO_EVOLVE_RUNS_DIR:-$PWD/.co-evolve/runs}"
+    exec bash "$ROOT/co-evolve-bouncer.sh" --vanilla --bounce-only "$@" -- "$input"
+    ;;
+  *) exec bash "$ROOT/co-evolve-bouncer.sh" "$@" ;;
+esac
