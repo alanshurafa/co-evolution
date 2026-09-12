@@ -19,6 +19,15 @@ Timing in workflows with external critics can omit those critics' time.
 
 ## Preview and rebuild
 
+The custom planning study is published separately at `planning.html`, linked
+from the coding observatory. `planning-results.json` contains the frozen,
+allowlisted recovered/combined report, with source hashes and separate Astra
+and Fable judgments. Missing judgments remain null. It uses rubric points,
+not the coding study's resolved-task metric. Rebuild it without model calls:
+`python benchmarks/site/build-planning.py`. The renderer reuses the
+observatory's typography and stylesheet. The original local reports and
+provider attempts are retained outside the public directory.
+
 ```bash
 # Re-render the site from committed exports; no model calls or new evaluation.
 python benchmarks/site/build-observatory.py
