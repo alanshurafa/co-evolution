@@ -1,0 +1,45 @@
+<section id="explanation" class="section method-copy" aria-labelledby="explanation-title">
+  <div class="section-heading"><div><p class="eyebrow">THE STUDY, EXPLAINED</p><h2 id="explanation-title">What we tested. What we learned.</h2></div></div>
+  <p>The evaluation asked: <strong>Does a plan improve when another AI model reviews it—and does that help more than simply asking the original model to revise or review its own work?</strong></p>
+  <p>It evaluated the quality of written plans. It did <strong>not</strong> execute those plans or measure whether their proposed projects succeeded.</p>
+  <p>Three models created plans: <strong>Sonnet, Terra, and GLM</strong>. Two different models—<strong>Astra and Fable</strong>—served only as independent judges.</p>
+  <p>Each author worked on the same six synthetic briefs. For each brief, we compared 11 workflows:</p>
+  <ul>
+    <li>The original draft.</li>
+    <li>A plain revision without an adversarial critique.</li>
+    <li>Seven reviewer combinations: each individual model, each two-model pair, and all three together.</li>
+    <li>Two additional controls using two or three independent reviews by the author’s own model.</li>
+  </ul>
+  <p>That produced <strong>33 workflows across six briefs: 198 planned outputs</strong>, each intended to receive one Astra judgment and one Fable judgment.</p>
+  <p>Reviewers received the same original draft. The original author then integrated their anonymous critiques. This helped isolate the reviewer’s contribution while holding the starting plan and final writer constant. Multiple-reviewer workflows were compared with self-review controls using the same number of critics.</p>
+  <p>The judges assessed requirements, correctness and feasibility, safeguards, sequencing, verification, and clarity. Their rubric scores were expressed on a <strong>0–100 scale</strong>. Judgments required supporting citations; invalid judgments remained missing rather than becoming zero scores.</p>
+
+  <h3>What the results showed</h3>
+  <p>The primary comparison was:</p>
+  <ul>
+    <li>Sonnet draft → Terra review → Sonnet revision</li>
+    <li>Sonnet draft → independent Sonnet review → Sonnet revision</li>
+  </ul>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Primary comparison results">
+    <table><caption>Across the five briefs with both outputs available</caption><thead><tr><th scope="col">Judge</th><th scope="col">Advantage of Terra review over Sonnet self-review</th><th scope="col">Descriptive 95% interval</th></tr></thead><tbody>
+      <tr><th scope="row">Astra</th><td><strong>+9.00 points</strong></td><td>+3.75 to +13.25</td></tr>
+      <tr><th scope="row">Fable</th><td><strong>−1.00 point</strong></td><td>−5.00 to +3.75</td></tr>
+    </tbody></table>
+  </div>
+  <p><strong>Astra saw a meaningful improvement in this sample. Fable did not show a clear advantage.</strong> These are paired differences on the same briefs, not differences between averages drawn from different samples.</p>
+  <p>Other combinations also showed gains. For example, Terra-authored plans reviewed by Terra and GLM scored <strong>84.79 with Astra</strong> and <strong>95.83 with Fable</strong>. Against the matched two-critic Terra self-review control, that was <strong>+2.71 and +4.79 points</strong>, respectively. This suggests some combinations were useful, but it does not establish a universally best workflow.</p>
+  <p>The judges also disagreed sharply about serious problems:</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Judge disagreement on critical violations">
+    <table><caption>Each flagged judgment contains at least one critical violation</caption><thead><tr><th scope="col">Judge</th><th scope="col">Valid judgments</th><th scope="col">Judgments flagging a critical violation</th></tr></thead><tbody>
+      <tr><th scope="row">Astra</th><td>194</td><td>110</td></tr>
+      <tr><th scope="row">Fable</th><td>187</td><td>4</td></tr>
+    </tbody></table>
+  </div>
+  <p>Those flags are model assessments, not confirmed real-world failures. The disparity shows that the conclusion depends substantially on the evaluator. We should not assume either judge is correct simply because it is stricter or more favorable.</p>
+
+  <h3>How complete and reliable is the evidence?</h3>
+  <p>The study finished with <strong>194/198 plans and 381/396 judgments</strong>, using <strong>730/790 authorized calls</strong>. One exhausted critique blocked four plans and eight judgments; seven additional Fable judgments failed validation.</p>
+  <p>The run also required recovery after transport and CLI compatibility problems. Some generation resumed after partial grading and beyond the original deadline. Successful evidence was preserved, and treatment prompts were not tuned against scores, but the result must be described as a <strong>recovered, exploratory study</strong>.</p>
+  <p>The practical conclusion is: <strong>cross-model review can improve plans, but the benefit varies by workflow and judge. This evaluation does not establish that it reliably beats self-review.</strong> Six synthetic briefs and descriptive intervals support identifying promising combinations, rather than broad claims about intelligence or dependable real-world performance.</p>
+  <p><a class="button secondary" href="#results">Explore all workflows and their evidence ↓</a></p>
+</section>
