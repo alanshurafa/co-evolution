@@ -78,8 +78,7 @@ cp -R skills/co-evolution/* ~/.claude/skills/co-evolution/
 
 cat > ~/.local/bin/co-evolve <<EOF
 #!/usr/bin/env bash
-cd "$PWD" || exit 1
-exec bash ./co-evolve-bouncer.sh "\$@"
+exec bash "$PWD/co-evolve" "\$@"
 EOF
 chmod +x ~/.local/bin/co-evolve
 ```
