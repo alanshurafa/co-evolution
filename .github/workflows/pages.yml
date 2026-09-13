@@ -33,6 +33,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Require current evidence assessments before publication
+        run: python3 benchmarks/site/validate-publication.py
+
       - name: Stage the published page as the site root
         shell: bash
         run: |
