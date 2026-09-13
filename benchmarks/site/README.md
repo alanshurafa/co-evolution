@@ -1,5 +1,27 @@
 # Public evaluation observatory
 
+## Required evaluation of every published test
+
+Every current JSON result export must have an entry in
+`public/test-evaluations.json` stating the question, finding, coverage, test
+quality, limitations, decision and next action. Its canonical-JSON SHA-256
+ties that assessment to the exact data; changing scores invalidates the old
+assessment. Write a fresh substantive evaluation after each test, including
+failed-readiness and incomplete runs, rather than updating the hash alone.
+
+`python benchmarks/site/build-evaluations.py` renders the assessments to
+`public/evaluations.html` and the PlanBench outcome to `public/planbench.html`.
+`python benchmarks/site/validate-publication.py` is mandatory before publishing
+and runs in the GitHub Pages deployment itself. CI tests stale/missing
+assessment rejection. New result exports are discovered automatically; the
+existing byte-pinned archives remain historical exceptions. The gate also
+checks that assessment text is actually published and linked from the homepage.
+It enforces coverage and freshness, not the correctness of scientific reasoning.
+
+Do not label smoke checks as benchmark scores, missing results as failed plans,
+or an incomplete study as evidence of benefit. Separate benchmark outcome,
+engineering validation, practical impact and the recommended next decision.
+
 `public/index.html` is the current results website. It is a standalone HTML
 artifact with its CSS, JavaScript and exact source export embedded. It works
 without a build server, package install or chart library. The two fonts have
