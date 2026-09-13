@@ -35,6 +35,8 @@ jobs:
         run: python benchmarks/site/tests/test_observatory.py
       - name: Check score inclusion and repository denominators
         run: node --test benchmarks/site/tests/test-observatory-data.cjs
+      - name: Check publication assessments and stale-evidence rejection
+        run: python benchmarks/site/tests/test_publication.py
 
   test:
     strategy:
