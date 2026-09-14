@@ -6,12 +6,16 @@ VAL executable and PDDL extractor. The scored sample is 50 fixed tasks from
 110. Four arms compare Astra original, plain revision, self-review, and Fable
 review followed by Astra revision.
 
-The attempt stopped at readiness after one Fable safeguard refusal. No scored
-task ran. Seven available excluded smoke plans validated, but that is not a
-benchmark accuracy result. Public outcome: `../site/public/planbench-results.json`.
+The initial attempt stopped at readiness after one Fable safeguard refusal.
+User-directed continuations then reached 195 scored plans: A/B/C each
+50/50 valid; D 45/45 valid, with five missing after critique refusals. The
+original-draft arm already scored 100%, so review had no measured validity
+gain. Public outcome: `../site/public/planbench-results.json`; the initial
+readiness-only outcome is retained in the site's dated archive.
 The run's local immutable manifest, attempts, SQLite accounting, generation
 freeze, readiness fixtures and validator logs are under
-`runs/planbench-hard-20260913` in the parent working repository.
+`runs/planbench-hard-20260913`, `runs/planbench-hard-20260913-continuation` and
+the final `runs/planbench-hard-20260913-continuation2` in the parent repository.
 
 `run.py init --root RUN --started EPOCH` creates a new frozen run from a
 pre-fetched official repository at RUN/upstream. It does not authorize a new
@@ -37,8 +41,18 @@ The old custom-study ledgers are not imported, reset or modified.
 
 Validation performed once: official valid/invalid/malformed fixtures; an
 offline lifecycle with a charged transient retry and a duplicate-free resume;
-the two excluded live smoke tasks. No scored benchmark was run after the
-provider refusal. Publication includes an explicit evidence assessment.
+the two excluded live smoke tasks. Continuation added a focused refusal
+classification check and four known-answer scoring/missingness checks.
+All 195 available scored plans were validated once after final generation
+freeze. Publication includes an explicit evidence assessment.
+
+`continue_run.py` preserves the initial eleven calls and successful smoke
+outputs for one identical retry. `recover_requests.py` preserves the next
+246-call snapshot and corrects request-level refusal handling. Both prepare
+new continuation directories without live dispatch. Neither raises a cap or
+extends the deadline. `publish_report.py` stages the terminal result and
+reviewed assessment, archives the original publication, and includes extracted
+PDDL actions so the public outcomes can be independently reproduced.
 
 Sources: https://github.com/karthikv792/LLMs-Planning and
 https://github.com/KCL-Planning/VAL . Upstream PDDL extraction is loaded as

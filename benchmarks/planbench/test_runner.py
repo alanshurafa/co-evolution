@@ -5,7 +5,7 @@ from unittest.mock import patch
 from campaign import Campaign
 from run import GRANT,STAGE,CAPS,definitions,dispatch_loop
 from support import write_once,sha
-from transport import ProviderFailure
+from transport import ProviderFailure,classify
 
 class Fake:
     def __init__(self):self.calls=[];self.failed=False
@@ -16,6 +16,10 @@ class Fake:
         return dict(text='(pick-up a)\n(stack a b)',requested_model='gpt-6-astra' if seat=='astra' else 'claude-fable-5-1',reported_model='claude-fable-5-1' if seat=='fable' else None,tool_calls=0,seconds=0,usage={})
 
 class Lifecycle(unittest.TestCase):
+    def test_specific_content_refusal_is_not_family_unavailability(self):
+        self.assertEqual(classify("API Error: safeguards flagged this message. Details: [reasoning_extraction]"),'content_refusal')
+        self.assertEqual(classify('unknown model'),'model_unavailable')
+        self.assertEqual(classify('unclassified upstream error'),'provider_error')
     def test_resume_and_retry(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)

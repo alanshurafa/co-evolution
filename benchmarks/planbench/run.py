@@ -142,7 +142,7 @@ def dispatch_loop(root,c,adapter,smoke,cutoff=None):
                     category=e.category if isinstance(e,ProviderFailure) else 'local_error'
                     write_once(root/'attempts'/f'{call:04d}.response.json',dict(error=category,message=str(e),raw=getattr(e,'raw',''),seconds=time.time()-item['started'],finished=now()))
                     retry_count=c.db.execute('SELECT count(*) FROM calls WHERE grant_id=? AND family=? AND attempt_index=2',(GRANT,family)).fetchone()[0]
-                    retry=category=='network_error' and len(c.attempts(STAGE,ident))<2 and retry_count<({'codex':20,'claude':4}[family]) and time.time()+5<cutoff
+                    retry=category in ('network_error','content_refusal') and len(c.attempts(STAGE,ident))<2 and retry_count<({'codex':20,'claude':4}[family]) and time.time()+5<cutoff
                     stop=category in ('billing_blocked','auth_blocked','model_unavailable','rate_limited','model_metadata_missing','isolation_failure','local_unavailable','local_error','provider_error')
                     if stop:stopped.add(family)
                     error=('provider_stop:' if stop else '')+category+': '+str(e)
