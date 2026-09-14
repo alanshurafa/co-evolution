@@ -37,6 +37,8 @@ jobs:
         run: node --test benchmarks/site/tests/test-observatory-data.cjs
       - name: Check publication assessments and stale-evidence rejection
         run: python benchmarks/site/tests/test_publication.py
+      - name: Check paired benchmark statistics and missingness
+        run: python benchmarks/planbench/test_score.py
 
   test:
     strategy:

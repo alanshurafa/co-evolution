@@ -1,0 +1,2596 @@
+{
+  "schema": "planbench-results/1.0",
+  "title": "PlanBench Blocksworld Hard — fixed 50-task co-evolution subset",
+  "generated_at": "2026-09-13T22:35:56.029157+00:00",
+  "completion": "readiness-failed",
+  "benchmark": {
+    "name": "PlanBench Blocksworld Hard",
+    "upstream": "https://github.com/karthikv792/LLMs-Planning",
+    "commit": "fc638a1aff7df3fe7a1a1d289fa2c04cc24dc284",
+    "released_tasks": 110,
+    "selected_tasks": [
+      "instance-11",
+      "instance-71",
+      "instance-90",
+      "instance-21",
+      "instance-26",
+      "instance-94",
+      "instance-91",
+      "instance-92",
+      "instance-42",
+      "instance-43",
+      "instance-48",
+      "instance-38",
+      "instance-104",
+      "instance-41",
+      "instance-45",
+      "instance-23",
+      "instance-62",
+      "instance-8",
+      "instance-15",
+      "instance-83",
+      "instance-18",
+      "instance-81",
+      "instance-105",
+      "instance-57",
+      "instance-78",
+      "instance-16",
+      "instance-46",
+      "instance-56",
+      "instance-49",
+      "instance-13",
+      "instance-29",
+      "instance-108",
+      "instance-35",
+      "instance-93",
+      "instance-60",
+      "instance-24",
+      "instance-52",
+      "instance-85",
+      "instance-68",
+      "instance-59",
+      "instance-103",
+      "instance-33",
+      "instance-4",
+      "instance-66",
+      "instance-55",
+      "instance-74",
+      "instance-89",
+      "instance-100",
+      "instance-73",
+      "instance-3"
+    ],
+    "seed": 20260913,
+    "evaluator": "Bundled VAL 4 with upstream save_gpt3_response PDDL extractor",
+    "hashes": {
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-11.pddl": "8cc80244fd73e21fe9cc39d04ce4be72ae73a70a2c2d7245360259a39f1013c2",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-71.pddl": "3cc7778b4e5bf026059a981ea83c11a4bf0b2c396f3a87a593cfcef8326434d5",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-90.pddl": "2323feb2581cb7646598d18b4d0dce88b2fb90923810ce11cb594b2e44c3afe0",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-21.pddl": "bfbacafa111f795e490663cc75dd8fbca27ecbe1a939f8047c88ed1853198025",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-26.pddl": "15008b1034883771d3e485f5cca8f82206912a25dda307f82b312ecb5e71c47e",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-94.pddl": "feaab0f2696b992642b4efb2eafac718a96eeef6a92cb82964fc3c00c14acced",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-91.pddl": "486b2e897839471b467bba72325477927c724790e53adfe5b9452f9ec4ef84da",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-92.pddl": "59877325dffb09d2761559d778452857074aea460d674c84fc97b0fba78297c1",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-42.pddl": "446f7a52997736159aa771a39315141b55a7f0dc3eda6c805f34291540ff278d",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-43.pddl": "106447fdd2eb34e90fb884bf8ca6b2adda5255f4c0aa0f9b9812d00a58353bba",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-48.pddl": "0ff00fef04f2dc336feb986a12dc841420029228b3163ef640d2775a0f8db882",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-38.pddl": "cb2d36e50bf668423e1b6d9f8caf7de79c9367f7024fc79ae4b38a1a0b875fd8",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-104.pddl": "568433cc8bcfde74ff87d014f779c6b96de76ef8f7f2f2fd8a73e44eb97b1f96",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-41.pddl": "8ab24d2f1bf44a478835f3122dddf2a5f398c4e76a55dacc10a87fd0c2afbcb3",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-45.pddl": "7d2f83e4101adc7686c1e99fd52d13cfddebcd355fbab40762401941ea9652d5",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-23.pddl": "1a93f03a58aa88991a1ec9d789ab312c0c15cb411a6a2e91b0d4b1c551efecff",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-62.pddl": "11ba6ceb01bbce13776a47913ddd50faf30be32253d21713f8b0a6cc83a73824",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-8.pddl": "366b61edb89bfb77d5d5e62d687519b4c146dcbc118299ce73c7858c6b3786d2",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-15.pddl": "a9a95804df11d1e08758a76f46b3539dc177a919ae98c4aa166fe79aa42f5238",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-83.pddl": "2f9731ec8d5ea01079a75f206a876b053ab4ca91b38145ed56af5d26b1b2f6df",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-18.pddl": "b24b3221e2bcba60ef046f6efbfc78af105d2fe44e2c3a4d8947603bd90164e6",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-81.pddl": "30636f531848ff4b4350a883e4c7091aeeed662d82dc3744b9dda84823bd0723",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-105.pddl": "e7679162a4712a5b0b7f99436a1fec7587633e3d351a62e7992f34e6ef6a2584",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-57.pddl": "98c90c31f7aa3f8915a1e41f7006fd4fa0451471674208704b533f30b4f03561",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-78.pddl": "a9b936396bc921b42908e3d7f32115bc05a10a07fd89430d41ea65b13a5a4afa",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-16.pddl": "62fd89cc5e75f0d67da469cca5e7d955a04144fda5e70dc77e599e8e34e097be",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-46.pddl": "812224079994f6c3e2ad3615f3c0eb7c0cb7d7e59e9380cd39a9265129af2098",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-56.pddl": "4ac040b7031458eeed39dc41e95ae89df3e58dba6db5da7521d055608a72b968",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-49.pddl": "733c35c5d0a503f6a1fb489966d7e4bbbfec0009d933a3907e825a0e16f3c177",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-13.pddl": "a4acde19423b444ed5ad2f62a37d4ae8dd4b6adbb66dd3b69dd6ca51bf7e2413",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-29.pddl": "8523b8ff414c7405ed8be1a70854ef4f2dc87e3d6d7af65d0e1548c05e23e4b1",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-108.pddl": "323142551777b2cf9c0335c7ff4281c4cc94fb3346d0513f92a624e5754c6828",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-35.pddl": "0708b821b04fecbbd7d73bd6c66a9eec54d5bdf97cb456d9d2ac5196aeccb270",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-93.pddl": "df7cee3790faf952f54481168c7b1ef400dbdc6fcd952f9815d3a25e878cd003",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-60.pddl": "5bc8d77ce6a3da4dee4f47e3ff7ceceb61ab65bba1eb9118b0c33e01d420e55a",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-24.pddl": "dadffd03b8efdc9709f3ea94c17a10ea6d181be35e3451ba314efe514dedf9f7",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-52.pddl": "efbf9633fb2ec022ed9faef794275697f305444fe4ee57b99d0390c2c36d50a1",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-85.pddl": "e3516d8a3b6c92d6a3817328cc71980a92ff9bafa0903db653a112153635d02e",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-68.pddl": "50b0231e8a3d4fef7ae3c67779c745c261af11391dfca0c7ebd8a50a5e6cd909",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-59.pddl": "a0ea6874b03d7124170ec452503adb7ee34e69b4373779434bd1c4d66cfe3970",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-103.pddl": "370b968738d5e3586c594e2c8e7573f861018249b3a20fc6dc2e4dcbd1c4d2d4",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-33.pddl": "a439400b16162817bec6a878f07f94ccc7c82b46ab58cb2d6dd9515faea072b3",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-4.pddl": "efc975df5d46ed7755cf9c8db1491305374dbe8ca3aa2beae79b5ed1c561ce2d",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-66.pddl": "8626287f793dd08e56ea6bd59c4668b9281f51b5ea8e77845c0345d7db4faf4d",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-55.pddl": "4807618bd505be4e76ec3d8196508e55459c6b49a3666476a862a9b4484d73ce",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-74.pddl": "142f74e56aa486a89558c08cfe67e2dc7e431b6bb91d6a9a6b5ddf0024e99060",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-89.pddl": "9f9524d8452ad21bf079503e52799ca196d7dd4456b0d811f4a166e5f79c2a6a",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-100.pddl": "ef87a9bc2b561275286d22942653da6623662bb8a03f206a3811d7e361bf8199",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-73.pddl": "f206c4e8cb36e08f66cdfe171c9073da5120dc0bd0ac5872b952f78428072124",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-3.pddl": "276ca0c21c1b9d7e31cbe0f802febd7f473cd9e47d0379d54d67ccbbc2048faf",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-80.pddl": "e841e0b5963374c06b64ed01c64679732a42594321d27b93aa50ca07922a85f4",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated\\instance-97.pddl": "1fda1fa507ac88b5e3f4e768f17e271dcf8a34e44dcfde75acb992312bfa64ea",
+      "llm_planning_analysis\\instances\\blocksworld_hard\\generated_domain.pddl": "f7706dd901d3639868b53dba4713171ad96922aa5e7cc5a0271bff044b3ebb0d",
+      "llm_planning_analysis\\utils\\llm_utils.py": "27e241164298d99504486efc8d6ce9ef8ff8311e3f3c7a33663aed6bbdbde7e9",
+      "llm_planning_analysis\\response_evaluation.py": "89870a2aafb5e6c4e43ba4854efe3a9113562b5d3fe888ad353bc322c71e0f3b",
+      "llm_planning_analysis\\prompt_generation.py": "1ec2264109dfa9566e91c9002c9f28d6ba23e37529ebf523634a7af83c705dc4",
+      "planner_tools\\VAL\\validate": "99ade8b360811d1778f583da04ee021b74586375d04ac4789f333c1d475b73f8"
+    },
+    "full_leaderboard_result": false
+  },
+  "models": {
+    "astra": "gpt-6-astra",
+    "fable": "claude-fable-5-1"
+  },
+  "effort": "high",
+  "output_caps": {
+    "astra": "4096 plan /1024 critique instruction targets; CLI does not expose an enforced output-token cap; no truncation",
+    "fable": "CLAUDE_CODE_MAX_OUTPUT_TOKENS=1024; enforced provider output cap; high effort"
+  },
+  "scores": {
+    "A": {
+      "workflow": "Astra draft",
+      "valid": 0,
+      "invalid": 0,
+      "missing": 50,
+      "evaluated": 0,
+      "planned": 50,
+      "score": null,
+      "score_bounds": [
+        0,
+        100
+      ]
+    },
+    "B": {
+      "workflow": "Astra plain revision",
+      "valid": 0,
+      "invalid": 0,
+      "missing": 50,
+      "evaluated": 0,
+      "planned": 50,
+      "score": null,
+      "score_bounds": [
+        0,
+        100
+      ]
+    },
+    "C": {
+      "workflow": "Astra self-review and revision",
+      "valid": 0,
+      "invalid": 0,
+      "missing": 50,
+      "evaluated": 0,
+      "planned": 50,
+      "score": null,
+      "score_bounds": [
+        0,
+        100
+      ]
+    },
+    "D": {
+      "workflow": "Fable review and Astra revision",
+      "valid": 0,
+      "invalid": 0,
+      "missing": 50,
+      "evaluated": 0,
+      "planned": 50,
+      "score": null,
+      "score_bounds": [
+        0,
+        100
+      ]
+    }
+  },
+  "per_task": [
+    {
+      "task": "instance-11",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-11",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-11",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-11",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-71",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-71",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-71",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-71",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-90",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-90",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-90",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-90",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-21",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-21",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-21",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-21",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-26",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-26",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-26",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-26",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-94",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-94",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-94",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-94",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-91",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-91",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-91",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-91",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-92",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-92",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-92",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-92",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-42",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-42",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-42",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-42",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-43",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-43",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-43",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-43",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-48",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-48",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-48",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-48",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-38",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-38",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-38",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-38",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-104",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-104",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-104",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-104",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-41",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-41",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-41",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-41",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-45",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-45",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-45",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-45",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-23",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-23",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-23",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-23",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-62",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-62",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-62",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-62",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-8",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-8",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-8",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-8",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-15",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-15",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-15",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-15",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-83",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-83",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-83",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-83",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-18",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-18",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-18",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-18",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-81",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-81",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-81",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-81",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-105",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-105",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-105",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-105",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-57",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-57",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-57",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-57",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-78",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-78",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-78",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-78",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-16",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-16",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-16",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-16",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-46",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-46",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-46",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-46",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-56",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-56",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-56",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-56",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-49",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-49",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-49",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-49",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-13",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-13",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-13",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-13",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-29",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-29",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-29",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-29",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-108",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-108",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-108",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-108",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-35",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-35",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-35",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-35",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-93",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-93",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-93",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-93",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-60",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-60",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-60",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-60",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-24",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-24",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-24",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-24",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-52",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-52",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-52",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-52",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-85",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-85",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-85",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-85",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-68",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-68",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-68",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-68",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-59",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-59",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-59",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-59",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-103",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-103",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-103",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-103",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-33",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-33",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-33",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-33",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-4",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-4",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-4",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-4",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-66",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-66",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-66",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-66",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-55",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-55",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-55",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-55",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-74",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-74",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-74",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-74",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-89",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-89",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-89",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-89",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-100",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-100",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-100",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-100",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-73",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-73",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-73",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-73",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-3",
+      "arm": "A",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-3",
+      "arm": "B",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-3",
+      "arm": "C",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    },
+    {
+      "task": "instance-3",
+      "arm": "D",
+      "job_state": "blocked",
+      "outcome": {
+        "valid": null,
+        "category": "not_generated",
+        "reason": "readiness smoke did not complete"
+      }
+    }
+  ],
+  "contrasts": {
+    "D-C": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "mcnemar_exact_p": null
+    },
+    "D-B": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "mcnemar_exact_p": null
+    },
+    "D-A": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "mcnemar_exact_p": null
+    }
+  },
+  "smoke": {
+    "excluded": true,
+    "tasks": [
+      "instance-80",
+      "instance-97"
+    ],
+    "planned_jobs": 12,
+    "succeeded_jobs": 10,
+    "outcomes": [
+      {
+        "task": "instance-80",
+        "arm": "A",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "e9c732c8fca0b588873690cd8f1557af51d5c537379e449bb268431e6ffa8882"
+        }
+      },
+      {
+        "task": "instance-80",
+        "arm": "B",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "bc93726b47fa79d5db8a813abd4b5dde6e1e5646946ac9dc80640393ca786d5c"
+        }
+      },
+      {
+        "task": "instance-80",
+        "arm": "C",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "e9c732c8fca0b588873690cd8f1557af51d5c537379e449bb268431e6ffa8882"
+        }
+      },
+      {
+        "task": "instance-80",
+        "arm": "D",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "e9c732c8fca0b588873690cd8f1557af51d5c537379e449bb268431e6ffa8882"
+        }
+      },
+      {
+        "task": "instance-97",
+        "arm": "A",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "ac0abcb527292a88c7545eeaaaa27bf7ba92d0a93b7d02a6fc5b819f68d84fe2"
+        }
+      },
+      {
+        "task": "instance-97",
+        "arm": "B",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "ac0abcb527292a88c7545eeaaaa27bf7ba92d0a93b7d02a6fc5b819f68d84fe2"
+        }
+      },
+      {
+        "task": "instance-97",
+        "arm": "C",
+        "job_state": "succeeded",
+        "outcome": {
+          "valid": true,
+          "category": "valid",
+          "returncode": 0,
+          "extracted_plan_sha": "ac0abcb527292a88c7545eeaaaa27bf7ba92d0a93b7d02a6fc5b819f68d84fe2"
+        }
+      },
+      {
+        "task": "instance-97",
+        "arm": "D",
+        "job_state": "blocked",
+        "outcome": {
+          "valid": null,
+          "category": "not_generated",
+          "reason": "required input unavailable"
+        }
+      }
+    ]
+  },
+  "spend": {
+    "calls": 11,
+    "cap": 336,
+    "families": {
+      "codex": 9,
+      "claude": 2
+    },
+    "known_list_equivalent_usd": 0.934838,
+    "unpriced_calls": [],
+    "pricing_note": "Astra estimate uses frozen September 11 rates: input $10, cached $1, output $50 per million tokens. Fable uses CLI-reported list-equivalent cost. These are not cash subscription charges.",
+    "attempts": [
+      {
+        "id": 1,
+        "job": "instance-80.A",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 15.157,
+        "usage": {
+          "input_tokens": 4671,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 359,
+          "reasoning_output_tokens": 191
+        },
+        "cost_usd": 0.06466,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 2,
+        "job": "instance-97.A",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 23.0,
+        "usage": {
+          "input_tokens": 4693,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 633,
+          "reasoning_output_tokens": 455
+        },
+        "cost_usd": 0.07858,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 3,
+        "job": "instance-80.B",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 11.453,
+        "usage": {
+          "input_tokens": 4871,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 266,
+          "reasoning_output_tokens": 108
+        },
+        "cost_usd": 0.06201,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 4,
+        "job": "instance-80.self-critique",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 8.906,
+        "usage": {
+          "input_tokens": 4884,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 187,
+          "reasoning_output_tokens": 126
+        },
+        "cost_usd": 0.05819,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 5,
+        "job": "instance-80.cross-critique",
+        "seat": "fable",
+        "state": "succeeded",
+        "seconds": 32.61,
+        "usage": {
+          "input_tokens": 8,
+          "cache_creation_input_tokens": 4790,
+          "cache_read_input_tokens": 1546,
+          "output_tokens": 2171,
+          "output_tokens_details": {
+            "thinking_tokens": 1022
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 4790,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [
+            {
+              "input_tokens": 2,
+              "output_tokens": 123,
+              "cache_read_input_tokens": 0,
+              "cache_creation_input_tokens": 2939,
+              "cache_creation": {
+                "ephemeral_5m_input_tokens": 0,
+                "ephemeral_1h_input_tokens": 2939
+              },
+              "type": "message",
+              "model": null
+            }
+          ],
+          "speed": "standard"
+        },
+        "cost_usd": 0.14291425,
+        "cost_precision": "CLI-reported-list-equivalent"
+      },
+      {
+        "id": 6,
+        "job": "instance-97.B",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 12.125,
+        "usage": {
+          "input_tokens": 4900,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 302,
+          "reasoning_output_tokens": 124
+        },
+        "cost_usd": 0.0641,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 7,
+        "job": "instance-97.self-critique",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 9.75,
+        "usage": {
+          "input_tokens": 4910,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 140,
+          "reasoning_output_tokens": 85
+        },
+        "cost_usd": 0.0561,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 8,
+        "job": "instance-97.cross-critique",
+        "seat": "fable",
+        "state": "failed",
+        "seconds": 35.801562547683716,
+        "usage": {
+          "input_tokens": 50,
+          "cache_creation_input_tokens": 6505,
+          "cache_read_input_tokens": 1665,
+          "output_tokens": 3072,
+          "output_tokens_details": {
+            "thinking_tokens": 2886
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 6505,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [
+            {
+              "input_tokens": 40,
+              "output_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "cache_creation_input_tokens": 2998,
+              "cache_creation": {
+                "ephemeral_5m_input_tokens": 0,
+                "ephemeral_1h_input_tokens": 2998
+              },
+              "type": "message",
+              "model": null
+            }
+          ],
+          "speed": "standard"
+        },
+        "cost_usd": 0.22575374999999998,
+        "cost_precision": "CLI-reported-list-equivalent"
+      },
+      {
+        "id": 9,
+        "job": "instance-80.C",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 9.891,
+        "usage": {
+          "input_tokens": 4964,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 226,
+          "reasoning_output_tokens": 58
+        },
+        "cost_usd": 0.06094,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 10,
+        "job": "instance-97.C",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 11.313,
+        "usage": {
+          "input_tokens": 4987,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 215,
+          "reasoning_output_tokens": 37
+        },
+        "cost_usd": 0.06062,
+        "cost_precision": "historical-rate-estimate"
+      },
+      {
+        "id": 11,
+        "job": "instance-80.D",
+        "seat": "astra",
+        "state": "succeeded",
+        "seconds": 10.359,
+        "usage": {
+          "input_tokens": 4972,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 225,
+          "reasoning_output_tokens": 57
+        },
+        "cost_usd": 0.06097,
+        "cost_precision": "historical-rate-estimate"
+      }
+    ]
+  },
+  "timing": {
+    "execution_started_epoch": 1789338079.0,
+    "deadline_epoch": 1789348879.0,
+    "controller_receipt": {
+      "started": "2026-09-13T22:32:24.1242094Z",
+      "finished": "2026-09-13T22:33:25.2146543Z",
+      "supervisor_pid": 14392,
+      "exit_code": 2
+    }
+  },
+  "failures": [
+    {
+      "job": "instance-97.cross-critique",
+      "error": "provider_stop:provider_error: CLI exit 1"
+    }
+  ],
+  "assessment": {
+    "question": "Does Fable critique improve Astra valid-plan rate beyond self-review and plain revision?",
+    "finding": "The scored benchmark did not start. There is no new measurement of co-evolution effectiveness.",
+    "test_quality": "Official task corpus, deterministic upstream PDDL extraction and VAL were pinned. Valid, invalid and malformed fixtures passed. An offline lifecycle check charged a transient retry and confirmed duplicate-free resume.",
+    "limitation": "One of two excluded smoke workflows failed at Fable critique; its revision was blocked. The readiness gate stopped all 50 scored tasks. Smoke outputs are excluded from benchmark accuracy. No benchmark score, confidence interval, or efficacy conclusion can be inferred from zero evaluated study tasks.",
+    "decision": "Readiness failed; do not claim improvement, regression, or a 0% score. The attempt is complete, but the intended 50-task measurement is incomplete.",
+    "next_action": "Resolve the provider safeguard refusal with the provider before a separately documented continuation. Preserve the 11 charged calls, fixed task set and deadline; do not rephrase requests to evade the safeguard, silently switch models, reset jobs, or expand this run.",
+    "impact_quantified": false,
+    "provider_refusal": true
+  },
+  "provenance": {
+    "manifest_sha256": "38a6176a4c92aba2c5fd82b7f5e29738f18986568736d097667db3991c591a51",
+    "generation_freeze_sha256": "633be272f448d3db55ca6938513fdd88494605fd0712b9e1f12579d78b06fe9e",
+    "source_hashes": {
+      "campaign.py": "2b47c5de44d7033753d7fd8f83a1a8e36e4d096f5e43348180cbc349159329c3",
+      "evaluator.py": "e60e4802dae8fc70d5f7736da354f0b5c04b19f03215db5329d2671366b2597b",
+      "run.py": "fae8e4405d94fbf289219c3a4ede2c155bdccc3fa8eb178f714f2e83c083c4c4",
+      "support.py": "e9e843c58e878fad63a64f843fe3ede788785754b13799d6354ed210e503972c",
+      "test_runner.py": "eb4b27cdd2b784a0bd463c42be5678fc900c5899280f99186dccc8216e3e83d7",
+      "transport.py": "bff9349bc202dec8c329b559c6abd1c9fe8de03598b4f44f314552369eceb422"
+    }
+  }
+}
