@@ -25,6 +25,38 @@ def cost(response,seat):
         return ((usage['input_tokens']-cached)*10+cached+usage['output_tokens']*50)/1e6,'historical-rate-estimate'
     return None,'unpriced'
 
+def assess(summary,contrasts,resources,total):
+    dc,db=contrasts['D-C'],contrasts['D-B']
+    complete=total==200
+    times={arm:resources[arm]['median_observed_workflow_seconds'] for arm in resources}
+    ratio=times['D']/times['B'] if times['D'] is not None and times['B'] else None
+    threshold=complete and dc['delta_pp']>=10 and db['delta_pp']>0 and ratio is not None and ratio<=2
+    ceiling=summary['A']['score'] is not None and summary['A']['score']>=90
+    floor=complete and all(s['score']<=10 for s in summary.values())
+    upper_d=summary['D'].get('score_bounds',[0,100])[1]
+    score_threshold_ruled_out=upper_d-summary['C'].get('score_bounds',[0,100])[0]<10 or upper_d-summary['B'].get('score_bounds',[0,100])[0]<=0
+    if total==0:
+        finding='No scored benchmark plan was evaluated. There is no new measurement of co-evolution effectiveness.'
+        decision='Readiness failed; benchmark scores are unavailable, not zero.'
+    else:
+        counts=', '.join(f'{a}: {s["valid"]}/{s["evaluated"]} valid' for a,s in summary.items())
+        change=lambda p:'unavailable' if p['delta_pp'] is None else f'{p["delta_pp"]:+.2f}'
+        finding=f'{counts}. Cross-model minus self-review: {change(dc)} percentage points across {dc["n"]} paired tasks; cross-model minus plain revision: {change(db)} points across {db["n"]} paired tasks.'
+        if not complete:
+            decision='Partial measurement: paired observed outcomes are descriptive, and missing tasks prevent a complete fixed-50 benchmark claim.'
+            if score_threshold_ruled_out:decision+=' Even the most favorable missing outcomes cannot meet the predeclared score-improvement threshold.'
+            else:decision+=' The practical-threshold decision remains unresolved.'
+            if ceiling:decision+=' The completed original-draft arm is also ceiling-limited under the predeclared rule.'
+        elif ceiling or floor:decision='The screen is '+('ceiling' if ceiling else 'floor')+'-limited under the predeclared rule. It cannot reliably distinguish small workflow benefits; do not expand the same matrix automatically.'
+        elif threshold:decision='The predeclared operational threshold is met: at least five net extra solves over self-review, a gain over plain revision, and at most twice plain-revision observed workflow time. Treat this as benchmark-specific evidence, with the reported paired interval and exact test limiting statistical claims.'
+        else:decision='The predeclared practical threshold is not met. This screen does not justify the additional cross-model step as a default over the simpler workflow.'
+    return dict(question='Does Fable critique improve Astra valid-plan rate beyond self-review and plain revision?',finding=finding,
+      test_quality='The official 110-task corpus, fixed 50-task manifest, upstream PDDL extractor and VAL were pinned. Offline valid/invalid/malformed fixtures and duplicate-free resume passed. Candidates were frozen before scoring. All arms share the same original per task; no validator feedback reached participants.',
+      limitation='This is a continued, one-generation-per-arm 50-task subset, not the complete leaderboard. Two documented continuations preserved earlier successes and charged attempts; known request-specific refusals could receive one identical retry within the original reserve. Observed workflow latency includes queueing and recovery suspension, so it does not isolate intrinsic review latency. Static public tasks may have training exposure. Symbolic validity does not measure human rework or software delivery. Astra token caps are prompt targets, not an enforced CLI limit; provider effort labels do not establish equal compute.',
+      decision=decision,
+      next_action='Publish the fixed subset result and preserve the task-level repairs/regressions. If a practical gain is supported, replicate on fresh application-relevant tasks. If there is no gain or a ceiling/floor, favor the simpler workflow for this benchmark and do not automatically extend the matrix.',
+      impact_quantified=total>0,practical_threshold_met=bool(threshold),score_threshold_ruled_out=bool(score_threshold_ruled_out),ceiling_limited=bool(ceiling),floor_limited=bool(floor),D_to_B_observed_time_ratio=ratio)
+
 def settle(root):
     root=Path(root);m=LOAD(root/'manifest.json');verify(root,m)
     freeze=LOAD(root/'generation-freeze.json');status=LOAD(root/'status.json')
@@ -55,7 +87,7 @@ def settle(root):
                 if event.get('type')=='result':response={'usage':event.get('usage',{}),'cost_usd':event.get('total_cost_usd')}
                 elif event.get('type')=='turn.completed':response={'usage':event.get('usage',{})}
         amount,precision=cost(response,call['seat'])
-        charges.append(dict(id=call['id'],job=call['job'],seat=call['seat'],state=call['state'],seconds=saved.get('seconds',response.get('seconds')),usage=response.get('usage',{}),cost_usd=amount,cost_precision=precision))
+        charges.append(dict(id=call['id'],job=call['job'],seat=call['seat'],state=call['state'],started=call['started'],finished=call['finished'],seconds=saved.get('seconds',response.get('seconds')),usage=response.get('usage',{}),cost_usd=amount,cost_precision=precision))
     summary={}
     for arm,values in arrays.items():
         valid=values.count(True);invalid=values.count(False);missing=values.count(None)
@@ -64,23 +96,40 @@ def settle(root):
     total=sum(v['evaluated'] for v in summary.values())
     failures=[dict(job=j['id'],error=j['error']) for j in jobs.values() if j['state']=='failed']
     refusal=any('reasoning_extraction' in LOAD(root/'attempts'/f'{call["id"]:04d}.response.json').get('raw','') for call in calls if call['state']=='failed')
-    assessment=dict(question='Does Fable critique improve Astra valid-plan rate beyond self-review and plain revision?',
-      finding='The scored benchmark did not start. There is no new measurement of co-evolution effectiveness.' if total==0 else 'See paired valid-plan outcomes; missing tasks limit inference.',
-      test_quality='Official task corpus, deterministic upstream PDDL extraction and VAL were pinned. Valid, invalid and malformed fixtures passed. An offline lifecycle check charged a transient retry and confirmed duplicate-free resume.',
-      limitation='One of two excluded smoke workflows failed at Fable critique; its revision was blocked. The readiness gate stopped all 50 scored tasks. Smoke outputs are excluded from benchmark accuracy. No benchmark score, confidence interval, or efficacy conclusion can be inferred from zero evaluated study tasks.' if total==0 else 'Fixed 50-task subset, one draw per arm and public static tasks limit generalization.',
-      decision='Readiness failed; do not claim improvement, regression, or a 0% score. The attempt is complete, but the intended 50-task measurement is incomplete.' if total==0 else 'Compare D versus C and B with the predeclared practical threshold.',
-      next_action='Resolve the provider safeguard refusal with the provider before a separately documented continuation. Preserve the 11 charged calls, fixed task set and deadline; do not rephrase requests to evade the safeguard, silently switch models, reset jobs, or expand this run.' if refusal else 'Review missingness and the fixed decision thresholds before further execution.',
-      impact_quantified=False if total==0 else None,
-      provider_refusal=refusal)
+    contrasts={f'D-{arm}':paired(arrays['D'],arrays[arm]) for arm in ('C','B','A')}
+    resources={}
+    for arm in ('A','B','C','D'):
+        per_task=[]
+        for ident in m['tasks']:
+            required=set();todo=[f'{ident}.{arm}']
+            while todo:
+                key=todo.pop()
+                if key not in required:
+                    required.add(key);todo.extend(json.loads(jobs[key]['definition'])['deps'])
+            task_calls=[x for x in charges if x['job'] in required]
+            completed=all(jobs[k]['state']=='succeeded' for k in required)
+            priced=completed and all(x['cost_usd'] is not None for x in task_calls)
+            first=min((datetime.fromisoformat(x['started']) for x in task_calls),default=None)
+            final=max((datetime.fromisoformat(x['finished']) for x in task_calls if x['finished']),default=None)
+            per_task.append(dict(task=ident,completed=completed,dispatches=len(task_calls),cost_usd=sum(x['cost_usd'] for x in task_calls) if priced else None,
+              phase_seconds=sum(x['seconds'] for x in task_calls) if completed and all(x['seconds'] is not None for x in task_calls) else None,
+              observed_workflow_seconds=(final-first).total_seconds() if completed and first and final else None))
+        wall=[x['observed_workflow_seconds'] for x in per_task if x['observed_workflow_seconds'] is not None]
+        phase=[x['phase_seconds'] for x in per_task if x['phase_seconds'] is not None]
+        costs=[x['cost_usd'] for x in per_task if x['cost_usd'] is not None]
+        resources[arm]=dict(per_task=per_task,priced_tasks=len(costs),mean_standalone_cost_usd=mean(costs) if len(costs)==50 else None,median_observed_workflow_seconds=median(wall) if wall else None,median_model_phase_seconds=median(phase) if phase else None)
+    assessment=assess(summary,contrasts,resources,total);assessment['prior_provider_refusal']=refusal
     result=dict(schema='planbench-results/1.0',title='PlanBench Blocksworld Hard — fixed 50-task co-evolution subset',generated_at=now(),
       completion='readiness-failed' if total==0 else ('complete' if total==200 else 'partial'),benchmark=dict(name='PlanBench Blocksworld Hard',upstream=m['upstream_url'],commit=m['upstream_commit'],released_tasks=110,selected_tasks=m['tasks'],seed=m['seed'],evaluator='Bundled VAL 4 with upstream save_gpt3_response PDDL extractor',hashes=m['benchmark_hashes'],full_leaderboard_result=False),
       models=m['models'],effort=m['effort'],output_caps=m['output_caps'],scores=summary,per_task=rows,
-      contrasts={f'D-{arm}':paired(arrays['D'],arrays[arm]) for arm in ('C','B','A')},
+      contrasts=contrasts,resources=resources,
+      timing_note='Observed workflow time spans the first draft dispatch through the final arm response, including retry/queue delays in this shared concurrent run. Model phase time sums only recorded provider-call durations. Neither is human work time.',
       smoke=dict(excluded=True,tasks=m['smoke_tasks'],planned_jobs=12,succeeded_jobs=sum(j['state']=='succeeded' and json.loads(j['definition'])['smoke'] for j in jobs.values()),outcomes=smoke),
       spend=dict(calls=c.count(),cap=336,families={f:c.count(family=f) for f in ('codex','claude')},known_list_equivalent_usd=sum(x['cost_usd'] for x in charges if x['cost_usd'] is not None),unpriced_calls=[x['id'] for x in charges if x['cost_usd'] is None],
         pricing_note='Astra estimate uses frozen September 11 rates: input $10, cached $1, output $50 per million tokens. Fable uses CLI-reported list-equivalent cost. These are not cash subscription charges.',attempts=charges),
       timing=dict(execution_started_epoch=m['started_epoch'],deadline_epoch=m['deadline_epoch'],controller_receipt=json.loads((root/'controller.exit.json').read_text(encoding='utf-8-sig'))),
-      failures=failures,assessment=assessment,provenance=dict(manifest_sha256=sha(root/'manifest.json'),generation_freeze_sha256=sha(root/'generation-freeze.json'),source_hashes=m['source_hashes']))
+      continuation=LOAD(root/'CONTINUATION.json') if (root/'CONTINUATION.json').exists() else None,
+      failures=failures,assessment=assessment,provenance=dict(manifest_sha256=sha(root/'manifest.json'),generation_freeze_sha256=sha(root/'generation-freeze.json'),source_hashes=m['source_hashes'],analysis_source_sha256=sha(__file__)))
     write_once(root/'report.json',result)
     lines=['# PlanBench execution assessment','',result['title'],'',assessment['finding'],'',
       '| Arm | Evaluated | Valid | Invalid | Missing | Benchmark score |','|---|---:|---:|---:|---:|---|']
