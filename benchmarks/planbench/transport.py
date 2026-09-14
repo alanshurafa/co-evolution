@@ -45,6 +45,8 @@ def secret_values(env_file):
 
 def classify(text, status=None):
     low = text.lower()
+    if 'safeguards flagged this message' in low and 'reasoning_extraction' in low:
+        return 'content_refusal'
     if any(s in low for s in ('insufficient balance', 'suspended', 'insufficient_quota', 'credit balance')):
         return 'billing_blocked'
     if status in (401, 403) or any(s in low for s in ('not logged in', 'authentication', 'invalid api key', 'unauthorized')):

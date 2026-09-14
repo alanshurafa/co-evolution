@@ -1,5 +1,8 @@
 # PlanBench attempt and publication assessment
 
+Historical initial-attempt report. The user-directed continuations and scored
+outcome are documented in [the final results](2026-09-14-planbench-results.md).
+
 The authorized 50-task/four-arm attempt ended at its readiness gate on
 September 13, 2026. Source: PlanBench commit
 `fc638a1aff7df3fe7a1a1d289fa2c04cc24dc284`, fixed sampling seed 20260913,

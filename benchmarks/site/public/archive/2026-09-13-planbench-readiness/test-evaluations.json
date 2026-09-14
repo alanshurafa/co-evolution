@@ -1,21 +1,21 @@
 {
   "schema": "publication-assessments/1.0",
-  "assessed_on": "2026-09-14",
+  "assessed_on": "2026-09-13",
   "studies": [
     {
       "id": "planbench",
-      "title": "PlanBench Hard: scored workflows and practical impact",
+      "title": "PlanBench Hard: the measurement did not start",
       "data": "planbench-results.json",
       "page": "planbench.html",
-      "status": "partial",
-      "coverage": "195/200 scored plans; smoke tasks excluded",
+      "status": "readiness-failed",
+      "coverage": "0/200 scored plans; 7 available smoke plans excluded",
       "question": "Does Fable critique improve Astra valid-plan rate beyond self-review and plain revision?",
-      "finding": "Original Astra, plain revision and self-review each produced 50/50 valid plans (100%). Fable review delivered 45/50 plans: 45 valid, 0 invalid and 5 missing. Cross-model review gained zero points on the jointly evaluated tasks. With the missing outcomes unresolved, its full-cohort score can only be 90–100.",
-      "test_quality": "The official 110-task corpus, fixed 50-task manifest, upstream PDDL extractor and VAL were pinned. Offline valid/invalid/malformed fixtures and duplicate-free resume passed. Candidates were frozen before scoring. All arms share the same original per task; no validator feedback reached participants.",
-      "limitation": "This is a continued, one-generation-per-arm 50-task subset, not the complete leaderboard. Two documented continuations preserved earlier successes and charged attempts; known request-specific refusals could receive one identical retry within the original reserve. Observed workflow latency includes queueing and recovery suspension, so it does not isolate intrinsic review latency. Static public tasks may have training exposure. Symbolic validity does not measure human rework or software delivery. Astra token caps are prompt targets, not an enforced CLI limit; provider effort labels do not establish equal compute. The [0,0] empirical bootstrap interval resamples only ties; it does not prove population-level equivalence. VAL validity also does not assess shortest-plan optimality.",
-      "decision": "Partial measurement: paired observed outcomes are descriptive, and missing tasks prevent a complete fixed-50 benchmark claim. Even the most favorable missing outcomes cannot meet the predeclared score-improvement threshold. The completed original-draft arm is also ceiling-limited under the predeclared rule. For this benchmark, prefer the original Astra workflow: it already reached every goal. Additional review produced no measured validity gain and introduced delivery failures and extra compute.",
-      "next_action": "Do not repeat the same matrix on this saturated subset. Keep the simpler workflow for tasks at this level. Any further study should use a separately specified benchmark with more headroom, preserve a fresh scored cohort, and measure application outcomes before claiming productivity benefits.",
-      "data_sha256": "97e48e59897986b570a410deba50921c104250e2d11f49b5d29d621b65605a65"
+      "finding": "The scored benchmark did not start. There is no new measurement of co-evolution effectiveness.",
+      "test_quality": "Official task corpus, deterministic upstream PDDL extraction and VAL were pinned. Valid, invalid and malformed fixtures passed. An offline lifecycle check charged a transient retry and confirmed duplicate-free resume.",
+      "limitation": "One of two excluded smoke workflows failed at Fable critique; its revision was blocked. The readiness gate stopped all 50 scored tasks. Smoke outputs are excluded from benchmark accuracy. No benchmark score, confidence interval, or efficacy conclusion can be inferred from zero evaluated study tasks.",
+      "decision": "Readiness failed; do not claim improvement, regression, or a 0% score. The attempt is complete, but the intended 50-task measurement is incomplete.",
+      "next_action": "Resolve the provider safeguard refusal with the provider before a separately documented continuation. Preserve the 11 charged calls, fixed task set and deadline; do not rephrase requests to evade the safeguard, silently switch models, reset jobs, or expand this run.",
+      "data_sha256": "0e15299f8d8ebe42c6a503aa3f9af545c4b23232e9873a1f5e4f0cf5aaa9d7ef"
     },
     {
       "id": "planning",
@@ -29,7 +29,7 @@
       "test_quality": "The two judges were isolated from authorship and each other; supporting citations were validated. Successful outputs and charged attempts were preserved through recovery. Exported coverage and row means were checked against saved data, and original study hashes matched.",
       "limitation": "Only six synthetic briefs underlie the overlapping comparisons. Generation resumed after partial grading and beyond the original deadline. Astra flagged critical violations in 110/194 judgments, Fable in 4/187. No task execution, human editing time or downstream rework was measured. Post-hoc aggregate gains are exploratory.",
       "decision": "There is a positive average plan-score signal, but no established general productivity benefit or reliable superiority over plain revision. Do not require multi-model review for every task on this evidence alone.",
-      "next_action": "Read the separately reported PlanBench follow-up for objective symbolic-plan validity. Keep those scores separate from judge-rated writing quality; neither study alone measures human productivity.",
+      "next_action": "Measure a fixed small workflow comparison with an objective evaluator. The attempted PlanBench follow-up stopped at readiness; it contributes no new efficacy evidence. Resolve readiness before seeking a benchmark effect.",
       "data_sha256": "6a70f52b05625df742f18a95fff8f6c47158e2389782729ace84c556928f4375"
     },
     {
