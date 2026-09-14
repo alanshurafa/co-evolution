@@ -34,4 +34,14 @@ class PublicationTests(unittest.TestCase):
             root=Path(temp);p=self.fixture(root);(p/'result.json').write_text('{\n  "score": 80\n}\n')
             self.assertEqual(len(gate.validate(root)),1)
 
+    def test_changed_plan_bytes_rejected_even_with_fresh_assessment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);p=self.fixture(root)
+            value={'schema':'planbench-results/1.0','per_task':[{'task':'example','arm':'A','extracted_plan':'(pick-up a)\n','outcome':{'valid':True,'extracted_plan_sha':hashlib.sha256(b'(pick-up a)\r\n').hexdigest()}}],'smoke':{'outcomes':[]}}
+            (p/'result.json').write_text(json.dumps(value),encoding='utf-8')
+            registry=json.loads((p/'test-evaluations.json').read_text())
+            registry['studies'][0]['data_sha256']=gate.digest(p/'result.json')
+            (p/'test-evaluations.json').write_text(json.dumps(registry),encoding='utf-8')
+            with self.assertRaisesRegex(ValueError,'validator input hash'):gate.validate(root)
+
 if __name__=='__main__':unittest.main()

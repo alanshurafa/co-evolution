@@ -27,6 +27,13 @@ def validate(site=SITE,check_pages=True):
         found.add(name);ids.add(e['id'])
         if name not in expected:raise ValueError('Unexpected or archived assessment target: '+name)
         if e['data_sha256']!=digest(public/name):raise ValueError('Stale assessment; evaluate changed results: '+name)
+        data=json.loads((public/name).read_text(encoding='utf-8'))
+        if data.get('schema')=='planbench-results/1.0':
+            for row in data['per_task']+data['smoke']['outcomes']:
+                plan=row.get('extracted_plan')
+                if row['outcome']['valid'] is not None:
+                    if not isinstance(plan,str) or hashlib.sha256(plan.encode('utf-8')).hexdigest()!=row['outcome'].get('extracted_plan_sha'):
+                        raise ValueError('Published plan does not match validator input hash: '+row['task']+'.'+row['arm'])
         for field in FIELDS:
             if not isinstance(e.get(field),str) or len(e[field].strip())<20:raise ValueError('Missing substantive '+field+': '+name)
         if not isinstance(e.get('coverage'),str) or not e['coverage'].strip():raise ValueError('Missing coverage: '+name)
