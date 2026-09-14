@@ -1,9 +1,24 @@
 """Require a fresh, published evidence assessment for every non-archived result export."""
 import hashlib, json
+import ast
 from pathlib import Path
 
 SITE=Path(__file__).resolve().parent
 FIELDS=('question','finding','test_quality','limitation','decision','next_action')
+
+def validate_bbeh(data):
+    source=(SITE.parent/'bbeh/vendor/evaluate.py').read_text(encoding='utf-8')
+    if hashlib.sha256(source.encode()).hexdigest()!=data['benchmark']['official_scorer_canonical_sha256']:
+        raise ValueError('BBEH scorer hash mismatch')
+    tree=ast.parse(source);tree.body=[n for n in tree.body if isinstance(n,ast.FunctionDef)]
+    namespace={};exec(compile(tree,'official-bbeh-scorer','exec'),namespace)
+    for row in data['calibration']['outcomes']+data['main']['outcomes']:
+        if hashlib.sha256(row['input'].encode()).hexdigest()!=row['input_sha256']:raise ValueError('BBEH input hash mismatch')
+        if row['response'] is None:
+            if row['correct'] is not None:raise ValueError('BBEH missing response scored')
+        else:
+            if hashlib.sha256(row['response'].encode()).hexdigest()!=row['response_sha256']:raise ValueError('BBEH response hash mismatch')
+            if namespace['evaluate_correctness'](row['response'],row['reference'])!=row['correct']:raise ValueError('BBEH score mismatch')
 
 def digest(path):
     # Semantic digest avoids platform line-ending differences without ignoring data changes.
@@ -28,6 +43,7 @@ def validate(site=SITE,check_pages=True):
         if name not in expected:raise ValueError('Unexpected or archived assessment target: '+name)
         if e['data_sha256']!=digest(public/name):raise ValueError('Stale assessment; evaluate changed results: '+name)
         data=json.loads((public/name).read_text(encoding='utf-8'))
+        if data.get('schema')=='bbeh-results/1.0':validate_bbeh(data)
         if data.get('schema')=='planbench-results/1.0':
             for row in data['per_task']+data['smoke']['outcomes']:
                 plan=row.get('extracted_plan')
@@ -37,7 +53,7 @@ def validate(site=SITE,check_pages=True):
         for field in FIELDS:
             if not isinstance(e.get(field),str) or len(e[field].strip())<20:raise ValueError('Missing substantive '+field+': '+name)
         if not isinstance(e.get('coverage'),str) or not e['coverage'].strip():raise ValueError('Missing coverage: '+name)
-        if e.get('status') not in ('complete','partial','mixed','readiness-failed'):raise ValueError('Missing explicit status: '+name)
+        if e.get('status') not in ('complete','partial','mixed','readiness-failed','gate-rejected'):raise ValueError('Missing explicit status: '+name)
         if check_pages:
             page=(public/'evaluations.html').read_text(encoding='utf-8')
             import html

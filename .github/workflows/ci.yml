@@ -41,6 +41,8 @@ jobs:
         run: python benchmarks/planbench/test_score.py
       - name: Check benchmark role routing and retry accounting
         run: python benchmarks/planbench/test_runner.py
+      - name: Check BBEH calibration gate and answer-key isolation
+        run: python benchmarks/bbeh/test_runner.py
 
   test:
     strategy:

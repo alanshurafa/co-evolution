@@ -1,0 +1,2380 @@
+{
+  "schema": "bbeh-results/1.0",
+  "title": "BBEH compact reasoning screen",
+  "generated_at": "2026-09-14T19:55:09.708499+00:00",
+  "completion": "gate-rejected",
+  "benchmark": {
+    "name": "BIG-Bench Extra Hard Mini subset",
+    "commit": "80d12ca916b7158f22293fcf3144f4d3d854d4be",
+    "families": [
+      "multistep_arithmetic",
+      "web_of_lies",
+      "hyperbaton"
+    ],
+    "full_benchmark_score": false,
+    "official_scorer_canonical_sha256": "4b4f06e5babb015de2ba639bae995a5526182ffb5b5890af54dfcf038580eb34"
+  },
+  "models": {
+    "sonnet": "claude-sonnet-5",
+    "codex": "gpt-5.6-terra"
+  },
+  "effort": "medium",
+  "gate": {
+    "passed": false,
+    "scoreable": false,
+    "correct": {
+      "A": 1,
+      "B": 1,
+      "E": 3
+    },
+    "denominator": 12,
+    "required_range": [
+      3,
+      9
+    ],
+    "estimated_main_seconds": 1522.5327,
+    "remaining_seconds": 5877.079237937927
+  },
+  "calibration": {
+    "scores": {
+      "A": {
+        "workflow": "Sonnet original",
+        "correct": 1,
+        "incorrect": 4,
+        "missing": 7,
+        "evaluated": 5,
+        "planned": 12,
+        "score": null,
+        "score_bounds": [
+          8.333333333333334,
+          66.66666666666667
+        ]
+      },
+      "B": {
+        "workflow": "Sonnet plain revision",
+        "correct": 1,
+        "incorrect": 4,
+        "missing": 7,
+        "evaluated": 5,
+        "planned": 12,
+        "score": null,
+        "score_bounds": [
+          8.333333333333334,
+          66.66666666666667
+        ]
+      },
+      "E": {
+        "workflow": "Terra alone",
+        "correct": 3,
+        "incorrect": 9,
+        "missing": 0,
+        "evaluated": 12,
+        "planned": 12,
+        "score": 25.0,
+        "score_bounds": [
+          25.0,
+          25.0
+        ]
+      }
+    },
+    "outcomes": [
+      {
+        "question": "web_of_lies-e5dbc0fee8cb0bf8",
+        "family": "web_of_lies",
+        "arm": "A",
+        "response": "**Reasoning summary:**\n\n- Sal=true ⇒ Gwenn=false. Octavia/Ocean form an opposite pair (exactly one true), so among {Gwenn,Octavia,Ocean} exactly one is true → Kandi's \"exactly one\" claim is true → Kandi=true.\n- Marcus/Mariana form a mirror pair (exactly one true). Shenna's claim \"exactly two of Kandi(true), Marcus, Mariana\" is satisfied regardless of which of Marcus/Mariana is true → Shenna=true, but Marcus's individual value stays undetermined (no other clue pins it) → **Marcus = unknown**.\n- Chain: Jamey's, Antwan's, Jaymie's, Alexis's claims all fail regardless of the underlying opposite-pairs → all false → Teressa=true (Alexis lies) → Sima's claim fails regardless of Maynard/Osborn → Sima=false → Ryan's claim holds regardless of Virginia/Odell → Ryan=true → Dallas's \"only one of Ryan,Mitchell,Oprah lies\" holds regardless (Mitchell/Oprah opposite) → Dallas=true → Bernita (\"Dallas lies\") = false.\n- Mandy/Mason opposite pair + Bernita false gives 2 liars among {Bernita,Mandy,Mason} → Willian's \"only one lies\" is false → **Willian = no**.\n- Melvin/Osian opposite pair → Andree's conjunction (all three true) is always false → Andree=false → Fletcher (says Andree true) = false. With Fletcher=false, Shalonda's \"exactly one or all three\" of {Fletcher,Opal,Ozzie} fails for every possible Opal/Ozzie value (they're a matching pair) → **Shalonda = no**.\n\nThe final answer is: <no, unknown, no>",
+        "response_sha256": "ddc1310354c5d172229546af3c5785198412c12d1b8b39a03c8ae36b4bf65f56",
+        "parsed_answer": "<no,unknown,no>",
+        "reference": "no, unknown, no",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Osian says Hritik lies. Orla says Kate lies. Alexis says exactly two of Jaymie, Mona and John tells the truth. Oswald says Uri tells the truth. Gwenn says Sal lies. Dallas says only one of Ryan, Mitchell and Oprah lies. Mandy says Oswin tells the truth. Ozias says Oakley lies. Olympia says Sanket tells the truth. Kandi says exactly one of Gwenn, Octavia and Ocean tells the truth.Sanket says Olympia tells the truth. Mitchell says Owen tells the truth. Mona says John lies. Ozzie says Opal tells the truth. Leda says exactly two of Jim, Ozias and Oakley tell the truth. Marcus says Mariana lies. Minerva says Micah lies. Willian says only one of Bernita, Mandy and Mason lies. Melvin says Hritik tells the truth. Sima says either exactly two of Teressa, Maynard and Osborn tell the truth or none of them. Virginia says Odell tells the truth. Oakley says Ozias lies. Jim says either all three of Lorine, Madison and Melanie lie, or two of them tell the truth. Lorine says either exactly one of Phoebe, Sanket and Olympia tells the truth, or all three of them. Antwan says exactly two of Jamey, Minerva and Micah tells the truth. Micah says Minerva lies. Odell says Virginia tells the truth. Ocean says Octavia lies. Melanie says Madison tells the truth. Fletcher says Andree tells the truth. Osborn says Maynard tells the truth. Shalonda says either exactly one of Fletcher, Opal and Ozzie tells the truth, or all three of them. Kate says Orla lies. Opal says Ozzie tells the truth. Vernell says Leda tells the truth. Sal tells the truth. Maynard says Osborn tells the truth. Jamey says either exactly two of Shenna, Oswald and Uri tell the truth or none of them. Teressa says Alexis lies. Octavia says Ocean lies. Oprah says Owen lies. Mariana says Marcus lies. Crista says Willian tells the truth. Meredith says Michaela lies. Mavis says Michaela tells the truth. Jaymie says exactly two of Antwan, Kate and Orla tells the truth. Madison says Melanie tells the truth. Ryan says either all three of Sima, Virginia and Odell lie, or two of them tell the truth. Mason says Oswin lies. Andree says Vernell, Melvin and Osian all tell the truth. Shenna says exactly two of Kandi, Marcus and Mariana tell the truth. Bernita says Dallas lies. John says Mona lies. Phoebe says only one of Crista, Mavis and Meredith lies. Uri says Oswald tells the truth. Do Willian, Marcus, and Shalonda tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "e5dbc0fee8cb0bf844010d1bb54791bf51c3c5a29ba41b4d1ffd1c0920b7eae4"
+      },
+      {
+        "question": "web_of_lies-e5dbc0fee8cb0bf8",
+        "family": "web_of_lies",
+        "arm": "B",
+        "response": "**Verification:** Working through the forced chains confirms the candidate's conclusions, though some reasoning steps needed more rigor:\n\n- Melvin/Osian make opposite claims about Hritik → exactly one is true (regardless of Hritik's actual status) → Andree's conjunction (all three of Vernell/Melvin/Osian) is always false → Fletcher (echoes Andree) = false.\n- Opal/Ozzie mutually affirm each other → always same truth value (both true or both false), never split 1-1.\n- Shalonda needs exactly one true (or all three) among {Fletcher=false, Opal, Ozzie}; since Opal=Ozzie always match, count is 0 or 2, never 1, and \"all three\" is blocked by Fletcher=false → Shalonda's statement is always false → **Shalonda = no**.\n- Chain: Jamey/Antwan/Jaymie/Alexis all forced false via opposite-pair counting → Teressa (says Alexis lies) = true → Sima false → Ryan true → Dallas true → Bernita false. With Mandy/Mason opposite pair, exactly 2 of {Bernita,Mandy,Mason} lie, contradicting Willian's \"only one lies\" → **Willian = no**.\n- Marcus/Mariana form a pure opposite pair with no other constraint pinning which one is true → **Marcus = unknown**.\n\nAll steps check out; the candidate's answer is correct.\n\nThe final answer is: <no, unknown, no>",
+        "response_sha256": "51141bf6a756e4022d8beb68d42dc73296243ac30b393c70bbac98dc7374630c",
+        "parsed_answer": "<no,unknown,no>",
+        "reference": "no, unknown, no",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Osian says Hritik lies. Orla says Kate lies. Alexis says exactly two of Jaymie, Mona and John tells the truth. Oswald says Uri tells the truth. Gwenn says Sal lies. Dallas says only one of Ryan, Mitchell and Oprah lies. Mandy says Oswin tells the truth. Ozias says Oakley lies. Olympia says Sanket tells the truth. Kandi says exactly one of Gwenn, Octavia and Ocean tells the truth.Sanket says Olympia tells the truth. Mitchell says Owen tells the truth. Mona says John lies. Ozzie says Opal tells the truth. Leda says exactly two of Jim, Ozias and Oakley tell the truth. Marcus says Mariana lies. Minerva says Micah lies. Willian says only one of Bernita, Mandy and Mason lies. Melvin says Hritik tells the truth. Sima says either exactly two of Teressa, Maynard and Osborn tell the truth or none of them. Virginia says Odell tells the truth. Oakley says Ozias lies. Jim says either all three of Lorine, Madison and Melanie lie, or two of them tell the truth. Lorine says either exactly one of Phoebe, Sanket and Olympia tells the truth, or all three of them. Antwan says exactly two of Jamey, Minerva and Micah tells the truth. Micah says Minerva lies. Odell says Virginia tells the truth. Ocean says Octavia lies. Melanie says Madison tells the truth. Fletcher says Andree tells the truth. Osborn says Maynard tells the truth. Shalonda says either exactly one of Fletcher, Opal and Ozzie tells the truth, or all three of them. Kate says Orla lies. Opal says Ozzie tells the truth. Vernell says Leda tells the truth. Sal tells the truth. Maynard says Osborn tells the truth. Jamey says either exactly two of Shenna, Oswald and Uri tell the truth or none of them. Teressa says Alexis lies. Octavia says Ocean lies. Oprah says Owen lies. Mariana says Marcus lies. Crista says Willian tells the truth. Meredith says Michaela lies. Mavis says Michaela tells the truth. Jaymie says exactly two of Antwan, Kate and Orla tells the truth. Madison says Melanie tells the truth. Ryan says either all three of Sima, Virginia and Odell lie, or two of them tell the truth. Mason says Oswin lies. Andree says Vernell, Melvin and Osian all tell the truth. Shenna says exactly two of Kandi, Marcus and Mariana tell the truth. Bernita says Dallas lies. John says Mona lies. Phoebe says only one of Crista, Mavis and Meredith lies. Uri says Oswald tells the truth. Do Willian, Marcus, and Shalonda tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "e5dbc0fee8cb0bf844010d1bb54791bf51c3c5a29ba41b4d1ffd1c0920b7eae4"
+      },
+      {
+        "question": "web_of_lies-e5dbc0fee8cb0bf8",
+        "family": "web_of_lies",
+        "arm": "E",
+        "response": "Mandy and Mason have opposite truth values, so Willian’s claim is true exactly when Bernita is true. Chasing Dallas→Ryan→Sima→Teressa→Alexis→Jaymie→Antwan→Jamey→Shenna→Kandi, and using Gwenn’s false claim since Sal is true, gives Kandi and Shenna true, hence Jamey through Willian all false. Marcus and Mariana make opposite claims about each other, with no constraint fixing either. Andree requires both Melvin and Osian true, but they make opposite claims about Hritik; thus Andree, Fletcher, and Shalonda are false.\n\nThe final answer is: <no, unknown, no>",
+        "response_sha256": "ba9dc1b3363180d9eec99148cbaeb1633cfe8a20dbde66cb20af3505f997e8f5",
+        "parsed_answer": "<no,unknown,no>",
+        "reference": "no, unknown, no",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Osian says Hritik lies. Orla says Kate lies. Alexis says exactly two of Jaymie, Mona and John tells the truth. Oswald says Uri tells the truth. Gwenn says Sal lies. Dallas says only one of Ryan, Mitchell and Oprah lies. Mandy says Oswin tells the truth. Ozias says Oakley lies. Olympia says Sanket tells the truth. Kandi says exactly one of Gwenn, Octavia and Ocean tells the truth.Sanket says Olympia tells the truth. Mitchell says Owen tells the truth. Mona says John lies. Ozzie says Opal tells the truth. Leda says exactly two of Jim, Ozias and Oakley tell the truth. Marcus says Mariana lies. Minerva says Micah lies. Willian says only one of Bernita, Mandy and Mason lies. Melvin says Hritik tells the truth. Sima says either exactly two of Teressa, Maynard and Osborn tell the truth or none of them. Virginia says Odell tells the truth. Oakley says Ozias lies. Jim says either all three of Lorine, Madison and Melanie lie, or two of them tell the truth. Lorine says either exactly one of Phoebe, Sanket and Olympia tells the truth, or all three of them. Antwan says exactly two of Jamey, Minerva and Micah tells the truth. Micah says Minerva lies. Odell says Virginia tells the truth. Ocean says Octavia lies. Melanie says Madison tells the truth. Fletcher says Andree tells the truth. Osborn says Maynard tells the truth. Shalonda says either exactly one of Fletcher, Opal and Ozzie tells the truth, or all three of them. Kate says Orla lies. Opal says Ozzie tells the truth. Vernell says Leda tells the truth. Sal tells the truth. Maynard says Osborn tells the truth. Jamey says either exactly two of Shenna, Oswald and Uri tell the truth or none of them. Teressa says Alexis lies. Octavia says Ocean lies. Oprah says Owen lies. Mariana says Marcus lies. Crista says Willian tells the truth. Meredith says Michaela lies. Mavis says Michaela tells the truth. Jaymie says exactly two of Antwan, Kate and Orla tells the truth. Madison says Melanie tells the truth. Ryan says either all three of Sima, Virginia and Odell lie, or two of them tell the truth. Mason says Oswin lies. Andree says Vernell, Melvin and Osian all tell the truth. Shenna says exactly two of Kandi, Marcus and Mariana tell the truth. Bernita says Dallas lies. John says Mona lies. Phoebe says only one of Crista, Mavis and Meredith lies. Uri says Oswald tells the truth. Do Willian, Marcus, and Shalonda tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "e5dbc0fee8cb0bf844010d1bb54791bf51c3c5a29ba41b4d1ffd1c0920b7eae4"
+      },
+      {
+        "question": "multistep_arithmetic-51995d0b83b49041",
+        "family": "multistep_arithmetic",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "10828",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a : b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(b : a) - b$ if $|a-b| < 2$ and $(a : b) - a$ otherwise.\n$a # b$ equals $(a ~ a) ! b$ if $b < 2$ and $(b ~ b) ! a$ otherwise.\n$a <> b$ equals $a # b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a ][ b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-10 -! ten) - (-6 #<> 10)) #*- ((-1 # -2) ][][ (seven ! -7))) ][ (((-2 ! -10) -* (-8 ~!+ -7)) #* ((nine *!! -2) *+<> (eight <> -2))))\nLet B = ((((-6 ][+ -3) - (-1 # -7)) -*<> ((-10 ! -6) <> (-6 : one))) * (((1 <> seven) -# (eight ][-* eight)) ][ ((-8 +:: 1) : (six #+ one))))\nLet C = ((((2 ! -3) #- (-4 +:~ -5)) :*# ((4 -<> four) # (5 # 2))) <> (((8 : -10) ][:! (2 **<> -1)) ][ ((-6 +! -4) - (4 * eight)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "51995d0b83b49041e71f2ecac54226973775787c752f9b0f6e04d58ee3621360"
+      },
+      {
+        "question": "multistep_arithmetic-51995d0b83b49041",
+        "family": "multistep_arithmetic",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "10828",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a : b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(b : a) - b$ if $|a-b| < 2$ and $(a : b) - a$ otherwise.\n$a # b$ equals $(a ~ a) ! b$ if $b < 2$ and $(b ~ b) ! a$ otherwise.\n$a <> b$ equals $a # b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a ][ b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-10 -! ten) - (-6 #<> 10)) #*- ((-1 # -2) ][][ (seven ! -7))) ][ (((-2 ! -10) -* (-8 ~!+ -7)) #* ((nine *!! -2) *+<> (eight <> -2))))\nLet B = ((((-6 ][+ -3) - (-1 # -7)) -*<> ((-10 ! -6) <> (-6 : one))) * (((1 <> seven) -# (eight ][-* eight)) ][ ((-8 +:: 1) : (six #+ one))))\nLet C = ((((2 ! -3) #- (-4 +:~ -5)) :*# ((4 -<> four) # (5 # 2))) <> (((8 : -10) ][:! (2 **<> -1)) ][ ((-6 +! -4) - (4 * eight)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "51995d0b83b49041e71f2ecac54226973775787c752f9b0f6e04d58ee3621360"
+      },
+      {
+        "question": "multistep_arithmetic-51995d0b83b49041",
+        "family": "multistep_arithmetic",
+        "arm": "E",
+        "response": "Using the chained-operation convention, the evaluated values are:\n\\(A=0\\), \\(B=3612\\), and \\(C=8\\).\nFor \\(C\\), the large left term is \\(154488624\\), whose gcd with \\(8\\) is \\(8\\), so \\(C=8\\). Therefore,\n\\[\nA+B-C=0+3612-8=3604.\n\\]\n\nThe final answer is: 3604",
+        "response_sha256": "7421e2c954980d5f9460ba734f9220c8839e1ee98525f8c1aeb5321add0addf8",
+        "parsed_answer": "3604",
+        "reference": "10828",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a : b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(b : a) - b$ if $|a-b| < 2$ and $(a : b) - a$ otherwise.\n$a # b$ equals $(a ~ a) ! b$ if $b < 2$ and $(b ~ b) ! a$ otherwise.\n$a <> b$ equals $a # b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a ][ b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-10 -! ten) - (-6 #<> 10)) #*- ((-1 # -2) ][][ (seven ! -7))) ][ (((-2 ! -10) -* (-8 ~!+ -7)) #* ((nine *!! -2) *+<> (eight <> -2))))\nLet B = ((((-6 ][+ -3) - (-1 # -7)) -*<> ((-10 ! -6) <> (-6 : one))) * (((1 <> seven) -# (eight ][-* eight)) ][ ((-8 +:: 1) : (six #+ one))))\nLet C = ((((2 ! -3) #- (-4 +:~ -5)) :*# ((4 -<> four) # (5 # 2))) <> (((8 : -10) ][:! (2 **<> -1)) ][ ((-6 +! -4) - (4 * eight)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "51995d0b83b49041e71f2ecac54226973775787c752f9b0f6e04d58ee3621360"
+      },
+      {
+        "question": "web_of_lies-8a14c3143267abb2",
+        "family": "web_of_lies",
+        "arm": "A",
+        "response": "**Reasoning summary:**\n\n- Oscar/Melanie give opposite claims about Ozzy → exactly one is true, so \"all three (Shenna,Oscar,Melanie) truth\" (Antwan's claim) is impossible → Antwan lies.\n- Ozzie/Maxim give opposite claims → exactly one true. So among {Antwan(F),Ozzie,Maxim}: total truths =1 → Sima's \"exactly two\" claim is false → Sima lies.\n- Melissa/Minerva give opposite claims about Oswin → exactly one true. So among {Sima(F),Melissa,Minerva}: total truths=1 → Leda's \"only one\" claim is **true** → **Leda = Yes**.\n\n- Olivia/Mustafa opposite claims → exactly one true (contributes 1).\n- Malcolm/Monica mutual support → both same (0 or 2 truths); with Leda=True, total among {Leda,Malcolm,Monica} is either 1 or 3, never 2 or 0 → Jaymie's claim false → Jaymie lies.\n- Among {Jaymie(F), Olivia, Mustafa}: total=1 → Ryan's \"exactly two\" claim false → **Ryan = No**.\n\n- Opal/Odette opposite about Ollie → exactly one true → Amberly's \"all three truth\" impossible → Amberly lies → Andree (claims Amberly truth) lies.\n- Inga's statement about {Andree(F), Muriel, Millie} (mutual pair) holds in both cases (either \"all lie\" or \"two truth\") → Inga = true regardless.\n- Fletcher's statement about {Inga(T), Onyx, Olaf} (mutual pair) holds in both cases → Fletcher = true regardless.\n- Mindy/Oleg opposite → exactly one true; with Fletcher=True, total=2 among {Fletcher,Mindy,Oleg} → Alexis's \"exactly two\" claim true → Alexis = true.\n- Ozias/Osbert mutual pair → total among {Alexis(T),Ozias,Osbert} is either 1 or 3, never 2 or 0 → Sal's claim false → Sal lies.\n- Lorine says \"Sal lies\" — **true** → **Lorine = Yes**.\n\nThe final answer is: <yes, no, yes>",
+        "response_sha256": "222588f6c86ec84c639d1cc5daa0ed2c4b2056207cc092ba923b186f0e3c6a57",
+        "parsed_answer": "<yes,no,yes>",
+        "reference": "yes, no, yes",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Ozias says Osbert tells the truth. Maverick says Miles lies. Opal says Ollie tells the truth. Crista says Kristian lies. Osbert says Ozias tells the truth. Elanor says either exactly two of Audrie, Meadow and Misty tell the truth or none of them. Fletcher says either all three of Inga, Onyx and Olaf tell the truth or only one of them. Amberly says Helene, Opal and Odette all tell the truth. Ovid says Oliver lies. Mia says Odell lies. Miles says Maverick lies. Lorine says Sal lies. Miriam says Othello tells the truth. Audrie says either all three of Yoland, Othello and Miriam lie, or two of them tell the truth. Rashida says only one of Vina, Oswald and Mickey lies. Olaf says Onyx tells the truth. Ozzie says Maxim lies. Meadow says Misty tells the truth. Andree says Amberly tells the truth. Alexis says exactly two of Fletcher, Mindy and Oleg tell the truth. Delfina says exactly one of Rashida, Miles and Maverick tells the truth.Lalit says Micah lies. Mark says Mallory tells the truth. Phoebe says either exactly one of Tamika, Murphy and Ofelia tells the truth, or all three of them. Minerva says Oswin lies. Murphy says Ofelia tells the truth. Antwan says Shenna, Oscar and Melanie all tell the truth. Tamika says exactly two of Kandi, Odell and Mia tells the truth. Maxim says Ozzie lies. Muriel says Millie tells the truth. Helene says exactly one of Teressa, Ovid and Oliver tells the truth.Oswald says Maria tells the truth. Raymond says Delfina, Mark and Marlon all tell the truth. Odette says Ollie lies. Mina says Otis lies. Teressa says Dallas tells the truth. Leda says only one of Sima, Melissa and Minerva tells the truth. Marlon says Mallory lies. Odell says Mia lies. Miranda says Mandy lies. Olivia says Mustafa lies. Misty says Meadow tells the truth. Sima says exactly two of Antwan, Ozzie and Maxim tells the truth. Kandi says either exactly one of Raymond, Madison and Bahar tells the truth, or all three of them. Oscar says Ozzy tells the truth. Dallas says exactly two of Elanor, Miranda and Mandy tells the truth. Shenna says Phoebe lies. Mustafa says Olivia lies. Melanie says Ozzy lies. Jaymie says either exactly two of Leda, Malcolm and Monica tell the truth or none of them. Oliver says Ovid lies. Inga says either all three of Andree, Muriel and Millie lie, or two of them tell the truth. Kristian tells the truth. Madison says Bahar tells the truth. Sal says either exactly two of Alexis, Ozias and Osbert tell the truth or none of them. Malcolm says Monica tells the truth. Othello says Miriam tells the truth. Oleg says Mindy lies. Ofelia says Murphy tells the truth. Monica says Malcolm tells the truth. Mickey says Maria lies. Miller says Micah tells the truth. Bahar says Madison tells the truth. Onyx says Olaf tells the truth. Millie says Muriel tells the truth. Yoland says only one of Ryan, Miller and Lalit lies. Mandy says Miranda lies. Mindy says Oleg lies. Vina says only one of Crista, Osian and Mina lies. Osian says Otis tells the truth. Melissa says Oswin tells the truth. Ryan says exactly two of Jaymie, Olivia and Mustafa tells the truth. Do Leda, Ryan, and Lorine tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "8a14c3143267abb27eacbc8ae7606d4904c71fdbee0fba1804273618d4b446ff"
+      },
+      {
+        "question": "web_of_lies-8a14c3143267abb2",
+        "family": "web_of_lies",
+        "arm": "B",
+        "response": "**Verification:** All logical steps check out.\n\n- Oscar/Melanie contradict (exactly 1 true) → Antwan's \"all three true\" is false → Antwan lies.\n- Ozzie/Maxim contradict (exactly 1 true) → Sima's \"exactly two\" among {Antwan(F),Ozzie,Maxim}=1 → false → Sima lies.\n- Melissa/Minerva contradict (exactly 1 true) → Leda's \"only one\" among {Sima(F),Melissa,Minerva}=1 → true → **Leda=Yes**.\n- Olivia/Mustafa contradict (exactly 1 true); Malcolm/Monica mutually support (both same) → totals among {Leda(T),Malcolm,Monica} are 1 or 3, never 2 or 0 → Jaymie lies.\n- Ryan's \"exactly two\" among {Jaymie(F),Olivia,Mustafa}=1 → false → **Ryan=No**.\n- Opal/Odette contradict → Amberly's \"all three true\" false → Amberly lies → Andree lies.\n- Muriel/Millie mutually support; Inga's disjunction holds in both cases → Inga=True.\n- Olaf/Onyx mutually support; Fletcher's disjunction holds in both cases → Fletcher=True.\n- Mindy/Oleg contradict → Alexis's \"exactly two\" among {Fletcher(T),Mindy,Oleg}=2 → true → Alexis=True.\n- Ozias/Osbert mutually support → Sal's disjunction fails in both cases → Sal lies.\n- Lorine says \"Sal lies\" → true → **Lorine=Yes**.\n\nAll steps confirmed correct.\n\nThe final answer is: <yes, no, yes>",
+        "response_sha256": "cbb0dd9b8a5f7ac885616ca2cac73be4cbaf075c32fe229239755c72e5872e6b",
+        "parsed_answer": "<yes,no,yes>",
+        "reference": "yes, no, yes",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Ozias says Osbert tells the truth. Maverick says Miles lies. Opal says Ollie tells the truth. Crista says Kristian lies. Osbert says Ozias tells the truth. Elanor says either exactly two of Audrie, Meadow and Misty tell the truth or none of them. Fletcher says either all three of Inga, Onyx and Olaf tell the truth or only one of them. Amberly says Helene, Opal and Odette all tell the truth. Ovid says Oliver lies. Mia says Odell lies. Miles says Maverick lies. Lorine says Sal lies. Miriam says Othello tells the truth. Audrie says either all three of Yoland, Othello and Miriam lie, or two of them tell the truth. Rashida says only one of Vina, Oswald and Mickey lies. Olaf says Onyx tells the truth. Ozzie says Maxim lies. Meadow says Misty tells the truth. Andree says Amberly tells the truth. Alexis says exactly two of Fletcher, Mindy and Oleg tell the truth. Delfina says exactly one of Rashida, Miles and Maverick tells the truth.Lalit says Micah lies. Mark says Mallory tells the truth. Phoebe says either exactly one of Tamika, Murphy and Ofelia tells the truth, or all three of them. Minerva says Oswin lies. Murphy says Ofelia tells the truth. Antwan says Shenna, Oscar and Melanie all tell the truth. Tamika says exactly two of Kandi, Odell and Mia tells the truth. Maxim says Ozzie lies. Muriel says Millie tells the truth. Helene says exactly one of Teressa, Ovid and Oliver tells the truth.Oswald says Maria tells the truth. Raymond says Delfina, Mark and Marlon all tell the truth. Odette says Ollie lies. Mina says Otis lies. Teressa says Dallas tells the truth. Leda says only one of Sima, Melissa and Minerva tells the truth. Marlon says Mallory lies. Odell says Mia lies. Miranda says Mandy lies. Olivia says Mustafa lies. Misty says Meadow tells the truth. Sima says exactly two of Antwan, Ozzie and Maxim tells the truth. Kandi says either exactly one of Raymond, Madison and Bahar tells the truth, or all three of them. Oscar says Ozzy tells the truth. Dallas says exactly two of Elanor, Miranda and Mandy tells the truth. Shenna says Phoebe lies. Mustafa says Olivia lies. Melanie says Ozzy lies. Jaymie says either exactly two of Leda, Malcolm and Monica tell the truth or none of them. Oliver says Ovid lies. Inga says either all three of Andree, Muriel and Millie lie, or two of them tell the truth. Kristian tells the truth. Madison says Bahar tells the truth. Sal says either exactly two of Alexis, Ozias and Osbert tell the truth or none of them. Malcolm says Monica tells the truth. Othello says Miriam tells the truth. Oleg says Mindy lies. Ofelia says Murphy tells the truth. Monica says Malcolm tells the truth. Mickey says Maria lies. Miller says Micah tells the truth. Bahar says Madison tells the truth. Onyx says Olaf tells the truth. Millie says Muriel tells the truth. Yoland says only one of Ryan, Miller and Lalit lies. Mandy says Miranda lies. Mindy says Oleg lies. Vina says only one of Crista, Osian and Mina lies. Osian says Otis tells the truth. Melissa says Oswin tells the truth. Ryan says exactly two of Jaymie, Olivia and Mustafa tells the truth. Do Leda, Ryan, and Lorine tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "8a14c3143267abb27eacbc8ae7606d4904c71fdbee0fba1804273618d4b446ff"
+      },
+      {
+        "question": "web_of_lies-8a14c3143267abb2",
+        "family": "web_of_lies",
+        "arm": "E",
+        "response": "Oscar and Melanie have opposite truth values, so Antwan is false. Since Ozzie and Maxim are opposite, Sima = Antwan = false. Melissa and Minerva are opposite, hence Leda is true. Jaymie is the negation of Leda, so Jaymie is false; Olivia and Mustafa are opposite, making Ryan = Jaymie = false. Opal and Odette are opposite, so Amberly is false. Thus Inga, Fletcher, and Alexis are true; Sal is false, hence Lorine is true.\n\nThe final answer is: <yes, no, yes>",
+        "response_sha256": "a864e28ee0aad15a3ef70c3c757ed02b51dfe8dfcf4682ddfb035ff1d92c268f",
+        "parsed_answer": "<yes,no,yes>",
+        "reference": "yes, no, yes",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Ozias says Osbert tells the truth. Maverick says Miles lies. Opal says Ollie tells the truth. Crista says Kristian lies. Osbert says Ozias tells the truth. Elanor says either exactly two of Audrie, Meadow and Misty tell the truth or none of them. Fletcher says either all three of Inga, Onyx and Olaf tell the truth or only one of them. Amberly says Helene, Opal and Odette all tell the truth. Ovid says Oliver lies. Mia says Odell lies. Miles says Maverick lies. Lorine says Sal lies. Miriam says Othello tells the truth. Audrie says either all three of Yoland, Othello and Miriam lie, or two of them tell the truth. Rashida says only one of Vina, Oswald and Mickey lies. Olaf says Onyx tells the truth. Ozzie says Maxim lies. Meadow says Misty tells the truth. Andree says Amberly tells the truth. Alexis says exactly two of Fletcher, Mindy and Oleg tell the truth. Delfina says exactly one of Rashida, Miles and Maverick tells the truth.Lalit says Micah lies. Mark says Mallory tells the truth. Phoebe says either exactly one of Tamika, Murphy and Ofelia tells the truth, or all three of them. Minerva says Oswin lies. Murphy says Ofelia tells the truth. Antwan says Shenna, Oscar and Melanie all tell the truth. Tamika says exactly two of Kandi, Odell and Mia tells the truth. Maxim says Ozzie lies. Muriel says Millie tells the truth. Helene says exactly one of Teressa, Ovid and Oliver tells the truth.Oswald says Maria tells the truth. Raymond says Delfina, Mark and Marlon all tell the truth. Odette says Ollie lies. Mina says Otis lies. Teressa says Dallas tells the truth. Leda says only one of Sima, Melissa and Minerva tells the truth. Marlon says Mallory lies. Odell says Mia lies. Miranda says Mandy lies. Olivia says Mustafa lies. Misty says Meadow tells the truth. Sima says exactly two of Antwan, Ozzie and Maxim tells the truth. Kandi says either exactly one of Raymond, Madison and Bahar tells the truth, or all three of them. Oscar says Ozzy tells the truth. Dallas says exactly two of Elanor, Miranda and Mandy tells the truth. Shenna says Phoebe lies. Mustafa says Olivia lies. Melanie says Ozzy lies. Jaymie says either exactly two of Leda, Malcolm and Monica tell the truth or none of them. Oliver says Ovid lies. Inga says either all three of Andree, Muriel and Millie lie, or two of them tell the truth. Kristian tells the truth. Madison says Bahar tells the truth. Sal says either exactly two of Alexis, Ozias and Osbert tell the truth or none of them. Malcolm says Monica tells the truth. Othello says Miriam tells the truth. Oleg says Mindy lies. Ofelia says Murphy tells the truth. Monica says Malcolm tells the truth. Mickey says Maria lies. Miller says Micah tells the truth. Bahar says Madison tells the truth. Onyx says Olaf tells the truth. Millie says Muriel tells the truth. Yoland says only one of Ryan, Miller and Lalit lies. Mandy says Miranda lies. Mindy says Oleg lies. Vina says only one of Crista, Osian and Mina lies. Osian says Otis tells the truth. Melissa says Oswin tells the truth. Ryan says exactly two of Jaymie, Olivia and Mustafa tells the truth. Do Leda, Ryan, and Lorine tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "8a14c3143267abb27eacbc8ae7606d4904c71fdbee0fba1804273618d4b446ff"
+      },
+      {
+        "question": "web_of_lies-20eb946843cffbe8",
+        "family": "web_of_lies",
+        "arm": "A",
+        "response": "**Reasoning:**\n\n- **Gwenn**: says Bernita, Maurice, Oden all truth-tellers. But Maurice says \"Minnie truth\" and Oden says \"Minnie lies\" — direct contradiction, so they can't both be true. Thus Gwenn's statement is false → **Gwenn = no**.\n\n- **Sal**: Chain Delfina→Fletcher→Sal all involve statements whose truth value is forced true regardless of the ambiguous mutual pairs (Moses/Orin, Marsha/Osbert), since both branches satisfy the \"all lie / two truth\" disjunction. A liar cannot assert an always-true statement, forcing Delfina=true, Fletcher=false (Fletcher's claim \"Delfina lies\" is false), and similarly Sal's disjunction is always true given Fletcher=false, so Sal must be a truth-teller → **Sal = yes**.\n\n- **Fidel**: Tracing mutual-contradiction pairs (Ryan/Sima chain) shows Amberly=true, and Sima's statement is always true regardless of Octavius/Mary values → Sima=true → Ryan=true → Raymond=false → Dallas=false → Alexis=true → Teressa=false → Vina=false → Tamika=false → Kandi=false → Shenna=false → Vernell=false. Since Fidel says \"Vernell lies,\" and Vernell indeed lies, Fidel's statement is true → **Fidel = yes**.\n\nThe final answer is: <yes, no, yes>",
+        "response_sha256": "3d2ae63f47844184aa2e91fe9cd0dec46919aa8ae63bad18f6f381826c1879fe",
+        "parsed_answer": "<yes,no,yes>",
+        "reference": "yes, no, yes",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Bernita says Elanor tells the truth. McKenzie says Miranda lies. Maurice says Minnie tells the truth. Ofelia says Oprah tells the truth. Amberly says exactly two of Alejandro, Miranda and McKenzie tell the truth. Ophelia says Monica lies. Orin says Moses tells the truth. Elanor says only one of Sherrie, Morris and Ollie lies. Fletcher says Delfina lies. Alejandro tells the truth. Delfina says either all three of Gwenn, Moses and Orin lie, or two of them tell the truth. Mallory says Oprah lies. Marsha says Osbert tells the truth. Odile says Maria tells the truth. Marlon says Otto tells the truth. Marina says Otis tells the truth. Kandi says only one of Willian, Mike and Oswin lies. Tamika says only one of Vina, Marshall and Max lies. Octavia says Mateo lies. Sal says either all three of Fletcher, Marsha and Osbert lie, or two of them tell the truth. Marvin says Oakley tells the truth. Oden says Minnie lies. Dallas says either exactly one of Raymond, Otis and Marina tells the truth, or all three of them. Ryan says only one of Sima, Ofelia and Mallory lies. Sima says either all three of Amberly, Octavius and Mary tell the truth or only one of them. Otis says Marina tells the truth. Mateo says Octavia lies. Otto says Marlon tells the truth. Odin says Maria lies. Morris says John tells the truth. Raymond says either exactly two of Ryan, Marlon and Otto tell the truth or none of them. Teressa says Alexis lies. Vina says either exactly one of Teressa, Oakley and Marvin tells the truth, or all three of them. Lalit says Monica tells the truth. Gwenn says Bernita, Maurice and Oden all tell the truth. Octavius says Mary tells the truth. Oswin says Melinda lies. Sherrie says only one of Fidel, Odile and Odin lies. Willian says Tamika tells the truth. Miranda says McKenzie lies. Osbert says Marsha tells the truth. Marshall says Orhan tells the truth. Vernell says only one of Shenna, Miguel and Olga lies. Miguel says Ozzy tells the truth. Alexis says only one of Dallas, Lalit and Ophelia tells the truth. Moses says Orin tells the truth. Max says Orhan lies. Mary says Octavius tells the truth. Olga says Ozzy lies. Fidel says Vernell lies. Ollie says John lies. Mike says Melinda tells the truth. Oakley says Marvin tells the truth. Shenna says exactly two of Kandi, Mateo and Octavia tells the truth. Do Fidel, Gwenn, and Sal tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "20eb946843cffbe8244fce6f41d170ff9aed0e6cb18d5e7d877e34d2728f16e3"
+      },
+      {
+        "question": "web_of_lies-20eb946843cffbe8",
+        "family": "web_of_lies",
+        "arm": "B",
+        "response": "**Verification:**\n\n- **Gwenn**: Claims Bernita, Maurice, Oden all true. But Maurice says \"Minnie truth,\" Oden says \"Minnie lies\" — direct contradiction, so not all three can be true → **Gwenn = no**.\n\n- **Sal**: Marsha/Osbert form a mutual \"X says Y truth / Y says X truth\" pair, forcing them to always match (both true or both false). Fletcher lies (since Delfina's own disjunctive statement about Moses/Orin — another matching pair — is logically always satisfied, making Delfina true, hence Fletcher's claim \"Delfina lies\" false). Given Fletcher=false and Marsha/Osbert always matching, Sal's disjunction (\"all three lie\" or \"two tell truth\") is always satisfied regardless of actual values → **Sal = yes**.\n\n- **Fidel**: Chasing matching/opposing pairs (McKenzie/Miranda, Octavius/Mary, Ofelia/Mallory, Marlon/Otto, Otis/Marina, Lalit/Ophelia, Oakley/Marvin, Marshall/Max, Mike/Oswin, Octavia/Mateo, Miguel/Olga) through Amberly→Sima→Ryan→Raymond(no)→Dallas(no)→Alexis(yes)→Teressa(no)→Vina(no)→Tamika(no)→Willian(no)→Kandi(no)→Shenna(no)→Vernell(no). Since Vernell lies, Fidel's claim \"Vernell lies\" is true → **Fidel = yes**.\n\nAll steps confirmed consistent; candidate's answer is correct.\n\nThe final answer is: <yes, no, yes>",
+        "response_sha256": "dc27538af6ed3055b6680249874c346762734ac43d67d4e292a8e9982ca2752e",
+        "parsed_answer": "<yes,no,yes>",
+        "reference": "yes, no, yes",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Bernita says Elanor tells the truth. McKenzie says Miranda lies. Maurice says Minnie tells the truth. Ofelia says Oprah tells the truth. Amberly says exactly two of Alejandro, Miranda and McKenzie tell the truth. Ophelia says Monica lies. Orin says Moses tells the truth. Elanor says only one of Sherrie, Morris and Ollie lies. Fletcher says Delfina lies. Alejandro tells the truth. Delfina says either all three of Gwenn, Moses and Orin lie, or two of them tell the truth. Mallory says Oprah lies. Marsha says Osbert tells the truth. Odile says Maria tells the truth. Marlon says Otto tells the truth. Marina says Otis tells the truth. Kandi says only one of Willian, Mike and Oswin lies. Tamika says only one of Vina, Marshall and Max lies. Octavia says Mateo lies. Sal says either all three of Fletcher, Marsha and Osbert lie, or two of them tell the truth. Marvin says Oakley tells the truth. Oden says Minnie lies. Dallas says either exactly one of Raymond, Otis and Marina tells the truth, or all three of them. Ryan says only one of Sima, Ofelia and Mallory lies. Sima says either all three of Amberly, Octavius and Mary tell the truth or only one of them. Otis says Marina tells the truth. Mateo says Octavia lies. Otto says Marlon tells the truth. Odin says Maria lies. Morris says John tells the truth. Raymond says either exactly two of Ryan, Marlon and Otto tell the truth or none of them. Teressa says Alexis lies. Vina says either exactly one of Teressa, Oakley and Marvin tells the truth, or all three of them. Lalit says Monica tells the truth. Gwenn says Bernita, Maurice and Oden all tell the truth. Octavius says Mary tells the truth. Oswin says Melinda lies. Sherrie says only one of Fidel, Odile and Odin lies. Willian says Tamika tells the truth. Miranda says McKenzie lies. Osbert says Marsha tells the truth. Marshall says Orhan tells the truth. Vernell says only one of Shenna, Miguel and Olga lies. Miguel says Ozzy tells the truth. Alexis says only one of Dallas, Lalit and Ophelia tells the truth. Moses says Orin tells the truth. Max says Orhan lies. Mary says Octavius tells the truth. Olga says Ozzy lies. Fidel says Vernell lies. Ollie says John lies. Mike says Melinda tells the truth. Oakley says Marvin tells the truth. Shenna says exactly two of Kandi, Mateo and Octavia tells the truth. Do Fidel, Gwenn, and Sal tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "20eb946843cffbe8244fce6f41d170ff9aed0e6cb18d5e7d877e34d2728f16e3"
+      },
+      {
+        "question": "web_of_lies-20eb946843cffbe8",
+        "family": "web_of_lies",
+        "arm": "E",
+        "response": "Fidel is truthful: the linked statements yield Vernell = Dallas, while Dallas = ¬Ryan = ¬Sima = ¬Amberly; Amberly is true because Alejandro is true and McKenzie/Miranda have opposite truth values. Thus Dallas and Vernell are false, so Fidel is true.\n\nGwenn is false because Maurice says Minnie is truthful while Oden says Minnie lies, so not all of Bernita, Maurice, and Oden can be truthful.\n\nFor Sal, Marsha and Osbert have equal truth values, so Sal’s condition is equivalent to Delfina being truthful. Gwenn is false and Moses/Orin agree, making Delfina’s condition true. Hence Sal is true.\n\nThe final answer is: yes, no, yes",
+        "response_sha256": "abb35fa8db583ea2a25f64e10e13932d82d0f6dbadba42999137d071dfd0d840",
+        "parsed_answer": "yes,no,yes",
+        "reference": "yes, no, yes",
+        "correct": true,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. Bernita says Elanor tells the truth. McKenzie says Miranda lies. Maurice says Minnie tells the truth. Ofelia says Oprah tells the truth. Amberly says exactly two of Alejandro, Miranda and McKenzie tell the truth. Ophelia says Monica lies. Orin says Moses tells the truth. Elanor says only one of Sherrie, Morris and Ollie lies. Fletcher says Delfina lies. Alejandro tells the truth. Delfina says either all three of Gwenn, Moses and Orin lie, or two of them tell the truth. Mallory says Oprah lies. Marsha says Osbert tells the truth. Odile says Maria tells the truth. Marlon says Otto tells the truth. Marina says Otis tells the truth. Kandi says only one of Willian, Mike and Oswin lies. Tamika says only one of Vina, Marshall and Max lies. Octavia says Mateo lies. Sal says either all three of Fletcher, Marsha and Osbert lie, or two of them tell the truth. Marvin says Oakley tells the truth. Oden says Minnie lies. Dallas says either exactly one of Raymond, Otis and Marina tells the truth, or all three of them. Ryan says only one of Sima, Ofelia and Mallory lies. Sima says either all three of Amberly, Octavius and Mary tell the truth or only one of them. Otis says Marina tells the truth. Mateo says Octavia lies. Otto says Marlon tells the truth. Odin says Maria lies. Morris says John tells the truth. Raymond says either exactly two of Ryan, Marlon and Otto tell the truth or none of them. Teressa says Alexis lies. Vina says either exactly one of Teressa, Oakley and Marvin tells the truth, or all three of them. Lalit says Monica tells the truth. Gwenn says Bernita, Maurice and Oden all tell the truth. Octavius says Mary tells the truth. Oswin says Melinda lies. Sherrie says only one of Fidel, Odile and Odin lies. Willian says Tamika tells the truth. Miranda says McKenzie lies. Osbert says Marsha tells the truth. Marshall says Orhan tells the truth. Vernell says only one of Shenna, Miguel and Olga lies. Miguel says Ozzy tells the truth. Alexis says only one of Dallas, Lalit and Ophelia tells the truth. Moses says Orin tells the truth. Max says Orhan lies. Mary says Octavius tells the truth. Olga says Ozzy lies. Fidel says Vernell lies. Ollie says John lies. Mike says Melinda tells the truth. Oakley says Marvin tells the truth. Shenna says exactly two of Kandi, Mateo and Octavia tells the truth. Do Fidel, Gwenn, and Sal tell the truth? Your answer should be a list of three words separated by commas. Each of them must be either yes (if the person tells the truth), no (if the person lies), or unknown (if the person's truth cannot be determined). For example, <unknown, no, yes> or <yes, yes, yes>.",
+        "input_sha256": "20eb946843cffbe8244fce6f41d170ff9aed0e6cb18d5e7d877e34d2728f16e3"
+      },
+      {
+        "question": "hyperbaton-0213095b271da7fb",
+        "family": "hyperbaton",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "F",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) lovely table (2) black earring (3) yellow toolbox (4) old chair (5) crimson knife (6) terrible smoking car (7) good snorkeling hammer (8) magenta car key (9) rectangular blue bicycle (10) brazilian calculator (11) triangular plate (12) smoking bird (13) cardboard bicycle (14) large vietnamese wallet (15) old-fashioned key (16) brand-new umbrella (17) triangular crimson pen (18) obnoxious walking shoe (19) blue guitar (20) smoking screwdriver (21) wood bird (22) ethiopian fire extinguisher (23) prismlike white earring (24) new hammer (25) awful bicycle (26) huge iranian screwdriver (27) small german apple (28) plastic shoe (29) terrible bag (30) german fiberglass exercise camera (31) ridiculous exercise trash can (32) glass archaic drill (33) glass ancient calculator (34) tiny knife (35) massive book (36) archaic vase (37) huge banana (38) plastic new clock (39) spherical pencil (40) violet calculator (41) teal plier (42) steel shirt (43) russian plier (44) brand-new house (45) triangular brown ruler (46) normal-size german trash can (47) steel archaic ring (48) archaic chair (49) whittling lamp (50) repulsive toolbox (51) tiny thai chair (52) indigo plier (53) new ruler (54) circular maroon bicycle (55) spherical vase (56) pakistani fork (57) leather ball (58) midsize knife (59) triangular marker (60) rubber bird (61) rubber archaic brush (62) triangular brown wallet (63) obnoxious exercise table (64) huge fire extinguisher (65) enormous archaic repulsive house (66) japanese sofa (67) paper old apple (68) pyramidal cyan plate (69) ancient book (70) glass brand-new pencil (71) ethiopian banana (72) large knife (73) rectangular clock (74) little hammer (75) new table (76) triangular umbrella (77) wonderful car key (78) black ruler (79) awful jar (80) russian cup (81) drinking plier (82) rubber hammer (83) medium-size stapler (84) yellow canvas (85) exercise shirt (86) large indonesian necklace (87) small bed (88) small iranian hammer (89) triangular indigo sunglasses (90) wood old book (91) small brazilian house (92) wood ring (93) smoking trash can (94) square screwdriver (95) nice walking necklace (96) pyramidal crimson scissors (97) spherical bed (98) wood bottle (99) leather saw (100) little brazilian wrench (101) brand-new car key (102) silly knife (103) medium-size hammer (104) square pencil (105) wonderful hammer (106) nice walking fire extinguisher (107) wood new car (108) plastic key (109) terrible smoking fire extinguisher (110) big camera (111) yellow bottle (112) spherical yellow stapler (113) steel ancient watch (114) wood scissors (115) obnoxious earring (116) congolese scissors (117) cloth bottle (118) ridiculous walking plate (119) iranian brush (120) enormous russian apple (121) enormous vietnamese piano (122) prismlike pink sunglasses (123) big american book\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) yellow rubber archaic wonderful drinking egyptian midsize flower pot\n(B) prismlike steel brand-new repulsive hiking mexican enormous calculator\n(C) huge brazilian leather old-fashioned awful exercise blue earring\n(D) pyramidal cyan wood old mysterious exercise vietnamese house\n(E) enormous indonesian leather brand-new lovely snorkeling rectangular sofa\n(F) enormous vietnamese glass ancient lovely typing hat\n(G) wool old repulsive snorkeling rectangular magenta toolbox\n(H) violet triangular plastic old ridiculous typing japanese huge pen\n(I) green spherical rubber new terrible smoking house\n(J) german leather new silly typing blue circular bag\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "0213095b271da7fb7e1ddac1372c0944088dee4a0f69d756d4c108cf7b4854c8"
+      },
+      {
+        "question": "hyperbaton-0213095b271da7fb",
+        "family": "hyperbaton",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "F",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) lovely table (2) black earring (3) yellow toolbox (4) old chair (5) crimson knife (6) terrible smoking car (7) good snorkeling hammer (8) magenta car key (9) rectangular blue bicycle (10) brazilian calculator (11) triangular plate (12) smoking bird (13) cardboard bicycle (14) large vietnamese wallet (15) old-fashioned key (16) brand-new umbrella (17) triangular crimson pen (18) obnoxious walking shoe (19) blue guitar (20) smoking screwdriver (21) wood bird (22) ethiopian fire extinguisher (23) prismlike white earring (24) new hammer (25) awful bicycle (26) huge iranian screwdriver (27) small german apple (28) plastic shoe (29) terrible bag (30) german fiberglass exercise camera (31) ridiculous exercise trash can (32) glass archaic drill (33) glass ancient calculator (34) tiny knife (35) massive book (36) archaic vase (37) huge banana (38) plastic new clock (39) spherical pencil (40) violet calculator (41) teal plier (42) steel shirt (43) russian plier (44) brand-new house (45) triangular brown ruler (46) normal-size german trash can (47) steel archaic ring (48) archaic chair (49) whittling lamp (50) repulsive toolbox (51) tiny thai chair (52) indigo plier (53) new ruler (54) circular maroon bicycle (55) spherical vase (56) pakistani fork (57) leather ball (58) midsize knife (59) triangular marker (60) rubber bird (61) rubber archaic brush (62) triangular brown wallet (63) obnoxious exercise table (64) huge fire extinguisher (65) enormous archaic repulsive house (66) japanese sofa (67) paper old apple (68) pyramidal cyan plate (69) ancient book (70) glass brand-new pencil (71) ethiopian banana (72) large knife (73) rectangular clock (74) little hammer (75) new table (76) triangular umbrella (77) wonderful car key (78) black ruler (79) awful jar (80) russian cup (81) drinking plier (82) rubber hammer (83) medium-size stapler (84) yellow canvas (85) exercise shirt (86) large indonesian necklace (87) small bed (88) small iranian hammer (89) triangular indigo sunglasses (90) wood old book (91) small brazilian house (92) wood ring (93) smoking trash can (94) square screwdriver (95) nice walking necklace (96) pyramidal crimson scissors (97) spherical bed (98) wood bottle (99) leather saw (100) little brazilian wrench (101) brand-new car key (102) silly knife (103) medium-size hammer (104) square pencil (105) wonderful hammer (106) nice walking fire extinguisher (107) wood new car (108) plastic key (109) terrible smoking fire extinguisher (110) big camera (111) yellow bottle (112) spherical yellow stapler (113) steel ancient watch (114) wood scissors (115) obnoxious earring (116) congolese scissors (117) cloth bottle (118) ridiculous walking plate (119) iranian brush (120) enormous russian apple (121) enormous vietnamese piano (122) prismlike pink sunglasses (123) big american book\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) yellow rubber archaic wonderful drinking egyptian midsize flower pot\n(B) prismlike steel brand-new repulsive hiking mexican enormous calculator\n(C) huge brazilian leather old-fashioned awful exercise blue earring\n(D) pyramidal cyan wood old mysterious exercise vietnamese house\n(E) enormous indonesian leather brand-new lovely snorkeling rectangular sofa\n(F) enormous vietnamese glass ancient lovely typing hat\n(G) wool old repulsive snorkeling rectangular magenta toolbox\n(H) violet triangular plastic old ridiculous typing japanese huge pen\n(I) green spherical rubber new terrible smoking house\n(J) german leather new silly typing blue circular bag\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "0213095b271da7fb7e1ddac1372c0944088dee4a0f69d756d4c108cf7b4854c8"
+      },
+      {
+        "question": "hyperbaton-0213095b271da7fb",
+        "family": "hyperbaton",
+        "arm": "E",
+        "response": "The examples establish the category order: size, origin, material, age, opinion, purpose, shape, color. C, E, F, and G follow this order (omitting categories where absent); every other option reverses at least one category pair.\n\nThe final answer is: CEFG",
+        "response_sha256": "0d17a9a382b96c7ee68a9593700c732e46f6c1d01d3f62a538478938ac8232e0",
+        "parsed_answer": "cefg",
+        "reference": "F",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) lovely table (2) black earring (3) yellow toolbox (4) old chair (5) crimson knife (6) terrible smoking car (7) good snorkeling hammer (8) magenta car key (9) rectangular blue bicycle (10) brazilian calculator (11) triangular plate (12) smoking bird (13) cardboard bicycle (14) large vietnamese wallet (15) old-fashioned key (16) brand-new umbrella (17) triangular crimson pen (18) obnoxious walking shoe (19) blue guitar (20) smoking screwdriver (21) wood bird (22) ethiopian fire extinguisher (23) prismlike white earring (24) new hammer (25) awful bicycle (26) huge iranian screwdriver (27) small german apple (28) plastic shoe (29) terrible bag (30) german fiberglass exercise camera (31) ridiculous exercise trash can (32) glass archaic drill (33) glass ancient calculator (34) tiny knife (35) massive book (36) archaic vase (37) huge banana (38) plastic new clock (39) spherical pencil (40) violet calculator (41) teal plier (42) steel shirt (43) russian plier (44) brand-new house (45) triangular brown ruler (46) normal-size german trash can (47) steel archaic ring (48) archaic chair (49) whittling lamp (50) repulsive toolbox (51) tiny thai chair (52) indigo plier (53) new ruler (54) circular maroon bicycle (55) spherical vase (56) pakistani fork (57) leather ball (58) midsize knife (59) triangular marker (60) rubber bird (61) rubber archaic brush (62) triangular brown wallet (63) obnoxious exercise table (64) huge fire extinguisher (65) enormous archaic repulsive house (66) japanese sofa (67) paper old apple (68) pyramidal cyan plate (69) ancient book (70) glass brand-new pencil (71) ethiopian banana (72) large knife (73) rectangular clock (74) little hammer (75) new table (76) triangular umbrella (77) wonderful car key (78) black ruler (79) awful jar (80) russian cup (81) drinking plier (82) rubber hammer (83) medium-size stapler (84) yellow canvas (85) exercise shirt (86) large indonesian necklace (87) small bed (88) small iranian hammer (89) triangular indigo sunglasses (90) wood old book (91) small brazilian house (92) wood ring (93) smoking trash can (94) square screwdriver (95) nice walking necklace (96) pyramidal crimson scissors (97) spherical bed (98) wood bottle (99) leather saw (100) little brazilian wrench (101) brand-new car key (102) silly knife (103) medium-size hammer (104) square pencil (105) wonderful hammer (106) nice walking fire extinguisher (107) wood new car (108) plastic key (109) terrible smoking fire extinguisher (110) big camera (111) yellow bottle (112) spherical yellow stapler (113) steel ancient watch (114) wood scissors (115) obnoxious earring (116) congolese scissors (117) cloth bottle (118) ridiculous walking plate (119) iranian brush (120) enormous russian apple (121) enormous vietnamese piano (122) prismlike pink sunglasses (123) big american book\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) yellow rubber archaic wonderful drinking egyptian midsize flower pot\n(B) prismlike steel brand-new repulsive hiking mexican enormous calculator\n(C) huge brazilian leather old-fashioned awful exercise blue earring\n(D) pyramidal cyan wood old mysterious exercise vietnamese house\n(E) enormous indonesian leather brand-new lovely snorkeling rectangular sofa\n(F) enormous vietnamese glass ancient lovely typing hat\n(G) wool old repulsive snorkeling rectangular magenta toolbox\n(H) violet triangular plastic old ridiculous typing japanese huge pen\n(I) green spherical rubber new terrible smoking house\n(J) german leather new silly typing blue circular bag\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "0213095b271da7fb7e1ddac1372c0944088dee4a0f69d756d4c108cf7b4854c8"
+      },
+      {
+        "question": "multistep_arithmetic-2e762c7fb34d49eb",
+        "family": "multistep_arithmetic",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "-58396",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(a - b)$ if $a ! b > 0$; otherwise,  it equals $a + b$.\n$a : b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a ~ b$.\n$a @ b$ equals $(2 ~ b) + a$ if $a > b$ and $b$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((one @ six) :*- (7 :: three)) -~ ((-2 : -6) +-+ (-5 :!! 3))) ~*- (((ten ~@@ 8) !@~ (five * 7)) -@~ ((-2 ~~ 2) - (-9 @~ -5))))\nLet B = ((((7 *+@ -3) !:* (-10 ~-- -1)) :@ ((4 !@ seven) !+ (-9 *:! seven))) - (((-6 !~ -4) @:@ (one ** six)) -! ((six - -6) ! (-9 ~- six))))\nLet C = (((((((((((six : -9) !*: two) ~ 5) @~ 1) -@@ seven) ~ ten) !@ -2) +!@ five) :!! -9) @@ 8) :!! -3).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "2e762c7fb34d49eb7bedb7f4d1ba9b6e729a8ee0c58b89402e5ca535d0879ad8"
+      },
+      {
+        "question": "multistep_arithmetic-2e762c7fb34d49eb",
+        "family": "multistep_arithmetic",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "-58396",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(a - b)$ if $a ! b > 0$; otherwise,  it equals $a + b$.\n$a : b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a ~ b$.\n$a @ b$ equals $(2 ~ b) + a$ if $a > b$ and $b$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((one @ six) :*- (7 :: three)) -~ ((-2 : -6) +-+ (-5 :!! 3))) ~*- (((ten ~@@ 8) !@~ (five * 7)) -@~ ((-2 ~~ 2) - (-9 @~ -5))))\nLet B = ((((7 *+@ -3) !:* (-10 ~-- -1)) :@ ((4 !@ seven) !+ (-9 *:! seven))) - (((-6 !~ -4) @:@ (one ** six)) -! ((six - -6) ! (-9 ~- six))))\nLet C = (((((((((((six : -9) !*: two) ~ 5) @~ 1) -@@ seven) ~ ten) !@ -2) +!@ five) :!! -9) @@ 8) :!! -3).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "2e762c7fb34d49eb7bedb7f4d1ba9b6e729a8ee0c58b89402e5ca535d0879ad8"
+      },
+      {
+        "question": "multistep_arithmetic-2e762c7fb34d49eb",
+        "family": "multistep_arithmetic",
+        "arm": "E",
+        "response": "Using the definitions, \\( !\\) is multiplication and \\(:\\) equals \\(\\sim\\). Evaluating chained operations left-to-right with the repeated right operand gives:\n\\[\nA=-44308,\\qquad B=15456,\\qquad C=31212.\n\\]\nTherefore,\n\\[\nA+B-C=-44308+15456-31212=-60064.\n\\]\n\nThe final answer is: -60064",
+        "response_sha256": "9fdd6c534fa84dbad217da257d07cfe00527cd4adf947018fb362b88bb90b093",
+        "parsed_answer": "-60064",
+        "reference": "-58396",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "Consider the following new operations:\n\n$a ! b$ equals $(a * b)$ if $a - b > 0$; otherwise,  it equals $-a * -b$.\n$a ~ b$ equals $(a - b)$ if $a ! b > 0$; otherwise,  it equals $a + b$.\n$a : b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a ~ b$.\n$a @ b$ equals $(2 ~ b) + a$ if $a > b$ and $b$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((one @ six) :*- (7 :: three)) -~ ((-2 : -6) +-+ (-5 :!! 3))) ~*- (((ten ~@@ 8) !@~ (five * 7)) -@~ ((-2 ~~ 2) - (-9 @~ -5))))\nLet B = ((((7 *+@ -3) !:* (-10 ~-- -1)) :@ ((4 !@ seven) !+ (-9 *:! seven))) - (((-6 !~ -4) @:@ (one ** six)) -! ((six - -6) ! (-9 ~- six))))\nLet C = (((((((((((six : -9) !*: two) ~ 5) @~ 1) -@@ seven) ~ ten) !@ -2) +!@ five) :!! -9) @@ 8) :!! -3).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "2e762c7fb34d49eb7bedb7f4d1ba9b6e729a8ee0c58b89402e5ca535d0879ad8"
+      },
+      {
+        "question": "hyperbaton-bbe432c0103bb7a9",
+        "family": "hyperbaton",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "B",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) cardboard big whittling fork (2) eating camera (3) repulsive small ruler (4) turkish pencil (5) leather spoon (6) rubber brown stapler (7) hiking triangular flower pot (8) mexican piano (9) russian old-fashioned cup (10) plastic dog (11) cloth car key (12) leather piano (13) driving rectangular lamp (14) wool crimson key (15) terrible big bowl (16) german new scissors (17) crimson bicycle (18) large clock (19) steel indigo box (20) russian bottle (21) japanese old knife (22) ethiopian brand-new trash can (23) snorkeling circular plier (24) midsize drill (25) silly ruler (26) square clock (27) rubber hat (28) maroon brush (29) thai old ring (30) snorkeling triangular cup (31) cardboard gray cup (32) lovely medium-size bicycle (33) black wallet (34) mysterious chair (35) wonderful little ball (36) huge calculator (37) repulsive plier (38) wool hat (39) obnoxious house (40) brown shoe (41) indigo dog (42) massive brush (43) cardboard apple (44) chinese guitar (45) obnoxious little sofa (46) triangular house (47) small apple (48) brand-new scissors (49) prismlike screwdriver (50) square shirt (51) vietnamese old watch (52) wonderful stapler (53) pakistani screwdriver (54) leather camera (55) nice little trash can (56) wonderful tiny brush (57) tiny pencil (58) crimson fire extinguisher (59) driving piano (60) spherical canvas (61) violet apple (62) ridiculous hat (63) iranian old-fashioned clock (64) wool aqua ring (65) eating shirt (66) iron fire extinguisher (67) terrible tiny screwdriver (68) lovely hammer (69) old-fashioned toolbox (70) huge flower pot (71) exercise hammer (72) indigo sunglasses (73) magenta hammer (74) wool yellow stapler (75) thai brand-new lamp (76) japanese drill (77) good little earring (78) cardboard chair (79) hiking chair (80) lovely big pencil (81) black hammer (82) brazilian marker (83) drinking scissors (84) steel cyan cup (85) awful piano (86) eating rectangular umbrella (87) leather aqua umbrella (88) typing speaker (89) circular pencil (90) fiberglass key (91) walking circular plate (92) yellow jar (93) big fire extinguisher (94) eating pyramidal wrench (95) normal-size ball (96) wool canvas (97) ridiculous scissors (98) ancient toolbox (99) ridiculous earring (100) silly small camera (101) snorkeling bed (102) good large necklace (103) iron spoon (104) lovely massive clock (105) glass spoon (106) maroon house (107) hiking prismlike plate (108) good enormous key (109) typing fire extinguisher (110) brazilian brand-new bed (111) smoking speaker (112) ridiculous car key (113) eating triangular plate (114) green sofa (115) triangular saw (116) white obnoxious spherical key (117) mexican umbrella (118) hiking sofa (119) steel indigo car key (120) iron piano (121) massive saw (122) violet bed (123) walking canvas (124) rubber crimson drill (125) cardboard violet lamp (126) rubber blue brush (127) old apple (128) cardboard black candle (129) paper speaker (130) indonesian new hammer (131) good trash can (132) midsize wallet (133) awful midsize hammer (134) archaic box (135) cloth cyan dog (136) lovely tiny cup (137) whittling pyramidal candle (138) indian brush (139) steel sunglasses (140) congolese plate (141) rubber indigo pen (142) driving car key (143) driving rectangular candle (144) ethiopian ancient watch (145) midsize bottle (146) walking sunglasses (147) snorkeling calculator (148) medium-size car (149) exercise rectangular saw (150) ancient calculator (151) drinking table (152) plastic magenta wrench (153) hiking wrench (154) nice ball (155) massive pen (156) ethiopian archaic scissors (157) red bottle (158) congolese bag (159) brand-new bag (160) german ancient earring (161) brazilian brush (162) teal shoe (163) leather aqua sofa (164) indonesian old-fashioned book (165) turkish piano (166) mysterious bottle (167) exercise wallet (168) obnoxious fire extinguisher (169) brand-new spoon\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) egyptian old-fashioned nice massive eating circular brown steel hat\n(B) wool teal silly normal-size smoking pyramidal hammer\n(C) glass aqua lovely large smoking square japanese old-fashioned watch\n(D) wood black repulsive large smoking prismlike old mexican car key\n(E) new pakistani wonderful big whittling triangular crimson glass clock\n(F) cardboard yellow silly huge hiking circular archaic banana\n(G) nigerian old-fashioned good enormous snorkeling spherical brown shirt\n(H) pink good huge whittling prismlike egyptian brand-new candle\n(I) iranian awful large eating triangular maroon wood drill\n(J) ridiculous big driving rectangular iranian archaic house\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "bbe432c0103bb7a93bc618e7ca369da7420c897f3233fe833f4a01f1d9f9c1ec"
+      },
+      {
+        "question": "hyperbaton-bbe432c0103bb7a9",
+        "family": "hyperbaton",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "B",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) cardboard big whittling fork (2) eating camera (3) repulsive small ruler (4) turkish pencil (5) leather spoon (6) rubber brown stapler (7) hiking triangular flower pot (8) mexican piano (9) russian old-fashioned cup (10) plastic dog (11) cloth car key (12) leather piano (13) driving rectangular lamp (14) wool crimson key (15) terrible big bowl (16) german new scissors (17) crimson bicycle (18) large clock (19) steel indigo box (20) russian bottle (21) japanese old knife (22) ethiopian brand-new trash can (23) snorkeling circular plier (24) midsize drill (25) silly ruler (26) square clock (27) rubber hat (28) maroon brush (29) thai old ring (30) snorkeling triangular cup (31) cardboard gray cup (32) lovely medium-size bicycle (33) black wallet (34) mysterious chair (35) wonderful little ball (36) huge calculator (37) repulsive plier (38) wool hat (39) obnoxious house (40) brown shoe (41) indigo dog (42) massive brush (43) cardboard apple (44) chinese guitar (45) obnoxious little sofa (46) triangular house (47) small apple (48) brand-new scissors (49) prismlike screwdriver (50) square shirt (51) vietnamese old watch (52) wonderful stapler (53) pakistani screwdriver (54) leather camera (55) nice little trash can (56) wonderful tiny brush (57) tiny pencil (58) crimson fire extinguisher (59) driving piano (60) spherical canvas (61) violet apple (62) ridiculous hat (63) iranian old-fashioned clock (64) wool aqua ring (65) eating shirt (66) iron fire extinguisher (67) terrible tiny screwdriver (68) lovely hammer (69) old-fashioned toolbox (70) huge flower pot (71) exercise hammer (72) indigo sunglasses (73) magenta hammer (74) wool yellow stapler (75) thai brand-new lamp (76) japanese drill (77) good little earring (78) cardboard chair (79) hiking chair (80) lovely big pencil (81) black hammer (82) brazilian marker (83) drinking scissors (84) steel cyan cup (85) awful piano (86) eating rectangular umbrella (87) leather aqua umbrella (88) typing speaker (89) circular pencil (90) fiberglass key (91) walking circular plate (92) yellow jar (93) big fire extinguisher (94) eating pyramidal wrench (95) normal-size ball (96) wool canvas (97) ridiculous scissors (98) ancient toolbox (99) ridiculous earring (100) silly small camera (101) snorkeling bed (102) good large necklace (103) iron spoon (104) lovely massive clock (105) glass spoon (106) maroon house (107) hiking prismlike plate (108) good enormous key (109) typing fire extinguisher (110) brazilian brand-new bed (111) smoking speaker (112) ridiculous car key (113) eating triangular plate (114) green sofa (115) triangular saw (116) white obnoxious spherical key (117) mexican umbrella (118) hiking sofa (119) steel indigo car key (120) iron piano (121) massive saw (122) violet bed (123) walking canvas (124) rubber crimson drill (125) cardboard violet lamp (126) rubber blue brush (127) old apple (128) cardboard black candle (129) paper speaker (130) indonesian new hammer (131) good trash can (132) midsize wallet (133) awful midsize hammer (134) archaic box (135) cloth cyan dog (136) lovely tiny cup (137) whittling pyramidal candle (138) indian brush (139) steel sunglasses (140) congolese plate (141) rubber indigo pen (142) driving car key (143) driving rectangular candle (144) ethiopian ancient watch (145) midsize bottle (146) walking sunglasses (147) snorkeling calculator (148) medium-size car (149) exercise rectangular saw (150) ancient calculator (151) drinking table (152) plastic magenta wrench (153) hiking wrench (154) nice ball (155) massive pen (156) ethiopian archaic scissors (157) red bottle (158) congolese bag (159) brand-new bag (160) german ancient earring (161) brazilian brush (162) teal shoe (163) leather aqua sofa (164) indonesian old-fashioned book (165) turkish piano (166) mysterious bottle (167) exercise wallet (168) obnoxious fire extinguisher (169) brand-new spoon\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) egyptian old-fashioned nice massive eating circular brown steel hat\n(B) wool teal silly normal-size smoking pyramidal hammer\n(C) glass aqua lovely large smoking square japanese old-fashioned watch\n(D) wood black repulsive large smoking prismlike old mexican car key\n(E) new pakistani wonderful big whittling triangular crimson glass clock\n(F) cardboard yellow silly huge hiking circular archaic banana\n(G) nigerian old-fashioned good enormous snorkeling spherical brown shirt\n(H) pink good huge whittling prismlike egyptian brand-new candle\n(I) iranian awful large eating triangular maroon wood drill\n(J) ridiculous big driving rectangular iranian archaic house\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "bbe432c0103bb7a93bc618e7ca369da7420c897f3233fe833f4a01f1d9f9c1ec"
+      },
+      {
+        "question": "hyperbaton-bbe432c0103bb7a9",
+        "family": "hyperbaton",
+        "arm": "E",
+        "response": "The inferred order is material, color, opinion, size, purpose, shape, origin, age. B, C, F, H, and J follow this sequence; every other option reverses at least one established pair.\n\nThe final answer is: BCFHJ",
+        "response_sha256": "c349e9cf718fe0cd6c3af59eeb92d36e89a54aa509899ddbda3514021d517a72",
+        "parsed_answer": "bcfhj",
+        "reference": "B",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) cardboard big whittling fork (2) eating camera (3) repulsive small ruler (4) turkish pencil (5) leather spoon (6) rubber brown stapler (7) hiking triangular flower pot (8) mexican piano (9) russian old-fashioned cup (10) plastic dog (11) cloth car key (12) leather piano (13) driving rectangular lamp (14) wool crimson key (15) terrible big bowl (16) german new scissors (17) crimson bicycle (18) large clock (19) steel indigo box (20) russian bottle (21) japanese old knife (22) ethiopian brand-new trash can (23) snorkeling circular plier (24) midsize drill (25) silly ruler (26) square clock (27) rubber hat (28) maroon brush (29) thai old ring (30) snorkeling triangular cup (31) cardboard gray cup (32) lovely medium-size bicycle (33) black wallet (34) mysterious chair (35) wonderful little ball (36) huge calculator (37) repulsive plier (38) wool hat (39) obnoxious house (40) brown shoe (41) indigo dog (42) massive brush (43) cardboard apple (44) chinese guitar (45) obnoxious little sofa (46) triangular house (47) small apple (48) brand-new scissors (49) prismlike screwdriver (50) square shirt (51) vietnamese old watch (52) wonderful stapler (53) pakistani screwdriver (54) leather camera (55) nice little trash can (56) wonderful tiny brush (57) tiny pencil (58) crimson fire extinguisher (59) driving piano (60) spherical canvas (61) violet apple (62) ridiculous hat (63) iranian old-fashioned clock (64) wool aqua ring (65) eating shirt (66) iron fire extinguisher (67) terrible tiny screwdriver (68) lovely hammer (69) old-fashioned toolbox (70) huge flower pot (71) exercise hammer (72) indigo sunglasses (73) magenta hammer (74) wool yellow stapler (75) thai brand-new lamp (76) japanese drill (77) good little earring (78) cardboard chair (79) hiking chair (80) lovely big pencil (81) black hammer (82) brazilian marker (83) drinking scissors (84) steel cyan cup (85) awful piano (86) eating rectangular umbrella (87) leather aqua umbrella (88) typing speaker (89) circular pencil (90) fiberglass key (91) walking circular plate (92) yellow jar (93) big fire extinguisher (94) eating pyramidal wrench (95) normal-size ball (96) wool canvas (97) ridiculous scissors (98) ancient toolbox (99) ridiculous earring (100) silly small camera (101) snorkeling bed (102) good large necklace (103) iron spoon (104) lovely massive clock (105) glass spoon (106) maroon house (107) hiking prismlike plate (108) good enormous key (109) typing fire extinguisher (110) brazilian brand-new bed (111) smoking speaker (112) ridiculous car key (113) eating triangular plate (114) green sofa (115) triangular saw (116) white obnoxious spherical key (117) mexican umbrella (118) hiking sofa (119) steel indigo car key (120) iron piano (121) massive saw (122) violet bed (123) walking canvas (124) rubber crimson drill (125) cardboard violet lamp (126) rubber blue brush (127) old apple (128) cardboard black candle (129) paper speaker (130) indonesian new hammer (131) good trash can (132) midsize wallet (133) awful midsize hammer (134) archaic box (135) cloth cyan dog (136) lovely tiny cup (137) whittling pyramidal candle (138) indian brush (139) steel sunglasses (140) congolese plate (141) rubber indigo pen (142) driving car key (143) driving rectangular candle (144) ethiopian ancient watch (145) midsize bottle (146) walking sunglasses (147) snorkeling calculator (148) medium-size car (149) exercise rectangular saw (150) ancient calculator (151) drinking table (152) plastic magenta wrench (153) hiking wrench (154) nice ball (155) massive pen (156) ethiopian archaic scissors (157) red bottle (158) congolese bag (159) brand-new bag (160) german ancient earring (161) brazilian brush (162) teal shoe (163) leather aqua sofa (164) indonesian old-fashioned book (165) turkish piano (166) mysterious bottle (167) exercise wallet (168) obnoxious fire extinguisher (169) brand-new spoon\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) egyptian old-fashioned nice massive eating circular brown steel hat\n(B) wool teal silly normal-size smoking pyramidal hammer\n(C) glass aqua lovely large smoking square japanese old-fashioned watch\n(D) wood black repulsive large smoking prismlike old mexican car key\n(E) new pakistani wonderful big whittling triangular crimson glass clock\n(F) cardboard yellow silly huge hiking circular archaic banana\n(G) nigerian old-fashioned good enormous snorkeling spherical brown shirt\n(H) pink good huge whittling prismlike egyptian brand-new candle\n(I) iranian awful large eating triangular maroon wood drill\n(J) ridiculous big driving rectangular iranian archaic house\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "bbe432c0103bb7a93bc618e7ca369da7420c897f3233fe833f4a01f1d9f9c1ec"
+      },
+      {
+        "question": "hyperbaton-f18bd28ecabc7c5e",
+        "family": "hyperbaton",
+        "arm": "A",
+        "response": "**Reasoning:**\nBy analyzing multi-adjective examples, the derived category order is:\n**Color > Size > Purpose(gerund) > Age > Origin > Material > Shape > Opinion**\n\nChecking each option against this order:\n\n- (A) Shape-Opinion-Purpose-Age-Origin-Material-Size → wrong (size misplaced)\n- (B) Color-Size-Purpose-Age-Origin-Material-Shape-Opinion → **matches exactly**\n- (C) Purpose-Age-Origin-Material-Shape-Opinion → **matches subset**\n- (D) Shape-Purpose-Age-Origin-Material-Size-Color → wrong\n- (E) Color-Size-Purpose-Age-Origin-Material-Opinion-Shape → wrong (Op before Sh)\n- (F) Color-Size-Purpose-Age-Origin-Material-Shape → **matches**\n- (G) Color-Size-Purpose-Age-Origin-Material → **matches**\n- (H) Shape-Opinion-Purpose-Age-Origin-Material-Size-Color → wrong\n- (I) Size-Purpose-Age-Origin-Material-Opinion-Shape → wrong (Op before Sh)\n- (J) Color-Size-Purpose-Age-Origin-Material-Opinion → **matches** (Shape absent, consistent)\n\nThe final answer is: BCFGJ",
+        "response_sha256": "933e384a3f9531a2041ef9c3fbe4ec68b2702a5c2c2a58b277d4b0faec4f6a56",
+        "parsed_answer": "bcfgj",
+        "reference": "G",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) nigerian wood fork (2) midsize scissors (3) whittling old-fashioned scissors (4) white enormous trash can (5) thai book (6) pyramidal silly camera (7) circular house (8) gray canvas (9) wool sofa (10) pyramidal saw (11) whittling archaic calculator (12) exercise lamp (13) cloth shirt (14) normal-size drill (15) red enormous watch (16) nice sofa (17) violet large sofa (18) black shoe (19) pink shirt (20) walking old-fashioned spoon (21) small calculator (22) midsize stapler (23) glass bag (24) white enormous calculator (25) midsize screwdriver (26) typing new key (27) hiking hammer (28) ethiopian clock (29) drinking shoe (30) mexican cardboard jar (31) repulsive earring (32) american dog (33) square silly sunglasses (34) teal old-fashioned filipino clock (35) indian wool scissors (36) spherical piano (37) triangular wonderful pencil (38) mexican cardboard necklace (39) eating cup (40) congolese wool plate (41) hiking brand-new shoe (42) repulsive stapler (43) midsize ball (44) brand-new bed (45) drinking old-fashioned saw (46) little piano (47) black big banana (48) eating old-fashioned sofa (49) rectangular plate (50) awful hammer (51) little flower pot (52) old apple (53) massive cup (54) drinking new spoon (55) triangular lovely necklace (56) leather sofa (57) good canvas (58) snorkeling brand-new bag (59) spherical car (60) whittling brand-new bird (61) old-fashioned ruler (62) rubber camera (63) large typing wool ruler (64) ancient dog\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) circular terrible whittling archaic ethiopian rubber small key\n(B) magenta massive exercise archaic pakistani rubber prismlike repulsive speaker\n(C) driving brand-new japanese rubber prismlike lovely scissors\n(D) prismlike whittling new japanese rubber midsize teal piano\n(E) white big whittling old-fashioned american cloth terrible triangular umbrella\n(F) yellow enormous walking old egyptian iron spherical knife\n(G) indigo normal-size driving new indian wood camera\n(H) triangular repulsive smoking old-fashioned pakistani plastic small teal shirt\n(I) normal-size driving old thai wool wonderful circular spoon\n(J) crimson medium-size exercise old-fashioned filipino cloth silly umbrella\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "f18bd28ecabc7c5e96e8e76a8b7dad208bdcd8241baf2c2a2d2526a78c2773c9"
+      },
+      {
+        "question": "hyperbaton-f18bd28ecabc7c5e",
+        "family": "hyperbaton",
+        "arm": "B",
+        "response": "**Verification:** Deriving pairwise category order from the examples:\n- Color > Size (4,15,17,24,47)\n- Size > Purpose > Material (63)\n- Purpose > Age (3,11,20,26,41,45,48,54,58,60)\n- Origin > Material (1,30,35,38,40)\n- Color > Age > Origin (34)\n- Shape > Opinion (6,33,37,55)\n\nCombined chain: **Color > Size > Purpose > Age > Origin > Material**, with **Shape > Opinion** as an independent constraint (no data links Shape/Opinion into the main chain, but each option's internal ordering can still be checked against known constraints).\n\nChecking each option against these constraints:\n- (A) Shape-Opinion-Purpose-Age-Origin-Material-Size → violates Size>Purpose ✗\n- (B) Color-Size-Purpose-Age-Origin-Material-Shape-Opinion → satisfies all ✓\n- (C) Purpose-Age-Origin-Material-Shape-Opinion → satisfies all applicable ✓\n- (D) Shape-Purpose-Age-Origin-Material-Size-Color → violates Color>Size, Size>Purpose ✗\n- (E) Color-Size-Purpose-Age-Origin-Material-Opinion-Shape → violates Shape>Opinion ✗\n- (F) Color-Size-Purpose-Age-Origin-Material-Shape → satisfies all ✓\n- (G) Color-Size-Purpose-Age-Origin-Material → satisfies all ✓\n- (H) Shape-Opinion-Purpose-Age-Origin-Material-Size-Color → violates Color>Size, Size>Purpose ✗\n- (I) Size-Purpose-Age-Origin-Material-Opinion-Shape → violates Shape>Opinion ✗\n- (J) Color-Size-Purpose-Age-Origin-Material-Opinion → satisfies all ✓\n\nCandidate's reasoning and conclusion are correct.\n\nThe final answer is: BCFGJ",
+        "response_sha256": "53ca5a177259e63b42a93b935ece170f0a778804ca2333230b8085a5079536a1",
+        "parsed_answer": "bcfgj",
+        "reference": "G",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) nigerian wood fork (2) midsize scissors (3) whittling old-fashioned scissors (4) white enormous trash can (5) thai book (6) pyramidal silly camera (7) circular house (8) gray canvas (9) wool sofa (10) pyramidal saw (11) whittling archaic calculator (12) exercise lamp (13) cloth shirt (14) normal-size drill (15) red enormous watch (16) nice sofa (17) violet large sofa (18) black shoe (19) pink shirt (20) walking old-fashioned spoon (21) small calculator (22) midsize stapler (23) glass bag (24) white enormous calculator (25) midsize screwdriver (26) typing new key (27) hiking hammer (28) ethiopian clock (29) drinking shoe (30) mexican cardboard jar (31) repulsive earring (32) american dog (33) square silly sunglasses (34) teal old-fashioned filipino clock (35) indian wool scissors (36) spherical piano (37) triangular wonderful pencil (38) mexican cardboard necklace (39) eating cup (40) congolese wool plate (41) hiking brand-new shoe (42) repulsive stapler (43) midsize ball (44) brand-new bed (45) drinking old-fashioned saw (46) little piano (47) black big banana (48) eating old-fashioned sofa (49) rectangular plate (50) awful hammer (51) little flower pot (52) old apple (53) massive cup (54) drinking new spoon (55) triangular lovely necklace (56) leather sofa (57) good canvas (58) snorkeling brand-new bag (59) spherical car (60) whittling brand-new bird (61) old-fashioned ruler (62) rubber camera (63) large typing wool ruler (64) ancient dog\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) circular terrible whittling archaic ethiopian rubber small key\n(B) magenta massive exercise archaic pakistani rubber prismlike repulsive speaker\n(C) driving brand-new japanese rubber prismlike lovely scissors\n(D) prismlike whittling new japanese rubber midsize teal piano\n(E) white big whittling old-fashioned american cloth terrible triangular umbrella\n(F) yellow enormous walking old egyptian iron spherical knife\n(G) indigo normal-size driving new indian wood camera\n(H) triangular repulsive smoking old-fashioned pakistani plastic small teal shirt\n(I) normal-size driving old thai wool wonderful circular spoon\n(J) crimson medium-size exercise old-fashioned filipino cloth silly umbrella\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "f18bd28ecabc7c5e96e8e76a8b7dad208bdcd8241baf2c2a2d2526a78c2773c9"
+      },
+      {
+        "question": "hyperbaton-f18bd28ecabc7c5e",
+        "family": "hyperbaton",
+        "arm": "E",
+        "response": "The examples imply: color < size < purpose < age < origin < material < shape < opinion. Options B, C, F, G, and J follow this sequence; the others invert at least one pair.\n\nThe final answer is: BCFGJ",
+        "response_sha256": "22bf58ae0a4b0038b94c53389b6fbdefb973f6cd9e6fa6c77002975f92470862",
+        "parsed_answer": "bcfgj",
+        "reference": "G",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) nigerian wood fork (2) midsize scissors (3) whittling old-fashioned scissors (4) white enormous trash can (5) thai book (6) pyramidal silly camera (7) circular house (8) gray canvas (9) wool sofa (10) pyramidal saw (11) whittling archaic calculator (12) exercise lamp (13) cloth shirt (14) normal-size drill (15) red enormous watch (16) nice sofa (17) violet large sofa (18) black shoe (19) pink shirt (20) walking old-fashioned spoon (21) small calculator (22) midsize stapler (23) glass bag (24) white enormous calculator (25) midsize screwdriver (26) typing new key (27) hiking hammer (28) ethiopian clock (29) drinking shoe (30) mexican cardboard jar (31) repulsive earring (32) american dog (33) square silly sunglasses (34) teal old-fashioned filipino clock (35) indian wool scissors (36) spherical piano (37) triangular wonderful pencil (38) mexican cardboard necklace (39) eating cup (40) congolese wool plate (41) hiking brand-new shoe (42) repulsive stapler (43) midsize ball (44) brand-new bed (45) drinking old-fashioned saw (46) little piano (47) black big banana (48) eating old-fashioned sofa (49) rectangular plate (50) awful hammer (51) little flower pot (52) old apple (53) massive cup (54) drinking new spoon (55) triangular lovely necklace (56) leather sofa (57) good canvas (58) snorkeling brand-new bag (59) spherical car (60) whittling brand-new bird (61) old-fashioned ruler (62) rubber camera (63) large typing wool ruler (64) ancient dog\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) circular terrible whittling archaic ethiopian rubber small key\n(B) magenta massive exercise archaic pakistani rubber prismlike repulsive speaker\n(C) driving brand-new japanese rubber prismlike lovely scissors\n(D) prismlike whittling new japanese rubber midsize teal piano\n(E) white big whittling old-fashioned american cloth terrible triangular umbrella\n(F) yellow enormous walking old egyptian iron spherical knife\n(G) indigo normal-size driving new indian wood camera\n(H) triangular repulsive smoking old-fashioned pakistani plastic small teal shirt\n(I) normal-size driving old thai wool wonderful circular spoon\n(J) crimson medium-size exercise old-fashioned filipino cloth silly umbrella\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "f18bd28ecabc7c5e96e8e76a8b7dad208bdcd8241baf2c2a2d2526a78c2773c9"
+      },
+      {
+        "question": "web_of_lies-276a2492a1f57ae5",
+        "family": "web_of_lies",
+        "arm": "A",
+        "response": "The ice skating rink tells the truth. Since the library says \"ice skating rink lies,\" and that would be false, the library lies. The gym says \"library lies,\" which is true, matching Nia (gym) as truthful, but this doesn't affect barbershop. The barbershop says \"library lies,\" which is true, so barbershop tells the truth. The campground says \"barbershop lies,\" but barbershop is truthful, so campground's statement is false, meaning campground lies. The skate park says \"campground tells truth,\" but campground lies, so skate park's statement is false, meaning skate park lies.\n\nThe final answer is: no, no, yes",
+        "response_sha256": "bdf94f77153cda436ee4667e8a24a16a5e3ecf72238a189ba2feb7a10476017c",
+        "parsed_answer": "no,no,yes",
+        "reference": "no, no, yes",
+        "correct": true,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. The person at the gym says the person at the library lies. The person at the barbershop thinks their friend is lying. Nia is at the gym. The person at the art gallery tells the truth. The person at the barbershop says the person at the library lies. Jaxon is at the barbershop. Devika is at the beach. The person at the ice skating rink tells the truth. The person at the skate park thinks their neighbor is telling the truth. Anika is at the campground. The person at the skate park says the person at the campground tells the truth. The person at the park says the person at the barbershop lies. Tala is at the ice skating rink. Liam is at the park. Quan is at the library. The person at the campground says the person at the barbershop lies. Hiroshi is at the skate park. The person at the beach says the person at the barbershop lies. Ayaan is at the art gallery. The person at the library says the person at the ice skating rink lies. The person at the barbershop thinks their neighbor is telling the truth. Does the person at the skate park tell the truth? Does the person at the campground tell the truth? Does the person at the barbershop tell the truth? Your answer should be a list of three words, yes or no (for example, yes, no, yes).",
+        "input_sha256": "276a2492a1f57ae5df30e721dbff6ac6a347566ace91940b15a2ae41bad9edf5"
+      },
+      {
+        "question": "web_of_lies-276a2492a1f57ae5",
+        "family": "web_of_lies",
+        "arm": "B",
+        "response": "The chain is correct: ice rink truth-teller → library's claim (\"ice rink lies\") is false → library lies. Barbershop claims \"library lies\" — true — so barbershop tells the truth. Campground claims \"barbershop lies\" — false, since barbershop is truthful — so campground lies. Skate park claims \"campground tells truth\" — false, since campground lies — so skate park lies. All steps check out correctly.\n\nThe final answer is: no, no, yes",
+        "response_sha256": "273c6d3c5c96f38ec68548fe30a7de99f9aa6aac97101730c565b41c8faafac2",
+        "parsed_answer": "no,no,yes",
+        "reference": "no, no, yes",
+        "correct": true,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. The person at the gym says the person at the library lies. The person at the barbershop thinks their friend is lying. Nia is at the gym. The person at the art gallery tells the truth. The person at the barbershop says the person at the library lies. Jaxon is at the barbershop. Devika is at the beach. The person at the ice skating rink tells the truth. The person at the skate park thinks their neighbor is telling the truth. Anika is at the campground. The person at the skate park says the person at the campground tells the truth. The person at the park says the person at the barbershop lies. Tala is at the ice skating rink. Liam is at the park. Quan is at the library. The person at the campground says the person at the barbershop lies. Hiroshi is at the skate park. The person at the beach says the person at the barbershop lies. Ayaan is at the art gallery. The person at the library says the person at the ice skating rink lies. The person at the barbershop thinks their neighbor is telling the truth. Does the person at the skate park tell the truth? Does the person at the campground tell the truth? Does the person at the barbershop tell the truth? Your answer should be a list of three words, yes or no (for example, yes, no, yes).",
+        "input_sha256": "276a2492a1f57ae5df30e721dbff6ac6a347566ace91940b15a2ae41bad9edf5"
+      },
+      {
+        "question": "web_of_lies-276a2492a1f57ae5",
+        "family": "web_of_lies",
+        "arm": "E",
+        "response": "The ice-skating-rink person is truthful, so the library person’s claim that they lie is false; hence library lies. The barbershop person says library lies, so barbershop tells truth. The campground person says barbershop lies, which is false, so campground lies. The skate-park person says campground tells truth, also false, so skate park lies.\n\nThe final answer is: no, no, yes",
+        "response_sha256": "39abcdfd4080717aef2b6f8409364428b9771e9f4e4de5ea305225dc69bc2341",
+        "parsed_answer": "no,no,yes",
+        "reference": "no, no, yes",
+        "correct": true,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In this question, assume each person either always tells the truth or always lies. The person at the gym says the person at the library lies. The person at the barbershop thinks their friend is lying. Nia is at the gym. The person at the art gallery tells the truth. The person at the barbershop says the person at the library lies. Jaxon is at the barbershop. Devika is at the beach. The person at the ice skating rink tells the truth. The person at the skate park thinks their neighbor is telling the truth. Anika is at the campground. The person at the skate park says the person at the campground tells the truth. The person at the park says the person at the barbershop lies. Tala is at the ice skating rink. Liam is at the park. Quan is at the library. The person at the campground says the person at the barbershop lies. Hiroshi is at the skate park. The person at the beach says the person at the barbershop lies. Ayaan is at the art gallery. The person at the library says the person at the ice skating rink lies. The person at the barbershop thinks their neighbor is telling the truth. Does the person at the skate park tell the truth? Does the person at the campground tell the truth? Does the person at the barbershop tell the truth? Your answer should be a list of three words, yes or no (for example, yes, no, yes).",
+        "input_sha256": "276a2492a1f57ae5df30e721dbff6ac6a347566ace91940b15a2ae41bad9edf5"
+      },
+      {
+        "question": "hyperbaton-3c17e4aa4c6f5bb8",
+        "family": "hyperbaton",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "D",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) medium-size ring (2) square screwdriver (3) massive knife (4) cardboard table (5) little bangladeshi bowl (6) repulsive spherical box (7) tiny indian plate (8) huge pakistani bowl (9) congolese sunglasses (10) wool chair (11) paper old-fashioned plate (12) prismlike sunglasses (13) old-fashioned key (14) wonderful pyramidal ring (15) gray smoking marker (16) fiberglass new clock (17) obnoxious prismlike calculator (18) gray chair (19) nigerian hat (20) huge iranian calculator (21) silly bowl (22) huge banana (23) maroon wallet (24) spherical hammer (25) good triangular hammer (26) triangular sunglasses (27) pyramidal fire extinguisher (28) cloth canvas (29) typing watch (30) white earring (31) teal snorkeling sofa (32) large pencil (33) normal-size egyptian trash can (34) yellow plate (35) plastic old trash can (36) cyan drinking key (37) leather sofa (38) nigerian sunglasses (39) square dog (40) ancient plier (41) magenta earring (42) terrible rectangular ball (43) enormous turkish hammer (44) nigerian camera (45) terrible ball (46) drinking calculator (47) drinking bird (48) brown pencil (49) smoking knife (50) terrible bottle (51) midsize dog (52) typing piano (53) archaic canvas (54) white smoking apple (55) blue banana (56) wonderful spherical umbrella (57) medium-size jar (58) medium-size vietnamese umbrella (59) massive prismlike yellow pen (60) gray exercise cup (61) crimson exercise piano (62) cloth ruler (63) archaic fork (64) triangular vase (65) pyramidal umbrella (66) iron old earring (67) brand-new apple (68) violet hiking key (69) brazilian apple (70) iron bed (71) archaic cup (72) violet clock (73) iron trash can (74) wonderful triangular car key (75) new canvas (76) driving box (77) wood brand-new bird (78) large indian drill (79) glass plate (80) congolese box (81) ancient apple (82) smoking spoon (83) ancient wallet (84) exercise fire extinguisher (85) hiking piano (86) big egyptian banana (87) smoking car (88) whittling hammer (89) violet wallet (90) huge wallet (91) iranian hat (92) repulsive jar (93) old speaker (94) awful pencil (95) prismlike bicycle (96) little japanese flower pot (97) plastic bottle (98) enormous scissors (99) square plate (100) rectangular shoe (101) medium-size key (102) massive apple (103) huge knife (104) wonderful triangular pencil (105) maroon umbrella (106) japanese drill (107) little american book (108) fiberglass brand-new bowl (109) crimson shoe (110) old clock (111) indian necklace (112) white hiking hat (113) blue chair (114) archaic ring (115) steel old speaker (116) huge screwdriver (117) cloth brand-new vase (118) wonderful wrench (119) square bag (120) good wrench (121) normal-size wallet (122) spherical vase (123) glass toolbox (124) smoking hat (125) silly square umbrella (126) tiny watch (127) indian car key (128) good circular screwdriver (129) red wrench (130) american apple (131) paper bag (132) white plier (133) cloth ancient toolbox (134) walking jar (135) lovely prismlike knife (136) wool knife (137) triangular spoon (138) green book (139) green wrench (140) triangular sofa (141) russian plier (142) hiking banana (143) brazilian sofa (144) glass bicycle (145) terrible sofa (146) good circular bag (147) cloth pen (148) tiny egyptian bowl (149) steel cup (150) magenta driving ruler (151) brand-new wallet (152) tiny scissors (153) tiny brazilian bicycle (154) brown plate (155) ancient pen (156) walking sunglasses (157) cyan clock (158) paper lamp (159) plastic wrench (160) normal-size congolese banana (161) good canvas (162) blue whittling calculator (163) repulsive bicycle (164) prismlike plate (165) cyan drinking ball (166) bangladeshi sofa (167) bangladeshi plier (168) american table (169) archaic fire extinguisher (170) good circular apple (171) paper pencil (172) little japanese bicycle (173) rubber bag (174) green walking speaker (175) wood ancient screwdriver (176) nigerian clock (177) yellow driving hat (178) large guitar (179) vietnamese box (180) smoking sunglasses (181) red driving brush (182) archaic bag (183) obnoxious apple (184) repulsive square hat (185) violet brush (186) whittling speaker (187) black hiking canvas (188) white house (189) medium-size bed (190) crimson walking jar (191) exercise necklace (192) magenta drinking car key (193) green calculator (194) wood bed (195) repulsive circular bed (196) prismlike clock (197) walking marker (198) small indian chair (199) wonderful rectangular speaker (200) exercise cup (201) cardboard pen (202) turkish ridiculous smoking ring (203) terrible vase (204) cardboard brand-new watch (205) iranian flower pot (206) little russian jar (207) gray clock (208) maroon ring (209) nice shoe (210) driving bed (211) brown driving cup (212) obnoxious rectangular bed (213) wonderful toolbox\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) plastic new awful prismlike white whittling pakistani marker\n(B) large egyptian ridiculous triangular yellow drinking fiberglass trash can\n(C) ridiculous spherical maroon exercise archaic glass spoon\n(D) small russian nice prismlike yellow whittling speaker\n(E) bangladeshi repulsive pyramidal brown walking fiberglass old bowl\n(F) paper old-fashioned wonderful rectangular brown smoking toolbox\n(G) german awful rectangular teal typing old steel ball\n(H) new iron silly triangular black typing nigerian wallet\n(I) wonderful pyramidal maroon hiking wool old-fashioned table\n(J) archaic mysterious prismlike pink whittling chinese tiny bed\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "3c17e4aa4c6f5bb80432ea6d8c3306f758e7a23aa308669e21344264d336d0d5"
+      },
+      {
+        "question": "hyperbaton-3c17e4aa4c6f5bb8",
+        "family": "hyperbaton",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "D",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) medium-size ring (2) square screwdriver (3) massive knife (4) cardboard table (5) little bangladeshi bowl (6) repulsive spherical box (7) tiny indian plate (8) huge pakistani bowl (9) congolese sunglasses (10) wool chair (11) paper old-fashioned plate (12) prismlike sunglasses (13) old-fashioned key (14) wonderful pyramidal ring (15) gray smoking marker (16) fiberglass new clock (17) obnoxious prismlike calculator (18) gray chair (19) nigerian hat (20) huge iranian calculator (21) silly bowl (22) huge banana (23) maroon wallet (24) spherical hammer (25) good triangular hammer (26) triangular sunglasses (27) pyramidal fire extinguisher (28) cloth canvas (29) typing watch (30) white earring (31) teal snorkeling sofa (32) large pencil (33) normal-size egyptian trash can (34) yellow plate (35) plastic old trash can (36) cyan drinking key (37) leather sofa (38) nigerian sunglasses (39) square dog (40) ancient plier (41) magenta earring (42) terrible rectangular ball (43) enormous turkish hammer (44) nigerian camera (45) terrible ball (46) drinking calculator (47) drinking bird (48) brown pencil (49) smoking knife (50) terrible bottle (51) midsize dog (52) typing piano (53) archaic canvas (54) white smoking apple (55) blue banana (56) wonderful spherical umbrella (57) medium-size jar (58) medium-size vietnamese umbrella (59) massive prismlike yellow pen (60) gray exercise cup (61) crimson exercise piano (62) cloth ruler (63) archaic fork (64) triangular vase (65) pyramidal umbrella (66) iron old earring (67) brand-new apple (68) violet hiking key (69) brazilian apple (70) iron bed (71) archaic cup (72) violet clock (73) iron trash can (74) wonderful triangular car key (75) new canvas (76) driving box (77) wood brand-new bird (78) large indian drill (79) glass plate (80) congolese box (81) ancient apple (82) smoking spoon (83) ancient wallet (84) exercise fire extinguisher (85) hiking piano (86) big egyptian banana (87) smoking car (88) whittling hammer (89) violet wallet (90) huge wallet (91) iranian hat (92) repulsive jar (93) old speaker (94) awful pencil (95) prismlike bicycle (96) little japanese flower pot (97) plastic bottle (98) enormous scissors (99) square plate (100) rectangular shoe (101) medium-size key (102) massive apple (103) huge knife (104) wonderful triangular pencil (105) maroon umbrella (106) japanese drill (107) little american book (108) fiberglass brand-new bowl (109) crimson shoe (110) old clock (111) indian necklace (112) white hiking hat (113) blue chair (114) archaic ring (115) steel old speaker (116) huge screwdriver (117) cloth brand-new vase (118) wonderful wrench (119) square bag (120) good wrench (121) normal-size wallet (122) spherical vase (123) glass toolbox (124) smoking hat (125) silly square umbrella (126) tiny watch (127) indian car key (128) good circular screwdriver (129) red wrench (130) american apple (131) paper bag (132) white plier (133) cloth ancient toolbox (134) walking jar (135) lovely prismlike knife (136) wool knife (137) triangular spoon (138) green book (139) green wrench (140) triangular sofa (141) russian plier (142) hiking banana (143) brazilian sofa (144) glass bicycle (145) terrible sofa (146) good circular bag (147) cloth pen (148) tiny egyptian bowl (149) steel cup (150) magenta driving ruler (151) brand-new wallet (152) tiny scissors (153) tiny brazilian bicycle (154) brown plate (155) ancient pen (156) walking sunglasses (157) cyan clock (158) paper lamp (159) plastic wrench (160) normal-size congolese banana (161) good canvas (162) blue whittling calculator (163) repulsive bicycle (164) prismlike plate (165) cyan drinking ball (166) bangladeshi sofa (167) bangladeshi plier (168) american table (169) archaic fire extinguisher (170) good circular apple (171) paper pencil (172) little japanese bicycle (173) rubber bag (174) green walking speaker (175) wood ancient screwdriver (176) nigerian clock (177) yellow driving hat (178) large guitar (179) vietnamese box (180) smoking sunglasses (181) red driving brush (182) archaic bag (183) obnoxious apple (184) repulsive square hat (185) violet brush (186) whittling speaker (187) black hiking canvas (188) white house (189) medium-size bed (190) crimson walking jar (191) exercise necklace (192) magenta drinking car key (193) green calculator (194) wood bed (195) repulsive circular bed (196) prismlike clock (197) walking marker (198) small indian chair (199) wonderful rectangular speaker (200) exercise cup (201) cardboard pen (202) turkish ridiculous smoking ring (203) terrible vase (204) cardboard brand-new watch (205) iranian flower pot (206) little russian jar (207) gray clock (208) maroon ring (209) nice shoe (210) driving bed (211) brown driving cup (212) obnoxious rectangular bed (213) wonderful toolbox\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) plastic new awful prismlike white whittling pakistani marker\n(B) large egyptian ridiculous triangular yellow drinking fiberglass trash can\n(C) ridiculous spherical maroon exercise archaic glass spoon\n(D) small russian nice prismlike yellow whittling speaker\n(E) bangladeshi repulsive pyramidal brown walking fiberglass old bowl\n(F) paper old-fashioned wonderful rectangular brown smoking toolbox\n(G) german awful rectangular teal typing old steel ball\n(H) new iron silly triangular black typing nigerian wallet\n(I) wonderful pyramidal maroon hiking wool old-fashioned table\n(J) archaic mysterious prismlike pink whittling chinese tiny bed\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "3c17e4aa4c6f5bb80432ea6d8c3306f758e7a23aa308669e21344264d336d0d5"
+      },
+      {
+        "question": "hyperbaton-3c17e4aa4c6f5bb8",
+        "family": "hyperbaton",
+        "arm": "E",
+        "response": "The inferred order is: size → nationality → opinion → shape → color → purpose → material → age → noun. B, D, E, and I follow this sequence. Every other option reverses at least one category pair (notably material/age or later categories before size/nationality).\n\nThe final answer is: BDEI",
+        "response_sha256": "9e53d73224164bdaa25449c3199f65dd4304747574eea9085999c55c15c5ffa6",
+        "parsed_answer": "bdei",
+        "reference": "D",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "In a variant of English, we are given that the following sentences have correct adjective order:\n(1) medium-size ring (2) square screwdriver (3) massive knife (4) cardboard table (5) little bangladeshi bowl (6) repulsive spherical box (7) tiny indian plate (8) huge pakistani bowl (9) congolese sunglasses (10) wool chair (11) paper old-fashioned plate (12) prismlike sunglasses (13) old-fashioned key (14) wonderful pyramidal ring (15) gray smoking marker (16) fiberglass new clock (17) obnoxious prismlike calculator (18) gray chair (19) nigerian hat (20) huge iranian calculator (21) silly bowl (22) huge banana (23) maroon wallet (24) spherical hammer (25) good triangular hammer (26) triangular sunglasses (27) pyramidal fire extinguisher (28) cloth canvas (29) typing watch (30) white earring (31) teal snorkeling sofa (32) large pencil (33) normal-size egyptian trash can (34) yellow plate (35) plastic old trash can (36) cyan drinking key (37) leather sofa (38) nigerian sunglasses (39) square dog (40) ancient plier (41) magenta earring (42) terrible rectangular ball (43) enormous turkish hammer (44) nigerian camera (45) terrible ball (46) drinking calculator (47) drinking bird (48) brown pencil (49) smoking knife (50) terrible bottle (51) midsize dog (52) typing piano (53) archaic canvas (54) white smoking apple (55) blue banana (56) wonderful spherical umbrella (57) medium-size jar (58) medium-size vietnamese umbrella (59) massive prismlike yellow pen (60) gray exercise cup (61) crimson exercise piano (62) cloth ruler (63) archaic fork (64) triangular vase (65) pyramidal umbrella (66) iron old earring (67) brand-new apple (68) violet hiking key (69) brazilian apple (70) iron bed (71) archaic cup (72) violet clock (73) iron trash can (74) wonderful triangular car key (75) new canvas (76) driving box (77) wood brand-new bird (78) large indian drill (79) glass plate (80) congolese box (81) ancient apple (82) smoking spoon (83) ancient wallet (84) exercise fire extinguisher (85) hiking piano (86) big egyptian banana (87) smoking car (88) whittling hammer (89) violet wallet (90) huge wallet (91) iranian hat (92) repulsive jar (93) old speaker (94) awful pencil (95) prismlike bicycle (96) little japanese flower pot (97) plastic bottle (98) enormous scissors (99) square plate (100) rectangular shoe (101) medium-size key (102) massive apple (103) huge knife (104) wonderful triangular pencil (105) maroon umbrella (106) japanese drill (107) little american book (108) fiberglass brand-new bowl (109) crimson shoe (110) old clock (111) indian necklace (112) white hiking hat (113) blue chair (114) archaic ring (115) steel old speaker (116) huge screwdriver (117) cloth brand-new vase (118) wonderful wrench (119) square bag (120) good wrench (121) normal-size wallet (122) spherical vase (123) glass toolbox (124) smoking hat (125) silly square umbrella (126) tiny watch (127) indian car key (128) good circular screwdriver (129) red wrench (130) american apple (131) paper bag (132) white plier (133) cloth ancient toolbox (134) walking jar (135) lovely prismlike knife (136) wool knife (137) triangular spoon (138) green book (139) green wrench (140) triangular sofa (141) russian plier (142) hiking banana (143) brazilian sofa (144) glass bicycle (145) terrible sofa (146) good circular bag (147) cloth pen (148) tiny egyptian bowl (149) steel cup (150) magenta driving ruler (151) brand-new wallet (152) tiny scissors (153) tiny brazilian bicycle (154) brown plate (155) ancient pen (156) walking sunglasses (157) cyan clock (158) paper lamp (159) plastic wrench (160) normal-size congolese banana (161) good canvas (162) blue whittling calculator (163) repulsive bicycle (164) prismlike plate (165) cyan drinking ball (166) bangladeshi sofa (167) bangladeshi plier (168) american table (169) archaic fire extinguisher (170) good circular apple (171) paper pencil (172) little japanese bicycle (173) rubber bag (174) green walking speaker (175) wood ancient screwdriver (176) nigerian clock (177) yellow driving hat (178) large guitar (179) vietnamese box (180) smoking sunglasses (181) red driving brush (182) archaic bag (183) obnoxious apple (184) repulsive square hat (185) violet brush (186) whittling speaker (187) black hiking canvas (188) white house (189) medium-size bed (190) crimson walking jar (191) exercise necklace (192) magenta drinking car key (193) green calculator (194) wood bed (195) repulsive circular bed (196) prismlike clock (197) walking marker (198) small indian chair (199) wonderful rectangular speaker (200) exercise cup (201) cardboard pen (202) turkish ridiculous smoking ring (203) terrible vase (204) cardboard brand-new watch (205) iranian flower pot (206) little russian jar (207) gray clock (208) maroon ring (209) nice shoe (210) driving bed (211) brown driving cup (212) obnoxious rectangular bed (213) wonderful toolbox\n\nIn this variant of English, which of the following sentences (Options A-J) use the correct adjective order? If none of the sentences (Options A-J) use the correct adjective order, select option K. Select all that apply.\n(A) plastic new awful prismlike white whittling pakistani marker\n(B) large egyptian ridiculous triangular yellow drinking fiberglass trash can\n(C) ridiculous spherical maroon exercise archaic glass spoon\n(D) small russian nice prismlike yellow whittling speaker\n(E) bangladeshi repulsive pyramidal brown walking fiberglass old bowl\n(F) paper old-fashioned wonderful rectangular brown smoking toolbox\n(G) german awful rectangular teal typing old steel ball\n(H) new iron silly triangular black typing nigerian wallet\n(I) wonderful pyramidal maroon hiking wool old-fashioned table\n(J) archaic mysterious prismlike pink whittling chinese tiny bed\n(K) None of the above\n\nProvide your final answer as a concatenation of all the correct choices. For example, if B and C have correct adjective order, then your final answer must be \"BC\".",
+        "input_sha256": "3c17e4aa4c6f5bb80432ea6d8c3306f758e7a23aa308669e21344264d336d0d5"
+      },
+      {
+        "question": "multistep_arithmetic-431d38652d5c6f02",
+        "family": "multistep_arithmetic",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "111",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "Consider the following new operations:\n\n$a <> b$ equals $(2 * b) + a$ if $a > b$ and $b$ otherwise.\n$a ; b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a + b$.\n$a >< b$ equals $a * b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a # b$ equals $(a - b)$ if $a >< b > 0$; otherwise,  it equals $-a - -b$.\n$a [] b$ equals $(b ; a) >< b$ if $|a-b| < 2$ and $(a ; b) >< a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((((((((((((((((((-10 >< -10) [] three) ><- 5) -*<> -2) []; seven) ++ 3) * -7) >< ten) [] -2) <>-<> -5) -[]- 4) #*[] 8) ;- 1) <> nine) *-[] eight) [] three) >< four) ; ten) [][]- seven) * -8)\nLet B = ((((-10 <>- nine) #->< (7 ;[]# -3)) # ((5 >< -5) ;<> (-1 []- ten))) + (((-10 [][]+ 8) #[]# (7 +# -10)) ;** ((4 [] two) ;><; (9 ; five))))\nLet C = ((((nine * one) - (-5 ++# 8)) + ((6 ><#; -1) <> (-4 -*[] 3))) ; (((-5 ;[] 1) -#<> (1 #-<> 8)) # ((-4 *#>< -1) ; (four <>>< -4)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "431d38652d5c6f029659ae1a7e2433f64c66c5f462ee6a89da94cb5db02c3f8d"
+      },
+      {
+        "question": "multistep_arithmetic-431d38652d5c6f02",
+        "family": "multistep_arithmetic",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "111",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "Consider the following new operations:\n\n$a <> b$ equals $(2 * b) + a$ if $a > b$ and $b$ otherwise.\n$a ; b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a + b$.\n$a >< b$ equals $a * b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a # b$ equals $(a - b)$ if $a >< b > 0$; otherwise,  it equals $-a - -b$.\n$a [] b$ equals $(b ; a) >< b$ if $|a-b| < 2$ and $(a ; b) >< a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((((((((((((((((((-10 >< -10) [] three) ><- 5) -*<> -2) []; seven) ++ 3) * -7) >< ten) [] -2) <>-<> -5) -[]- 4) #*[] 8) ;- 1) <> nine) *-[] eight) [] three) >< four) ; ten) [][]- seven) * -8)\nLet B = ((((-10 <>- nine) #->< (7 ;[]# -3)) # ((5 >< -5) ;<> (-1 []- ten))) + (((-10 [][]+ 8) #[]# (7 +# -10)) ;** ((4 [] two) ;><; (9 ; five))))\nLet C = ((((nine * one) - (-5 ++# 8)) + ((6 ><#; -1) <> (-4 -*[] 3))) ; (((-5 ;[] 1) -#<> (1 #-<> 8)) # ((-4 *#>< -1) ; (four <>>< -4)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "431d38652d5c6f029659ae1a7e2433f64c66c5f462ee6a89da94cb5db02c3f8d"
+      },
+      {
+        "question": "multistep_arithmetic-431d38652d5c6f02",
+        "family": "multistep_arithmetic",
+        "arm": "E",
+        "response": "Expanding chained operators left-to-right gives  \n\\(A:\\ 10\\to70\\to345\\to-2\\to-3\\to9\\to-630\\to2\\to-13\\to217\\to8\\to150\\to459952343\\to-3679618744.\\)  \nFor \\(B\\), the two addends are \\(-59\\) and \\(-700\\), so \\(B=-759\\).  \nFor \\(C\\), the two arguments of the final semicolon are \\(9\\) and \\(7\\), hence \\(C=9;7=2\\). Therefore,\n\\[\nA+B-C=-3679618744-759-2=-3679619505.\n\\]\n\nThe final answer is: -3679619505",
+        "response_sha256": "5f1d25428007097c5dd7a16c4a9d65d2ec03a481539bdc5b38b3bd3d753fe98d",
+        "parsed_answer": "-3679619505",
+        "reference": "111",
+        "correct": false,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "Consider the following new operations:\n\n$a <> b$ equals $(2 * b) + a$ if $a > b$ and $b$ otherwise.\n$a ; b$ equals $(a - b)$ if $a * b > 0$; otherwise,  it equals $a + b$.\n$a >< b$ equals $a * b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a # b$ equals $(a - b)$ if $a >< b > 0$; otherwise,  it equals $-a - -b$.\n$a [] b$ equals $(b ; a) >< b$ if $|a-b| < 2$ and $(a ; b) >< a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((((((((((((((((((-10 >< -10) [] three) ><- 5) -*<> -2) []; seven) ++ 3) * -7) >< ten) [] -2) <>-<> -5) -[]- 4) #*[] 8) ;- 1) <> nine) *-[] eight) [] three) >< four) ; ten) [][]- seven) * -8)\nLet B = ((((-10 <>- nine) #->< (7 ;[]# -3)) # ((5 >< -5) ;<> (-1 []- ten))) + (((-10 [][]+ 8) #[]# (7 +# -10)) ;** ((4 [] two) ;><; (9 ; five))))\nLet C = ((((nine * one) - (-5 ++# 8)) + ((6 ><#; -1) <> (-4 -*[] 3))) ; (((-5 ;[] 1) -#<> (1 #-<> 8)) # ((-4 *#>< -1) ; (four <>>< -4)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "431d38652d5c6f029659ae1a7e2433f64c66c5f462ee6a89da94cb5db02c3f8d"
+      },
+      {
+        "question": "multistep_arithmetic-375588b3ae4e696f",
+        "family": "multistep_arithmetic",
+        "arm": "A",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "120",
+        "correct": null,
+        "scoreable": false,
+        "state": "failed",
+        "input": "Consider the following new operations:\n\n$a & b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a >< b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\n$a ; b$ equals $a >< b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a <> b$ equals $(2 >< b) ; a$ if $a > b$ and $b$ otherwise.\n$a ~ b$ equals $(a - b)$ if $a + b > 0$; otherwise,  it equals $a + b$.\n$a [] b$ equals $(a ; a) + b$ if $b < 2$ and $(b ; b) + a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-6 ~ -5) *;>< (-9 ~~+ -7)) ><~ ((-5 &+ eight) *<> (3 *& -9))) [][] (((-3 ~ -6) ~<><> (-2 * ten)) &;; ((8 + 2) <>~>< (-2 &&+ -7))))\nLet B = ((((((((((((-5 + nine) +* 5) +<> -4) +<> 9) []~~ two) ->< -3) [] -8) & -8) ; -8) +~[] two) *~ -2) +<>- -10)\nLet C = ((((9 +;[] four) & (8 * -1)) ~ ((-9 ~ -6) []; (2 ;>< -7))) ;;- (((-2 ;* 5) * (-1 ;>< five)) - ((5 *[]; -8) & (-7 & 2)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "375588b3ae4e696f16ff1cf0e60f814bd01bd631b1a55b5ed489bd304e4c8eed"
+      },
+      {
+        "question": "multistep_arithmetic-375588b3ae4e696f",
+        "family": "multistep_arithmetic",
+        "arm": "B",
+        "response": null,
+        "response_sha256": null,
+        "parsed_answer": null,
+        "reference": "120",
+        "correct": null,
+        "scoreable": false,
+        "state": "blocked",
+        "input": "Consider the following new operations:\n\n$a & b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a >< b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\n$a ; b$ equals $a >< b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a <> b$ equals $(2 >< b) ; a$ if $a > b$ and $b$ otherwise.\n$a ~ b$ equals $(a - b)$ if $a + b > 0$; otherwise,  it equals $a + b$.\n$a [] b$ equals $(a ; a) + b$ if $b < 2$ and $(b ; b) + a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-6 ~ -5) *;>< (-9 ~~+ -7)) ><~ ((-5 &+ eight) *<> (3 *& -9))) [][] (((-3 ~ -6) ~<><> (-2 * ten)) &;; ((8 + 2) <>~>< (-2 &&+ -7))))\nLet B = ((((((((((((-5 + nine) +* 5) +<> -4) +<> 9) []~~ two) ->< -3) [] -8) & -8) ; -8) +~[] two) *~ -2) +<>- -10)\nLet C = ((((9 +;[] four) & (8 * -1)) ~ ((-9 ~ -6) []; (2 ;>< -7))) ;;- (((-2 ;* 5) * (-1 ;>< five)) - ((5 *[]; -8) & (-7 & 2)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "375588b3ae4e696f16ff1cf0e60f814bd01bd631b1a55b5ed489bd304e4c8eed"
+      },
+      {
+        "question": "multistep_arithmetic-375588b3ae4e696f",
+        "family": "multistep_arithmetic",
+        "arm": "E",
+        "response": "Evaluating the nested operations gives:\n\\(A=112\\), \\(B=0\\), and \\(C=-8\\).\nFor example, A’s left side becomes \\(0\\), its right side becomes \\(56\\), and \\(0[][]56=112\\). B’s chained expression reduces to \\(0\\). C’s left component is \\(-56\\), right component is \\(16\\), so \\(-56;;-16=-8\\). Thus,\n\\[\nA+B-C=112+0-(-8)=120.\n\\]\n\nThe final answer is: 120",
+        "response_sha256": "1183571a471d5362a6c46e272c5193739c71dd0033ea33f8bfae5f9c615f001b",
+        "parsed_answer": "120",
+        "reference": "120",
+        "correct": true,
+        "scoreable": true,
+        "state": "succeeded",
+        "input": "Consider the following new operations:\n\n$a & b$ equals $(a + b)$ if $a - b > 0$; otherwise,  it equals $a * b$.\n$a >< b$ equals $min(a, b)$ if either $a$ or $b$ is prime and $max(a, b)$ otherwise.\n$a ; b$ equals $a >< b$ if $gcd(a, b) == 1$ and $gcd(a, b)$ otherwise, where gcd stands for greatest common divisor.\n$a <> b$ equals $(2 >< b) ; a$ if $a > b$ and $b$ otherwise.\n$a ~ b$ equals $(a - b)$ if $a + b > 0$; otherwise,  it equals $a + b$.\n$a [] b$ equals $(a ; a) + b$ if $b < 2$ and $(b ; b) + a$ otherwise.\nFor brevity, we use $a <op1><op2> b$ to denote $(a op1 b) op2 b$. For example, $4 +* -5$ means $(4 + -5) * -5$ and $4 *-- -5$ means $(4 * -5) -- -5$.\nLet A = ((((-6 ~ -5) *;>< (-9 ~~+ -7)) ><~ ((-5 &+ eight) *<> (3 *& -9))) [][] (((-3 ~ -6) ~<><> (-2 * ten)) &;; ((8 + 2) <>~>< (-2 &&+ -7))))\nLet B = ((((((((((((-5 + nine) +* 5) +<> -4) +<> 9) []~~ two) ->< -3) [] -8) & -8) ; -8) +~[] two) *~ -2) +<>- -10)\nLet C = ((((9 +;[] four) & (8 * -1)) ~ ((-9 ~ -6) []; (2 ;>< -7))) ;;- (((-2 ;* 5) * (-1 ;>< five)) - ((5 *[]; -8) & (-7 & 2)))).\nCompute A + B - C. Your final answer must be in number form.",
+        "input_sha256": "375588b3ae4e696f16ff1cf0e60f814bd01bd631b1a55b5ed489bd304e4c8eed"
+      }
+    ]
+  },
+  "main": {
+    "scores": {
+      "A": {
+        "workflow": "Sonnet original",
+        "correct": 0,
+        "incorrect": 0,
+        "missing": 24,
+        "evaluated": 0,
+        "planned": 24,
+        "score": null,
+        "score_bounds": [
+          0.0,
+          100.0
+        ]
+      },
+      "B": {
+        "workflow": "Sonnet plain revision",
+        "correct": 0,
+        "incorrect": 0,
+        "missing": 24,
+        "evaluated": 0,
+        "planned": 24,
+        "score": null,
+        "score_bounds": [
+          0.0,
+          100.0
+        ]
+      },
+      "C": {
+        "workflow": "Sonnet self-review",
+        "correct": 0,
+        "incorrect": 0,
+        "missing": 24,
+        "evaluated": 0,
+        "planned": 24,
+        "score": null,
+        "score_bounds": [
+          0.0,
+          100.0
+        ]
+      },
+      "D": {
+        "workflow": "Terra review + Sonnet revision",
+        "correct": 0,
+        "incorrect": 0,
+        "missing": 24,
+        "evaluated": 0,
+        "planned": 24,
+        "score": null,
+        "score_bounds": [
+          0.0,
+          100.0
+        ]
+      },
+      "E": {
+        "workflow": "Terra alone",
+        "correct": 0,
+        "incorrect": 0,
+        "missing": 24,
+        "evaluated": 0,
+        "planned": 24,
+        "score": null,
+        "score_bounds": [
+          0.0,
+          100.0
+        ]
+      }
+    },
+    "outcomes": [],
+    "contrasts": {
+      "D-C": {
+        "n": 0,
+        "delta_pp": null,
+        "interval95": null,
+        "repairs": 0,
+        "regressions": 0,
+        "p_exact": null
+      },
+      "D-B": {
+        "n": 0,
+        "delta_pp": null,
+        "interval95": null,
+        "repairs": 0,
+        "regressions": 0,
+        "p_exact": null
+      },
+      "D-E": {
+        "n": 0,
+        "delta_pp": null,
+        "interval95": null,
+        "repairs": 0,
+        "regressions": 0,
+        "p_exact": null
+      },
+      "D-A": {
+        "n": 0,
+        "delta_pp": null,
+        "interval95": null,
+        "repairs": 0,
+        "regressions": 0,
+        "p_exact": null
+      }
+    },
+    "resources": {
+      "A": {
+        "per_question": [
+          {
+            "question": "multistep_arithmetic-11cc6979d94d2417",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-d95e7abc937d0f50",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-78e2542e1e653662",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-c5e7a82770b182cf",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-3acbf3937b76176d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ee9f86440a591f3",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-47de8c9e0dca7d26",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1fe53f741c83cc0d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-e918e5f00350a2b5",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ed9c648ba039b90",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1f745368906fa0b0",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-91932aee2fa3dbb4",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-2d1a84fc435060f2",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-a52b2b0195ddc5a8",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-7bf1d338ea5f3a9d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-1f642f4509b193d7",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-83a01d084bafab35",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-261ba4971327efae",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-35b3869aa51cea30",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-272913accb9c478d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-f7449b779d077b6a",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-40b134b4b4fdc21e",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-ef2fd75309705305",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-512b7c3ede9b65fd",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          }
+        ],
+        "priced": 0,
+        "mean_cost": null,
+        "median_model_phase_seconds": null
+      },
+      "B": {
+        "per_question": [
+          {
+            "question": "multistep_arithmetic-11cc6979d94d2417",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-d95e7abc937d0f50",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-78e2542e1e653662",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-c5e7a82770b182cf",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-3acbf3937b76176d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ee9f86440a591f3",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-47de8c9e0dca7d26",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1fe53f741c83cc0d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-e918e5f00350a2b5",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ed9c648ba039b90",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1f745368906fa0b0",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-91932aee2fa3dbb4",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-2d1a84fc435060f2",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-a52b2b0195ddc5a8",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-7bf1d338ea5f3a9d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-1f642f4509b193d7",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-83a01d084bafab35",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-261ba4971327efae",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-35b3869aa51cea30",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-272913accb9c478d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-f7449b779d077b6a",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-40b134b4b4fdc21e",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-ef2fd75309705305",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-512b7c3ede9b65fd",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          }
+        ],
+        "priced": 0,
+        "mean_cost": null,
+        "median_model_phase_seconds": null
+      },
+      "C": {
+        "per_question": [
+          {
+            "question": "multistep_arithmetic-11cc6979d94d2417",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-d95e7abc937d0f50",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-78e2542e1e653662",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-c5e7a82770b182cf",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-3acbf3937b76176d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ee9f86440a591f3",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-47de8c9e0dca7d26",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1fe53f741c83cc0d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-e918e5f00350a2b5",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ed9c648ba039b90",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1f745368906fa0b0",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-91932aee2fa3dbb4",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-2d1a84fc435060f2",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-a52b2b0195ddc5a8",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-7bf1d338ea5f3a9d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-1f642f4509b193d7",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-83a01d084bafab35",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-261ba4971327efae",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-35b3869aa51cea30",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-272913accb9c478d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-f7449b779d077b6a",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-40b134b4b4fdc21e",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-ef2fd75309705305",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-512b7c3ede9b65fd",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          }
+        ],
+        "priced": 0,
+        "mean_cost": null,
+        "median_model_phase_seconds": null
+      },
+      "D": {
+        "per_question": [
+          {
+            "question": "multistep_arithmetic-11cc6979d94d2417",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-d95e7abc937d0f50",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-78e2542e1e653662",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-c5e7a82770b182cf",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-3acbf3937b76176d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ee9f86440a591f3",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-47de8c9e0dca7d26",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1fe53f741c83cc0d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-e918e5f00350a2b5",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ed9c648ba039b90",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1f745368906fa0b0",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-91932aee2fa3dbb4",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-2d1a84fc435060f2",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-a52b2b0195ddc5a8",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-7bf1d338ea5f3a9d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-1f642f4509b193d7",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-83a01d084bafab35",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-261ba4971327efae",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-35b3869aa51cea30",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-272913accb9c478d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-f7449b779d077b6a",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-40b134b4b4fdc21e",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-ef2fd75309705305",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-512b7c3ede9b65fd",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          }
+        ],
+        "priced": 0,
+        "mean_cost": null,
+        "median_model_phase_seconds": null
+      },
+      "E": {
+        "per_question": [
+          {
+            "question": "multistep_arithmetic-11cc6979d94d2417",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-d95e7abc937d0f50",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-78e2542e1e653662",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-c5e7a82770b182cf",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-3acbf3937b76176d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ee9f86440a591f3",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-47de8c9e0dca7d26",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1fe53f741c83cc0d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-e918e5f00350a2b5",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-0ed9c648ba039b90",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-1f745368906fa0b0",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-91932aee2fa3dbb4",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-2d1a84fc435060f2",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-a52b2b0195ddc5a8",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-7bf1d338ea5f3a9d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-1f642f4509b193d7",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-83a01d084bafab35",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-261ba4971327efae",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-35b3869aa51cea30",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-272913accb9c478d",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "web_of_lies-f7449b779d077b6a",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-40b134b4b4fdc21e",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "multistep_arithmetic-ef2fd75309705305",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          },
+          {
+            "question": "hyperbaton-512b7c3ede9b65fd",
+            "complete": false,
+            "cost": null,
+            "phase_seconds": null
+          }
+        ],
+        "priced": 0,
+        "mean_cost": null,
+        "median_model_phase_seconds": null
+      }
+    }
+  },
+  "per_family": {
+    "multistep_arithmetic": {
+      "calibration": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 4,
+          "evaluated": 0,
+          "planned": 4,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 4,
+          "evaluated": 0,
+          "planned": 4,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 1,
+          "incorrect": 3,
+          "missing": 0,
+          "evaluated": 4,
+          "planned": 4,
+          "score": 25.0,
+          "score_bounds": [
+            25.0,
+            25.0
+          ]
+        }
+      },
+      "main": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "C": {
+          "workflow": "Sonnet self-review",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "D": {
+          "workflow": "Terra review + Sonnet revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        }
+      }
+    },
+    "web_of_lies": {
+      "calibration": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 1,
+          "incorrect": 3,
+          "missing": 0,
+          "evaluated": 4,
+          "planned": 4,
+          "score": 25.0,
+          "score_bounds": [
+            25.0,
+            25.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 1,
+          "incorrect": 3,
+          "missing": 0,
+          "evaluated": 4,
+          "planned": 4,
+          "score": 25.0,
+          "score_bounds": [
+            25.0,
+            25.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 2,
+          "incorrect": 2,
+          "missing": 0,
+          "evaluated": 4,
+          "planned": 4,
+          "score": 50.0,
+          "score_bounds": [
+            50.0,
+            50.0
+          ]
+        }
+      },
+      "main": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "C": {
+          "workflow": "Sonnet self-review",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "D": {
+          "workflow": "Terra review + Sonnet revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        }
+      }
+    },
+    "hyperbaton": {
+      "calibration": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 0,
+          "incorrect": 1,
+          "missing": 3,
+          "evaluated": 1,
+          "planned": 4,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            75.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 1,
+          "missing": 3,
+          "evaluated": 1,
+          "planned": 4,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            75.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 0,
+          "incorrect": 4,
+          "missing": 0,
+          "evaluated": 4,
+          "planned": 4,
+          "score": 0.0,
+          "score_bounds": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "main": {
+        "A": {
+          "workflow": "Sonnet original",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "B": {
+          "workflow": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "C": {
+          "workflow": "Sonnet self-review",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "D": {
+          "workflow": "Terra review + Sonnet revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "E": {
+          "workflow": "Terra alone",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 8,
+          "evaluated": 0,
+          "planned": 8,
+          "score": null,
+          "score_bounds": [
+            0.0,
+            100.0
+          ]
+        }
+      }
+    }
+  },
+  "spend": {
+    "calls": 29,
+    "cap": 220,
+    "families": {
+      "claude": 17,
+      "codex": 12
+    },
+    "family_caps": {
+      "claude": 156,
+      "codex": 64,
+      "glm": 0,
+      "kimi": 0
+    },
+    "known_list_equivalent_usd": 0.89455,
+    "unpriced_calls": [
+      3,
+      12,
+      15,
+      16,
+      27,
+      28,
+      29
+    ],
+    "forecast_main_list_equivalent_usd": null,
+    "attempts": [
+      {
+        "id": 1,
+        "job": "web_of_lies-e5dbc0fee8cb0bf8.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 62.938,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1508,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 6724,
+          "output_tokens_details": {
+            "thinking_tokens": 6088
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1508,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.073276
+      },
+      {
+        "id": 2,
+        "job": "web_of_lies-e5dbc0fee8cb0bf8.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 24.641,
+        "usage": {
+          "input_tokens": 4811,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1186,
+          "reasoning_output_tokens": 1034
+        },
+        "cost_usd": 0.023854
+      },
+      {
+        "id": 3,
+        "job": "multistep_arithmetic-51995d0b83b49041.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.095554,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 4,
+        "job": "multistep_arithmetic-51995d0b83b49041.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 80.703,
+        "usage": {
+          "input_tokens": 4629,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4242,
+          "reasoning_output_tokens": 4142
+        },
+        "cost_usd": 0.060162
+      },
+      {
+        "id": 5,
+        "job": "web_of_lies-8a14c3143267abb2.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 58.031,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1837,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 6561,
+          "output_tokens_details": {
+            "thinking_tokens": 5781
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1837,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.072962
+      },
+      {
+        "id": 6,
+        "job": "web_of_lies-20eb946843cffbe8.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 57.25,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1492,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 6640,
+          "output_tokens_details": {
+            "thinking_tokens": 6131
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1492,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.072372
+      },
+      {
+        "id": 7,
+        "job": "web_of_lies-8a14c3143267abb2.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 38.719,
+        "usage": {
+          "input_tokens": 4993,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1961,
+          "reasoning_output_tokens": 1834
+        },
+        "cost_usd": 0.033518
+      },
+      {
+        "id": 8,
+        "job": "web_of_lies-20eb946843cffbe8.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 45.5,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 2038,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 5259,
+          "output_tokens_details": {
+            "thinking_tokens": 4679
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 2038,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.060745999999999994
+      },
+      {
+        "id": 9,
+        "job": "web_of_lies-8a14c3143267abb2.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 18.672,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 2654,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 2280,
+          "output_tokens_details": {
+            "thinking_tokens": 1685
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 2654,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.033420000000000005
+      },
+      {
+        "id": 10,
+        "job": "web_of_lies-e5dbc0fee8cb0bf8.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 44.672,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 2180,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 4731,
+          "output_tokens_details": {
+            "thinking_tokens": 4232
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 2180,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.056033999999999994
+      },
+      {
+        "id": 11,
+        "job": "web_of_lies-20eb946843cffbe8.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 30.578,
+        "usage": {
+          "input_tokens": 4797,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1539,
+          "reasoning_output_tokens": 1379
+        },
+        "cost_usd": 0.028062
+      },
+      {
+        "id": 12,
+        "job": "hyperbaton-0213095b271da7fb.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.060557,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 13,
+        "job": "hyperbaton-0213095b271da7fb.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 39.125,
+        "usage": {
+          "input_tokens": 5107,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2001,
+          "reasoning_output_tokens": 1935
+        },
+        "cost_usd": 0.034226
+      },
+      {
+        "id": 14,
+        "job": "multistep_arithmetic-2e762c7fb34d49eb.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 46.938,
+        "usage": {
+          "input_tokens": 4546,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2308,
+          "reasoning_output_tokens": 2214
+        },
+        "cost_usd": 0.036788
+      },
+      {
+        "id": 15,
+        "job": "multistep_arithmetic-2e762c7fb34d49eb.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.06584,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 16,
+        "job": "hyperbaton-bbe432c0103bb7a9.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.05332,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 17,
+        "job": "hyperbaton-bbe432c0103bb7a9.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 25.125,
+        "usage": {
+          "input_tokens": 5390,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1093,
+          "reasoning_output_tokens": 1034
+        },
+        "cost_usd": 0.023896
+      },
+      {
+        "id": 18,
+        "job": "hyperbaton-f18bd28ecabc7c5e.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 41.563,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1425,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 4501,
+          "output_tokens_details": {
+            "thinking_tokens": 4020
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1425,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.050713999999999995
+      },
+      {
+        "id": 19,
+        "job": "hyperbaton-f18bd28ecabc7c5e.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 18.187,
+        "usage": {
+          "input_tokens": 4772,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 706,
+          "reasoning_output_tokens": 649
+        },
+        "cost_usd": 0.018016
+      },
+      {
+        "id": 20,
+        "job": "web_of_lies-276a2492a1f57ae5.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 7.89,
+        "usage": {
+          "input_tokens": 4439,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 272,
+          "reasoning_output_tokens": 179
+        },
+        "cost_usd": 0.012142
+      },
+      {
+        "id": 21,
+        "job": "hyperbaton-3c17e4aa4c6f5bb8.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 21.125,
+        "usage": {
+          "input_tokens": 5634,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 577,
+          "reasoning_output_tokens": 503
+        },
+        "cost_usd": 0.018192
+      },
+      {
+        "id": 22,
+        "job": "multistep_arithmetic-431d38652d5c6f02.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 94.14,
+        "usage": {
+          "input_tokens": 4633,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5001,
+          "reasoning_output_tokens": 4832
+        },
+        "cost_usd": 0.069278
+      },
+      {
+        "id": 23,
+        "job": "hyperbaton-f18bd28ecabc7c5e.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 50.922,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1942,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 6030,
+          "output_tokens_details": {
+            "thinking_tokens": 5329
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1942,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.068072
+      },
+      {
+        "id": 24,
+        "job": "multistep_arithmetic-375588b3ae4e696f.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "seconds": 42.61,
+        "usage": {
+          "input_tokens": 4619,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2195,
+          "reasoning_output_tokens": 2070
+        },
+        "cost_usd": 0.035578
+      },
+      {
+        "id": 25,
+        "job": "web_of_lies-276a2492a1f57ae5.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 5.438,
+        "usage": {
+          "input_tokens": 804,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 430,
+          "output_tokens_details": {
+            "thinking_tokens": 234
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.005908
+      },
+      {
+        "id": 26,
+        "job": "web_of_lies-276a2492a1f57ae5.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "seconds": 5.407,
+        "usage": {
+          "input_tokens": 2,
+          "cache_creation_input_tokens": 1035,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 319,
+          "output_tokens_details": {
+            "thinking_tokens": 171
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1035,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "cost_usd": 0.007334
+      },
+      {
+        "id": 27,
+        "job": "hyperbaton-3c17e4aa4c6f5bb8.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.056907,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 28,
+        "job": "multistep_arithmetic-431d38652d5c6f02.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.052263,
+        "usage": {},
+        "cost_usd": null
+      },
+      {
+        "id": 29,
+        "job": "multistep_arithmetic-375588b3ae4e696f.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "seconds": 120.075985,
+        "usage": {},
+        "cost_usd": null
+      }
+    ],
+    "pricing_note": "Claude CLI-reported list-equivalent costs; Terra estimate uses recorded rates of$2 input,$0.20 cached input,$12 output per million tokens. Not cash subscription charges."
+  },
+  "assessment": {
+    "question": "Does this compact BBEH subset provide usable headroom for a low-compute comparison of Co-Evolution with cheaper workflows?",
+    "finding": "Terra completed 12/12 calibration answers and scored 3/12 (25%) under the official scorer. Sonnet completed five originals, with one correct; seven originals timed out at 120 seconds. Its five available plain revisions also had one correct, with seven dependent revisions blocked. The controller stopped after 29 calls; the conditional 168-call main comparison did not run.",
+    "test_quality": "The 12 calibration and 24 disjoint main questions were frozen before generation. Participant prompts excluded answer keys. All 22 received answers could be extracted, and their unchanged text was graded with the pinned official deterministic scorer after generation froze. Publication replays that scorer and verifies input and response hashes. Missing answers remain unavailable, not incorrect.",
+    "limitation": "This is a 12-question, three-family suitability screen, not a full BBEH score or a Co-Evolution effectiveness test. Sonnet full-set accuracy is unknown, with bounds of 8.3–66.7%. Eight officially incorrect responses (three A, three B, two E) match the normalized reference except for surrounding angle brackets. This diagnostic does not change the scores, but shows that formatting affects the apparent difficulty. Seven timed-out calls have no recorded price, so the cost total is incomplete.",
+    "decision": "Reject this bundle under the configured limits and stop at the predeclared gate. The observed scores are below the earlier ceiling, but Sonnet timeouts and answer-format sensitivity prevent a clean reasoning comparison. No positive or negative Co-Evolution effect has been measured. The gate avoided launching 168 conditional main calls.",
+    "next_action": "Publish this calibration and its assessment, then close the run. A separate plan should first address exact answer-format instructions and runtime suitability using fresh calibration questions. Web of Lies completed across all baselines here, but four questions and substantial formatting effects do not establish it as a suitably difficult replacement. Do not change settings or continue this run."
+  },
+  "provenance": {
+    "manifest_sha256": "652a56ce14e6c43fa43793b94f9d35d415bd149693b33fe383b55bb98c703bb4",
+    "questions_sha256": "854396387b8e470f846512d660afa13ab266ea9cc45a6e69908984b05ed96c63",
+    "reference_sha256": "ac3db06f169ffa2fd3b9d8369324c1a7c7a8cbd3a05470f7cf2ba3e2de11847c",
+    "source_hashes": {
+      "campaign.py": "2b47c5de44d7033753d7fd8f83a1a8e36e4d096f5e43348180cbc349159329c3",
+      "runner.py": "13a778ae883eb81a77bab55bc5d1e58a3e92fdb9881c41b035e0737aa1491593",
+      "support.py": "e9e843c58e878fad63a64f843fe3ede788785754b13799d6354ed210e503972c",
+      "transport.py": "9be60e48a69014bc15075acf1616887f489a50aba8d131f5766829458cde13dc"
+    },
+    "reporter_sha256": "6ba0f561a9eec9a26462c55e7b6dde2ea4c15a8380fbc2b97cdccb0592295a90",
+    "source_report_sha256": "860e070d21aee768997e141637e06999c8947cacd268fa9dbfb03a0b4df40263"
+  },
+  "timing": {
+    "started_epoch": 1789415220.9971254,
+    "deadline": 1789422420.9971254,
+    "controller": {
+      "started": "2026-09-14T19:48:20.5996435Z",
+      "finished": "2026-09-14T19:54:04.9357460Z",
+      "supervisor_pid": 52084,
+      "exit_code": 0
+    }
+  },
+  "diagnostics": {
+    "angle_bracket_only_mismatches": {
+      "A": 3,
+      "B": 3,
+      "E": 2
+    },
+    "changes_official_scores": false
+  }
+}
