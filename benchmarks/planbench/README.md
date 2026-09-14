@@ -1,5 +1,25 @@
 # Bounded PlanBench measurement
 
+## Sonnet/Terra replication
+
+The new profile uses Sonnet as author/self-critic/reviser and Terra as external
+critic, with Claude280/Codex56 caps. `run.py` now accepts author/reviewer/grant
+selection; frozen manifests control effort, role concurrency and retry limits.
+Claude's combined response allowance is passed per call rather than shared
+mutable state. Original Astra/Fable behavior remains the default profile.
+
+The recorded Sonnet/Terra run had a readiness-only medium-effort amendment;
+`reprofile_readiness.py` preserves six spent calls and allocates only the
+remaining330. Do not reinitialize a settled run or repeat its high-effort
+readiness failure. The completed medium stage produced200 scored outputs:
+48/50 original and50/50 for plain revision, self-review and Terra review.
+Use its manifest and profile amendment as the authoritative run settings.
+
+The generic scorer supports both model pairs. `publish_report.py` accepts
+separate data/page/study IDs and an optional reviewed assessment tied to the
+source report hash. The site retains the Astra/Fable result alongside the
+Sonnet/Terra result instead of pooling or overwriting them.
+
 The September 13, 2026 attempt used the official PlanBench Blocksworld Hard
 corpus, pinned at `fc638a1aff7df3fe7a1a1d289fa2c04cc24dc284`, and its bundled
 VAL executable and PDDL extractor. The scored sample is 50 fixed tasks from

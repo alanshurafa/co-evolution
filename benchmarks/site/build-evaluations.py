@@ -8,16 +8,21 @@ esc=html.escape
 def number(value,digits=2):
     return 'Unavailable' if value is None else f'{value:.{digits}f}'
 
-def render_planbench(result):
+def render_planbench(result,data_name='planbench-results.json',assessment_id='planbench'):
+    labels=result.get('model_labels',{'author':'Astra','reviewer':'Fable'})
+    author=esc(labels['author']);reviewer=esc(labels['reviewer'])
+    author_family='claude' if result.get('author_seat','astra') in ('sonnet','fable') else 'codex'
+    reviewer_family='claude' if author_family=='codex' else 'codex'
     count=sum(s['evaluated'] for s in result['scores'].values())
     headline='The benchmark is scored.' if count==200 else ('Partial benchmark results.' if count else 'Readiness failed. No benchmark score.')
     if result['scores']['A']['score']==100:headline='Original plans scored 100%.'
+    elif count==200 and all(result['scores'][a]['score']==100 for a in ('B','C','D')):headline='Plain revision was enough.'
     intro=result['assessment']['finding']
     content=f'<p class="eyebrow">PLANBENCH BLOCKSWORLD HARD · 50-TASK SUBSET</p><h1>{headline}</h1><p>{esc(intro)}</p><div class="notice"><strong>{count} of 200 benchmark plans evaluated.</strong> Scores measure legal action sequences reaching the goal, not writing quality or human productivity. Missing outcomes stay unavailable.</div><h2>Four workflows, the same starting plans</h2><div class="table-scroll" tabindex="0" role="region" aria-label="PlanBench arm scores"><table><thead><tr><th>Arm</th><th>Workflow</th><th>Valid / evaluated</th><th>Missing</th><th>Score /100</th></tr></thead><tbody>'
     for arm,s in result['scores'].items():
         score=number(s['score']) if s['score'] is not None else 'Unavailable<br><small>Possible range '+str(s['score_bounds'][0])+'–'+str(s['score_bounds'][1])+'</small>'
         content+=f'<tr><th scope="row">{arm}</th><td>{esc(s["workflow"])}</td><td>{s["valid"]}/{s["evaluated"]}</td><td>{s["missing"]}/50</td><td>{score}</td></tr>'
-    content+='</tbody></table></div><p>A is the original Astra plan. B adds plain revision. C adds independent Astra critique and Astra revision. D adds independent Fable critique and Astra revision. Each arm uses the same original per task; no validator feedback reaches the models.</p><h2>What review changed</h2><div class="table-scroll" tabindex="0" role="region" aria-label="Paired workflow comparisons"><table><thead><tr><th>Comparison</th><th>Paired tasks</th><th>Change, points</th><th>95% paired interval</th><th>Repairs</th><th>Regressions</th></tr></thead><tbody>'
+    content+=f'</tbody></table></div><p>A is the original {author} plan. B adds plain revision. C adds independent {author} critique and {author} revision. D adds independent {reviewer} critique and {author} revision. Each arm uses the same original per task; no validator feedback reaches the models. Effort: {esc(result["effort"])}.</p><h2>What review changed</h2><div class="table-scroll" tabindex="0" role="region" aria-label="Paired workflow comparisons"><table><thead><tr><th>Comparison</th><th>Paired tasks</th><th>Change, points</th><th>95% paired interval</th><th>Repairs</th><th>Regressions</th></tr></thead><tbody>'
     for name,p in result['contrasts'].items():
         bounds='Unavailable' if p['interval95'] is None else ' to '.join(number(v) for v in p['interval95'])
         content+=f'<tr><th scope="row">{esc(name)}</th><td>{p["n"]}</td><td>{number(p["delta_pp"])}</td><td>{bounds}</td><td>{p["repairs"]}</td><td>{p["regressions"]}</td></tr>'
@@ -32,13 +37,15 @@ def render_planbench(result):
     paired_resources=result.get('matched_complete_resources',{})
     if paired_resources and all(paired_resources[a]['mean_cost_usd'] for a in ('A','D')):
         a,d=paired_resources['A'],paired_resources['D']
-        content+=f'<p>On the same {d["n"]} completed tasks, original Astra cost an estimated ${a["mean_cost_usd"]:.4f} per task versus ${d["mean_cost_usd"]:.4f} with Fable review ({d["mean_cost_usd"]/a["mean_cost_usd"]:.1f}×). Median model-phase time was {number(a["median_phase_seconds"],1)} versus {number(d["median_phase_seconds"],1)} seconds. These matched-completion estimates exclude undelivered workflows; the experiment total below includes their charged attempts.</p>'
+        content+=f'<p>On the same {d["n"]} completed tasks, original {author} cost an estimated ${a["mean_cost_usd"]:.4f} per task versus ${d["mean_cost_usd"]:.4f} with {reviewer} review ({d["mean_cost_usd"]/a["mean_cost_usd"]:.1f}×). Median model-phase time was {number(a["median_phase_seconds"],1)} versus {number(d["median_phase_seconds"],1)} seconds. These matched-completion estimates exclude undelivered workflows; the experiment total below includes their charged attempts.</p>'
     spend=result['spend']
-    content+=f'<p>Whole experiment: <strong>{spend["calls"]}/{spend["cap"]} calls</strong>, including preserved prior attempts and excluded smoke work. Astra: {spend["families"]["codex"]}; Fable: {spend["families"]["claude"]}. Known list-equivalent cost: <strong>${spend["known_list_equivalent_usd"]:.4f}</strong>; unpriced calls: {len(spend["unpriced_calls"])}. Shared experiment spend is not the sum of standalone arm costs. {esc(spend["pricing_note"])}</p>'
+    content+=f'<p>Whole experiment: <strong>{spend["calls"]}/{spend["cap"]} calls</strong>, including preserved prior attempts and excluded smoke work. {author}: {spend["families"][author_family]}; {reviewer}: {spend["families"][reviewer_family]}. Known list-equivalent cost: <strong>${spend["known_list_equivalent_usd"]:.4f}</strong>; unpriced calls: {len(spend["unpriced_calls"])}. Shared experiment spend is not the sum of standalone arm costs. {esc(spend["pricing_note"])}</p>'
     smoke=result['smoke'];valid=sum(x['outcome']['valid'] is True for x in smoke['outcomes']);evaluated=sum(x['outcome']['valid'] is not None for x in smoke['outcomes'])
     content+=f'<h2>Readiness and continuation</h2><p>Two excluded smoke tasks: {smoke["succeeded_jobs"]}/12 generation jobs completed; {valid}/{evaluated} available smoke plans passed VAL. These are setup checks, not part of the benchmark score.</p>'
     if result.get('continuation'):
         content+='<p>The initial attempt stopped after one Fable safeguard refusal. Its exact retry succeeded. A second continuation corrected the treatment of request-specific refusals as account-wide failures, allowing unrelated work to proceed and at most one identical retry within the existing reserve. All previous successful outputs and charged calls were retained. Models, prompts, selected tasks, scoring rules, original deadline and 336-call ceiling stayed unchanged. <a href="archive/2026-09-13-planbench-readiness/planbench-results.json">Initial readiness outcome ↓</a></p>'
+    if result.get('profile_amendment'):
+        content+='<p>Before any scored task, high-effort Sonnet smoke testing hit a timeout and exhausted a small combined response budget. The documented readiness amendment uses medium effort for Sonnet and Terra, with an 8,192-token combined Claude reasoning/response allowance. Visible targets remain 4,096 tokens for plans and 1,024 for critiques. All six earlier calls remain charged and excluded. This is not a model-only comparison with the earlier high-effort Astra/Fable trial.</p>'
     receipt=result['timing']['controller_receipt']
     if 'all_controller_seconds' in result['timing']:
         content+=f'<p>All controller segments together ran for {result["timing"]["all_controller_seconds"]/60:.1f} minutes. The original execution window through final generation was {result["timing"]["execution_window_seconds"]/3600:.2f} hours, including setup and the pause between attempts; it stayed within the original three-hour limit.</p>'
@@ -48,7 +55,8 @@ def render_planbench(result):
     outcomes={(r['task'],r['arm']):r['outcome']['valid'] for r in result['per_task']}
     for task in result['benchmark']['selected_tasks']:
         content+=f'<tr><th scope="row">{esc(task)}</th>'+''.join('<td>'+('Pass' if outcomes[(task,a)] is True else 'Fail' if outcomes[(task,a)] is False else 'Missing')+'</td>' for a in ('A','B','C','D'))+'</tr>'
-    content+=f'</tbody></table></div></details><h2>Benchmark and provenance</h2><p>The fixed seed selected 50 tasks from the official 110-task hard set. This is a subset workflow experiment, not a full leaderboard submission. Benchmark commit: <code>{esc(result["benchmark"]["commit"])}</code>. Source, input, parser, validator and candidate hashes are retained.</p><p><a href="https://github.com/karthikv792/LLMs-Planning">Official PlanBench repository ↗</a> · <a href="planbench-results.json" download>Download the full outcome ↓</a> · <a href="evaluations.html#planbench">All test assessments →</a></p>'
+    content+=f'</tbody></table></div></details><h2>Benchmark and provenance</h2><p>The fixed seed selected 50 tasks from the official 110-task hard set. This is a subset workflow experiment, not a full leaderboard submission. Benchmark commit: <code>{esc(result["benchmark"]["commit"])}</code>. Source, input, parser, validator and candidate hashes are retained.</p><p><a href="https://github.com/karthikv792/LLMs-Planning">Official PlanBench repository ↗</a> · <a href="{esc(data_name)}" download>Download the full outcome ↓</a> · <a href="evaluations.html#{esc(assessment_id)}">All test assessments →</a></p>'
+    if assessment_id!='planbench':content+='<p><a href="planbench.html">Earlier Astra/Fable results →</a></p>'
     return shell('Co-Evolution · PlanBench results and assessment',content)
 
 def shell(title,content):
@@ -66,8 +74,10 @@ def build():
         for key,label in [('question','Question'),('finding','What we found'),('test_quality','How the test was checked'),('limitation','What it cannot establish'),('decision','Assessment'),('next_action','Next action')]:content+=f'<h3>{label}</h3><p>{esc(e[key])}</p>'
         content+=f'<p><a href="{esc(e["page"])}">Explore this test →</a> · <a href="{esc(e["data"])}" download>Download evidence ↓</a></p></article>'
     (PUBLIC/'evaluations.html').write_text(shell('Co-Evolution · Test assessments',content),encoding='utf-8',newline='\n')
-    result=json.loads((PUBLIC/'planbench-results.json').read_text(encoding='utf-8'))
-    (PUBLIC/'planbench.html').write_text(render_planbench(result),encoding='utf-8',newline='\n')
+    for e in entries:
+        result=json.loads((PUBLIC/e['data']).read_text(encoding='utf-8'))
+        if result.get('schema')=='planbench-results/1.0':
+            (PUBLIC/e['page']).write_text(render_planbench(result,e['data'],e['id']),encoding='utf-8',newline='\n')
     print('Rendered test assessments and PlanBench outcome.')
 
 if __name__=='__main__':build()

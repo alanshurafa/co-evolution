@@ -3,8 +3,8 @@ import argparse, hashlib, json, math, random
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
-from campaign import Campaign
-from run import GRANT,STAGE,LOAD,LOAD_result,verify
+from campaign import Campaign,FAMILY
+from run import GRANT,STAGE,LOAD,LOAD_result,verify,configure
 from support import sha,write_once,now
 from evaluator import evaluate
 
@@ -19,13 +19,15 @@ def paired(left,right):
 def cost(response,seat):
     if response.get('cost_usd') is not None:return response['cost_usd'],'CLI-reported-list-equivalent'
     usage=response.get('usage') or {}
-    if seat=='astra' and all(k in usage for k in ('input_tokens','output_tokens')):
+    if seat in ('astra','codex') and all(k in usage for k in ('input_tokens','output_tokens')):
         cached=usage.get('cached_input_tokens',0)
         if not 0<=cached<=usage['input_tokens']:return None,'unpriced'
-        return ((usage['input_tokens']-cached)*10+cached+usage['output_tokens']*50)/1e6,'historical-rate-estimate'
+        incoming,cached_rate,outgoing=(10,1,50) if seat=='astra' else (2,.2,12)
+        return ((usage['input_tokens']-cached)*incoming+cached*cached_rate+usage['output_tokens']*outgoing)/1e6,'historical-rate-estimate'
     return None,'unpriced'
 
-def assess(summary,contrasts,resources,total):
+def assess(summary,contrasts,resources,total,labels=None,continued=True):
+    labels=labels or {'author':'Astra','reviewer':'Fable'}
     dc,db=contrasts['D-C'],contrasts['D-B']
     complete=total==200
     times={arm:resources[arm]['median_observed_workflow_seconds'] for arm in resources}
@@ -50,15 +52,15 @@ def assess(summary,contrasts,resources,total):
         elif ceiling or floor:decision='The screen is '+('ceiling' if ceiling else 'floor')+'-limited under the predeclared rule. It cannot reliably distinguish small workflow benefits; do not expand the same matrix automatically.'
         elif threshold:decision='The predeclared operational threshold is met: at least five net extra solves over self-review, a gain over plain revision, and at most twice plain-revision observed workflow time. Treat this as benchmark-specific evidence, with the reported paired interval and exact test limiting statistical claims.'
         else:decision='The predeclared practical threshold is not met. This screen does not justify the additional cross-model step as a default over the simpler workflow.'
-    return dict(question='Does Fable critique improve Astra valid-plan rate beyond self-review and plain revision?',finding=finding,
+    return dict(question=f'Does {labels["reviewer"]} critique improve {labels["author"]} valid-plan rate beyond self-review and plain revision?',finding=finding,
       test_quality='The official 110-task corpus, fixed 50-task manifest, upstream PDDL extractor and VAL were pinned. Offline valid/invalid/malformed fixtures and duplicate-free resume passed. Candidates were frozen before scoring. All arms share the same original per task; no validator feedback reached participants.',
-      limitation='This is a continued, one-generation-per-arm 50-task subset, not the complete leaderboard. Two documented continuations preserved earlier successes and charged attempts; known request-specific refusals could receive one identical retry within the original reserve. Observed workflow latency includes queueing and recovery suspension, so it does not isolate intrinsic review latency. Static public tasks may have training exposure. Symbolic validity does not measure human rework or software delivery. Astra token caps are prompt targets, not an enforced CLI limit; provider effort labels do not establish equal compute.',
+      limitation=('This is a continued, one-generation-per-arm 50-task subset, not the complete leaderboard. Documented continuations preserved earlier successes and charged attempts. ' if continued else 'This is a new, one-generation-per-arm study on the same fixed 50-task subset, not the complete leaderboard. ')+ 'Known request-specific refusals can receive one identical retry within the original reserve. Observed workflow latency includes queueing and any recovery suspension, so it does not isolate intrinsic review latency. Static public tasks may have training exposure. Symbolic validity does not measure human rework or software delivery. Token-limit enforcement differs by provider, as recorded in output_caps; effort labels do not establish equal compute.',
       decision=decision,
       next_action='Publish the fixed subset result and preserve the task-level repairs/regressions. If a practical gain is supported, replicate on fresh application-relevant tasks. If there is no gain or a ceiling/floor, favor the simpler workflow for this benchmark and do not automatically extend the matrix.',
       impact_quantified=total>0,practical_threshold_met=bool(threshold),score_threshold_ruled_out=bool(score_threshold_ruled_out),ceiling_limited=bool(ceiling),floor_limited=bool(floor),D_to_B_observed_time_ratio=ratio)
 
 def settle(root):
-    root=Path(root);m=LOAD(root/'manifest.json');verify(root,m)
+    root=Path(root);m=LOAD(root/'manifest.json');configure(m);GRANT=m['grant'];STAGE=m['stage'];verify(root,m)
     freeze=LOAD(root/'generation-freeze.json');status=LOAD(root/'status.json')
     assert status['controller']=='finished'
     c=Campaign(root,GRANT);jobs={j['id']:j for j in c.jobs(STAGE)}
@@ -118,17 +120,20 @@ def settle(root):
         phase=[x['phase_seconds'] for x in per_task if x['phase_seconds'] is not None]
         costs=[x['cost_usd'] for x in per_task if x['cost_usd'] is not None]
         resources[arm]=dict(per_task=per_task,priced_tasks=len(costs),mean_standalone_cost_usd=mean(costs) if len(costs)==50 else None,median_observed_workflow_seconds=median(wall) if wall else None,median_model_phase_seconds=median(phase) if phase else None)
-    assessment=assess(summary,contrasts,resources,total);assessment['prior_provider_refusal']=refusal
+    labels=m.get('model_labels',{'author':'Astra','reviewer':'Fable'})
+    assessment=assess(summary,contrasts,resources,total,labels,'continuation' in m);assessment['prior_provider_refusal']=refusal
+    profile=LOAD(root/'PROFILE-AMENDMENT.json') if (root/'PROFILE-AMENDMENT.json').exists() else None
+    if profile:assessment['limitation']+=' A readiness-only amendment changed both models from high to medium effort and gave Claude8192 combined reasoning/response tokens before any scored task. The six original smoke calls remain charged and excluded; this is not a model-only comparison against Astra at high effort.'
     result=dict(schema='planbench-results/1.0',title='PlanBench Blocksworld Hard — fixed 50-task co-evolution subset',generated_at=now(),
       completion='readiness-failed' if total==0 else ('complete' if total==200 else 'partial'),benchmark=dict(name='PlanBench Blocksworld Hard',upstream=m['upstream_url'],commit=m['upstream_commit'],released_tasks=110,selected_tasks=m['tasks'],seed=m['seed'],evaluator='Bundled VAL 4 with upstream save_gpt3_response PDDL extractor',hashes=m['benchmark_hashes'],full_leaderboard_result=False),
-      models=m['models'],effort=m['effort'],output_caps=m['output_caps'],scores=summary,per_task=rows,
+      models=m['models'],model_labels=labels,author_seat=m.get('author_seat','astra'),reviewer_seat=m.get('reviewer_seat','fable'),effort=m['effort'],output_caps=m['output_caps'],scores=summary,per_task=rows,
       contrasts=contrasts,resources=resources,
       timing_note='Observed workflow time spans the first draft dispatch through the final arm response, including retry/queue delays in this shared concurrent run. Model phase time sums only recorded provider-call durations. Neither is human work time.',
       smoke=dict(excluded=True,tasks=m['smoke_tasks'],planned_jobs=12,succeeded_jobs=sum(j['state']=='succeeded' and json.loads(j['definition'])['smoke'] for j in jobs.values()),outcomes=smoke),
-      spend=dict(calls=c.count(),cap=336,families={f:c.count(family=f) for f in ('codex','claude')},known_list_equivalent_usd=sum(x['cost_usd'] for x in charges if x['cost_usd'] is not None),unpriced_calls=[x['id'] for x in charges if x['cost_usd'] is None],
-        pricing_note='Astra estimate uses frozen September 11 rates: input $10, cached $1, output $50 per million tokens. Fable uses CLI-reported list-equivalent cost. These are not cash subscription charges.',attempts=charges),
+      spend=dict(calls=c.count(),cap=336,family_caps=m['family_caps'],families={f:c.count(family=f) for f in ('codex','claude')},known_list_equivalent_usd=sum(x['cost_usd'] for x in charges if x['cost_usd'] is not None),unpriced_calls=[x['id'] for x in charges if x['cost_usd'] is None],
+        pricing_note=('Terra estimate uses recorded September 11 rates: input $2, cached $0.20, output $12 per million tokens. ' if 'codex' in m['models'] else 'Astra estimate uses recorded September 11 rates: input $10, cached $1, output $50 per million tokens. ')+ 'Claude models use CLI-reported list-equivalent cost. These are not cash subscription charges.',attempts=charges),
       timing=dict(execution_started_epoch=m['started_epoch'],deadline_epoch=m['deadline_epoch'],controller_receipt=json.loads((root/'controller.exit.json').read_text(encoding='utf-8-sig'))),
-      continuation=LOAD(root/'CONTINUATION.json') if (root/'CONTINUATION.json').exists() else None,
+      continuation=LOAD(root/'CONTINUATION.json') if (root/'CONTINUATION.json').exists() else None,profile_amendment=profile,
       failures=failures,assessment=assessment,provenance=dict(manifest_sha256=sha(root/'manifest.json'),generation_freeze_sha256=sha(root/'generation-freeze.json'),source_hashes=m['source_hashes'],analysis_source_sha256=sha(__file__)))
     write_once(root/'report.json',result)
     lines=['# PlanBench execution assessment','',result['title'],'',assessment['finding'],'',
