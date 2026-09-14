@@ -47,6 +47,8 @@ def classify(text, status=None):
     low = text.lower()
     if 'safeguards flagged this message' in low and 'reasoning_extraction' in low:
         return 'content_refusal'
+    if 'response exceeded' in low and 'output token maximum' in low:
+        return 'output_truncated'
     if any(s in low for s in ('insufficient balance', 'suspended', 'insufficient_quota', 'credit balance')):
         return 'billing_blocked'
     if status in (401, 403) or any(s in low for s in ('not logged in', 'authentication', 'invalid api key', 'unauthorized')):
@@ -230,10 +232,10 @@ class LiveAdapter:
                 text = text.replace(value, '[REDACTED]')
         return text
 
-    def invoke(self, seat, prompt):
+    def invoke(self, seat, prompt, output_limit=None):
         start = time.monotonic()
         try:
-            result = self.http(seat, prompt) if seat in ('glm', 'kimi') else self.cli(seat, prompt)
+            result = self.http(seat, prompt) if seat in ('glm', 'kimi') else self.cli(seat, prompt, output_limit)
         except ProviderFailure as exc:
             exc.raw = self.redact(exc.raw)
             raise
@@ -285,7 +287,7 @@ class LiveAdapter:
                     reported_model=data.get('model'), requested_model=MODELS[seat], tool_calls=0,
                     isolation='explicit messages; no tools; no continuation or local files')
 
-    def cli(self, seat, prompt):
+    def cli(self, seat, prompt, output_limit=None):
         # TemporaryDirectory is outside the benchmark tree. No plan or identity
         # map is mounted there. Only a generated system file and auth-only Codex
         # home exist. Claude safe-mode retains its normal Max auth, no customs.
@@ -300,7 +302,7 @@ class LiveAdapter:
             if seat in ('sonnet', 'fable'):
                 if not self.claude.is_file():
                     raise ProviderFailure('local_unavailable', 'Claude executable missing')
-                env.update(CLAUDE_CODE_MAX_RETRIES='0', CLAUDE_CODE_MAX_OUTPUT_TOKENS='1024',
+                env.update(CLAUDE_CODE_MAX_RETRIES='0', CLAUDE_CODE_MAX_OUTPUT_TOKENS=str(output_limit or 1024),
                            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1')
                 command = [str(self.claude), '-p', '--safe-mode', '--restricted', '--tools', '',
                            '--disable-slash-commands', '--strict-mcp-config', '--no-chrome',
