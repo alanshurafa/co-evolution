@@ -16,7 +16,7 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),3)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),4)
     def test_changed_scores_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);p=self.fixture(root);(p/'result.json').write_text('{"score":90}')

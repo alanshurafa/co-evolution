@@ -9,15 +9,26 @@ from transport import ProviderFailure,classify
 
 class Fake:
     def __init__(self):self.calls=[];self.failed=False
-    def invoke(self,seat,prompt):
+    def invoke(self,seat,prompt,output_limit=None):
         self.calls.append((seat,prompt))
         if not self.failed:
             self.failed=True;raise ProviderFailure('network_error','fixture transient')
         return dict(text='(pick-up a)\n(stack a b)',requested_model='gpt-6-astra' if seat=='astra' else 'claude-fable-5-1',reported_model='claude-fable-5-1' if seat=='fable' else None,tool_calls=0,seconds=0,usage={})
 
 class Lifecycle(unittest.TestCase):
+    def test_sonnet_terra_roles_caps_and_concurrency(self):
+        import run
+        try:
+            run.configure({'author_seat':'sonnet','reviewer_seat':'codex','grant':'test-sonnet-terra'})
+            defs=run.definitions(['fixture'],[])
+            self.assertEqual([d['seat'] for d in defs],['sonnet','sonnet','sonnet','codex','sonnet','sonnet'])
+            self.assertEqual(run.CAPS,{'codex':56,'claude':280,'glm':0,'kimi':0})
+            self.assertEqual(run.WORKERS,{'claude':4,'codex':2})
+            self.assertEqual(run.RETRIES,{'claude':20,'codex':4})
+        finally:run.configure()
     def test_specific_content_refusal_is_not_family_unavailability(self):
         self.assertEqual(classify("API Error: safeguards flagged this message. Details: [reasoning_extraction]"),'content_refusal')
+        self.assertEqual(classify("API Error: response exceeded the 1024 output token maximum"),'output_truncated')
         self.assertEqual(classify('unknown model'),'model_unavailable')
         self.assertEqual(classify('unclassified upstream error'),'provider_error')
     def test_resume_and_retry(self):
