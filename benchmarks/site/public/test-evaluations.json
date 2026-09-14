@@ -3,6 +3,21 @@
   "assessed_on": "2026-09-14",
   "studies": [
     {
+      "id": "planbench-sonnet-terra",
+      "data": "planbench-sonnet-terra-results.json",
+      "page": "planbench-sonnet-terra.html",
+      "title": "PlanBench Hard: Sonnet/Terra workflows and practical impact",
+      "status": "complete",
+      "coverage": "200/200 scored plans; smoke tasks excluded",
+      "data_sha256": "d979fd0071f828c63a0999f7165e168bacc53f81694e35384d73131bc7d2e250",
+      "question": "Does Terra review improve Sonnet plans beyond plain revision or independent Sonnet self-review on the same fixed PlanBench subset?",
+      "finding": "Sonnet originals scored 48/50 (96%). Plain revision, Sonnet self-review, and Terra review followed by Sonnet revision each scored 50/50 (100%). The two original plans executed legally but failed to satisfy the complete goal; all three revision approaches fixed them. Terra review added 0 points over either revision control and 4 points over the original draft.",
+      "test_quality": "All 200 scored plans were produced and evaluated after generation froze. The same pinned 50 tasks, original drafts, role prompts, upstream PDDL extractor and official VAL were used across arms. The two failed originals were goal failures, not parsing errors. Model routing, budget allocation, retry accounting, and exact exported plan hashes were checked; no validator feedback reached participants.",
+      "limitation": "The 96% original score is still ceiling-limited, and both controls reached 100%, leaving no room for a positive D-C effect. Fifty tasks and one response per arm cannot establish general equivalence. The [0,0] paired bootstrap interval resamples ties, not population certainty. Before any scored task, a readiness amendment changed both models from high to medium effort and gave Claude 8,192 combined reasoning/response tokens; six initial calls remain charged and excluded. Comparisons with the earlier high-effort Astra run are not model-only. Validity does not measure optimality, human rework, or software delivery.",
+      "decision": "Use plain Sonnet revision for this benchmark: it achieved the same 100% score at an estimated $0.0552 per task versus $0.0655 with Terra review. Terra review cost about 19% more than plain revision. It was about 20% cheaper than Sonnet self-review ($0.0821), so it was the more economical reviewer here, but it did not outperform the cheaper plain-revision workflow. The predeclared score-improvement threshold was not met.",
+      "next_action": "Do not spend another full run on this saturated subset. If continuing to measure accuracy gains, specify a harder recognized benchmark or task stratum before running, keep matched revision controls, and retain cost and coverage reporting. Treat the observed reviewer cost advantage separately from claims of better planning quality or productivity."
+    },
+    {
       "id": "planbench",
       "title": "PlanBench Hard: scored workflows and practical impact",
       "data": "planbench-results.json",
