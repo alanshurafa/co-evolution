@@ -26,7 +26,7 @@ def stage(root,site):
     for row in result['per_task']+result['smoke']['outcomes']:
         row['outcome'].pop('output',None)
         path=root/'evaluation'/f'{row["task"]}.{row["arm"]}'/'plan.pddl'
-        row['extracted_plan']=path.read_text(encoding='utf-8') if path.is_file() else None
+        row['extracted_plan']=path.read_bytes().decode('utf-8') if path.is_file() else None
     result['provenance']['source_report_sha256']=hashlib.sha256((root/'report.json').read_bytes()).hexdigest()
     result['provenance']['publication_analysis_source_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     receipts=[result['timing']['controller_receipt']]
