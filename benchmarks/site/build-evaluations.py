@@ -78,6 +78,9 @@ def build():
         result=json.loads((PUBLIC/e['data']).read_text(encoding='utf-8'))
         if result.get('schema')=='planbench-results/1.0':
             (PUBLIC/e['page']).write_text(render_planbench(result,e['data'],e['id']),encoding='utf-8',newline='\n')
+        elif result.get('schema')=='bbeh-results/1.0':
+            spec=importlib.util.spec_from_file_location('bbeh_page',SITE/'bbeh-page.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            (PUBLIC/e['page']).write_text(module.render(result,shell),encoding='utf-8',newline='\n')
     print('Rendered test assessments and PlanBench outcome.')
 
 if __name__=='__main__':build()
