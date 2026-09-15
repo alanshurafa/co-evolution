@@ -44,6 +44,10 @@ def validate(site=SITE,check_pages=True):
         if e['data_sha256']!=digest(public/name):raise ValueError('Stale assessment; evaluate changed results: '+name)
         data=json.loads((public/name).read_text(encoding='utf-8'))
         if data.get('schema')=='bbeh-results/1.0':validate_bbeh(data)
+        if data.get('schema')=='aime-publication/1.0':
+            import importlib.util
+            spec=importlib.util.spec_from_file_location('aime_evidence',SITE/'aime-evidence.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            module.validate(data)
         if data.get('schema')=='planbench-results/1.0':
             for row in data['per_task']+data['smoke']['outcomes']:
                 plan=row.get('extracted_plan')

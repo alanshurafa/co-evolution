@@ -1,0 +1,469 @@
+{
+  "schema": "aime-publication/1.0",
+  "completion": "gate-rejected",
+  "gate": {
+    "passed": false,
+    "complete": true,
+    "exact_format": true,
+    "correct": {
+      "A": 5,
+      "B": 6,
+      "E": 6
+    },
+    "denominator": 6
+  },
+  "questions": [
+    {
+      "id": "aime2024-27-015197614be4",
+      "source_row": 27,
+      "problem": "Each vertex of a regular octagon is independently colored either red or blue with equal probability. The probability that the octagon can then be rotated so that all of the blue vertices end up at positions where there were originally red vertices is $\\tfrac{m}{n}$, where $m$ and $n$ are relatively prime positive integers. What is $m+n$?",
+      "sha256": "015197614be4299c0d123c77d987526109a9b3b9a79f8568636d29c775323e24",
+      "reference": "371"
+    },
+    {
+      "id": "aime2024-28-01f4378fc0aa",
+      "source_row": 28,
+      "problem": "Let ABCDEF be a convex equilateral hexagon in which all pairs of opposite sides are parallel. The triangle whose sides are extensions of segments AB, CD, and EF has side lengths 200, 240, and 300. Find the side length of the hexagon.",
+      "sha256": "01f4378fc0aa8d4ad347260572db3350ecd0f93dff0e7f2847c7610963cae0b5",
+      "reference": "080"
+    },
+    {
+      "id": "aime2024-25-10c80ba48d18",
+      "source_row": 25,
+      "problem": "Let $N$ be the greatest four-digit positive integer with the property that whenever one of its digits is changed to $1$, the resulting number is divisible by $7$. Let $Q$ and $R$ be the quotient and remainder, respectively, when $N$ is divided by $1000$. Find $Q+R$.",
+      "sha256": "10c80ba48d1803c48df550827e6e2c3b4b8ef3e0aba30c507798eabf30aeea2e",
+      "reference": "699"
+    },
+    {
+      "id": "aime2024-03-21db44a1eb19",
+      "source_row": 3,
+      "problem": "A list of positive integers has the following properties:\n$\\bullet$ The sum of the items in the list is $30$.\n$\\bullet$ The unique mode of the list is $9$.\n$\\bullet$ The median of the list is a positive integer that does not appear in the list itself.\nFind the sum of the squares of all the items in the list.",
+      "sha256": "21db44a1eb19aba4568c77a3a1c623e7e57485539a76265b43902887364f6ef3",
+      "reference": "236"
+    },
+    {
+      "id": "aime2024-10-2ae7df54989b",
+      "source_row": 10,
+      "problem": "Let $\\omega\\neq 1$ be a 13th root of unity. Find the remainder when\n\\[\\prod_{k=0}^{12}(2-2\\omega^k+\\omega^{2k})\\]\nis divided by 1000.",
+      "sha256": "2ae7df54989b82f448fff0d86e5d1996f777a9f6100bbbe8a6fb99ebe661bc4a",
+      "reference": "321"
+    },
+    {
+      "id": "aime2024-24-2ee7203cbfbc",
+      "source_row": 24,
+      "problem": "Let $A$, $B$, $C$, and $D$ be point on the hyperbola $\\frac{x^2}{20}- \\frac{y^2}{24} = 1$ such that $ABCD$ is a rhombus whose diagonals intersect at the origin. Find the greatest real number that is less than $BD^2$ for all such rhombi.",
+      "sha256": "2ee7203cbfbc18d4308cd9177214f29508e97536a970213b931c82159e2a2eb4",
+      "reference": "480"
+    }
+  ],
+  "outcomes": [
+    {
+      "job": "aime2024-03-21db44a1eb19.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 4.099,
+      "text": "The final answer is: 236",
+      "response_sha256": "b2eda5408f21f01ca50e27bb1b7a3acef3933768b7138317fe6d53abf1432298",
+      "parsed_answer": "236",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-03-21db44a1eb19.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 2.816,
+      "text": "The final answer is: 236",
+      "response_sha256": "b2eda5408f21f01ca50e27bb1b7a3acef3933768b7138317fe6d53abf1432298",
+      "parsed_answer": "236",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-03-21db44a1eb19.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 14.28,
+      "text": "The final answer is: 236",
+      "response_sha256": "b2eda5408f21f01ca50e27bb1b7a3acef3933768b7138317fe6d53abf1432298",
+      "parsed_answer": "236",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-10-2ae7df54989b.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 3.585,
+      "text": "The final answer is: 023",
+      "response_sha256": "9e60f835a2dcc07e867f425e2f5364636d0ed69702d8eb5b8c695530a0ab3ba0",
+      "parsed_answer": "023",
+      "format_ok": true,
+      "correct": false
+    },
+    {
+      "job": "aime2024-10-2ae7df54989b.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 3.789,
+      "text": "The final answer is: 321",
+      "response_sha256": "97b8a5e257040dbb2b373709fb17c6a3cc8ec969ad2a23723cf67fbaa98d64cb",
+      "parsed_answer": "321",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-10-2ae7df54989b.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 8.027,
+      "text": "The final answer is: 321",
+      "response_sha256": "97b8a5e257040dbb2b373709fb17c6a3cc8ec969ad2a23723cf67fbaa98d64cb",
+      "parsed_answer": "321",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-24-2ee7203cbfbc.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 3.103,
+      "text": "The final answer is: 480",
+      "response_sha256": "5b3a5fae58c85d383fbe41182e77a5496101f6861516004175318bb72816ba05",
+      "parsed_answer": "480",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-24-2ee7203cbfbc.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 2.942,
+      "text": "The final answer is: 480",
+      "response_sha256": "5b3a5fae58c85d383fbe41182e77a5496101f6861516004175318bb72816ba05",
+      "parsed_answer": "480",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-24-2ee7203cbfbc.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 8.17,
+      "text": "The final answer is: 480",
+      "response_sha256": "5b3a5fae58c85d383fbe41182e77a5496101f6861516004175318bb72816ba05",
+      "parsed_answer": "480",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-25-10c80ba48d18.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 4.262,
+      "text": "The final answer is: 699",
+      "response_sha256": "ffe16a14d3cc73d41a9dd68c7e8afd95c4221db1a8e598340f219ed29443b459",
+      "parsed_answer": "699",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-25-10c80ba48d18.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 34.707,
+      "text": "The final answer is: 699",
+      "response_sha256": "ffe16a14d3cc73d41a9dd68c7e8afd95c4221db1a8e598340f219ed29443b459",
+      "parsed_answer": "699",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-25-10c80ba48d18.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 20.19,
+      "text": "The final answer is: 699",
+      "response_sha256": "ffe16a14d3cc73d41a9dd68c7e8afd95c4221db1a8e598340f219ed29443b459",
+      "parsed_answer": "699",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-27-015197614be4.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 5.445,
+      "text": "The final answer is: 371",
+      "response_sha256": "746b338791f0db900015ea147a04900248863e97f16912995874ac456ec3f23a",
+      "parsed_answer": "371",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-27-015197614be4.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 2.332,
+      "text": "The final answer is: 371",
+      "response_sha256": "746b338791f0db900015ea147a04900248863e97f16912995874ac456ec3f23a",
+      "parsed_answer": "371",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-27-015197614be4.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 25.557,
+      "text": "The final answer is: 371",
+      "response_sha256": "746b338791f0db900015ea147a04900248863e97f16912995874ac456ec3f23a",
+      "parsed_answer": "371",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-28-01f4378fc0aa.A",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 4.487,
+      "text": "The final answer is: 080",
+      "response_sha256": "6b3a0c2ada90079a70126bb386494455e970ed47c6700049942da0cbf4ba5083",
+      "parsed_answer": "080",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-28-01f4378fc0aa.B",
+      "seat": "sonnet",
+      "status": "succeeded",
+      "requested_model": "claude-sonnet-5",
+      "transport_requested_model": "claude-sonnet-5",
+      "reported_model": "claude-sonnet-5",
+      "tool_calls": 0,
+      "seconds": 3.385,
+      "text": "The final answer is: 080",
+      "response_sha256": "6b3a0c2ada90079a70126bb386494455e970ed47c6700049942da0cbf4ba5083",
+      "parsed_answer": "080",
+      "format_ok": true,
+      "correct": true
+    },
+    {
+      "job": "aime2024-28-01f4378fc0aa.E",
+      "seat": "codex",
+      "status": "succeeded",
+      "requested_model": "gpt-5.6-terra",
+      "transport_requested_model": "gpt-5.6-terra",
+      "reported_model": null,
+      "tool_calls": 0,
+      "seconds": 49.06,
+      "text": "The final answer is: 080",
+      "response_sha256": "6b3a0c2ada90079a70126bb386494455e970ed47c6700049942da0cbf4ba5083",
+      "parsed_answer": "080",
+      "format_ok": true,
+      "correct": true
+    }
+  ],
+  "scores": {
+    "A": {
+      "correct": 5,
+      "total": 6,
+      "score": 83.33333333333333
+    },
+    "B": {
+      "correct": 6,
+      "total": 6,
+      "score": 100.0
+    },
+    "E": {
+      "correct": 6,
+      "total": 6,
+      "score": 100.0
+    }
+  },
+  "plain_revision": {
+    "n": 6,
+    "repairs": 1,
+    "regressions": 0,
+    "delta_pp": 16.666666666666668
+  },
+  "assessment": {
+    "question": "Does this six-question AIME 2024 screen leave enough headroom to compare Co-Evolution with plain revision and Terra alone?",
+    "finding": "All 18 calibration answers completed in the expected format. Sonnet originals scored 5/6 (83.3%); plain Sonnet revision and Terra alone each scored 6/6 (100%). Plain revision repaired one answer with no regressions, gaining 16.7 percentage points. Cross-model review was not run, so its effect is unmeasured.",
+    "test_quality": "Publication verified the saved source snapshot, selected question and reference hashes, all 18 response hashes, exact integer scores and the paired repair/regression count. The complete observed outputs satisfy the format and tool-free checks. The saved gate rejects either cheap baseline at 6/6, which occurred in both B and E.",
+    "limitation": "Only six public, static questions were tested, selected by hash order. This is smaller than the earlier proposed 10-question calibration and has no frozen 20-question comparison. These results do not establish saturation of all AIME problems or general reasoning ability. Runtime source hashes and per-attempt usage/prices were not saved. The manifest says 180 seconds, but the retained script does not apply that timeout and imports a 600-second transport default; exact historical timeout enforcement cannot be verified. All completed calls were under 50 seconds.",
+    "decision": "Close this completed six-question calibration at its rejection gate. Plain revision improved the original by one answer here, but there is no measured Co-Evolution gain or loss. Both cheaper alternatives reached the maximum observed score. Further review calls on this slice are not justified.",
+    "next_action": "Publish the recovered result and stop this run. A further experiment needs a separately specified source and calibration that leave headroom, a durable controller with captured errors, explicit runtime settings, and complete cost receipts. Do not extend this scored subset or automatically cycle through benchmarks until one produces an improvement."
+  },
+  "manifest": {
+    "schema": "aime-baseline-calibration/1.0",
+    "created_at": "2026-09-15T03:20:20.979106+00:00",
+    "source": "OpenRLHF/aime-2024 dataset mirror; 2024 AIME I/II, MAA AMC",
+    "source_sha256": "853811500a7adaeec767d1ff60011379f084edfdfda82e2d35970f6db00f2814",
+    "selection": "exclude transport-smoke row 0; sort remaining problem SHA-256; first 6",
+    "questions_sha256": "e9af6cdaa1b97d07dc1e4d8032263b231649bd0c628f07b175f7c82e952097df",
+    "answers_sha256": "ec317685a584af8f8182fb30578bbb06eba3d85daf59a3296defd42e216f236c",
+    "models": {
+      "sonnet": "claude-sonnet-5",
+      "codex": "gpt-5.6-terra"
+    },
+    "effort": "medium",
+    "call_cap": 18,
+    "timeout_seconds": 180,
+    "gate": {
+      "all_18_outputs_present": true,
+      "all_outputs_exact_format": true,
+      "accuracy_range_each_arm": [
+        1,
+        5
+      ],
+      "purpose": "baseline difficulty and throughput only; no co-evolution effect"
+    }
+  },
+  "finished_at": "2026-09-15T03:22:00.913493+00:00",
+  "provenance": {
+    "manifest.json": "2658a722f974ba296479fa485d32c4d8c18fa3db8cfca8ba9fbbb695dba7a40a",
+    "questions.json": "a418c787673ab235f359f90f80fe26ac9a63e99adf746f60fe0a6f744c180df0",
+    "answers.json": "659f6ce6e0c0013c26fc687250fb3bea676bd4bbb79447f58c6cc30d1211c666",
+    "results.json": "a91d3c954f4d5863cc38c579781fb1d8ed7c9c8881b137b438b00ad564652b60",
+    "source-rows.json": "853811500a7adaeec767d1ff60011379f084edfdfda82e2d35970f6db00f2814"
+  },
+  "spend": {
+    "calibration_calls": 18,
+    "excluded_setup_calls": 4,
+    "recorded_calls": 22,
+    "cost_usd": null
+  },
+  "setup": [
+    {
+      "passed": false,
+      "calls": 2,
+      "outcomes": [
+        {
+          "seat": "sonnet",
+          "requested_model": "claude-sonnet-5",
+          "reported_model": "claude-sonnet-5",
+          "seconds": 4.102,
+          "tool_calls": 0,
+          "response": "The final answer is: 540",
+          "response_sha256": "22204c51d153efc0cf8b9110a4b548cd42382c5467b504a5d4564612b02442d2",
+          "format_ok": true,
+          "parsed_answer": "540",
+          "correct": true,
+          "status": "succeeded"
+        },
+        {
+          "seat": "codex",
+          "requested_model": "gpt-5.6-terra",
+          "reported_model": null,
+          "seconds": 5.1,
+          "tool_calls": 0,
+          "response": "The final answer is: 540",
+          "response_sha256": "22204c51d153efc0cf8b9110a4b548cd42382c5467b504a5d4564612b02442d2",
+          "format_ok": true,
+          "parsed_answer": "540",
+          "correct": true,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "passed": true,
+      "calls": 2,
+      "outcomes": [
+        {
+          "seat": "sonnet",
+          "requested_model": "claude-sonnet-5",
+          "transport_requested_model": "claude-sonnet-5",
+          "reported_model": "claude-sonnet-5",
+          "seconds": 3.141,
+          "tool_calls": 0,
+          "response": "The final answer is: 540",
+          "response_sha256": "22204c51d153efc0cf8b9110a4b548cd42382c5467b504a5d4564612b02442d2",
+          "format_ok": true,
+          "parsed_answer": "540",
+          "correct": true,
+          "status": "succeeded"
+        },
+        {
+          "seat": "codex",
+          "requested_model": "gpt-5.6-terra",
+          "transport_requested_model": "gpt-5.6-terra",
+          "reported_model": null,
+          "seconds": 5.22,
+          "tool_calls": 0,
+          "response": "The final answer is: 540",
+          "response_sha256": "22204c51d153efc0cf8b9110a4b548cd42382c5467b504a5d4564612b02442d2",
+          "format_ok": true,
+          "parsed_answer": "540",
+          "correct": true,
+          "status": "succeeded"
+        }
+      ]
+    }
+  ]
+}

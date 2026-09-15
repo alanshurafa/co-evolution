@@ -16,7 +16,14 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),6)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),7)
+    def test_aime_rejects_changed_scores_and_responses(self):
+        spec=importlib.util.spec_from_file_location('aime',SITE/'aime-evidence.py');aime=importlib.util.module_from_spec(spec);spec.loader.exec_module(aime)
+        data=json.loads((SITE/'public/aime-calibration-results.json').read_text(encoding='utf-8'))
+        data['outcomes'][0]['correct']=not data['outcomes'][0]['correct']
+        with self.assertRaisesRegex(ValueError,'score mismatch'):aime.validate(data)
+        data['outcomes'][0]['correct']=not data['outcomes'][0]['correct'];data['outcomes'][0]['text']+='changed'
+        with self.assertRaisesRegex(ValueError,'response hash mismatch'):aime.validate(data)
     def test_bbeh_response_and_score_integrity(self):
         data=json.loads((SITE/'public/bbeh-results.json').read_text(encoding='utf-8'))
         row=next(r for r in data['calibration']['outcomes'] if r['response'] is not None)
