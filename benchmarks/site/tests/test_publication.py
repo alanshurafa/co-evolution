@@ -16,7 +16,7 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),5)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),6)
     def test_bbeh_response_and_score_integrity(self):
         data=json.loads((SITE/'public/bbeh-results.json').read_text(encoding='utf-8'))
         row=next(r for r in data['calibration']['outcomes'] if r['response'] is not None)
