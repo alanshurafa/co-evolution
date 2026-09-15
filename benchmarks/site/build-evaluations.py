@@ -81,6 +81,9 @@ def build():
         elif result.get('schema')=='bbeh-results/1.0':
             spec=importlib.util.spec_from_file_location('bbeh_page',SITE/'bbeh-page.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             (PUBLIC/e['page']).write_text(module.render(result,shell),encoding='utf-8',newline='\n')
+        elif result.get('schema')=='aime-publication/1.0':
+            spec=importlib.util.spec_from_file_location('aime_page',SITE/'aime-evidence.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            (PUBLIC/e['page']).write_text(module.render(result,shell),encoding='utf-8',newline='\n')
     print('Rendered test assessments and PlanBench outcome.')
 
 if __name__=='__main__':build()
