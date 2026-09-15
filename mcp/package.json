@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
+    "co-evolve": "dist/src/cli.js",
     "co-evolution-mcp": "dist/src/server.js"
   },
   "files": [

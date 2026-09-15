@@ -70,7 +70,7 @@ yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
   esac
   printf 'The run completed %s pass(es)' "$PASS_COUNT"
   [[ "$RUN_STATUS" == "aborted" ]] && printf ' and was ABORTED before finishing'
-  printf '. Behavior gate: **%s**.\n\n' "$(yn "$OVERALL")"
+  printf '. Informational behavior score: **%s** (does not fail the run).\n\n' "$(yn "$OVERALL")"
   case "$CONVERGENCE_STATUS" in
     converged)
       printf 'Convergence: **converged** — the agents resolved every disagreement on their own within the configured passes.\n\n' ;;
@@ -82,7 +82,7 @@ yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
       : ;;  # unknown: legacy/agent-bouncer run, say nothing
   esac
   if [[ "$OVERALL" != "true" ]]; then
-    printf 'Because the behavior gate failed, no claim is made about whether the document got better. The failed checks below say what went wrong mechanically.\n\n'
+    printf 'Some behavior checks did not pass. These diagnostics do not determine run success or whether the document improved; inspect the critique and revised document.\n\n'
   fi
 
   # --- Pass-by-pass table --------------------------------------------------
@@ -108,7 +108,7 @@ yn() { [[ "$1" == "true" ]] && printf 'PASS' || printf 'FAIL'; }
     printf '|------|---------|--------------|------|\n'
     jq -r '.marker_ledger[] | "| \(.type) | \(.heading) | \(.text | .[0:60]) | **\(.fate)** |"' "$SCORES"
     printf '\n'
-    printf 'Fates: **resolved** = addressed with the section intact; **deleted-with-section** = the disagreement vanished because its whole section was deleted (this fails the run); **expired** = carried unresolved until the pass limit forced it out; **unresolved** = still live in the final document.\n'
+    printf 'Fates: **resolved** = addressed with the section intact; **deleted-with-section** = the disagreement vanished because its whole section was deleted (informational); **expired** = carried unresolved until the pass limit forced it out; **unresolved** = still live in the final document.\n'
   fi
   printf '\n'
 

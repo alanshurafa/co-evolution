@@ -12,6 +12,7 @@
 # Windows, WSL, macOS, and Linux. CRLF endings break the shebang line and
 # heredoc parsing, so .sh files are always stored and checked out with LF.
 *.sh text eol=lf
+co-evolve text eol=lf
 
 # JSON/YAML fixtures are hashed by the eval cache and byte-compared by
 # determinism tests — keep them LF on disk everywhere.
