@@ -3,6 +3,21 @@
   "assessed_on": "2026-09-14",
   "studies": [
     {
+      "id": "bbeh-format-calibration",
+      "data": "bbeh-format-calibration-results.json",
+      "page": "bbeh-format-calibration.html",
+      "title": "BBEH: exact-answer and runtime suitability screen",
+      "status": "gate-rejected",
+      "coverage": "22/36 calibration answers received; main comparison absent",
+      "data_sha256": "89d3d1a33255cbcede0000739e3a33f0d60554c0f3d53981911a546b0eda67df",
+      "question": "Does a stricter final-answer instruction and a 180-second call limit make this BBEH subset usable for a later Co-Evolution comparison?",
+      "finding": "Two Sonnet originals timed out at 180 seconds, one in Multistep Arithmetic and one in Hyperbaton. The controller session ended with four active calls unresolved and they were reconciled as missing. Terra completed 12 answers; the full A/B/E calibration is incomplete, so no benchmark score or review comparison exists.",
+      "test_quality": "Twelve questions not previously sent to either model were frozen before calls. The prompt required one exact final-answer line, and outputs were frozen before official deterministic scoring. The report verifies source, input and response hashes and replays the pinned official scorer. The interrupted controller and every charged call remain in the local ledger.",
+      "limitation": "This is an incomplete throughput and format screen, not an accuracy measurement. The controller interruption creates four additional missing outputs. With no complete Sonnet baseline, its score bounds are wide and cannot be compared to Terra. Exact-answer formatting was improved, but this screen cannot separately measure its effect from different questions and runtime conditions.",
+      "decision": "Reject this BBEH configuration for the planned Co-Evolution experiment. Restoring the established output allowance removed the immediate truncation defect, but two independent Sonnet timeouts at 180 seconds still prevent a complete matched baseline. Do not run the review arms or infer an intelligence or collaboration effect.",
+      "next_action": "Close this BBEH line of testing. If measurement continues, choose a compact exact-numeric benchmark such as a pre-frozen AIME set, then run a small transport-only smoke before committing calibration questions. Keep runtime completion and exact-score-format checks as hard gates."
+    },
+    {
       "id": "bbeh-compact",
       "data": "bbeh-results.json",
       "page": "bbeh.html",
