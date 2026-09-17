@@ -65,7 +65,7 @@ def smoke(kind):
         keys={qs[0][0]:dict(kind='gym',family='graph_color',entry={'metadata':{'puzzle':{'vertices':[0,1,2],'edges':[[0,1],[1,2],[0,2]],'color_options':[1,2,3]}}}),qs[1][0]:dict(kind='gym',family='countdown',entry={'metadata':{'numbers':[1,2,3],'target':6}})}
     return [dict(id=i,input=p,input_sha256=hashtext(p),phase='smoke',family='setup') for i,p in qs],keys
 
-def init(root,kind):
+def init(root,kind,fixed=False):
     root=Path(root);assert not (root/'manifest.json').exists()
     qs=load(root/'questions.json');keys=load(root/'keys.json');sq,sk=smoke(kind)
     write_once(root/'all-questions.json',sq+qs);write_once(root/'all-keys.json',{**sk,**keys})
@@ -75,11 +75,15 @@ def init(root,kind):
     for name in ('transport.py','campaign.py','support.py'):shutil.copyfile(common/name,runtime/name)
     stamp=time.time();source=load(root/'source.json');source['smoke_image']=load(root.parent/'gym/source.json')['image']
     m=dict(schema='compact-campaign/1.0',kind=kind,grant='compact-'+kind+'-20260916',created=now(),start_epoch=stamp,dispatch_cutoff=stamp+9600,deadline=stamp+10800,cap=204,family_caps=CAPS,retries={'claude':6,'codex':2},concurrency={'claude':2,'codex':2},models={s:MODELS[s] for s in ('sonnet','codex')},effort='medium',timeout_seconds=300,combined_claude_tokens=8192,source=source,source_hashes={p.name:sha(p) for p in runtime.glob('*.py')},questions_hash=sha(root/'all-questions.json'),keys_hash=sha(root/'all-keys.json'),prompts={'system':SYSTEM,'answer':answer_instruction(kind),'critic':CRITIC},authorization='User approved all three planned tests using Sonnet and Terra, with calibration gates and separate 204-call ceilings.')
-    write_once(root/'manifest.json',m);c=Campaign(root,m['grant']);c.authorize(204,CAPS,m['authorization']);c.allocate(kind,204,CAPS,sha(root/'manifest.json'),definitions(sq+qs),m['dispatch_cutoff']);c.close()
-    print(json.dumps({'initialized':kind,'cap':204,'nominal_calls':196,'deadline':m['deadline']}))
+    if fixed:
+        n=len(qs);assert n=={'bcb':24,'lcb':12}.get(kind) and all(q['phase']=='main' for q in qs)
+        caps={'claude':5*n+8,'codex':2*n+4,'glm':0,'kimi':0}
+        m.update(mode='fixed-comparison',experiment_id=root.name,main_questions=n,grant=root.name,cap=7*n+12,family_caps=caps,authorization='User approved fixed comparisons on fresh BigCodeBench-Hard and LiveCodeBench hard tasks. No score-based cancellation. Individual main-task failures do not stop unrelated work.')
+    write_once(root/'manifest.json',m);c=Campaign(root,m['grant']);c.authorize(m['cap'],m['family_caps'],m['authorization']);c.allocate(kind,m['cap'],m['family_caps'],sha(root/'manifest.json'),definitions(sq+qs),m['dispatch_cutoff']);c.close()
+    print(json.dumps({'initialized':kind,'cap':m['cap'],'nominal_calls':len(definitions(sq+qs)),'deadline':m['deadline']}))
 
 def snapshot(root,c,m,phase):
-    jobs=c.jobs(m['kind']);atomic(root/'status.json',dict(updated=now(),pid=os.getpid(),phase=phase,calls=c.count(),cap=204,states=dict(Counter(j['state'] for j in jobs)),failures=[{'job':j['id'],'error':j['error']} for j in jobs if j['state']=='failed']))
+    jobs=c.jobs(m['kind']);atomic(root/'status.json',dict(updated=now(),pid=os.getpid(),phase=phase,calls=c.count(),cap=m.get('cap',204),states=dict(Counter(j['state'] for j in jobs)),failures=[{'job':j['id'],'error':j['error']} for j in jobs if j['state']=='failed']))
 
 def run_phase(root,c,m,phase,adapter):
     qs={q['id']:q for q in load(root/'all-questions.json')};defs=definitions(list(qs.values()));active={};stop=False
@@ -93,7 +97,9 @@ def run_phase(root,c,m,phase,adapter):
                 if stop or time.time()>=m['dispatch_cutoff'] or any(jobs[x]['state'] in ('failed','blocked') for x in d['deps']):c.block(m['kind'],d['id'],'stop/deadline/required input missing');continue
                 if counts[family]>=2 or any(x not in results for x in d['deps']) or time.time()<j['not_before']:continue
                 if c.attempts(m['kind'],d['id']) and c.db.execute('SELECT count(*) FROM calls WHERE grant_id=? AND family=? AND attempt_index=2',(m['grant'],family)).fetchone()[0]>=m['retries'][family]:
-                    c.block(m['kind'],d['id'],'retry reserve exhausted');stop=True;continue
+                    c.block(m['kind'],d['id'],'retry reserve exhausted')
+                    if phase!='main' or m.get('mode')!='fixed-comparison':stop=True
+                    continue
                 text=prompt(qs[d['question']],d,results,m['kind'])
                 try:call=c.reserve(m['kind'],d['id'],hashtext(text))
                 except BudgetError as e:c.block(m['kind'],d['id'],str(e));stop=True;continue
@@ -118,7 +124,7 @@ def run_phase(root,c,m,phase,adapter):
                     retries=c.db.execute('SELECT count(*) FROM calls WHERE grant_id=? AND family=? AND attempt_index=2',(m['grant'],family)).fetchone()[0]
                     retry=category in ('network_error','content_refusal') and len(c.attempts(m['kind'],d['id']))<2 and retries<m['retries'][family] and time.time()+5<m['dispatch_cutoff']
                     c.finish(m['kind'],d['id'],call,'pending' if retry else 'failed',error=category+': '+str(e),retry_at=time.time()+5 if retry else 0)
-                    if not retry:stop=True
+                    if not retry and (phase!='main' or m.get('mode')!='fixed-comparison' or category in ('auth_blocked','billing_blocked','rate_limited','model_unavailable','isolation_failure','model_metadata_missing','local_unavailable','local_error','provider_error')):stop=True
                     if category in ('auth_blocked','billing_blocked','rate_limited','model_unavailable'):atomic(root.parent/'provider-stop.json',dict(at=now(),category=category,seat=d['seat']))
                 print(json.dumps({'at':now(),'benchmark':m['kind'],'phase':phase,'job':d['id'],'calls':c.count(),'stop':stop}),flush=True)
 
@@ -156,7 +162,10 @@ def live(root):
         try:
             if (root.parent/'provider-stop.json').exists():raise RuntimeError('Campaign provider stop requires operator reconciliation')
             run_phase(root,c,m,'smoke',adapter);smoke_rows=grade(root,c,m,'smoke')
-            if len(smoke_rows)==4 and all(r['correct'] is True and r['format_ok'] for r in smoke_rows):
+            ready=len(smoke_rows)==4 and all(r['correct'] is True and r['format_ok'] for r in smoke_rows)
+            if ready and m.get('mode')=='fixed-comparison':
+                run_phase(root,c,m,'main',adapter);main=grade(root,c,m,'main');completion='complete' if all(r['correct'] is not None for r in main) else 'partial'
+            elif ready:
                 run_phase(root,c,m,'calibration',adapter);rows=grade(root,c,m,'calibration')
                 timings={seat:[json.loads(j['result'])['seconds'] for j in c.jobs(m['kind']) if j['state']=='succeeded' and json.loads(j['definition'])['phase']=='calibration' and json.loads(j['definition'])['seat']==seat] for seat in ('sonnet','codex')}
                 def upper(values):return max(mean(values),sorted(values)[int(.9*(len(values)-1))])
@@ -168,6 +177,6 @@ def live(root):
             write_once(root/'outcome.json',dict(completion=completion,finished=now(),calls=c.count()));snapshot(root,c,m,'finished')
         finally:c.close()
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('command',choices=['init','run']);p.add_argument('--root',type=Path,required=True);p.add_argument('--kind',choices=['lcb','bcb','gym']);a=p.parse_args()
-    if a.command=='init':init(a.root,a.kind)
+    p=argparse.ArgumentParser();p.add_argument('command',choices=['init','run']);p.add_argument('--root',type=Path,required=True);p.add_argument('--kind',choices=['lcb','bcb','gym']);p.add_argument('--fixed',action='store_true');a=p.parse_args()
+    if a.command=='init':init(a.root,a.kind,a.fixed)
     else:live(a.root)
