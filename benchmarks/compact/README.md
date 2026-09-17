@@ -1,5 +1,19 @@
 # Bounded three-benchmark campaign
 
+## Fixed comparisons
+
+The later user-approved design is in
+`docs/plans/2026-09-16-fixed-comparisons.md`. `prepare_fixed.py` selects fresh
+24-task BigCodeBench and 12-task LiveCodeBench cohorts, excluding the earlier
+32 selected tasks per benchmark. Initialize with `run.py init --fixed`.
+After four setup calls, all five main arms run without an accuracy gate.
+Individual main-task timeouts stop only dependent jobs; infrastructure,
+authentication and quota failures can still stop the run. Caps are 180 and
+96 calls, respectively. Each experiment records its own immutable manifest.
+Use `publish-fixed.py` for the separate fixed-comparison pages.
+
+## Earlier gated campaign
+
 Authorized by the user on 2026-09-16: run the planned public tests with Sonnet
 and Terra. Each benchmark has four setup calls, 24 calibration calls and
 168 conditional main calls. Hard limits are 204 total, Sonnet 144 and Terra

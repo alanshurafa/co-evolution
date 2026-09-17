@@ -16,7 +16,7 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),10)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),12)
     def test_compact_rejects_modified_responses_and_scores(self):
         spec=importlib.util.spec_from_file_location('compact',SITE/'compact-page.py');compact=importlib.util.module_from_spec(spec);spec.loader.exec_module(compact)
         data=json.loads((SITE/'public/compact-lcb-results.json').read_text(encoding='utf-8'))

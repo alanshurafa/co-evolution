@@ -1,7 +1,37 @@
 {
   "schema": "publication-assessments/1.0",
-  "assessed_on": "2026-09-14",
+  "assessed_on": "2026-09-17",
   "studies": [
+    {
+      "id": "fixed-bcb",
+      "data": "fixed-bcb-results.json",
+      "page": "fixed-bcb.html",
+      "title": "BigCodeBench-Hard fixed comparison",
+      "status": "complete",
+      "coverage": "120/120 main outputs scored on 24 fresh tasks",
+      "data_sha256": "e5dbd83a6883b1aeccd7bb37c03a2e4f4df660b3dbe65a546bcc3d922dc54639",
+      "question": "Does Terra critique followed by Sonnet revision improve on plain revision, matched Sonnet self-review and Terra alone?",
+      "finding": "Fixed comparison; no accuracy-based calibration gate. Main: Sonnet original 17 correct, 0 missing of 24, Sonnet plain revision 16 correct, 0 missing of 24, Sonnet self-review 16 correct, 0 missing of 24, Terra critique + Sonnet revision 16 correct, 0 missing of 24, Terra alone 11 correct, 0 missing of 24.",
+      "test_quality": "Pinned benchmark sources, container images, prompts, settings and task splits were recorded before calls. Offline valid/invalid fixtures and controller failure tests passed. All stage responses froze before grading; no hidden tests or answer keys reached participants. Response hashes and task-level grader receipts are preserved. All earlier selected tasks were excluded. Four setup calls were separate from the fixed cohort; no accuracy ceiling cancelled the main phase, and isolated task failures did not stop unrelated work.",
+      "limitation": "This is a fixed 24-task subset with one generation per arm, not a full leaderboard result. High accuracy is retained as an outcome. Missing responses and evaluator errors remain unavailable; delivered-correct/planned measures operational yield, not the latent accuracy of missing answers. Paired effects exclude missing pairs. A zero-width bootstrap interval on ties does not prove general equivalence. List-equivalent cost estimates are not subscription bills. Selection is conditional on the reference solution passing in the pinned local container; excluded tasks are disclosed in the eligibility manifest. Generation and review were tool-free. This does not measure an agent executing its own tests during implementation or saved human work time.",
+      "decision": "Cross-model review versus plain revision: +0.0 percentage points across 24/24 paired tasks, with 1 repairs and 1 regressions. The paired 95% bootstrap interval is -12.5 to 12.5 points. Compare this with self-review and Terra alone before attributing benefit to model diversity. This small single-run subset does not establish general superiority or productivity gains. Standalone cross-review cost $0.0422 per task versus $0.0292 for plain revision (+44.9%). Additional cross-model review is not justified by accuracy in this cohort: the original Sonnet answers scored higher, and cross-review did not beat plain revision.",
+      "next_action": "Publish this outcome and its limitations. Do not rerun failed or wrong answers or change settings after seeing scores. Consider a separate replication only if the predeclared practical gain and overhead thresholds are met."
+    },
+    {
+      "id": "fixed-lcb",
+      "data": "fixed-lcb-results.json",
+      "page": "fixed-lcb.html",
+      "title": "LiveCodeBench hard fixed comparison",
+      "status": "partial",
+      "coverage": "44/60 main outputs scored on 12 fresh tasks",
+      "data_sha256": "365bea35232edf58ba708f1d911463a2dc79f2e526af8df313e6654b01711f42",
+      "question": "Does Terra critique followed by Sonnet revision improve on plain revision, matched Sonnet self-review and Terra alone?",
+      "finding": "Fixed comparison; no accuracy-based calibration gate. Main: Sonnet original 6 correct, 4 missing of 12, Sonnet plain revision 7 correct, 4 missing of 12, Sonnet self-review 7 correct, 4 missing of 12, Terra critique + Sonnet revision 7 correct, 4 missing of 12, Terra alone 9 correct, 0 missing of 12.",
+      "test_quality": "Pinned benchmark sources, container images, prompts, settings and task splits were recorded before calls. Offline valid/invalid fixtures and controller failure tests passed. All stage responses froze before grading; no hidden tests or answer keys reached participants. Response hashes and task-level grader receipts are preserved. All earlier selected tasks were excluded. Four setup calls were separate from the fixed cohort; no accuracy ceiling cancelled the main phase, and isolated task failures did not stop unrelated work.",
+      "limitation": "This is a fixed 12-task subset with one generation per arm, not a full leaderboard result. High accuracy is retained as an outcome. Missing responses and evaluator errors remain unavailable; delivered-correct/planned measures operational yield, not the latent accuracy of missing answers. Paired effects exclude missing pairs. A zero-width bootstrap interval on ties does not prove general equivalence. List-equivalent cost estimates are not subscription bills. Generation and review were tool-free. This does not measure an agent executing its own tests during implementation or saved human work time.",
+      "decision": "Cross-model review versus plain revision: +0.0 percentage points across 8/12 paired tasks, with 0 repairs and 0 regressions. The paired 95% bootstrap interval is 0.0 to 0.0 points. Compare this with self-review and Terra alone before attributing benefit to model diversity. This small single-run subset does not establish general superiority or productivity gains. Across the full planned cohort, cross-review delivered 7/12 correct answers and Terra alone delivered 9/12. Paired comparisons exclude unavailable answers and therefore do not measure this delivery difference.",
+      "next_action": "Publish this outcome and its limitations. Do not rerun failed or wrong answers or change settings after seeing scores. Consider a separate replication only if the predeclared practical gain and overhead thresholds are met."
+    },
     {
       "id": "compact-lcb",
       "data": "compact-lcb-results.json",
