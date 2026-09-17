@@ -87,6 +87,9 @@ def build():
         elif result.get('schema')=='compact-results/1.0':
             spec=importlib.util.spec_from_file_location('compact_page',SITE/'compact-page.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             (PUBLIC/e['page']).write_text(module.render(result,shell),encoding='utf-8',newline='\n')
+        elif result.get('schema')=='website-comparison/1.0':
+            spec=importlib.util.spec_from_file_location('comparison_page',SITE/'comparison-page.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            (PUBLIC/e['page']).write_text(module.render(result,shell),encoding='utf-8',newline='\n')
     print('Rendered test assessments and PlanBench outcome.')
 
 if __name__=='__main__':build()
