@@ -1,0 +1,1298 @@
+{
+  "schema": "compact-results/1.0",
+  "benchmark": "gym",
+  "title": "Reasoning Gym constraint tasks",
+  "completion": "gate-rejected",
+  "models": {
+    "sonnet": "claude-sonnet-5",
+    "codex": "gpt-5.6-terra"
+  },
+  "effort": "medium",
+  "timeout_seconds": 300,
+  "source": {
+    "generator_parameters": {
+      "graph_color": {
+        "min_num_vertices": 20,
+        "max_num_vertices": 25,
+        "num_colors": 3,
+        "edge_probability": 0.15
+      },
+      "countdown": {
+        "min_numbers": 6,
+        "max_numbers": 6,
+        "min_target": 100,
+        "max_target": 999
+      }
+    },
+    "seeds": {
+      "calibration": 20260918,
+      "main": 20260919
+    },
+    "image": "sha256:3815b84052a70b1cb95b236d2fd5d467f705d783c175589017db0d1a43000c6d",
+    "commit": "49b07130b3fcd12f2d064bba7c43869543a0e7e7",
+    "questions_sha256": "d367d48e5e26ec3ea287559b9880ab078d3f09602cddf053ff25f8e387ce2877",
+    "keys_sha256": "64478e4e7a0aaa40a5e3a90700d42cc4056985b99b93d4206fe90f451df0afc2",
+    "verifier_sha256": "5a444730d902790efedc0946a41e0e145328e8436a84a26e3c555ca52f238b0d",
+    "smoke_image": "sha256:3815b84052a70b1cb95b236d2fd5d467f705d783c175589017db0d1a43000c6d"
+  },
+  "phases": {
+    "smoke": {
+      "ran": true,
+      "outcomes": [
+        {
+          "question": "smoke-graph",
+          "family": "setup",
+          "arm": "A",
+          "input": "Color vertices 0,1,2 with colors 1,2,3 so edges (0,1),(1,2),(0,2) connect different colors. Return a JSON map of vertex to color.",
+          "input_sha256": "12cd0f3d70c7a4b73481e27e0898677cdb7864c6e8e006b41b581d82943792fd",
+          "response": "{\"0\": 1, \"1\": 2, \"2\": 3}",
+          "response_sha256": "51a6c774c027fb8e3c53ca4f5c436d9afc86b7e20996d21bec549d132e4639ae",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "smoke-graph",
+          "family": "setup",
+          "arm": "E",
+          "input": "Color vertices 0,1,2 with colors 1,2,3 so edges (0,1),(1,2),(0,2) connect different colors. Return a JSON map of vertex to color.",
+          "input_sha256": "12cd0f3d70c7a4b73481e27e0898677cdb7864c6e8e006b41b581d82943792fd",
+          "response": "{\"0\":1,\"1\":2,\"2\":3}",
+          "response_sha256": "04f9a0d0a5e0a289d3b6d98e2e3361989146c8bbab3ec6bdc0226c219f971d17",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "smoke-countdown",
+          "family": "setup",
+          "arm": "A",
+          "input": "Use numbers 1,2,3 each exactly once with +,-,*,/ to make 6. Return only the expression.",
+          "input_sha256": "837dc1020c271d419801b94117bdd1fe99db52d91aa614fbe80bf7f5bbc40900",
+          "response": "1*2*3",
+          "response_sha256": "b6d4e5a0797653d6ca02b07ebe2e07539ad4ff53c8361f225777c6c701c23ae5",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        },
+        {
+          "question": "smoke-countdown",
+          "family": "setup",
+          "arm": "E",
+          "input": "Use numbers 1,2,3 each exactly once with +,-,*,/ to make 6. Return only the expression.",
+          "input_sha256": "837dc1020c271d419801b94117bdd1fe99db52d91aa614fbe80bf7f5bbc40900",
+          "response": "1*2*3",
+          "response_sha256": "b6d4e5a0797653d6ca02b07ebe2e07539ad4ff53c8361f225777c6c701c23ae5",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        }
+      ],
+      "scores": {
+        "A": {
+          "label": "Sonnet original",
+          "correct": 2,
+          "incorrect": 0,
+          "missing": 0,
+          "n": 2,
+          "score": 100.0,
+          "bounds": [
+            100.0,
+            100.0
+          ]
+        },
+        "E": {
+          "label": "Terra alone",
+          "correct": 2,
+          "incorrect": 0,
+          "missing": 0,
+          "n": 2,
+          "score": 100.0,
+          "bounds": [
+            100.0,
+            100.0
+          ]
+        }
+      }
+    },
+    "calibration": {
+      "ran": true,
+      "outcomes": [
+        {
+          "question": "graph_color-20260918-0",
+          "family": "graph_color",
+          "arm": "A",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 10), (0, 12), (1, 6), (1, 8), (1, 13), (1, 17), (1, 21), (2, 3), (2, 6), (2, 13), (3, 4), (3, 13), (3, 14), (4, 9), (5, 9), (5, 14), (5, 18), (6, 7), (7, 9), (7, 12), (7, 14), (8, 14), (9, 12), (9, 13), (10, 19), (13, 15), (13, 21), (14, 21), (17, 18)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "986862a24dea66e12341a0d5b51a7b699c83ab30ff25b61115526f2bb1aa4b32",
+          "response": "{\"0\":1,\"1\":1,\"2\":1,\"3\":2,\"4\":1,\"5\":1,\"6\":2,\"7\":1,\"8\":2,\"9\":2,\"10\":2,\"11\":1,\"12\":3,\"13\":3,\"14\":3,\"15\":1,\"16\":1,\"17\":2,\"18\":3,\"19\":1,\"20\":1,\"21\":2}",
+          "response_sha256": "171ba8d520417db1475d4587eb0ab3696fdee6938b4b9045bcd3bb0102a3aebc",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-0",
+          "family": "graph_color",
+          "arm": "B",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 10), (0, 12), (1, 6), (1, 8), (1, 13), (1, 17), (1, 21), (2, 3), (2, 6), (2, 13), (3, 4), (3, 13), (3, 14), (4, 9), (5, 9), (5, 14), (5, 18), (6, 7), (7, 9), (7, 12), (7, 14), (8, 14), (9, 12), (9, 13), (10, 19), (13, 15), (13, 21), (14, 21), (17, 18)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "986862a24dea66e12341a0d5b51a7b699c83ab30ff25b61115526f2bb1aa4b32",
+          "response": "{\"0\":1,\"1\":1,\"2\":1,\"3\":2,\"4\":1,\"5\":1,\"6\":2,\"7\":1,\"8\":2,\"9\":2,\"10\":2,\"11\":1,\"12\":3,\"13\":3,\"14\":3,\"15\":1,\"16\":1,\"17\":2,\"18\":3,\"19\":1,\"20\":1,\"21\":2}",
+          "response_sha256": "171ba8d520417db1475d4587eb0ab3696fdee6938b4b9045bcd3bb0102a3aebc",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-0",
+          "family": "graph_color",
+          "arm": "E",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 10), (0, 12), (1, 6), (1, 8), (1, 13), (1, 17), (1, 21), (2, 3), (2, 6), (2, 13), (3, 4), (3, 13), (3, 14), (4, 9), (5, 9), (5, 14), (5, 18), (6, 7), (7, 9), (7, 12), (7, 14), (8, 14), (9, 12), (9, 13), (10, 19), (13, 15), (13, 21), (14, 21), (17, 18)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "986862a24dea66e12341a0d5b51a7b699c83ab30ff25b61115526f2bb1aa4b32",
+          "response": "{\"0\":1,\"1\":1,\"2\":1,\"3\":3,\"4\":2,\"5\":2,\"6\":2,\"7\":3,\"8\":2,\"9\":1,\"10\":2,\"11\":1,\"12\":2,\"13\":2,\"14\":1,\"15\":1,\"16\":1,\"17\":2,\"18\":1,\"19\":1,\"20\":1,\"21\":3}",
+          "response_sha256": "d44655c68e206f6e4d9da7e7a0b079dcdcff295dd54d22147da80a03b189c58b",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-1",
+          "family": "graph_color",
+          "arm": "A",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 1), (1, 20), (2, 20), (2, 21), (3, 8), (3, 9), (3, 12), (3, 15), (4, 8), (4, 17), (6, 17), (6, 18), (7, 12), (7, 15), (8, 15), (9, 13), (10, 15), (10, 21), (13, 19), (13, 21), (14, 19), (14, 20), (15, 17), (16, 17), (16, 18), (19, 21)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "dad09cbd8a6f72c35c1bca47445c7a34977bef4fe71cac6a0f599fc237aff2ea",
+          "response": "{\"0\":1,\"1\":2,\"2\":2,\"3\":1,\"4\":1,\"5\":1,\"6\":1,\"7\":1,\"8\":2,\"9\":2,\"10\":2,\"11\":1,\"12\":2,\"13\":3,\"14\":3,\"15\":3,\"16\":1,\"17\":2,\"18\":2,\"19\":2,\"20\":1,\"21\":1}",
+          "response_sha256": "7cfd5d6bf74baec5afc6b9d310b70db6a035f2b3e4e5c2e7007d0174765a998c",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-1",
+          "family": "graph_color",
+          "arm": "B",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 1), (1, 20), (2, 20), (2, 21), (3, 8), (3, 9), (3, 12), (3, 15), (4, 8), (4, 17), (6, 17), (6, 18), (7, 12), (7, 15), (8, 15), (9, 13), (10, 15), (10, 21), (13, 19), (13, 21), (14, 19), (14, 20), (15, 17), (16, 17), (16, 18), (19, 21)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "dad09cbd8a6f72c35c1bca47445c7a34977bef4fe71cac6a0f599fc237aff2ea",
+          "response": "{\"0\":1,\"1\":2,\"2\":2,\"3\":1,\"4\":1,\"5\":1,\"6\":1,\"7\":1,\"8\":2,\"9\":2,\"10\":2,\"11\":1,\"12\":2,\"13\":3,\"14\":3,\"15\":3,\"16\":1,\"17\":2,\"18\":2,\"19\":2,\"20\":1,\"21\":1}",
+          "response_sha256": "7cfd5d6bf74baec5afc6b9d310b70db6a035f2b3e4e5c2e7007d0174765a998c",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-1",
+          "family": "graph_color",
+          "arm": "E",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]\nEdges: [(0, 1), (1, 20), (2, 20), (2, 21), (3, 8), (3, 9), (3, 12), (3, 15), (4, 8), (4, 17), (6, 17), (6, 18), (7, 12), (7, 15), (8, 15), (9, 13), (10, 15), (10, 21), (13, 19), (13, 21), (14, 19), (14, 20), (15, 17), (16, 17), (16, 18), (19, 21)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "dad09cbd8a6f72c35c1bca47445c7a34977bef4fe71cac6a0f599fc237aff2ea",
+          "response": "{\"0\":2,\"1\":1,\"2\":1,\"3\":1,\"4\":1,\"5\":1,\"6\":1,\"7\":1,\"8\":2,\"9\":2,\"10\":1,\"11\":1,\"12\":2,\"13\":1,\"14\":1,\"15\":3,\"16\":1,\"17\":2,\"18\":2,\"19\":2,\"20\":2,\"21\":3}",
+          "response_sha256": "272d946ed86cd71937c9aeca4d5a737612bfcae21e5cedfa72e6d0a97a80be55",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-2",
+          "family": "graph_color",
+          "arm": "A",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]\nEdges: [(0, 1), (0, 16), (1, 12), (1, 16), (2, 11), (2, 17), (2, 18), (3, 6), (3, 9), (5, 15), (5, 16), (6, 8), (6, 19), (9, 10), (9, 12), (10, 14), (10, 15), (10, 18), (11, 13), (15, 18), (15, 19), (16, 19)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "85abd2d3d6af0e86f50f6830f3e074f47fed4386109df7a344f0e9b1786d7090",
+          "response": "{\"0\": 1, \"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 2, \"7\": 1, \"8\": 1, \"9\": 2, \"10\": 1, \"11\": 2, \"12\": 1, \"13\": 1, \"14\": 2, \"15\": 2, \"16\": 3, \"17\": 2, \"18\": 3, \"19\": 1}",
+          "response_sha256": "dade6d8a61c8fe832d9e5fd407b430aed2ef34b7ea489c982f77c7b861fb0a6f",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-2",
+          "family": "graph_color",
+          "arm": "B",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]\nEdges: [(0, 1), (0, 16), (1, 12), (1, 16), (2, 11), (2, 17), (2, 18), (3, 6), (3, 9), (5, 15), (5, 16), (6, 8), (6, 19), (9, 10), (9, 12), (10, 14), (10, 15), (10, 18), (11, 13), (15, 18), (15, 19), (16, 19)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "85abd2d3d6af0e86f50f6830f3e074f47fed4386109df7a344f0e9b1786d7090",
+          "response": "{\"0\": 1, \"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 2, \"7\": 1, \"8\": 1, \"9\": 2, \"10\": 1, \"11\": 2, \"12\": 1, \"13\": 1, \"14\": 2, \"15\": 2, \"16\": 3, \"17\": 2, \"18\": 3, \"19\": 1}",
+          "response_sha256": "dade6d8a61c8fe832d9e5fd407b430aed2ef34b7ea489c982f77c7b861fb0a6f",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-2",
+          "family": "graph_color",
+          "arm": "E",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]\nEdges: [(0, 1), (0, 16), (1, 12), (1, 16), (2, 11), (2, 17), (2, 18), (3, 6), (3, 9), (5, 15), (5, 16), (6, 8), (6, 19), (9, 10), (9, 12), (10, 14), (10, 15), (10, 18), (11, 13), (15, 18), (15, 19), (16, 19)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "85abd2d3d6af0e86f50f6830f3e074f47fed4386109df7a344f0e9b1786d7090",
+          "response": "{\"0\":1,\"1\":2,\"2\":1,\"3\":1,\"4\":1,\"5\":1,\"6\":2,\"7\":1,\"8\":1,\"9\":2,\"10\":1,\"11\":2,\"12\":1,\"13\":1,\"14\":2,\"15\":2,\"16\":3,\"17\":2,\"18\":3,\"19\":1}",
+          "response_sha256": "084f65a99ee2e3ef5e416d986ab0188ffa1549bacd418b52dce3d8e8ab9235c5",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-3",
+          "family": "graph_color",
+          "arm": "A",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]\nEdges: [(0, 4), (0, 5), (0, 6), (0, 8), (0, 9), (0, 15), (0, 23), (1, 12), (2, 17), (3, 9), (3, 18), (4, 11), (4, 12), (4, 18), (4, 19), (5, 10), (5, 12), (5, 20), (6, 9), (6, 11), (6, 16), (6, 22), (7, 8), (7, 19), (8, 10), (8, 22), (10, 12), (10, 23), (11, 12), (11, 15), (11, 17), (13, 15), (14, 19), (17, 19), (18, 20), (18, 22)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "e84e25da92515cac41450033850021d9a31990e860fe5562de8d4ac00702f63e",
+          "response": "{\"0\": 1, \"1\": 1, \"2\": 1, \"3\": 1, \"4\": 2, \"5\": 2, \"6\": 2, \"7\": 1, \"8\": 2, \"9\": 3, \"10\": 1, \"11\": 1, \"12\": 3, \"13\": 1, \"14\": 1, \"15\": 2, \"16\": 1, \"17\": 2, \"18\": 3, \"19\": 3, \"20\": 1, \"21\": 1, \"22\": 1, \"23\": 2}",
+          "response_sha256": "139cc171f222c9914b78d667ec13ced6ea8be3eaf3bb8f2551e14d9080788141",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-3",
+          "family": "graph_color",
+          "arm": "B",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]\nEdges: [(0, 4), (0, 5), (0, 6), (0, 8), (0, 9), (0, 15), (0, 23), (1, 12), (2, 17), (3, 9), (3, 18), (4, 11), (4, 12), (4, 18), (4, 19), (5, 10), (5, 12), (5, 20), (6, 9), (6, 11), (6, 16), (6, 22), (7, 8), (7, 19), (8, 10), (8, 22), (10, 12), (10, 23), (11, 12), (11, 15), (11, 17), (13, 15), (14, 19), (17, 19), (18, 20), (18, 22)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "e84e25da92515cac41450033850021d9a31990e860fe5562de8d4ac00702f63e",
+          "response": "{\"0\": 1, \"1\": 1, \"2\": 1, \"3\": 1, \"4\": 2, \"5\": 2, \"6\": 2, \"7\": 1, \"8\": 2, \"9\": 3, \"10\": 1, \"11\": 1, \"12\": 3, \"13\": 1, \"14\": 1, \"15\": 2, \"16\": 1, \"17\": 2, \"18\": 3, \"19\": 3, \"20\": 1, \"21\": 1, \"22\": 1, \"23\": 2}",
+          "response_sha256": "139cc171f222c9914b78d667ec13ced6ea8be3eaf3bb8f2551e14d9080788141",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "graph_color-20260918-3",
+          "family": "graph_color",
+          "arm": "E",
+          "input": "Please provide a coloring for this graph such that every vertex is not connected to a vertex of the same color. The graph has these properties:\n\nVertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]\nEdges: [(0, 4), (0, 5), (0, 6), (0, 8), (0, 9), (0, 15), (0, 23), (1, 12), (2, 17), (3, 9), (3, 18), (4, 11), (4, 12), (4, 18), (4, 19), (5, 10), (5, 12), (5, 20), (6, 9), (6, 11), (6, 16), (6, 22), (7, 8), (7, 19), (8, 10), (8, 22), (10, 12), (10, 23), (11, 12), (11, 15), (11, 17), (13, 15), (14, 19), (17, 19), (18, 20), (18, 22)]\nPossible colors: [1, 2, 3]\n\nReturn your solution as a JSON map of vertices to colors. (For example: {\"0\": 1, \"1\": 2, \"2\": 3}.)\n",
+          "input_sha256": "e84e25da92515cac41450033850021d9a31990e860fe5562de8d4ac00702f63e",
+          "response": "{\"0\":2,\"1\":1,\"2\":2,\"3\":1,\"4\":1,\"5\":1,\"6\":1,\"7\":3,\"8\":1,\"9\":3,\"10\":2,\"11\":2,\"12\":3,\"13\":2,\"14\":1,\"15\":1,\"16\":2,\"17\":1,\"18\":3,\"19\":2,\"20\":2,\"21\":1,\"22\":2,\"23\":1}",
+          "response_sha256": "6894d8c17015318d4c4eb6d6f24cca144d174e0ce7c64631d97f7c51afc72970",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0
+          }
+        },
+        {
+          "question": "countdown-20260918-0",
+          "family": "countdown",
+          "arm": "A",
+          "input": "Using all the numbers 20, 20, 71, 63, 100, 53, create an expression that equals 111.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "b60204715d1be000a561e0884412f880941cfcc39581fd0ef7c255bb546773b8",
+          "response": null,
+          "response_sha256": null,
+          "state": "failed",
+          "error": "timeout: Provider process exceeded timeout; dispatch remains charged.",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-0",
+          "family": "countdown",
+          "arm": "B",
+          "input": "Using all the numbers 20, 20, 71, 63, 100, 53, create an expression that equals 111.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "b60204715d1be000a561e0884412f880941cfcc39581fd0ef7c255bb546773b8",
+          "response": null,
+          "response_sha256": null,
+          "state": "blocked",
+          "error": "stop/deadline/required input missing",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-0",
+          "family": "countdown",
+          "arm": "E",
+          "input": "Using all the numbers 20, 20, 71, 63, 100, 53, create an expression that equals 111.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "b60204715d1be000a561e0884412f880941cfcc39581fd0ef7c255bb546773b8",
+          "response": "71+(100-20)/(20/(63-53))",
+          "response_sha256": "deacf5e2955979412be8e58522ee50914d01a01ce1ee03464bb12195425625c7",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        },
+        {
+          "question": "countdown-20260918-1",
+          "family": "countdown",
+          "arm": "A",
+          "input": "Find a way to make 137 using all of these numbers: 93, 96, 47, 2, 64, 33.\nEach number can only be used once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "3c3fd834781e0f9df317c063470e0b9277aa58782394f0e5e752c4b99efc52d2",
+          "response": "93+47-2+96-64-33",
+          "response_sha256": "3ce82f39a24b2caf0b7f0069aed9df9e413b4a562ddc2ad05634dc0919998e7a",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        },
+        {
+          "question": "countdown-20260918-1",
+          "family": "countdown",
+          "arm": "B",
+          "input": "Find a way to make 137 using all of these numbers: 93, 96, 47, 2, 64, 33.\nEach number can only be used once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "3c3fd834781e0f9df317c063470e0b9277aa58782394f0e5e752c4b99efc52d2",
+          "response": "93+47-2+96-64-33",
+          "response_sha256": "3ce82f39a24b2caf0b7f0069aed9df9e413b4a562ddc2ad05634dc0919998e7a",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        },
+        {
+          "question": "countdown-20260918-1",
+          "family": "countdown",
+          "arm": "E",
+          "input": "Find a way to make 137 using all of these numbers: 93, 96, 47, 2, 64, 33.\nEach number can only be used once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "3c3fd834781e0f9df317c063470e0b9277aa58782394f0e5e752c4b99efc52d2",
+          "response": "93+96-64+47-33-2",
+          "response_sha256": "7e41eb4fe1c333c1113da032f590d87b6241b8d0ee31da9038f5ff61d8c8f26c",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        },
+        {
+          "question": "countdown-20260918-2",
+          "family": "countdown",
+          "arm": "A",
+          "input": "Using all the numbers 55, 51, 9, 25, 33, 16, create an expression that equals 562.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "0316beb1189d32d2b5182ce5ead5a6ea3c959eb016c653dfe5167f27ba800636",
+          "response": null,
+          "response_sha256": null,
+          "state": "failed",
+          "error": "timeout: Provider process exceeded timeout; dispatch remains charged.",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-2",
+          "family": "countdown",
+          "arm": "B",
+          "input": "Using all the numbers 55, 51, 9, 25, 33, 16, create an expression that equals 562.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "0316beb1189d32d2b5182ce5ead5a6ea3c959eb016c653dfe5167f27ba800636",
+          "response": null,
+          "response_sha256": null,
+          "state": "blocked",
+          "error": "stop/deadline/required input missing",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-2",
+          "family": "countdown",
+          "arm": "E",
+          "input": "Using all the numbers 55, 51, 9, 25, 33, 16, create an expression that equals 562.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "0316beb1189d32d2b5182ce5ead5a6ea3c959eb016c653dfe5167f27ba800636",
+          "response": "33*(25-16+9)-(55-51)*8",
+          "response_sha256": "06e61a0ca7cdb2a92bd1483c622f4b1cd311339073b35af0d5e9b531a21844cd",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": false,
+          "grade": {
+            "correct": false,
+            "reward": null,
+            "strict_valid": false
+          }
+        },
+        {
+          "question": "countdown-20260918-3",
+          "family": "countdown",
+          "arm": "A",
+          "input": "Using all the numbers 90, 4, 52, 73, 26, 9, create an expression that equals 304.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "f7c46468e99d7718bf3a9b0f540c419df26b4bcd40ca08d837c507aed350e74b",
+          "response": null,
+          "response_sha256": null,
+          "state": "blocked",
+          "error": "stop/deadline/required input missing",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-3",
+          "family": "countdown",
+          "arm": "B",
+          "input": "Using all the numbers 90, 4, 52, 73, 26, 9, create an expression that equals 304.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "f7c46468e99d7718bf3a9b0f540c419df26b4bcd40ca08d837c507aed350e74b",
+          "response": null,
+          "response_sha256": null,
+          "state": "blocked",
+          "error": "stop/deadline/required input missing",
+          "format_ok": false,
+          "correct": null
+        },
+        {
+          "question": "countdown-20260918-3",
+          "family": "countdown",
+          "arm": "E",
+          "input": "Using all the numbers 90, 4, 52, 73, 26, 9, create an expression that equals 304.\nYou can only use each number once.\n\nFinal answer format instructions:\n1. Provide your solution as a arithmetic expression (no '=' sign).\n2. Do not include the target number in the expression.\n3. Use '*' for multiplication.\n4. Use '/' for division.\n5. Do not include any other text or formatting.\n",
+          "input_sha256": "f7c46468e99d7718bf3a9b0f540c419df26b4bcd40ca08d837c507aed350e74b",
+          "response": "90*4+52-73-26-9",
+          "response_sha256": "594f683712846924580c7ed006c6437c0fd45fa49d4f477b33adaa32a77b3eac",
+          "state": "succeeded",
+          "error": null,
+          "format_ok": true,
+          "correct": true,
+          "grade": {
+            "correct": true,
+            "reward": 1.0,
+            "strict_valid": true
+          }
+        }
+      ],
+      "scores": {
+        "A": {
+          "label": "Sonnet original",
+          "correct": 5,
+          "incorrect": 0,
+          "missing": 3,
+          "n": 8,
+          "score": null,
+          "bounds": [
+            62.5,
+            100.0
+          ]
+        },
+        "B": {
+          "label": "Sonnet plain revision",
+          "correct": 5,
+          "incorrect": 0,
+          "missing": 3,
+          "n": 8,
+          "score": null,
+          "bounds": [
+            62.5,
+            100.0
+          ]
+        },
+        "E": {
+          "label": "Terra alone",
+          "correct": 7,
+          "incorrect": 1,
+          "missing": 0,
+          "n": 8,
+          "score": 87.5,
+          "bounds": [
+            87.5,
+            87.5
+          ]
+        }
+      }
+    },
+    "main": {
+      "ran": false,
+      "outcomes": [],
+      "scores": {
+        "A": {
+          "label": "Sonnet original",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 24,
+          "n": 24,
+          "score": null,
+          "bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "B": {
+          "label": "Sonnet plain revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 24,
+          "n": 24,
+          "score": null,
+          "bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "C": {
+          "label": "Sonnet self-review",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 24,
+          "n": 24,
+          "score": null,
+          "bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "D": {
+          "label": "Terra critique + Sonnet revision",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 24,
+          "n": 24,
+          "score": null,
+          "bounds": [
+            0.0,
+            100.0
+          ]
+        },
+        "E": {
+          "label": "Terra alone",
+          "correct": 0,
+          "incorrect": 0,
+          "missing": 24,
+          "n": 24,
+          "score": null,
+          "bounds": [
+            0.0,
+            100.0
+          ]
+        }
+      }
+    }
+  },
+  "gate": {
+    "passed": false,
+    "complete": false,
+    "correct": {
+      "A": 5,
+      "B": 5,
+      "E": 7
+    },
+    "denominator": 8,
+    "required_range": [
+      2,
+      6
+    ],
+    "estimated_main_seconds": 3987.75,
+    "remaining_seconds": 9239.9212038517
+  },
+  "contrasts": {
+    "D-B": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "p_exact": null
+    },
+    "D-C": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "p_exact": null
+    },
+    "D-E": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "p_exact": null
+    },
+    "D-A": {
+      "n": 0,
+      "delta_pp": null,
+      "interval95": null,
+      "repairs": 0,
+      "regressions": 0,
+      "p_exact": null
+    }
+  },
+  "resources": {
+    "A": {
+      "priced_tasks": 0,
+      "mean_cost_usd": null,
+      "mean_model_seconds": null
+    },
+    "B": {
+      "priced_tasks": 0,
+      "mean_cost_usd": null,
+      "mean_model_seconds": null
+    },
+    "C": {
+      "priced_tasks": 0,
+      "mean_cost_usd": null,
+      "mean_model_seconds": null
+    },
+    "D": {
+      "priced_tasks": 0,
+      "mean_cost_usd": null,
+      "mean_model_seconds": null
+    },
+    "E": {
+      "priced_tasks": 0,
+      "mean_cost_usd": null,
+      "mean_model_seconds": null
+    }
+  },
+  "assessment": {
+    "question": "Does Terra critique followed by Sonnet revision improve on plain revision, matched Sonnet self-review and Terra alone?",
+    "finding": "Calibration: Sonnet original 5 correct, 3 missing of 8, Sonnet plain revision 5 correct, 3 missing of 8, Terra alone 7 correct, 0 missing of 8. The main review comparison did not run, so no Co-Evolution gain or loss was measured. 2 calibration dispatches failed; see the per-task error receipts. Undispatched dependent work remains missing.",
+    "test_quality": "Pinned benchmark sources, container images, prompts, settings and task splits were recorded before calls. Offline valid/invalid fixtures and controller failure tests passed. All stage responses froze before grading; no hidden tests or answer keys reached participants. Response hashes and task-level grader receipts are preserved.",
+    "limitation": "This is an eight-task suitability screen with 24 unused reserved tasks, not a full leaderboard submission. One generation per arm limits precision. Missing responses and evaluator errors remain unavailable. A bootstrap interval of zero width on all ties does not prove equivalence. Subscription list-equivalent estimates are not bills; unavailable token records prevent a complete cost total. Generated tasks are a custom public-framework subset. Countdown success additionally requires an exact rational expression using only allowed operators and each number once; this stricter check is disclosed separately from upstream reward.",
+    "decision": "Stop at the predeclared gate because the 24-answer calibration was incomplete or had unusable outcomes; baseline E exceeded the six-of-eight ceiling. No Co-Evolution gain or loss has been measured on this benchmark.",
+    "next_action": "Publish this outcome and its limitations. Do not rerun failed or wrong answers or change settings after seeing scores. Consider a separate replication only if the predeclared practical gain and overhead thresholds are met."
+  },
+  "spend": {
+    "calls": 24,
+    "cap": 204,
+    "by_provider": {
+      "sonnet": 14,
+      "codex": 10
+    },
+    "known_list_equivalent_usd": 0.392264,
+    "unpriced_calls": [
+      16,
+      23
+    ],
+    "attempts": [
+      {
+        "id": 1,
+        "job": "smoke-graph.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 439,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 21,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 2.75,
+        "cost_usd": 0.001088,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 2,
+        "job": "smoke-graph.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4169,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 17,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 3.234,
+        "cost_usd": 0.008542,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 3,
+        "job": "smoke-countdown.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 417,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 7,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 2.703,
+        "cost_usd": 0.000904,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 4,
+        "job": "smoke-countdown.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4155,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 9,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 5.218,
+        "cost_usd": 0.008418,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 5,
+        "job": "graph_color-20260918-0.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 733,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 717,
+          "output_tokens_details": {
+            "thinking_tokens": 603
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 6.89,
+        "cost_usd": 0.008636,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 6,
+        "job": "graph_color-20260918-0.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4445,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 540,
+          "reasoning_output_tokens": 445
+        },
+        "seconds": 12.25,
+        "cost_usd": 0.01537,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 7,
+        "job": "graph_color-20260918-1.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 715,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 1000,
+          "output_tokens_details": {
+            "thinking_tokens": 887
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 9.375,
+        "cost_usd": 0.011430000000000001,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 8,
+        "job": "graph_color-20260918-1.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4424,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 611,
+          "reasoning_output_tokens": 516
+        },
+        "seconds": 13.484,
+        "cost_usd": 0.01618,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 9,
+        "job": "graph_color-20260918-0.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 879,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 454,
+          "output_tokens_details": {
+            "thinking_tokens": 340
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 4.312,
+        "cost_usd": 0.006298,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 10,
+        "job": "graph_color-20260918-1.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 861,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 545,
+          "output_tokens_details": {
+            "thinking_tokens": 431
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 5.344,
+        "cost_usd": 0.0071719999999999996,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 11,
+        "job": "graph_color-20260918-2.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 685,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 919,
+          "output_tokens_details": {
+            "thinking_tokens": 795
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 8.656,
+        "cost_usd": 0.01056,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 12,
+        "job": "graph_color-20260918-2.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4394,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 430,
+          "reasoning_output_tokens": 343
+        },
+        "seconds": 21.594,
+        "cost_usd": 0.013948,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 13,
+        "job": "graph_color-20260918-3.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4490,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 585,
+          "reasoning_output_tokens": 482
+        },
+        "seconds": 12.984,
+        "cost_usd": 0.016,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 14,
+        "job": "graph_color-20260918-3.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 781,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 1586,
+          "output_tokens_details": {
+            "thinking_tokens": 1439
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 11.797,
+        "cost_usd": 0.017422,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 15,
+        "job": "graph_color-20260918-2.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 841,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 492,
+          "output_tokens_details": {
+            "thinking_tokens": 368
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 5.047,
+        "cost_usd": 0.006602,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 16,
+        "job": "countdown-20260918-0.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "usage": {},
+        "seconds": null,
+        "cost_usd": null,
+        "cost_basis": "unavailable"
+      },
+      {
+        "id": 17,
+        "job": "countdown-20260918-0.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4219,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5611,
+          "reasoning_output_tokens": 5593
+        },
+        "seconds": 104.375,
+        "cost_usd": 0.07577,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 18,
+        "job": "graph_color-20260918-3.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 961,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 558,
+          "output_tokens_details": {
+            "thinking_tokens": 410
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 5.047,
+        "cost_usd": 0.007502,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 19,
+        "job": "countdown-20260918-1.A",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 515,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 604,
+          "output_tokens_details": {
+            "thinking_tokens": 590
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 9.016,
+        "cost_usd": 0.00707,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 20,
+        "job": "countdown-20260918-1.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4223,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 224,
+          "reasoning_output_tokens": 207
+        },
+        "seconds": 6.438,
+        "cost_usd": 0.011134,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 21,
+        "job": "countdown-20260918-2.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4219,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10053,
+          "reasoning_output_tokens": 10034
+        },
+        "seconds": 184.016,
+        "cost_usd": 0.129074,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      },
+      {
+        "id": 22,
+        "job": "countdown-20260918-1.B",
+        "seat": "sonnet",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 561,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "output_tokens": 50,
+          "output_tokens_details": {
+            "thinking_tokens": 37
+          },
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": "standard",
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": "not_available",
+          "iterations": [],
+          "speed": "standard"
+        },
+        "seconds": 2.625,
+        "cost_usd": 0.001622,
+        "cost_basis": "CLI reported list-equivalent"
+      },
+      {
+        "id": 23,
+        "job": "countdown-20260918-2.A",
+        "seat": "sonnet",
+        "state": "failed",
+        "usage": {},
+        "seconds": null,
+        "cost_usd": null,
+        "cost_basis": "unavailable"
+      },
+      {
+        "id": 24,
+        "job": "countdown-20260918-3.E",
+        "seat": "codex",
+        "state": "succeeded",
+        "usage": {
+          "input_tokens": 4219,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 257,
+          "reasoning_output_tokens": 240
+        },
+        "seconds": 7.109,
+        "cost_usd": 0.011522,
+        "cost_basis": "historical rate estimate: input $2, cached $0.20, output $12 per million"
+      }
+    ]
+  },
+  "provenance": {
+    "manifest_sha256": "3454680106caca6d8b0e0b7cd7bd9f08f3b0cd6855f09f5955d46e69e1276bf2",
+    "runtime_hashes": {
+      "campaign.py": "d098d226e4d3f0964874b41e8f11b421eacd092cad46e42b04952905cdfa342c",
+      "checker.py": "44a07ee9f2efa2dcfd1b1ff7709f7f572703ee6c8134a3317fdaf42a1eb9d56b",
+      "run.py": "fe42cded7471c4d6fa495f3477c7d0d3378496e2d43c11382bd8e5a9d0addddc",
+      "support.py": "238adccf06ca386793f82d6015f31c7ea77dd8aafd43eb99c996a094def068fa",
+      "transport.py": "fcd21e797fc5dc2df96cc7d884ad7b77971d9e94e8e6c061916eabd6a031b0c0"
+    },
+    "receipt": {
+      "started": "2026-09-16T23:40:12.5541879Z",
+      "finished": "2026-09-16T23:46:13.2246759Z",
+      "supervisor_pid": 75792,
+      "exit_code": 0
+    },
+    "source_report_sha256": "1bf2ee1b6043fade85ec57578d7e218480f3f7beca8c405392c4bf7c06bc394f"
+  },
+  "finished": "2026-09-16T23:46:13.193702+00:00"
+}

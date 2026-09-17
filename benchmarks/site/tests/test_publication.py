@@ -16,7 +16,16 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),7)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),10)
+    def test_compact_rejects_modified_responses_and_scores(self):
+        spec=importlib.util.spec_from_file_location('compact',SITE/'compact-page.py');compact=importlib.util.module_from_spec(spec);spec.loader.exec_module(compact)
+        data=json.loads((SITE/'public/compact-lcb-results.json').read_text(encoding='utf-8'))
+        row=next(r for r in data['phases']['smoke']['outcomes'] if r['response'] is not None)
+        row['response']+='modified'
+        with self.assertRaisesRegex(ValueError,'response hash mismatch'):compact.validate(data)
+        row['response']=row['response'][:-8]
+        data['phases']['smoke']['scores']['A']['correct']+=1
+        with self.assertRaisesRegex(ValueError,'aggregate mismatch'):compact.validate(data)
     def test_aime_rejects_changed_scores_and_responses(self):
         spec=importlib.util.spec_from_file_location('aime',SITE/'aime-evidence.py');aime=importlib.util.module_from_spec(spec);spec.loader.exec_module(aime)
         data=json.loads((SITE/'public/aime-calibration-results.json').read_text(encoding='utf-8'))
