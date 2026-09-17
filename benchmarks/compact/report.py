@@ -8,11 +8,12 @@ LABELS={'A':'Sonnet original','B':'Sonnet plain revision','C':'Sonnet self-revie
 NAMES={'lcb':'LiveCodeBench hard','bcb':'BigCodeBench-Hard','gym':'Reasoning Gym constraint tasks'}
 load=lambda p:json.loads(Path(p).read_text(encoding='utf-8-sig'))
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-def summarize(rows,n,arms):
+def summarize(rows,n,arms,labels=None):
+    labels=labels or LABELS
     scores={}
     for a in arms:
         selected=[r for r in rows if r['arm']==a];good=sum(r['correct'] is True for r in selected);bad=sum(r['correct'] is False for r in selected);missing=n-good-bad
-        scores[a]=dict(label=LABELS[a],correct=good,incorrect=bad,missing=missing,n=n,score=100*good/n if not missing else None,bounds=[100*good/n,100*(good+missing)/n])
+        scores[a]=dict(label=labels[a],correct=good,incorrect=bad,missing=missing,n=n,score=100*good/n if not missing else None,bounds=[100*good/n,100*(good+missing)/n])
     return scores
 def compare(rows,other):
     by=defaultdict(dict)
@@ -28,6 +29,8 @@ def compare(rows,other):
 def build(root):
     root=Path(root);m=load(root/'manifest.json');terminal=load(root/'outcome.json');assert load(root/'status.json')['phase']=='finished'
     main_n=m.get('main_questions',24);fixed=m.get('mode')=='fixed-comparison'
+    feedback=m.get('protocol')=='visible-test-feedback';labels=dict(LABELS)
+    if feedback:labels.update(B='Sonnet feedback revision',C='Sonnet self-review with feedback',D='Terra critique + Sonnet revision with feedback',F='Terra feedback revision')
     for name,expected in m['source_hashes'].items():assert digest(root/'runtime'/name)==expected
     assert digest(root/'all-questions.json')==m['questions_hash'] and digest(root/'all-keys.json')==m['keys_hash']
     phases={}
@@ -37,7 +40,7 @@ def build(root):
             freeze=load(root/(phase+'-freeze.json'))
             for row in rows:
                 if row['response'] is not None:assert hashlib.sha256(row['response'].encode()).hexdigest()==freeze['outputs'][row['question']+'.'+row['arm']]==row['response_sha256']
-        phases[phase]=dict(ran=path.exists(),outcomes=rows,scores=summarize(rows,2 if phase=='smoke' else 8 if phase=='calibration' else main_n,('A','E') if phase=='smoke' else ('A','B','E') if phase=='calibration' else LABELS))
+        phases[phase]=dict(ran=path.exists(),outcomes=rows,scores=summarize(rows,2 if phase=='smoke' else 8 if phase=='calibration' else main_n,('A','E') if phase=='smoke' else ('A','B','E') if phase=='calibration' else labels,labels))
         if fixed and phase=='main':
             for score in phases[phase]['scores'].values():score['delivered_correct_percent']=100*score['correct']/main_n
     c=sqlite3.connect(root/'campaign.sqlite');c.row_factory=sqlite3.Row;charges=[];jobs={j['id']:dict(j) for j in c.execute('SELECT * FROM jobs')}
@@ -46,10 +49,10 @@ def build(root):
         if price is None and call['seat']=='codex' and 'input_tokens' in usage and 'output_tokens' in usage:
             cached=usage.get('cached_input_tokens',0);price=((usage['input_tokens']-cached)*2+cached*.2+usage['output_tokens']*12)/1e6;basis='historical rate estimate: input $2, cached $0.20, output $12 per million'
         charges.append(dict(id=call['id'],job=call['job'],seat=call['seat'],state=call['state'],usage=usage,seconds=r.get('seconds'),cost_usd=price,cost_basis=basis if price is not None else 'unavailable'))
-    c.close();contrasts={f'D-{a}':compare(phases['main']['outcomes'],a) for a in ('B','C','E','A')};adjusted=sorted((v['p_exact'],k) for k,v in contrasts.items() if k!='D-A' and v['p_exact'] is not None);previous=0
+    c.close();contrasts={f'D-{a}':compare(phases['main']['outcomes'],a) for a in (('B','C','F','E','A') if feedback else ('B','C','E','A'))};principal={'D-B','D-C','D-F' if feedback else 'D-E'};adjusted=sorted((v['p_exact'],k) for k,v in contrasts.items() if k in principal and v['p_exact'] is not None);previous=0
     for i,(p,k) in enumerate(adjusted):previous=max(previous,min(1,p*(len(adjusted)-i)));contrasts[k]['p_holm']=previous
     resources={}
-    for arm in LABELS:
+    for arm in labels:
         costs=[];seconds=[]
         for q in load(root/'all-questions.json'):
             if q['phase']!='main':continue
@@ -64,9 +67,9 @@ def build(root):
             if all(r['seconds'] is not None for r in calls):seconds.append(sum(r['seconds'] for r in calls))
         resources[arm]=dict(priced_tasks=len(costs),mean_cost_usd=mean(costs) if len(costs)==main_n else None,mean_model_seconds=mean(seconds) if len(seconds)==main_n else None)
     cal=phases['calibration']['scores'];main=phases['main'];gate=load(root/'gate.json') if (root/'gate.json').exists() else None
-    finding='Calibration: '+', '.join(f'{LABELS[a]} {s["correct"]} correct, {s["missing"]} missing of 8' for a,s in cal.items())+'.'
+    finding='Calibration: '+', '.join(f'{labels[a]} {s["correct"]} correct, {s["missing"]} missing of 8' for a,s in cal.items())+'.'
     if fixed:finding='Fixed comparison; no accuracy-based calibration gate.'
-    if main['ran']:finding+=' Main: '+', '.join(f'{LABELS[a]} {s["correct"]} correct, {s["missing"]} missing of {main_n}' for a,s in main['scores'].items())+'.'
+    if main['ran']:finding+=' Main: '+', '.join(f'{labels[a]} {s["correct"]} correct, {s["missing"]} missing of {main_n}' for a,s in main['scores'].items())+'.'
     else:finding+=' The main review comparison did not run, so no Co-Evolution gain or loss was measured.'
     if terminal['completion']=='readiness-failed':finding='Readiness failed before calibration. No benchmark comparison was run.'
     decision='Stop at the frozen gate. This configuration did not establish a usable difficulty and throughput window for the full comparison.'
@@ -77,7 +80,12 @@ def build(root):
     if m['kind']=='gym':limitation+=' Generated tasks are a custom public-framework subset. Countdown success additionally requires an exact rational expression using only allowed operators and each number once; this stricter check is disclosed separately from upstream reward.'
     if m['kind']=='bcb':limitation+=' Selection is conditional on the reference solution passing in the pinned local container; excluded tasks are disclosed in the eligibility manifest.'
     assessment=dict(question='Does Terra critique followed by Sonnet revision improve on plain revision, matched Sonnet self-review and Terra alone?',finding=finding,test_quality='Pinned benchmark sources, container images, prompts, settings and task splits were recorded before calls. Offline valid/invalid fixtures and controller failure tests passed. All stage responses froze before grading; no hidden tests or answer keys reached participants. Response hashes and task-level grader receipts are preserved.',limitation=limitation,decision=decision,next_action='Publish this outcome and its limitations. Do not rerun failed or wrong answers or change settings after seeing scores. Consider a separate replication only if the predeclared practical gain and overhead thresholds are met.')
-    result=dict(schema='compact-results/1.0',benchmark=m['kind'],mode=m.get('mode','calibrated'),main_questions=main_n,title=NAMES[m['kind']]+(' fixed comparison' if fixed else ''),completion=terminal['completion'],models=m['models'],effort=m['effort'],timeout_seconds=m['timeout_seconds'],source=m['source'],phases=phases,gate=gate,contrasts=contrasts,resources=resources,assessment=assessment,spend=dict(calls=len(charges),cap=m.get('cap',204),by_provider=dict(Counter(r['seat'] for r in charges)),known_list_equivalent_usd=sum(r['cost_usd'] for r in charges if r['cost_usd'] is not None),unpriced_calls=[r['id'] for r in charges if r['cost_usd'] is None],attempts=charges),provenance=dict(manifest_sha256=digest(root/'manifest.json'),runtime_hashes=m['source_hashes'],receipt=load(root/'controller.exit.json')),finished=terminal['finished'])
+    if feedback:
+        assessment['question']='Does cross-model critique add value after visible test feedback, beyond direct feedback revision, self-review and Terra feedback revision?'
+        assessment['test_quality']='Pinned source versions, images, prompts, cohorts and visible/held-out test partitions were frozen before inference. Only visible test diagnostics reached B/C/D/F. All final responses froze before held-out grading. Diagnostic jobs made no model calls; their receipts and model usage remain separately recorded.'
+        assessment['limitation']+=' Scores are held-out-test pass rates under a feedback protocol, not official whole-suite leaderboard scores. Do not combine them with the earlier tool-free protocol as if they were replications.'
+    result=dict(schema='compact-results/1.0',benchmark=m['kind'],mode=m.get('mode','calibrated'),protocol=m.get('protocol','tool-free'),main_questions=main_n,title=NAMES[m['kind']]+(' test-feedback comparison' if feedback else ' fixed comparison' if fixed else ''),completion=terminal['completion'],models=m['models'],effort=m['effort'],timeout_seconds=m['timeout_seconds'],source=m['source'],phases=phases,gate=gate,contrasts=contrasts,resources=resources,assessment=assessment,spend=dict(calls=len(charges),cap=m.get('cap',204),by_provider=dict(Counter(r['seat'] for r in charges)),known_list_equivalent_usd=sum(r['cost_usd'] for r in charges if r['cost_usd'] is not None),unpriced_calls=[r['id'] for r in charges if r['cost_usd'] is None],attempts=charges),provenance=dict(manifest_sha256=digest(root/'manifest.json'),runtime_hashes=m['source_hashes'],receipt=load(root/'controller.exit.json')),finished=terminal['finished'])
+    if feedback:result['diagnostics']={p.stem:load(p) for p in (root/'diagnostics').glob('*.json')}
     path=root/'report.json'
     with path.open('x',encoding='utf-8') as f:json.dump(result,f,indent=2)
     print(json.dumps({'benchmark':m['kind'],'completion':terminal['completion'],'calls':len(charges),'calibration':{a:s['score'] for a,s in cal.items()}}))

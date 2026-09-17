@@ -28,20 +28,27 @@ def answer_instruction(kind):
     if kind in ('lcb','bcb'):return 'Return a complete Python solution in exactly one ```python fenced code block. Include all needed imports. Target at most 2000 visible tokens. No explanation outside the code block.'
     return 'Return only the solution in the exact format requested by the problem: a JSON coloring map or an arithmetic expression. No prose, Markdown or extra text.'
 
-def definitions(questions):
+def definitions(questions,feedback=False):
     result=[]
     for q in questions:
         steps=('A','E') if q['phase']=='smoke' else ('A','B','E') if q['phase']=='calibration' else ('A','B','self-critique','cross-critique','C','D','E')
+        if feedback and q['phase']=='main':steps=('A','E','feedback-A','feedback-E','B','self-critique','cross-critique','C','D','F')
         for step in steps:
             deps=[] if step in ('A','E') else [q['id']+'.A']
             if step in ('C','D'):deps.append(q['id']+('.self-critique' if step=='C' else '.cross-critique'))
-            result.append(dict(id=q['id']+'.'+step,question=q['id'],step=step,phase=q['phase'],seat='codex' if step in ('E','cross-critique') else 'sonnet',deps=deps))
+            feedback_id=None
+            if step=='feedback-E':deps=[q['id']+'.E']
+            if step=='F':deps=[q['id']+'.E']
+            if feedback and q['phase']=='main' and step not in ('A','E','feedback-A','feedback-E'):
+                feedback_id=q['id']+('.feedback-E' if step=='F' else '.feedback-A');deps.append(feedback_id)
+            result.append(dict(id=q['id']+'.'+step,question=q['id'],step=step,phase=q['phase'],seat='local' if step.startswith('feedback-') else 'codex' if step in ('E','F','cross-critique') else 'sonnet',deps=deps,feedback_id=feedback_id))
     return result
 
 def prompt(q,d,results,kind):
     text='<PROBLEM>\n'+q['input']+'\n</PROBLEM>\n'
     if d['step'] in ('A','E'):return text+answer_instruction(kind)
     text+='\n<CANDIDATE>\n'+results[d['deps'][0]]['text']+'\n</CANDIDATE>\n'
+    if d.get('feedback_id'):text+='\n<VISIBLE_TEST_FEEDBACK>\n'+results[d['feedback_id']]['text']+'\n</VISIBLE_TEST_FEEDBACK>\n'
     if d['step'].endswith('critique'):return text+CRITIC
     if d['step'] in ('C','D'):text+='\n<ANONYMOUS_CRITIQUE>\n'+results[d['deps'][1]]['text']+'\n</ANONYMOUS_CRITIQUE>\n'
     return text+'Check and revise the candidate against the problem. '+answer_instruction(kind)
@@ -65,7 +72,7 @@ def smoke(kind):
         keys={qs[0][0]:dict(kind='gym',family='graph_color',entry={'metadata':{'puzzle':{'vertices':[0,1,2],'edges':[[0,1],[1,2],[0,2]],'color_options':[1,2,3]}}}),qs[1][0]:dict(kind='gym',family='countdown',entry={'metadata':{'numbers':[1,2,3],'target':6}})}
     return [dict(id=i,input=p,input_sha256=hashtext(p),phase='smoke',family='setup') for i,p in qs],keys
 
-def init(root,kind,fixed=False):
+def init(root,kind,fixed=False,feedback=False):
     root=Path(root);assert not (root/'manifest.json').exists()
     qs=load(root/'questions.json');keys=load(root/'keys.json');sq,sk=smoke(kind)
     write_once(root/'all-questions.json',sq+qs);write_once(root/'all-keys.json',{**sk,**keys})
@@ -76,26 +83,35 @@ def init(root,kind,fixed=False):
     stamp=time.time();source=load(root/'source.json');source['smoke_image']=load(root.parent/'gym/source.json')['image']
     m=dict(schema='compact-campaign/1.0',kind=kind,grant='compact-'+kind+'-20260916',created=now(),start_epoch=stamp,dispatch_cutoff=stamp+9600,deadline=stamp+10800,cap=204,family_caps=CAPS,retries={'claude':6,'codex':2},concurrency={'claude':2,'codex':2},models={s:MODELS[s] for s in ('sonnet','codex')},effort='medium',timeout_seconds=300,combined_claude_tokens=8192,source=source,source_hashes={p.name:sha(p) for p in runtime.glob('*.py')},questions_hash=sha(root/'all-questions.json'),keys_hash=sha(root/'all-keys.json'),prompts={'system':SYSTEM,'answer':answer_instruction(kind),'critic':CRITIC},authorization='User approved all three planned tests using Sonnet and Terra, with calibration gates and separate 204-call ceilings.')
     if fixed:
-        n=len(qs);assert n=={'bcb':24,'lcb':12}.get(kind) and all(q['phase']=='main' for q in qs)
-        caps={'claude':5*n+8,'codex':2*n+4,'glm':0,'kimi':0}
-        m.update(mode='fixed-comparison',experiment_id=root.name,main_questions=n,grant=root.name,cap=7*n+12,family_caps=caps,authorization='User approved fixed comparisons on fresh BigCodeBench-Hard and LiveCodeBench hard tasks. No score-based cancellation. Individual main-task failures do not stop unrelated work.')
-    write_once(root/'manifest.json',m);c=Campaign(root,m['grant']);c.authorize(m['cap'],m['family_caps'],m['authorization']);c.allocate(kind,m['cap'],m['family_caps'],sha(root/'manifest.json'),definitions(sq+qs),m['dispatch_cutoff']);c.close()
-    print(json.dumps({'initialized':kind,'cap':m['cap'],'nominal_calls':len(definitions(sq+qs)),'deadline':m['deadline']}))
+        n=len(qs);assert n==({'bcb':12,'lcb':8} if feedback else {'bcb':24,'lcb':12}).get(kind) and all(q['phase']=='main' for q in qs)
+        caps={'claude':5*n+8,'codex':(3 if feedback else 2)*n+4,'glm':0,'kimi':0}
+        m.update(mode='fixed-comparison',experiment_id=root.name,main_questions=n,grant=root.name,cap=(8 if feedback else 7)*n+12,family_caps=caps,authorization='User approved the next fixed Sonnet/Terra tests, with clear scoring and comparison websites. No score-based cancellation. Individual main-task failures do not stop unrelated work.')
+        if feedback:m.update(protocol='visible-test-feedback',visible_keys_hash=sha(root/'visible-keys.json'),primary_comparisons=['D-B','D-C','D-F'])
+    defs=definitions(sq+qs,feedback)
+    write_once(root/'manifest.json',m);c=Campaign(root,m['grant']);c.authorize(m['cap'],m['family_caps'],m['authorization']);c.allocate(kind,m['cap'],m['family_caps'],sha(root/'manifest.json'),defs,m['dispatch_cutoff']);c.close()
+    print(json.dumps({'initialized':kind,'cap':m['cap'],'nominal_calls':sum(d['seat']!='local' for d in defs),'deadline':m['deadline']}))
 
 def snapshot(root,c,m,phase):
     jobs=c.jobs(m['kind']);atomic(root/'status.json',dict(updated=now(),pid=os.getpid(),phase=phase,calls=c.count(),cap=m.get('cap',204),states=dict(Counter(j['state'] for j in jobs)),failures=[{'job':j['id'],'error':j['error']} for j in jobs if j['state']=='failed']))
 
 def run_phase(root,c,m,phase,adapter):
-    qs={q['id']:q for q in load(root/'all-questions.json')};defs=definitions(list(qs.values()));active={};stop=False
+    qs={q['id']:q for q in load(root/'all-questions.json')};feedback=m.get('protocol')=='visible-test-feedback';defs=definitions(list(qs.values()),feedback);active={};stop=False
     assert not any(j['state']=='running' for j in c.jobs(m['kind'])),'Never automatically restart unresolved dispatches'
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    def diagnostic(d,results):
+        started=time.monotonic();key=load(root/'visible-keys.json')[d['question']];code=extract(results[d['deps'][0]]['text'],m['kind'])
+        result={'correct':False,'verdict':'No usable Python code was returned.'} if code is None else invoke({**key,'code':code},m['source']['image'],root.parent)
+        return dict(text=json.dumps(result,ensure_ascii=True)[:6000],seconds=time.monotonic()-started,grade=result,visibility='visible tests only',input_sha256=hashtext(json.dumps(key,sort_keys=True)))
+    with ThreadPoolExecutor(max_workers=6 if feedback else 4) as pool:
         while True:
-            jobs={j['id']:j for j in c.jobs(m['kind'])};results={i:json.loads(j['result']) for i,j in jobs.items() if j['state']=='succeeded'};counts=Counter(FAMILY[d['seat']] for d,call in active.values())
+            jobs={j['id']:j for j in c.jobs(m['kind'])};results={i:json.loads(j['result']) for i,j in jobs.items() if j['state']=='succeeded'};counts=Counter('local' if d['seat']=='local' else FAMILY[d['seat']] for d,call in active.values())
             for d in defs:
-                j=jobs[d['id']];family=FAMILY[d['seat']]
+                j=jobs[d['id']];family='local' if d['seat']=='local' else FAMILY[d['seat']]
                 if d['phase']!=phase or j['state']!='pending':continue
                 if stop or time.time()>=m['dispatch_cutoff'] or any(jobs[x]['state'] in ('failed','blocked') for x in d['deps']):c.block(m['kind'],d['id'],'stop/deadline/required input missing');continue
                 if counts[family]>=2 or any(x not in results for x in d['deps']) or time.time()<j['not_before']:continue
+                if family=='local':
+                    with c.db:c.db.execute("UPDATE jobs SET state='running' WHERE stage=? AND id=?",(m['kind'],d['id']))
+                    active[pool.submit(diagnostic,d,results)]=(d,None);counts[family]+=1;continue
                 if c.attempts(m['kind'],d['id']) and c.db.execute('SELECT count(*) FROM calls WHERE grant_id=? AND family=? AND attempt_index=2',(m['grant'],family)).fetchone()[0]>=m['retries'][family]:
                     c.block(m['kind'],d['id'],'retry reserve exhausted')
                     if phase!='main' or m.get('mode')!='fixed-comparison':stop=True
@@ -111,7 +127,13 @@ def run_phase(root,c,m,phase,adapter):
                 time.sleep(.2);continue
             done,_=wait(active,timeout=1,return_when=FIRST_COMPLETED)
             for future in done:
-                d,call=active.pop(future);family=FAMILY[d['seat']]
+                d,call=active.pop(future);family='local' if d['seat']=='local' else FAMILY[d['seat']]
+                if family=='local':
+                    try:
+                        response=future.result();write_once(root/'diagnostics'/(d['id']+'.json'),response);c.finish(m['kind'],d['id'],None,'succeeded',response)
+                    except Exception as e:
+                        write_once(root/'diagnostics'/(d['id']+'.json'),{'error':str(e)});c.finish(m['kind'],d['id'],None,'failed',error='visible evaluator failed: '+str(e));stop=True
+                    continue
                 try:
                     response=future.result()
                     assert response['requested_model']==MODELS[d['seat']] and response['tool_calls']==0
@@ -129,7 +151,7 @@ def run_phase(root,c,m,phase,adapter):
                 print(json.dumps({'at':now(),'benchmark':m['kind'],'phase':phase,'job':d['id'],'calls':c.count(),'stop':stop}),flush=True)
 
 def grade(root,c,m,phase):
-    qs=[q for q in load(root/'all-questions.json') if q['phase']==phase];keys=load(root/'all-keys.json');jobs={j['id']:j for j in c.jobs(m['kind'])};steps=('A','E') if phase=='smoke' else ('A','B','E') if phase=='calibration' else ARMS
+    qs=[q for q in load(root/'all-questions.json') if q['phase']==phase];keys=load(root/'all-keys.json');jobs={j['id']:j for j in c.jobs(m['kind'])};steps=('A','E') if phase=='smoke' else ('A','B','E') if phase=='calibration' else ARMS+(('F',) if m.get('protocol')=='visible-test-feedback' else ())
     hashes={j['id']:hashtext(json.loads(j['result'])['text']) for j in jobs.values() if j['state']=='succeeded' and json.loads(j['definition'])['phase']==phase}
     write_once(root/(phase+'-freeze.json'),{'at':now(),'outputs':hashes})
     def one(q,arm):
@@ -157,6 +179,7 @@ def live(root):
         for name,digest in m['source_hashes'].items():assert sha(root/'runtime'/name)==digest
         assert sha(root.parent/'verifier.py')==m['source']['verifier_sha256']
         assert load(root/'offline-check.json')['passed'] is True
+        if m.get('protocol')=='visible-test-feedback':assert sha(root/'visible-keys.json')==m['visible_keys_hash']
         for seat in ('sonnet','codex'):SETTINGS[seat].update(effort='medium',timeout_seconds=300)
         c=Campaign(root,m['grant']);adapter=LiveAdapter(system_prompt=SYSTEM,preserve_text=True);completion='readiness-failed'
         try:
@@ -177,6 +200,6 @@ def live(root):
             write_once(root/'outcome.json',dict(completion=completion,finished=now(),calls=c.count()));snapshot(root,c,m,'finished')
         finally:c.close()
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('command',choices=['init','run']);p.add_argument('--root',type=Path,required=True);p.add_argument('--kind',choices=['lcb','bcb','gym']);p.add_argument('--fixed',action='store_true');a=p.parse_args()
-    if a.command=='init':init(a.root,a.kind,a.fixed)
+    p=argparse.ArgumentParser();p.add_argument('command',choices=['init','run']);p.add_argument('--root',type=Path,required=True);p.add_argument('--kind',choices=['lcb','bcb','gym']);p.add_argument('--fixed',action='store_true');p.add_argument('--feedback',action='store_true');a=p.parse_args()
+    if a.command=='init':init(a.root,a.kind,a.fixed or a.feedback,a.feedback)
     else:live(a.root)
