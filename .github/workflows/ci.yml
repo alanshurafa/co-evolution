@@ -43,6 +43,8 @@ jobs:
         run: python benchmarks/planbench/test_runner.py
       - name: Check BBEH calibration gate and answer-key isolation
         run: python benchmarks/bbeh/test_runner.py
+      - name: Check compact campaign gating and failure stops
+        run: python benchmarks/compact/test_run.py
 
   test:
     strategy:
