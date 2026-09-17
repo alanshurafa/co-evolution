@@ -20,9 +20,10 @@ def validate(data):
 
 def render(data,shell):
     e=html.escape
-    fixed=data.get('mode')=='fixed-comparison';main_n=data.get('main_questions',24)
+    fixed=data.get('mode')=='fixed-comparison';main_n=data.get('main_questions',24);feedback=data.get('protocol')=='visible-test-feedback'
     content=f'<p class="eyebrow">BOUNDED SONNET / TERRA TEST · {e(data["completion"].upper())}</p><h1>{e(data["title"])}</h1><p>{e(data["assessment"]["finding"])}</p>'
     content+='<div class="notice">'+('The main review comparison ran. Compare cross-model review with plain revision, self-review and Terra alone.' if data['phases']['main']['ran'] else '<strong>The main comparison did not run.</strong> Co-Evolution’s effect is unmeasured for this test.')+'</div>'
+    if feedback:content+='<p><strong>Primary score: held-out-test success.</strong> A task passes only when every held-out test passes. Separate visible tests supplied diagnostics during revision. A/E are original answers; B/F are direct feedback revisions; C/D add a self/cross-model critique before Sonnet revises. The held-out tests never reached the models.</p>'
     sections=[('main',f'Main comparison: {main_n} fresh tasks'),('smoke','Excluded setup checks')] if fixed else [('calibration','Calibration: eight excluded tasks'),('main','Main comparison: 24 fresh tasks'),('smoke','Excluded setup checks')]
     for phase,label in sections:
         block=data['phases'][phase];content+=f'<h2>{label}</h2>'
@@ -42,6 +43,7 @@ def render(data,shell):
             delta='Unavailable' if c['delta_pp'] is None else f'{c["delta_pp"]:.1f}'
             content+=f'<tr><th>{e(name)}</th><td>{c["n"]}</td><td>{delta}</td><td>{c["repairs"]}</td><td>{c["regressions"]}</td></tr>'
         content+='</tbody></table></div><p>D−B compares cross-model review with plain revision; D−C with self-review; D−E with Terra alone; D−A with the original. Paired intervals, exact tests and corrected p-values are in the evidence download.</p>'
+        if feedback:content+='<p>In this protocol, B is direct Sonnet revision with visible feedback. F is direct Terra revision with its own feedback. D−F is the additional cheap-alternative comparison. The corrected principal family is D−B, D−C and D−F.</p>'
         if fixed:
             content+='<h2>Resources and uncertainty</h2>'
             for name,c in data['contrasts'].items():
@@ -55,5 +57,6 @@ def render(data,shell):
     spend=data['spend'];content+=f'<h2>Compute and method</h2><p>{spend["calls"]}/{spend["cap"]} calls used, including setup and retries. Known list-equivalent estimate: ${spend["known_list_equivalent_usd"]:.4f}; {len(spend["unpriced_calls"])} calls unpriced. This is not a cash subscription bill. Terra estimates use historical token rates; usage records and pricing basis are retained in the download.</p><p>Models: {e(data["models"]["sonnet"])} and {e(data["models"]["codex"])}; medium effort, 300 seconds per call, maximum two active calls per provider. Responses froze before stage scoring. The planned review protocol supplies critics with the original problem and candidate, without hidden tests or answer keys.</p><article id="assessment"><h2>Evaluation of this test</h2>'
     for key,label in [('test_quality','Checks'),('limitation','Limits'),('decision','Conclusion'),('next_action','Next step')]:content+=f'<h3>{label}</h3><p>{e(data["assessment"][key])}</p>'
     upstream={'lcb':'https://github.com/LiveCodeBench/LiveCodeBench','bcb':'https://github.com/bigcode-project/bigcodebench','gym':'https://github.com/open-thought/reasoning-gym'}[data['benchmark']]
-    name=('fixed-' if fixed else 'compact-')+data['benchmark'];content+=f'</article><p>Pinned benchmark commit: <code>{e(data["source"]["commit"])}</code>. Questions and checkers are credited to the <a href="{upstream}">upstream benchmark project ↗</a>.</p><p><a href="{name}-results.json" download>Download outcomes and receipts ↓</a> · <a href="evaluations.html#{name}">All assessments →</a></p>'
+    name=data.get('page_id',('fixed-' if fixed else 'compact-')+data['benchmark']);content+=f'</article><p>Pinned benchmark commit: <code>{e(data["source"]["commit"])}</code>. Questions and checkers are credited to the <a href="{upstream}">upstream benchmark project ↗</a>.</p><p><a href="{name}-results.json" download>Download outcomes and receipts ↓</a> · <a href="evaluations.html#{name}">All assessments →</a></p>'
+    if feedback:content=content.replace('Responses froze before stage scoring.','Final responses froze before held-out scoring; visible diagnostics were supplied during generation.').replace('Compare cross-model review with plain revision, self-review and Terra alone.','Compare cross-model critique with direct feedback revision, self-review and Terra feedback revision.')
     return shell('Co-Evolution · '+data['title'],content)

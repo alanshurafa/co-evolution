@@ -16,7 +16,12 @@ class PublicationTests(unittest.TestCase):
         (public/'index.html').write_text('<a href="evaluations.html">Assessments</a>',encoding='utf-8')
         return public
 
-    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),12)
+    def test_live_publication_contract(self):self.assertEqual(len(gate.validate()),15)
+    def test_composite_rejects_changed_score(self):
+        spec=importlib.util.spec_from_file_location('comparison',SITE/'comparison-page.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        data=json.loads((SITE/'public/website-comparison.json').read_text(encoding='utf-8'))
+        data['groups'][1]['rows'][0]['score']+=1
+        with self.assertRaisesRegex(ValueError,'Composite calculation mismatch'):m.validate(data)
     def test_compact_rejects_modified_responses_and_scores(self):
         spec=importlib.util.spec_from_file_location('compact',SITE/'compact-page.py');compact=importlib.util.module_from_spec(spec);spec.loader.exec_module(compact)
         data=json.loads((SITE/'public/compact-lcb-results.json').read_text(encoding='utf-8'))
