@@ -54,5 +54,5 @@ The router is best-effort. PEL must keep working even if the router itself misbe
 
 ## See also
 
-- Spec: [`docs/superpowers/specs/2026-04-21-adaptive-co-evolve-design.md`](../../../docs/superpowers/specs/2026-04-21-adaptive-co-evolve-design.md)
+- Spec: [`docs/archive/superpowers-plans/specs/2026-04-21-adaptive-co-evolve-design.md`](../../../docs/archive/superpowers-plans/specs/2026-04-21-adaptive-co-evolve-design.md)
 - Pattern reference: `lab/pel/classifier/` (the frozen Phase 4 classifier this router structure mirrors)

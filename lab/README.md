@@ -102,9 +102,9 @@ No silent fallthrough to the default runner. Plan 02 of Phase 3 wires the parser
 | PEL Auto-Promote | `lab/pel-auto/` | v1.3+ placeholder — NOT created in Phase 3 |
 | PEL Explorer + Curator | `lab/pel-explorer/` | v1.3+ placeholder — NOT created in Phase 3 |
 
-- **`lab/pel/`** is v1.2's first inhabitant. The PEL (Protocol Evolution Loop) Proposer-Only system — LLM-driven mutation proposals against templates, policy, and runner code — lands across Phases 4-8 of v1.2. See `.planning/notes/pel-design-decisions.md` for the design rationale.
-- **`lab/pel-auto/`** will host PEL Auto-Promote (Option 2). Not created in Phase 3; its graduation prerequisites are tracked in [`.planning/seeds/pel-auto-promote-and-explorer.md`](../.planning/seeds/pel-auto-promote-and-explorer.md).
-- **`lab/pel-explorer/`** will host PEL Explorer + Curator (Option 3). Not created in Phase 3; shares the same seed file for prereqs: [`.planning/seeds/pel-auto-promote-and-explorer.md`](../.planning/seeds/pel-auto-promote-and-explorer.md).
+- **`lab/pel/`** is v1.2's first inhabitant. The PEL (Protocol Evolution Loop) Proposer-Only system — LLM-driven mutation proposals against templates, policy, and runner code — lands across Phases 4-8 of v1.2. See `docs/archive/gsd-planning/notes/pel-design-decisions.md` for the design rationale.
+- **`lab/pel-auto/`** will host PEL Auto-Promote (Option 2). Not created in Phase 3; its graduation prerequisites are tracked in [`docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md`](../docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md).
+- **`lab/pel-explorer/`** will host PEL Explorer + Curator (Option 3). Not created in Phase 3; shares the same seed file for prereqs: [`docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md`](../docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md).
 
 Placeholders are listed here so the namespace is reserved and future PEL work has an obvious home, but Phase 3 deliberately does NOT create those directories. They materialize only when their v1.3+ trigger conditions are met.
 
@@ -122,6 +122,6 @@ Short checklist for landing a new lab mode:
 
 ## Further reading
 
-- [`.planning/notes/co-evolution-lab-concept.md`](../.planning/notes/co-evolution-lab-concept.md) — the authoritative deep-why source. The 6 graduation criteria, 4 anti-criteria, 5 lab-worthy conditions, and 3 disambiguation items in this README are copied verbatim from that concept note. If this README and the concept note diverge, the concept note wins.
-- [`.planning/seeds/pel-auto-promote-and-explorer.md`](../.planning/seeds/pel-auto-promote-and-explorer.md) — graduation prerequisites for the v1.3+ PEL Auto-Promote + Explorer inhabitants.
-- [`.planning/REQUIREMENTS.md`](../.planning/REQUIREMENTS.md) — LAB-01 (this scaffold) plus PEL-01..PEL-05 (current + future inhabitants).
+- [`docs/archive/gsd-planning/notes/co-evolution-lab-concept.md`](../docs/archive/gsd-planning/notes/co-evolution-lab-concept.md) — the authoritative deep-why source. The 6 graduation criteria, 4 anti-criteria, 5 lab-worthy conditions, and 3 disambiguation items in this README are copied verbatim from that concept note. If this README and the concept note diverge, the concept note wins.
+- [`docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md`](../docs/archive/gsd-planning/seeds/pel-auto-promote-and-explorer.md) — graduation prerequisites for the v1.3+ PEL Auto-Promote + Explorer inhabitants.
+- [`docs/archive/gsd-planning/REQUIREMENTS.md`](../docs/archive/gsd-planning/REQUIREMENTS.md) — LAB-01 (this scaffold) plus PEL-01..PEL-05 (current + future inhabitants).

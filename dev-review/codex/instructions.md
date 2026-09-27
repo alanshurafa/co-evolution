@@ -93,7 +93,7 @@ bash dev-review/codex/dev-review.sh --plan-only "Add a retry wrapper around the 
 bash dev-review/codex/dev-review.sh --verify "Add README coverage for the Codex runtime"
 
 # Execute an existing approved plan
-bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-and-routing/04-01-PLAN.md
+bash dev-review/codex/dev-review.sh --skip-plan --plan path/to/PLAN.md
 ```
 
 ## Repo Paths

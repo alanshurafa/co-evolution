@@ -101,13 +101,15 @@ outside Claude Code.
 
 - `skills/dev-review/schemas/review-verdict.json` - structured JSON schema for verification verdicts
 
-## GSD Integration
+## Using the tools on a plan
 
-Co-evolution tools are integrated into GSD workflows:
+The GSD workflow hooks that used to call these tools were retired on 2026-09-27; call the tools directly instead:
 
-- `/gsd:plan-phase --bounce` bounces `PLAN.md` through agent-bouncer after plan-checker passes
-- `/gsd:execute-phase --cross-ai` delegates plan execution to dev-review's code pipeline
-- `/gsd:ship --review` uses Codex plus the review-verdict schema for a code review gate before PR
+- Bounce a plan document: `bash ./co-evolve-bouncer.sh --bounce-only <plan.md>`
+- Execute an existing plan through dev-review's code pipeline: `bash dev-review/codex/dev-review.sh --skip-plan --plan <plan.md> --executor codex --verify`
+- Review code before opening a PR: run dev-review with `--verify`, which checks the result against the review-verdict schema
+
+Keep the task's state in `PLAN-NEXT.md` rather than a separate planning tree, because one progress file is what the next session reads.
 
 ## Conventions
 

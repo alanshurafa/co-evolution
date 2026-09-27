@@ -36,7 +36,7 @@ stickiness from the last session."
 | Env var | Value domain | Default | Purpose |
 |---------|--------------|---------|---------|
 | `PEL_BOUNCE_STEP` | `compose`, `bounce`, `execute`, `verify`, `unknown` | `unknown` | Which step within a dev-review bounce this classification serves (specializes WITHIN a dev-review run) |
-| `PEL_PHASE_TYPE` | `scoping`, `implementation`, `verification`, `unknown` | `unknown` | Which GSD phase type is active (specializes BETWEEN dev-review invocations) |
+| `PEL_PHASE_TYPE` | `scoping`, `implementation`, `verification`, `unknown` | `unknown` | Which workflow phase type is active (specializes BETWEEN dev-review invocations) |
 | `PEL_FLAVOR_OVERRIDE` | (optional) `bug-catcher`, `faster-converger`, `blind-spot-surfacer`, `general` | unset | Force a flavor pick, bypassing Haiku entirely |
 | `CLASSIFIER_MODEL` | claude model ID matching `^[a-zA-Z0-9_.-]+$` | `claude-haiku-4-5-20251001` | Haiku model to invoke; override for debugging only |
 
@@ -132,7 +132,7 @@ look good (Goodhart-adjacent). Freezing the classifier gives Phases 5-7 a
 clean signal: the protocol changed, the flavor logic didn't.
 
 Classifier evolution (PEL-META-01) is v1.3+. See
-`.planning/notes/pel-design-decisions.md` §"Open risks" for the full
+`docs/archive/gsd-planning/notes/pel-design-decisions.md` §"Open risks" for the full
 attribution argument.
 
 ## Invocation
@@ -620,7 +620,7 @@ covering SC-5 with **16 scenarios**:
   passes the 5 pre-flight gates, applies in sandbox, survives canary, and
   writes `state.json` with `outcome=accepted` + `canary.passed=true`.
 - **E–I (5 text-pipeline edge cases)** from
-  `.planning/notes/phase-7-simulation-lessons.md`: empty-line context
+  `docs/archive/gsd-planning/notes/phase-7-simulation-lessons.md`: empty-line context
   marker (E), no-trailing-newline marker (F), CRLF-on-disk file (G),
   shell metacharacters `$VAR` + `` ` `` + `<<'EOF'` + `*.sh` (H), and
   `patch`-vs-`git apply` divergence (I, exits 3).
@@ -643,10 +643,10 @@ Phase-2-scorer-shaped eval-failure reports, one per flavor).
 
 ### Cross-references
 
-- [`.planning/phases/07-code-tier-proposer/07-CONTEXT.md`](../../.planning/phases/07-code-tier-proposer/07-CONTEXT.md) — Phase 7 CONTEXT with D-01..D-23 decisions.
-- [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) §3 — "Mutable surface = templates + policy + code" — why code-tier is LLM-only (random mutation breaks shell).
-- [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) §5 — "Option 2 and Option 3 → graduate via lab/" — human-review Goodhart mitigation rationale. Phase 7's canary is a safety net, not a replacement for human review.
-- [`.planning/notes/phase-7-simulation-lessons.md`](../../.planning/notes/phase-7-simulation-lessons.md) — BINDING simulation + canary requirements distilled from Phase 5's red-simulation session.
+- [`docs/archive/gsd-planning/phases/07-code-tier-proposer/07-CONTEXT.md`](../../docs/archive/gsd-planning/phases/07-code-tier-proposer/07-CONTEXT.md) — Phase 7 CONTEXT with D-01..D-23 decisions.
+- [`docs/archive/gsd-planning/notes/pel-design-decisions.md`](../../docs/archive/gsd-planning/notes/pel-design-decisions.md) §3 — "Mutable surface = templates + policy + code" — why code-tier is LLM-only (random mutation breaks shell).
+- [`docs/archive/gsd-planning/notes/pel-design-decisions.md`](../../docs/archive/gsd-planning/notes/pel-design-decisions.md) §5 — "Option 2 and Option 3 → graduate via lab/" — human-review Goodhart mitigation rationale. Phase 7's canary is a safety net, not a replacement for human review.
+- [`docs/archive/gsd-planning/notes/phase-7-simulation-lessons.md`](../../docs/archive/gsd-planning/notes/phase-7-simulation-lessons.md) — BINDING simulation + canary requirements distilled from Phase 5's red-simulation session.
 
 ## PR Emitter (v1.2)
 
@@ -675,7 +675,7 @@ exercise the full pipeline without touching GitHub.
 | Var                   | Required | Default                               | Purpose                                                                        |
 |-----------------------|----------|---------------------------------------|--------------------------------------------------------------------------------|
 | `PEL_BOUNCE_STEP`     | No       | `unknown`                             | Classifier input: current bounce phase (compose\|bounce\|execute\|verify)      |
-| `PEL_PHASE_TYPE`      | No       | `unknown`                             | Classifier input: GSD phase type (scoping\|implementation\|verification)       |
+| `PEL_PHASE_TYPE`      | No       | `unknown`                             | Classifier input: workflow phase type (scoping\|implementation\|verification)       |
 | `PEL_FLAVOR_OVERRIDE` | No       | unset                                 | Classifier override; set by `--flavor` wrapper flag                            |
 | `PEL_EVAL_REPORT`     | No       | latest `evals/reports/*/raw-scores.json` | Eval-failure JSON consumed by tier proposers                                |
 | `CO_EVOLVE_DRY_RUN`   | No       | unset                                 | `1` = stub gh via PATH shadow; set by `--dry-run` wrapper flag                 |
@@ -799,15 +799,15 @@ hermetic across Git Bash Windows + Linux + macOS. Final line on success:
 
 ### Cross-references
 
-- [`.planning/phases/08-pr-emitter-scoring/08-CONTEXT.md`](../../.planning/phases/08-pr-emitter-scoring/08-CONTEXT.md)
+- [`docs/archive/gsd-planning/phases/08-pr-emitter-scoring/08-CONTEXT.md`](../../docs/archive/gsd-planning/phases/08-pr-emitter-scoring/08-CONTEXT.md)
   — Phase 8 CONTEXT with D-01..D-22 decisions.
-- [`.planning/phases/08-pr-emitter-scoring/08-02-PLAN.md`](../../.planning/phases/08-pr-emitter-scoring/08-02-PLAN.md)
+- [`docs/archive/gsd-planning/phases/08-pr-emitter-scoring/08-02-PLAN.md`](../../docs/archive/gsd-planning/phases/08-pr-emitter-scoring/08-02-PLAN.md)
   — feature + simulation plan (this plan).
-- `.planning/phases/08-pr-emitter-scoring/VERIFY-SC4.md` — post-ship human-review
+- `docs/archive/gsd-planning/phases/08-pr-emitter-scoring/VERIFY-SC4.md` — post-ship human-review
   tracker for ≥3 real PEL PRs (blocks v1.2 git tag, NOT Phase 8 closure).
 
 ## Further reading
 
-- [`.planning/notes/pel-design-decisions.md`](../../.planning/notes/pel-design-decisions.md) — binding v1.2 design decisions; §1 "Multi-flavor fitness" is the authoritative source for the four flavor definitions that appear in `prompt.md`.
-- [`.planning/phases/04-mode-classifier-frozen/04-CONTEXT.md`](../../.planning/phases/04-mode-classifier-frozen/04-CONTEXT.md) — Phase 4 context and the 11 locked decisions (D-01..D-11) that shape this inhabitant.
+- [`docs/archive/gsd-planning/notes/pel-design-decisions.md`](../../docs/archive/gsd-planning/notes/pel-design-decisions.md) — binding v1.2 design decisions; §1 "Multi-flavor fitness" is the authoritative source for the four flavor definitions that appear in `prompt.md`.
+- [`docs/archive/gsd-planning/phases/04-mode-classifier-frozen/04-CONTEXT.md`](../../docs/archive/gsd-planning/phases/04-mode-classifier-frozen/04-CONTEXT.md) — Phase 4 context and the 11 locked decisions (D-01..D-11) that shape this inhabitant.
 - [`lab/README.md`](../README.md) — the broader lab conventions this inhabitant honors (W-3 argv contract, L-05 sandbox guarantee, L-06 graduation criteria).

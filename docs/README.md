@@ -22,9 +22,9 @@ JSON, rendered as self-contained HTML, and committed under
 | Path | What it is |
 |---|---|
 | `agent-seats.md` | Account, launcher and web-chat setup for the four agent seats. |
-| `audits/` | Audit notes and their follow-ups. |
 | `paper/` | Draft write-ups. |
-| `superpowers/` | Notes on the interactive skill set. |
+| `plans/` | Current study and benchmark plans. |
+| `archive/` | Retired workflow artifacts (GSD planning tree, Superpowers plans, 2026 audits), kept as history. See `archive/README.md`. |
 
 ## The retired document-suite page
 

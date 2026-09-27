@@ -29,5 +29,5 @@ execution, diff verification, or a repo-change trail.
 
 ## Optional
 
-- [Project contract](https://github.com/alanshurafa/co-evolution/blob/master/.planning/PROJECT.md): project-level constraints and value statement
-- [v1.2 roadmap](https://github.com/alanshurafa/co-evolution/blob/master/.planning/ROADMAP.md): Protocol Evolution Loop - self-mutating harness with human review gate on proposed mutations
+- [Project contract](https://github.com/alanshurafa/co-evolution/blob/master/docs/archive/gsd-planning/PROJECT.md): archived project-level constraints and value statement
+- [v1.2 roadmap](https://github.com/alanshurafa/co-evolution/blob/master/docs/archive/gsd-planning/ROADMAP.md): archived; Protocol Evolution Loop - self-mutating harness with human review gate on proposed mutations

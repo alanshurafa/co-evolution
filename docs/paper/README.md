@@ -15,7 +15,7 @@ The original strategic point was citability via arxiv preprint, which would unlo
 The paper exists as 7 drafted markdown sections in [`sections/`](sections/). It is **not** being polished for arxiv submission. Reasons for the deferral:
 
 - No validated demand — nobody has asked for a PDF or formal preprint
-- The audience we actually want to reach (tool maintainers like the [outreach targets](../../.planning/notes/post-v12-visibility-plan.md)) lives in markdown / GitHub, not in academic PDF
+- The audience we actually want to reach (tool maintainers like the [outreach targets](../archive/gsd-planning/notes/post-v12-visibility-plan.md)) lives in markdown / GitHub, not in academic PDF
 - [BOUNCE-PROTOCOL.md](../../BOUNCE-PROTOCOL.md) already does most of the citable-substrate work the paper was supposed to do
 - arxiv submission carries real costs (trim pass, citation verification, author affiliation, ORCID, build pipeline maintenance) without obvious benefit at our current adoption stage
 
