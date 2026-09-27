@@ -27,7 +27,7 @@ bash dev-review/codex/dev-review.sh --verify "Document runtime exit codes"
 bash dev-review/codex/dev-review.sh --plan-only "Draft the rollout notes for the next runtime pass"
 
 # Execute an approved plan file
-bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-and-routing/04-01-PLAN.md
+bash dev-review/codex/dev-review.sh --skip-plan --plan path/to/PLAN.md
 ```
 
 ## CLI Options
@@ -65,7 +65,7 @@ Use this for medium- or high-risk tasks when you want to inspect the bounced pla
 ```bash
 bash dev-review/codex/dev-review.sh \
   --skip-plan \
-  --plan .planning/phases/04-docs-and-routing/04-01-PLAN.md \
+  --plan path/to/PLAN.md \
   --workdir C:/Users/alan/Project/co-evolution
 ```
 

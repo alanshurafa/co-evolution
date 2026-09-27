@@ -9,7 +9,7 @@
 1. Close the verification loop — get Tier 3 to ≥ 2/3 agreement, get Tier 4 to 4/4 detected.
 2. Produce a real baseline across all 9 cases (we only have 3 cases with real scores: 01, 02, and the pilot fakes).
 3. Harden the runner against the three "original audit" bugs that still haven't been touched: no resume, verdict overwritten on fix, no per-phase timeout.
-4. Wire the eval into the workflows that actually run (GSD flags, weekly re-baseline).
+4. Wire the eval into the workflows that actually run (a pre-PR review gate, weekly re-baseline).
 5. Broaden the case library with one or two more real projects.
 
 Everything below maps to one of these. Phases are independent enough that any can be skipped or reordered.
@@ -96,8 +96,8 @@ The three "original audit" bugs never got fixed during the eval work. F1+F2 will
 
 Makes the eval discoverable and automatic.
 
-### F4.1 Wire into `/gsd:ship --review`
-- `CLAUDE.md` already documents `/gsd:ship --review`. Point it at `evals/run-evals.ps1` with the cases changed by the current phase.
+### F4.1 Pre-PR review gate
+- Run `evals/run-evals.ps1` on the cases a change touches before its PR opens. (The earlier plan hooked this into GSD's `ship --review`; GSD was retired on 2026-09-27.)
 - Pre-PR gate: composite ≥ 0.8 across affected cases, no Robustness failures.
 
 ### F4.2 Weekly re-baseline cron
@@ -146,7 +146,7 @@ Not blocking anything; revisit later.
 
 **This month:**
 - F3.2 and F3.3 (history + resume)
-- F4.1 (GSD integration)
+- F4.1 (pre-PR review gate)
 
 **Nice-to-have:**
 - F4.2, F4.3, F5

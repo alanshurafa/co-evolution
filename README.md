@@ -145,7 +145,7 @@ want a bounced plan, an execution trail, or a verifier pass outside Claude Code.
 bash dev-review/codex/dev-review.sh --plan-only "Add docs for the Codex runtime"
 
 # Execute an approved plan file
-bash dev-review/codex/dev-review.sh --skip-plan --plan .planning/phases/04-docs-and-routing/04-01-PLAN.md
+bash dev-review/codex/dev-review.sh --skip-plan --plan path/to/PLAN.md
 ```
 
 Start with [dev-review/codex/README.md](dev-review/codex/README.md) for usage

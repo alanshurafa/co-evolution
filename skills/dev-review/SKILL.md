@@ -752,12 +752,11 @@ Leave the git branch. If worktree, prompt to keep/remove.
 | Markers stuck 2+ passes | grep count unchanged | Force resolution on current pass |
 | Not git + worktree | git rev-parse fails | Drop worktree, warn, continue |
 
-## GSD Integration
+## Calling dev-review from another workflow
 
-Dev-review is integrated into GSD workflows:
-- `/gsd:execute-phase N --cross-ai` — delegates plan execution to dev-review via `--skip-plan --executor codex --verify`
-- `/gsd:ship --review` — uses Codex + review-verdict schema as a code review gate before PR creation
-- Enable globally: `gsd config-set workflow.cross_ai_execution true` or `gsd config-set workflow.code_review true`
+- To execute a plan someone else wrote, call dev-review with `--skip-plan --executor codex --verify`.
+- To gate a change before opening a PR, run the verify phase, which returns a verdict matching the review-verdict schema.
+- The GSD hooks that used to call dev-review this way were retired on 2026-09-27, so invoke it directly.
 
 ## Notes
 

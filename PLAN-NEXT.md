@@ -1,7 +1,7 @@
 # Plan: Next
 
 Product features only, priority order, from the last committed ROADMAP.md
-(`.planning/` is owned by another writer and not touched here). Audit,
+(the GSD `.planning/` tree was retired on 2026-09-27 and archived under `docs/archive/gsd-planning/`). Audit,
 calibration, and dogfood-evidence phases (v1.2 SC-4, v1.3 bounce
 calibration, v1.5 Phase 6 evidence-gathering) are excluded — done, or not
 a feature.
