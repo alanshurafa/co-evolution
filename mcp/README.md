@@ -12,9 +12,33 @@ were rated better than their inputs in 7 of 7 historical cases (0 regressed).
 
 ## Install
 
+First npm publication is pending. Until then, build from the public source:
+
+```bash
+git clone https://github.com/alanshurafa/co-evolution.git
+cd co-evolution/mcp
+npm ci
+npm run build:vendor
+npm run build
+node dist/src/cli.js --help
+```
+
+After publication:
+
 ```bash
 npm i -g @alanshurafa/co-evolution-mcp
 ```
+
+The package provides both the MCP server and a document CLI:
+
+```bash
+co-evolve init
+co-evolve bounce sample.md --agents codex,codex --output sample.bounced.md
+```
+
+Run `co-evolve --help` for usage. The sample requires a logged-in Codex CLI.
+`init` preserves existing files; `bounce` preserves the input and writes its
+per-pass artifacts under `.co-evolve/runs/` in the current directory.
 
 ### Prerequisites
 

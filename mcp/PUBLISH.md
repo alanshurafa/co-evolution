@@ -33,8 +33,9 @@ path and `runs_dir` pointing into this checkout's `runs/` directory. On Windows,
 ensure Git for Windows' `bin` directory precedes the Windows WSL bash launcher
 on the client's PATH. Record the client response and artifact directory.
 
-Item 1 is done only when the registry install works and that external client
-receives the tool response. A local tarball or in-process smoke client does
-not establish that condition. Run the test suite once when the item is complete;
+For the current usability goal, item 1 is done when the registry install works
+and `co-evolve --help` prints usage. The external MCP call above is an additional
+integration exercise. A local tarball does not establish registry availability.
+Run the test suite once when the item is complete;
 judge execution, behavior-score gates, and extra verification loops are not
 part of this release procedure.

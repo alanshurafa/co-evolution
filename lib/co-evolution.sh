@@ -761,9 +761,9 @@ invoke_codex() {
   if [[ -n "${WSL_DISTRO_NAME:-}" ]] && command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
     windows_workdir=$(wslpath -w "$workdir")
     windows_output=$(wslpath -w "$output_file")
-    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+    cmd=(cmd.exe /c codex exec --approve-for-me --skip-git-repo-check -C "$windows_workdir")
   else
-    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+    cmd=(codex exec --approve-for-me --skip-git-repo-check -C "$workdir")
   fi
 
   if [[ -n "${CODEX_MODEL:-}" ]]; then
@@ -807,9 +807,9 @@ invoke_codex_schema() {
     windows_workdir=$(wslpath -w "$workdir")
     windows_output=$(wslpath -w "$output_file")
     windows_schema=$(wslpath -w "$schema_file")
-    cmd=(cmd.exe /c codex exec --full-auto --skip-git-repo-check -C "$windows_workdir")
+    cmd=(cmd.exe /c codex exec --approve-for-me --skip-git-repo-check -C "$windows_workdir")
   else
-    cmd=(codex exec --full-auto --skip-git-repo-check -C "$workdir")
+    cmd=(codex exec --approve-for-me --skip-git-repo-check -C "$workdir")
   fi
 
   if [[ -n "${CODEX_MODEL:-}" ]]; then
